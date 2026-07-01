@@ -128,9 +128,6 @@ namespace Aerospike.Client
 					throw aec;
 				}
 
-				txn.State = Txn.TxnState.COMMITTED;
-				txn.InDoubt = false;
-
 				// Roll-forward writes in batch.
 				try
 				{
@@ -141,6 +138,9 @@ namespace Aerospike.Client
 					return CommitStatusType.ROLL_FORWARD_ABANDONED;
 				}
 			}
+
+			txn.State = Txn.TxnState.COMMITTED;
+			txn.InDoubt = false;
 
 			if (txn.CloseMonitor())
 			{

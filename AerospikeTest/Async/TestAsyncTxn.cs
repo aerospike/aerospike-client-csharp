@@ -439,6 +439,27 @@ namespace Aerospike.Test
 			Execute(cmds);
 		}
 
+		[TestMethod]
+		public void AsyncTxnAbortAfterCommitFailure()
+		{
+			using Txn txn = new();
+			SimulateCommitFailure(txn);
+			Assert.AreEqual(Txn.TxnState.COMMIT_FAILED, txn.State);
+
+			try
+			{
+				client.Abort(txn, CancellationToken.None);
+				throw new AerospikeException("Unexpected success");
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.TXN_FAILED)
+				{
+					throw;
+				}
+			}
+		}
+
 		private void Execute(IRunner[] cmdArray)
 		{
 			Cmds a = new(this, cmdArray);
@@ -988,6 +1009,13 @@ namespace Aerospike.Test
 				Util.Sleep(sleepMillis);
 				parent.NotifyCompleted();
 			}
+		}
+
+		private static void SimulateCommitFailure(Txn txn)
+		{
+			MethodInfo markCommitFailed = typeof(Txn).GetMethod("MarkCommitFailed", BindingFlags.Instance | BindingFlags.NonPublic);
+
+			markCommitFailed.Invoke(txn, null);
 		}
 
 		public interface IRunner
