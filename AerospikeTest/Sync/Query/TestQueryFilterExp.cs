@@ -734,7 +734,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryStringStartsWith()
 		{
-			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "string operations");
 
 			int begin = 1;
 			int end = 10;
@@ -771,7 +771,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryStringContains()
 		{
-			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "string operations");
 
 			int begin = 1;
 			int end = 10;
@@ -809,7 +809,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryStringEndsWith()
 		{
-			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "string operations");
 
 			int begin = 1;
 			int end = 10;
@@ -847,7 +847,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryStringRegexCompare()
 		{
-			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "string operations");
 
 			int begin = 1;
 			int end = 10;
@@ -886,7 +886,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryStringContainsOnSetName()
 		{
-			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "string operations");
 
 			int begin = 1;
 			int end = 10;
@@ -926,7 +926,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryKeyStringRegexCompare()
 		{
-			//CheckServerVersion(new Version(8, 1, 3, 0), "string operations");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "string operations");
 
 			int begin = 1;
 			int end = 10;

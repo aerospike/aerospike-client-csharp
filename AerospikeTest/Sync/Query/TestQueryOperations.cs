@@ -75,7 +75,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryProjectMultipleBins()
 		{
-			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Ops projection extended");
 
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
@@ -145,7 +145,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryProjectBinsViaExpressionRead()
 		{
-			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Ops projection extended");
 
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
@@ -181,7 +181,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryProjectBinsViaExpressionReadWithFilter()
 		{
-			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Ops projection extended");
 
 			int begin = 1;
 			int end = 10;
@@ -222,7 +222,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryProjectMixedGetAndExpressionRead()
 		{
-			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Ops projection extended");
 
 			int begin = 1;
 			int end = 10;
@@ -262,7 +262,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryWithExpReadOperation()
 		{
-			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Ops projection extended");
 
 			int begin = 1;
 			int end = 10;
@@ -299,7 +299,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryWithMultipleExpReadOperations()
 		{
-			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Ops projection extended");
 
 			int begin = 5;
 			int end = 15;
@@ -344,7 +344,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryWithExpReadAndFilterExp()
 		{
-			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Ops projection extended");
 
 			int begin = 1;
 			int end = 20;
@@ -579,7 +579,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryWithExpReadNoFilter()
 		{
-			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Ops projection extended");
 
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
@@ -608,7 +608,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryWithExpReadConditional()
 		{
-			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Ops projection extended");
 
 			int begin = 1;
 			int end = 20;
@@ -710,7 +710,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryWithExpReadEvalNoFail()
 		{
-			CheckServerVersion(new Version(8, 1, 2), "Ops projection extended");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Ops projection extended");
 
 			int begin = 1;
 			int end = 5;
