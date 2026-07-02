@@ -83,6 +83,8 @@ public sealed class QueryExp : SyncExample
 
 	private void RunRegexPredicate()
 	{
+		RequireMinServerVersion(Node.SERVER_VERSION_8_1_3);
+		
 		console.Info("Query Predicate: bin3 contains string with 'prefix' and 'suffix'");
 
 		Statement stmt = new()
