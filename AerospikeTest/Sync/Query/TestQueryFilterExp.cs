@@ -90,6 +90,7 @@ namespace Aerospike.Test
 					list = [];
 					map = [];
 				}
+
 				// Rotate prefixes so StringExp predicates pick deterministic subsets:
 				// i % 3 == 0 -> "alpha-i", == 1 -> "beta-i", == 2 -> "gamma-i".
 				string prefix = (i % 3) switch

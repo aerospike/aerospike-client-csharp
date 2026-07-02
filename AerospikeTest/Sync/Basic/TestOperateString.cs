@@ -752,17 +752,17 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void AppendOnMissingBinWithNoFailIsNoOp()
+		public void AppendOnMissingBinCreatesTheBinFromEmpty()
 		{
-		// Mirrors the upper() missing-bin NO_FAIL test for the append op.
+			// Create-ops {insert, concat, append, prepend} bootstrap an empty string
+			// and create a missing bin. NO_FAIL is irrelevant — the op always succeeds.
 			client.Delete(null, key);
 			client.Put(null, key, new Bin("other", "untouched"));
 
-			StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
-			Operate(StringOperation.Append(noFail, bin, "x"));
+			Operate(StringOperation.Append(policy, bin, "x"));
 
 			Record r = client.Get(null, key);
-			Assert.AreEqual(null, r.GetValue(bin));
+			Assert.AreEqual("x", r.GetValue(bin));
 			Assert.AreEqual("untouched", r.GetString("other"));
 		}
 
@@ -992,7 +992,7 @@ namespace Aerospike.Test
 		}
 
 		//=================================================================
-		// toString op — op-type 19, no payload, no sub-op id, no CTX
+		// ToString op — op-type 19, no payload, no sub-op id, no CTX
 		//
 		// Spec §2.6 and §4.1: covers integer/float/string/blob -> string
 		// conversions, plus the INCOMPATIBLE_TYPE error path for list/map
@@ -1063,42 +1063,132 @@ namespace Aerospike.Test
 		}
 
 		//=================================================================
-		// NO_FAIL flag — missing-bin path
+		// Missing-bin path
 		//
-		// particle_string.c:926: when the target bin does not exist, the
-		// server returns AS_OK with no bin written if NO_FAIL is set; without
-		// it, the server returns AS_ERR_BIN_NOT_FOUND. This is the actual
-		// scope of NO_FAIL on STRING_MODIFY — the server does NOT honor it
-		// for wrong-type bins (incompatible-type is hard-errored at line 872
-		// regardless of the flag).
+		// Behavior keys off the op, not the flag. The eight additive
+		// create-ops {insert, overwrite, concat, append, prepend, padStart,
+		// padEnd, repeat} create a missing bin from an empty string;
+		// transform/subtractive ops are a silent no-op (success, bin not
+		// created). There is no BIN_NOT_FOUND path. NO_FAIL no longer governs
+		// this path — it only suppresses an in-op execution failure (and still
+		// does not suppress BIN_TYPE_ERROR on a wrong-type bin).
 		//=================================================================
 
 		[TestMethod]
-		public void ModifyOnMissingBinWithNoFailIsNoOp()
+		public void ModifyOnMissingBinIsNoOp()
 		{
-			// Record exists but the target bin does not — exercises the bin-level
-			// NO_FAIL path at particle_string.c:926 (not the record-level
-			// KEY_NOT_FOUND path that fires when the whole record is absent).
+			// A non-create modify op (upper) on a missing bin is a silent no-op
+			// (success, bin not created) regardless of NO_FAIL — there is no
+			// BIN_NOT_FOUND path. Record exists but the target bin does not.
 			client.Delete(null, key);
 			client.Put(null, key, new Bin("other", "untouched"));
 
-			StringPolicy noFail = new(StringWriteFlags.NO_FAIL);
-			Operate(StringOperation.Upper(noFail, bin));
+			Operate(StringOperation.Upper(policy, bin));
 
 			// BIN must not have been created; the existing bin must be intact.
 			Record r = client.Get(null, key);
-			Assert.IsNull(r.GetValue(bin));
+			Assert.AreEqual(null, r.GetValue(bin));
 			Assert.AreEqual("untouched", r.GetString("other"));
 		}
 
 		[TestMethod]
-		public void ModifyOnMissingBinWithoutNoFailRaises()
+		public void NoFailDoesNotChangeMissingBinNoOp()
+		{
+			// The missing-bin no-op for non-create ops is flag-independent; NO_FAIL
+			// neither creates the bin nor raises an error.
+			client.Delete(null, key);
+			client.Put(null, key, new Bin("other", "untouched"));
+
+			StringPolicy noFail = new StringPolicy(StringWriteFlags.NO_FAIL);
+			Operate(StringOperation.Upper(noFail, bin));
+
+			Record r = client.Get(null, key);
+			Assert.AreEqual(null, r.GetValue(bin));
+			Assert.AreEqual("untouched", r.GetString("other"));
+		}
+
+		// All eight additive ops create a missing bin from empty in server 8.1.3
+		// (string ops + SERVER-97 PR 1452, which adds overwrite/repeat/padStart/
+		// padEnd to the create-op set). Transform/subtractive ops still no-op.
+		// append is covered above in the append section.
+
+		[TestMethod]
+		public void InsertOnMissingBinCreatesTheBinFromEmpty()
 		{
 			client.Delete(null, key);
 			client.Put(null, key, new Bin("other", "untouched"));
 
-			AerospikeException ae = Assert.Throws<AerospikeException>(() => Operate(StringOperation.Upper(policy, bin)));
-			Assert.AreEqual(ResultCode.BIN_NOT_FOUND, ae.Result);
+			Operate(StringOperation.Insert(policy, bin, 0, "hi"));
+
+			Assert.AreEqual("hi", client.Get(null, key).GetString(bin));
+		}
+
+		[TestMethod]
+		public void ConcatOnMissingBinCreatesTheBinFromEmpty()
+		{
+			client.Delete(null, key);
+			client.Put(null, key, new Bin("other", "untouched"));
+
+			Operate(StringOperation.Concat(policy, bin, "hi"));
+
+			Assert.AreEqual("hi", client.Get(null, key).GetString(bin));
+		}
+
+		[TestMethod]
+		public void PrependOnMissingBinCreatesTheBinFromEmpty()
+		{
+			client.Delete(null, key);
+			client.Put(null, key, new Bin("other", "untouched"));
+
+			Operate(StringOperation.Prepend(policy, bin, "hi"));
+
+			Assert.AreEqual("hi", client.Get(null, key).GetString(bin));
+		}
+
+		[TestMethod]
+		public void OverwriteOnMissingBinCreatesTheBinFromEmpty()
+		{
+			client.Delete(null, key);
+			client.Put(null, key, new Bin("other", "untouched"));
+
+			Operate(StringOperation.Overwrite(policy, bin, 0, "hi"));
+
+			Assert.AreEqual("hi", client.Get(null, key).GetString(bin));
+		}
+
+		[TestMethod]
+		public void PadStartOnMissingBinCreatesTheBinFromEmpty()
+		{
+			client.Delete(null, key);
+			client.Put(null, key, new Bin("other", "untouched"));
+
+			Operate(StringOperation.PadStart(policy, bin, 5, "x"));
+
+			Assert.AreEqual("xxxxx", client.Get(null, key).GetString(bin));
+		}
+
+		[TestMethod]
+		public void PadEndOnMissingBinCreatesTheBinFromEmpty()
+		{
+			client.Delete(null, key);
+			client.Put(null, key, new Bin("other", "untouched"));
+
+			Operate(StringOperation.PadEnd(policy, bin, 5, "x"));
+
+			Assert.AreEqual("xxxxx", client.Get(null, key).GetString(bin));
+		}
+
+		[TestMethod]
+		public void RepeatOnMissingBinCreatesAnEmptyBin()
+		{
+			// repeat(n) on empty = "" — the bin is created holding an empty string
+			// (server test: expect_string_bin(b, "")).
+			client.Delete(null, key);
+			client.Put(null, key, new Bin("other", "untouched"));
+
+			Operate(StringOperation.Repeat(policy, bin, 3));
+
+			Assert.AreEqual("", client.Get(null, key).GetString(bin));
 		}
 
 		//=================================================================
