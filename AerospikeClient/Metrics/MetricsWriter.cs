@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -260,45 +260,48 @@ namespace Aerospike.Client
 			ConcurrentHashMap<string, LatencyBuckets[]> hMap = hGrams?.histoMap;
 			int max = Latency.GetMax();
 
-			foreach (string ns in hMap.Keys)
+			if (hMap != null)
 			{
-				sb.Append(ns).Append(',');
-				sb.Append(node.GetErrorCountByNS(ns));
-				sb.Append(',');
-				sb.Append(node.GetTimeoutCountbyNS(ns));
-				sb.Append(',');
-				sb.Append(node.GetKeyBusyCountByNS(ns));
-				sb.Append(',');
-				sb.Append(node.GetBytesInByNS(ns));
-				sb.Append(',');
-				sb.Append(node.GetBytesOutByNS(ns));
-				sb.Append(",[");
-				LatencyBuckets[] latencyBuckets = hGrams.GetBuckets(ns);
-				for (int i = 0; i < max; i++)
+				foreach (string ns in hMap.Keys)
 				{
-					if (i > 0)
+					sb.Append(ns).Append(',');
+					sb.Append(node.GetErrorCountByNS(ns));
+					sb.Append(',');
+					sb.Append(node.GetTimeoutCountbyNS(ns));
+					sb.Append(',');
+					sb.Append(node.GetKeyBusyCountByNS(ns));
+					sb.Append(',');
+					sb.Append(node.GetBytesInByNS(ns));
+					sb.Append(',');
+					sb.Append(node.GetBytesOutByNS(ns));
+					sb.Append(",[");
+					LatencyBuckets[] latencyBuckets = hGrams.GetBuckets(ns);
+					for (int i = 0; i < max; i++)
 					{
-						sb.Append(',');
-					}
-
-					sb.Append(LatencyTypeToString((LatencyType)i));
-					sb.Append('[');
-
-					LatencyBuckets buckets = latencyBuckets[i];
-					int bucketMax = buckets.GetMax();
-					for (int j = 0; j < bucketMax; j++)
-					{
-						if (j > 0)
+						if (i > 0)
 						{
 							sb.Append(',');
 						}
-						sb.Append(buckets.GetBucket(j)); // Cumulative. Not reset on each interval.
+
+						sb.Append(LatencyTypeToString((LatencyType)i));
+						sb.Append('[');
+
+						LatencyBuckets buckets = latencyBuckets[i];
+						int bucketMax = buckets.GetMax();
+						for (int j = 0; j < bucketMax; j++)
+						{
+							if (j > 0)
+							{
+								sb.Append(',');
+							}
+							sb.Append(buckets.GetBucket(j)); // Cumulative. Not reset on each interval.
+						}
+						sb.Append(']');
 					}
-					sb.Append(']');
+					sb.Append("]],[");
 				}
-				sb.Append("]],[");
+				sb.Remove(sb.Length - 2, 2); // Remove ,[
 			}
-			sb.Remove(sb.Length - 2, 2); // Remove ,[
 			sb.Append("]]");
 			sb.Append("]]");
 		}
