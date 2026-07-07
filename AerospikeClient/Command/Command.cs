@@ -107,6 +107,7 @@ namespace Aerospike.Client
 		protected int opCount;
 		protected string serverMessage;
 		protected int serverSubCode;
+		protected ExpressionTrace expTrace;
 
 		public Command(int socketTimeout, int totalTimeout, int maxRetries)
 		{
@@ -3242,6 +3243,7 @@ namespace Aerospike.Client
 		{
 			serverMessage = null;
 			serverSubCode = SubCode.NONE;
+			expTrace = null;
 
 			if (txn == null)
 			{
@@ -3332,7 +3334,7 @@ namespace Aerospike.Client
 		/// </summary>
 		protected AerospikeException CreateException(int resultCode)
 		{
-			return new AerospikeException(resultCode, serverMessage, serverSubCode);
+			return new AerospikeException(resultCode, serverMessage, serverSubCode, expTrace);
 		}
 
 		/// <summary>
@@ -3419,6 +3421,11 @@ namespace Aerospike.Client
 						}
 						break;
 
+					case ExpressionTrace.AS_ERROR_DETAIL_KEY_EXP_TRACE: // nested expression-trace map (verbosity 3)
+						expTrace = ParseExpTrace(offset, end);
+						offset = SkipMsgpackValue(offset, end);
+						break;
+
 					default:
 						offset = SkipMsgpackValue(offset, end);
 						break;
@@ -3446,6 +3453,188 @@ namespace Aerospike.Client
 				return message;
 			}
 			return null;
+		}
+
+
+		/// <summary>
+		/// Parse the nested expression-trace map (top-level error-detail key 3, only sent
+		/// at verbosity 3 on expression build-failure paths) into an <see cref="ExpressionTrace"/>.
+		/// </summary>
+		/// <para>
+		/// Reuses the shared msgpack decoder. Treats every trace key as optional (never
+		/// requires key 1 — build failures carry AS_SUB_NONE), skips unknown trace keys,
+		/// tolerates the "..." path-truncation sentinel as an ordinary element, and never
+		/// throws on a missing/truncated trace. <c>lang</c> absent is left as -1 and
+		/// surfaces as msgpack via <see cref="ExpressionTrace.Lang"/>. Returns null when the
+		/// value is not a readable, non-empty map.
+		/// </para>
+		private ExpressionTrace ParseExpTrace(int offset, int end)
+		{
+			if (offset >= end)
+			{
+				return null;
+			}
+
+			// Read nested map header (fixmap, map16, map32).
+			int b = dataBuffer[offset++] & 0xFF;
+			int count;
+
+			if ((b & 0xF0) == 0x80)
+			{
+				count = b & 0x0F;
+			}
+			else if (b == 0xDE && offset + 2 <= end)
+			{
+				count = ByteUtil.BytesToShort(dataBuffer, offset) & 0xFFFF;
+				offset += 2;
+			}
+			else if (b == 0xDF && offset + 4 <= end)
+			{
+				count = ByteUtil.BytesToInt(dataBuffer, offset);
+				offset += 4;
+			}
+			else
+			{
+				return null;
+			}
+
+			if (count <= 0)
+			{
+				return null;
+			}
+
+			int phase = -1;
+			int byteOffset = -1;
+			string op = null;
+			int depth = -1;
+			string[] path = null;
+			string snippet = null;
+			int lang = -1;
+			int aelOffset = -1;
+			int aelSpan = -1;
+
+			for (int i = 0; i < count && offset < end; i++)
+			{
+				// Read key (positive fixint or uint8).
+				int key;
+				b = dataBuffer[offset++] & 0xFF;
+
+				if (b <= 0x7F)
+				{
+					key = b;
+				}
+				else if (b == 0xCC && offset < end)
+				{
+					key = dataBuffer[offset++] & 0xFF;
+				}
+				else
+				{
+					break;
+				}
+
+				switch (key)
+				{
+					case ExpressionTrace.KEY_PHASE:
+						phase = (int)UnpackUint(offset, end);
+						break;
+					case ExpressionTrace.KEY_BYTE_OFFSET:
+						byteOffset = (int)UnpackUint(offset, end);
+						break;
+					case ExpressionTrace.KEY_OP:
+						op = UnpackStrValue(offset, end);
+						break;
+					case ExpressionTrace.KEY_DEPTH:
+						depth = (int)UnpackUint(offset, end);
+						break;
+					case ExpressionTrace.KEY_PATH:
+						path = UnpackStrArray(offset, end);
+						break;
+					case ExpressionTrace.KEY_SNIPPET:
+						snippet = UnpackStrValue(offset, end);
+						break;
+					case ExpressionTrace.KEY_LANG:
+						lang = (int)UnpackUint(offset, end);
+						break;
+					case ExpressionTrace.KEY_AEL_OFFSET:
+						aelOffset = (int)UnpackUint(offset, end);
+						break;
+					case ExpressionTrace.KEY_AEL_SPAN:
+						aelSpan = (int)UnpackUint(offset, end);
+						break;
+					default:
+						// Unknown / reserved trace key (outcome, ael_line, ael_col, etc.) — skip.
+						break;
+				}
+
+				// Advance past the value regardless of whether the key was recognized.
+				offset = SkipMsgpackValue(offset, end);
+			}
+
+			return new ExpressionTrace(phase, byteOffset, op, depth, path, snippet, lang, aelOffset, aelSpan);
+		}
+
+		/// <summary>
+		/// Unpack a msgpack string value, or null if the value at the
+		/// offset is not a readable string.
+		/// </summary>
+		private string UnpackStrValue(int offset, int end)
+		{
+			int[] r = UnpackStr(offset, end);
+			if (r == null)
+			{
+				return null;
+			}
+			return ByteUtil.Utf8ToString(dataBuffer, r[0], r[1]);
+		}
+
+		/// <summary>
+		/// Unpack a msgpack array of strings (the expression-trace path). Preserves element
+		/// order, keeps the "..." truncation sentinel as an ordinary element, and leaves a
+		/// null slot for any element that is not a readable string. Returns null when the
+		/// value is not a readable array.
+		/// </summary>
+		private string[] UnpackStrArray(int offset, int end)
+		{
+			if (offset >= end)
+			{
+				return null;
+			}
+
+			int b = dataBuffer[offset++] & 0xFF;
+			int len;
+
+			if ((b & 0xF0) == 0x90)
+			{
+				len = b & 0x0F;
+			}
+			else if (b == 0xDC && offset + 2 <= end)
+			{
+				len = ByteUtil.BytesToShort(dataBuffer, offset) & 0xFFFF;
+				offset += 2;
+			}
+			else if (b == 0xDD && offset + 4 <= end)
+			{
+				len = ByteUtil.BytesToInt(dataBuffer, offset);
+				offset += 4;
+			}
+			else
+			{
+				return null;
+			}
+
+			if (len < 0)
+			{
+				return null;
+			}
+
+			string[] result = new string[len];
+
+			for (int i = 0; i < len && offset < end; i++)
+			{
+				result[i] = UnpackStrValue(offset, end);
+				offset = SkipMsgpackValue(offset, end);
+			}
+			return result;
 		}
 
 		/// <summary>

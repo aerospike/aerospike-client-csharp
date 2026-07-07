@@ -24,6 +24,7 @@ namespace Aerospike.Test
 		private static readonly string binName = "edv-bin";
 		private static Key intKey;
 		private static Key listKey;
+		private AerospikeException caught;
 
 		[ClassInitialize()]
 		public static void Setup(TestContext testContext)
@@ -250,6 +251,105 @@ namespace Aerospike.Test
 			}
 		}
 
+		// ---------------------------------------------------------------------
+		// Verbosity 3: expression build-failure trace (SERVER-1137), async paths.
+		// A type-mismatched comparison fails to build on the server: as a filter
+		// expression read it yields "invalid metadata expression in request"; as an
+		// expression write operation, "invalid expression in operation request".
+		// Both carry PARAMETER_ERROR + NONE + a build-phase trace.
+		// ---------------------------------------------------------------------
+
+		private static Exp BadExp()
+		{
+			return Exp.EQ(Exp.Val(5), Exp.Val(6.0));
+		}
+
+		[TestMethod]
+		public void AsyncFilterExpBuildFailureTrace()
+		{
+			Policy p = new()
+			{
+				ErrorDetailVerbosity = 3,
+				filterExp = Exp.Build(BadExp())
+			};
+
+			caught = null;
+			client.Get(p, new BuildTraceReadHandler(this), intKey);
+
+			WaitTillComplete();
+			AssertBuildTrace(caught, "invalid metadata expression in request");
+		}
+
+		[TestMethod]
+		public void AsyncExpWriteBuildFailureTrace()
+		{
+			WritePolicy wp = new()
+			{
+				ErrorDetailVerbosity = 3
+			};
+
+			caught = null;
+			client.Operate(wp, new BuildTraceReadHandler(this), intKey,
+				ExpOperation.Write(binName, Exp.Build(BadExp()), ExpWriteFlags.DEFAULT));
+
+			WaitTillComplete();
+			AssertBuildTrace(caught, "invalid expression in operation request");
+		}
+
+		[TestMethod]
+		public void AsyncFilterExpBuildFailureVerbosity2HasNoTrace()
+		{
+			Policy p = new()
+			{
+				ErrorDetailVerbosity = 2,
+				filterExp = Exp.Build(BadExp())
+			};
+
+			caught = null;
+			client.Get(p, new BuildTraceReadHandler(this), intKey);
+
+			WaitTillComplete();
+
+			Assert.IsNotNull(caught, "Expected AerospikeException to be captured");
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, caught.Result);
+			Assert.AreEqual(SubCode.NONE, caught.SubCode);
+			string msg = caught.BaseMessage;
+			Assert.IsNotNull(msg);
+			Assert.IsTrue(msg.Contains("invalid metadata expression in request"),
+				"Expected filter-build message in: " + msg);
+			Assert.IsNull(caught.ExpTrace, "Verbosity 2 must surface no expression trace");
+		}
+
+		private class BuildTraceReadHandler(TestAsyncErrorDetailVerbosity parent) : RecordListener
+		{
+			public void OnSuccess(Key key, Record record)
+			{
+				parent.SetError(new Exception("Expected PARAMETER_ERROR build failure, got success"));
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.caught = e;
+				parent.NotifyCompleted();
+			}
+		}
+
+		private static void AssertBuildTrace(AerospikeException ae, string expectedSubstring)
+		{
+			Assert.IsNotNull(ae, "Expected AerospikeException to be captured");
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+			Assert.AreEqual(SubCode.NONE, ae.SubCode);
+
+			string msg = ae.BaseMessage;
+			Assert.IsNotNull(msg, "Expected server error message, got null. ae=" + ae);
+			Assert.IsTrue(msg.Contains(expectedSubstring), "Expected '" + expectedSubstring + "' in: " + msg);
+
+			ExpressionTrace trace = ae.ExpTrace;
+			Assert.IsNotNull(trace, "Expected a non-null expression trace at verbosity 3");
+			Assert.AreEqual(ExpressionTrace.PHASE_BUILD, trace.Phase);
+		}
+
 		/// <summary>
 		/// Assert the server-supplied (resultCode, subcode) pair reached the
 		/// async exception, including the first-class numeric subcode.
@@ -276,7 +376,7 @@ namespace Aerospike.Test
 		/// <param name="ae">The AerospikeException to check.</param>
 		/// <param name="expectedResultCode">The expected result code.</param>
 		/// <param name="expectedSubstring">The expected substring.</param>
-		private static void AssertSubcodeAbsent(AerospikeException ae, int expectedResultCode, String expectedSubstring)
+		private static void AssertSubcodeAbsent(AerospikeException ae, int expectedResultCode, string expectedSubstring)
 		{
 			Assert.IsNotNull(ae);
 			Assert.AreEqual(expectedResultCode, ae.Result);

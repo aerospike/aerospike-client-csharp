@@ -67,7 +67,7 @@ namespace Aerospike.Client
 		/// <example>
 		/// <code>
 		/// Policy p = new Policy();
-		/// p.filterExp = Exp.build(Exp.EQ(Exp.IntBin("a"), Exp.Val(11)));
+		/// p.filterExp = Exp.Build(Exp.EQ(Exp.IntBin("a"), Exp.Val(11)));
 		/// </code>
 		/// </example>
 		public Expression filterExp;
@@ -278,6 +278,9 @@ namespace Aerospike.Client
 		/// <li>0 - disabled (no error details).</li>
 		/// <li>1 - subcode only.</li>
 		/// <li>2 - subcode + message.</li>
+		/// <li>3 - subcode, message, and (on expression build-failure paths) a structured
+		///     expression trace, surfaced on
+		///     <see cref="Aerospike.Client.AerospikeException.ExpTrace"/>.</li>
 		/// </ul>
 		/// </para>
 		/// Default: 0

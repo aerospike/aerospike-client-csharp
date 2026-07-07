@@ -270,15 +270,198 @@ namespace Aerospike.Test
 			Assert.IsNull(ParseFields(Array.Empty<byte>(), 0));
 		}
 
+		// ---------- Parser: verbosity-3 expression trace (nested key-3 map) ----------
+
+		[TestMethod]
+		public void ParsesFullExpressionTrace()
+		{
+			byte[] trace = FixMap(
+				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_BUILD)),
+				Pair(IntKey(ExpressionTrace.KEY_BYTE_OFFSET), FixInt(7)),
+				Pair(IntKey(ExpressionTrace.KEY_OP), FixStr("cmp_eq")),
+				Pair(IntKey(ExpressionTrace.KEY_DEPTH), FixInt(3)),
+				Pair(IntKey(ExpressionTrace.KEY_PATH), FixArray(FixStr("and"), FixStr("eq"), FixStr("cmp_eq"))),
+				Pair(IntKey(ExpressionTrace.KEY_SNIPPET), FixStr("eq(int,float)"))
+			);
+			byte[] detail = FixMap(
+				Pair(IntKey(2), FixStr("bad exp")),
+				Pair(IntKey(3), trace)
+			);
+
+			TestCommand command = ParseCommand(detail);
+
+			Assert.AreEqual("bad exp", command.ServerMessage);
+			ExpressionTrace traceResult = command.ExpTrace;
+			Assert.IsNotNull(traceResult, "Expected a parsed expression trace");
+			Assert.AreEqual(ExpressionTrace.PHASE_BUILD, traceResult.Phase);
+			Assert.AreEqual(7, traceResult.ByteOffset);
+			Assert.AreEqual("cmp_eq", traceResult.Op);
+			Assert.AreEqual(3, traceResult.Depth);
+			Assert.AreEqual("eq(int,float)", traceResult.Snippet);
+			CollectionAssert.AreEqual(new[] { "and", "eq", "cmp_eq" }, traceResult.Path);
+			Assert.AreEqual(ExpressionTrace.LANG_MSGPACK, traceResult.Lang);
+		}
+
+		[TestMethod]
+		public void ParsesTracePathTruncationSentinel()
+		{
+			byte[] trace = FixMap(
+				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_BUILD)),
+				Pair(IntKey(ExpressionTrace.KEY_DEPTH), FixInt(20)),
+				Pair(IntKey(ExpressionTrace.KEY_PATH),
+					FixArray(FixStr("and"), FixStr("or"), FixStr("..."), FixStr("cmp_eq")))
+			);
+			byte[] detail = FixMap(Pair(IntKey(3), trace));
+
+			ExpressionTrace traceResult = ParseCommand(detail).ExpTrace;
+
+			Assert.IsNotNull(traceResult);
+			Assert.AreEqual(20, traceResult.Depth, "Depth reports the true count, not the truncated path length");
+			Assert.IsNotNull(traceResult.Path);
+			Assert.AreEqual(4, traceResult.Path.Length);
+			Assert.AreEqual(ExpressionTrace.PATH_TRUNCATION_SENTINEL, traceResult.Path[2]);
+			Assert.AreEqual("and", traceResult.Path[0]);
+			Assert.AreEqual("cmp_eq", traceResult.Path[3]);
+		}
+
+		[TestMethod]
+		public void ParsesTraceWithSnippetAndPathAbsent()
+		{
+			byte[] trace = FixMap(
+				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_BUILD)),
+				Pair(IntKey(ExpressionTrace.KEY_BYTE_OFFSET), FixInt(12)),
+				Pair(IntKey(ExpressionTrace.KEY_OP), FixStr("add")),
+				Pair(IntKey(ExpressionTrace.KEY_DEPTH), FixInt(2))
+			);
+			byte[] detail = FixMap(Pair(IntKey(3), trace));
+
+			ExpressionTrace traceResult = ParseCommand(detail).ExpTrace;
+
+			Assert.IsNotNull(traceResult);
+			Assert.AreEqual(ExpressionTrace.PHASE_BUILD, traceResult.Phase);
+			Assert.AreEqual(12, traceResult.ByteOffset);
+			Assert.AreEqual("add", traceResult.Op);
+			Assert.AreEqual(2, traceResult.Depth);
+			Assert.IsNull(traceResult.Snippet, "Snippet absent within a present trace");
+			Assert.IsNull(traceResult.Path, "Path absent within a present trace");
+		}
+
+		[TestMethod]
+		public void ParsesTraceSkippingUnknownTraceKeys()
+		{
+			byte[] trace = FixMap(
+				Pair(IntKey(ExpressionTrace.KEY_OUTCOME), FixInt(5)),
+				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_BUILD)),
+				Pair(IntKey(ExpressionTrace.KEY_AEL_LINE), FixInt(9)),
+				Pair(IntKey(ExpressionTrace.KEY_BYTE_OFFSET), FixInt(4)),
+				Pair(IntKey(ExpressionTrace.KEY_AEL_COL), FixInt(2)),
+				Pair(IntKey(99), FixStr("ignored"))
+			);
+			byte[] detail = FixMap(Pair(IntKey(3), trace));
+
+			ExpressionTrace traceResult = ParseCommand(detail).ExpTrace;
+
+			Assert.IsNotNull(traceResult);
+			Assert.AreEqual(ExpressionTrace.PHASE_BUILD, traceResult.Phase);
+			Assert.AreEqual(4, traceResult.ByteOffset);
+			Assert.IsNull(traceResult.Op);
+			Assert.AreEqual(-1, traceResult.Depth);
+		}
+
+		[TestMethod]
+		public void ParsesTraceLangAbsentIsMsgpack()
+		{
+			byte[] trace = FixMap(
+				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_BUILD)),
+				Pair(IntKey(ExpressionTrace.KEY_BYTE_OFFSET), FixInt(1))
+			);
+			byte[] detail = FixMap(Pair(IntKey(3), trace));
+
+			ExpressionTrace traceResult = ParseCommand(detail).ExpTrace;
+
+			Assert.IsNotNull(traceResult);
+			Assert.AreEqual(ExpressionTrace.LANG_MSGPACK, traceResult.Lang, "Absent lang must be treated as msgpack");
+			Assert.AreEqual(-1, traceResult.AelOffset);
+			Assert.AreEqual(-1, traceResult.AelSpan);
+		}
+
+		[TestMethod]
+		public void ParsesTraceLangAelWithOffsets()
+		{
+			byte[] trace = FixMap(
+				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_BUILD)),
+				Pair(IntKey(ExpressionTrace.KEY_LANG), FixInt(ExpressionTrace.LANG_AEL)),
+				Pair(IntKey(ExpressionTrace.KEY_AEL_OFFSET), FixInt(42)),
+				Pair(IntKey(ExpressionTrace.KEY_AEL_SPAN), FixInt(6))
+			);
+			byte[] detail = FixMap(Pair(IntKey(3), trace));
+
+			ExpressionTrace traceResult = ParseCommand(detail).ExpTrace;
+
+			Assert.IsNotNull(traceResult);
+			Assert.AreEqual(ExpressionTrace.LANG_AEL, traceResult.Lang);
+			Assert.AreEqual(42, traceResult.AelOffset);
+			Assert.AreEqual(6, traceResult.AelSpan);
+		}
+
+		[TestMethod]
+		public void NoKey3YieldsNoTrace()
+		{
+			byte[] detail = FixMap(
+				Pair(IntKey(1), FixInt(4)),
+				Pair(IntKey(2), FixStr("plain"))
+			);
+
+			TestCommand command = ParseCommand(detail);
+
+			Assert.AreEqual("plain (subcode=4)", command.ServerMessage);
+			Assert.IsNull(command.ExpTrace, "No key 3 should yield no expression trace");
+		}
+
+		[TestMethod]
+		public void MessageStillSurfacesAlongsideTraceRegardlessOfKeyOrder()
+		{
+			byte[] trace = FixMap(
+				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_BUILD)),
+				Pair(IntKey(ExpressionTrace.KEY_OP), FixStr("eq"))
+			);
+			byte[] detail = FixMap(
+				Pair(IntKey(3), trace),
+				Pair(IntKey(2), FixStr("bad exp"))
+			);
+
+			TestCommand command = ParseCommand(detail);
+
+			Assert.AreEqual("bad exp", command.ServerMessage);
+			Assert.IsNotNull(command.ExpTrace);
+			Assert.AreEqual("eq", command.ExpTrace.Op);
+		}
+
+		[TestMethod]
+		public void EmptyTraceMapYieldsNoTrace()
+		{
+			byte[] detail = FixMap(Pair(IntKey(3), FixMap()));
+
+			Assert.IsNull(ParseCommand(detail).ExpTrace);
+		}
+
 		private static string ParseErrorField(byte[] msgpackDetail)
 		{
-			return ParseFields(Fields((FieldType.ERROR_MESSAGE, msgpackDetail)), 1);
+			return ParseCommand(msgpackDetail).ServerMessage;
 		}
 
 		private static string ParseFields(byte[] fields, int fieldCount)
 		{
 			TestCommand command = new();
-			return command.ParseFieldsForTest(fields, fieldCount);
+			command.ParseFieldsForTest(fields, fieldCount);
+			return command.ServerMessage;
+		}
+
+		private static TestCommand ParseCommand(byte[] msgpackDetail)
+		{
+			TestCommand command = new();
+			command.ParseFieldsForTest(Fields((FieldType.ERROR_MESSAGE, msgpackDetail)), 1);
+			return command;
 		}
 
 		private static byte[] Fields(params (int Type, byte[] Data)[] fields)
@@ -290,6 +473,18 @@ namespace Aerospike.Test
 				WriteInt(bytes, data.Length + 1);
 				bytes.Add((byte)type);
 				bytes.AddRange(data);
+			}
+			return bytes.ToArray();
+		}
+
+		private static byte[] FixArray(params byte[][] elements)
+		{
+			Assert.IsTrue(elements.Length <= 15);
+			List<byte> bytes = new() { (byte)(0x90 | elements.Length) };
+
+			foreach (byte[] element in elements)
+			{
+				bytes.AddRange(element);
 			}
 			return bytes.ToArray();
 		}
@@ -403,15 +598,19 @@ namespace Aerospike.Test
 			{
 			}
 
-			public string ParseFieldsForTest(byte[] fields, int count)
+			public string ServerMessage => serverMessage;
+
+			public ExpressionTrace ExpTrace => expTrace;
+
+			public void ParseFieldsForTest(byte[] fields, int count)
 			{
 				serverMessage = null;
+				expTrace = null;
 				fieldCount = count;
 				DataBufferField.SetValue(this, fields);
 				DataOffsetField.SetValue(this, 0);
 
 				ParseFields(null, null, false);
-				return serverMessage;
 			}
 
 			protected override int SizeBuffer()

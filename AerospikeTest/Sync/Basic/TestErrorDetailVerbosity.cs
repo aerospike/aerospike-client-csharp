@@ -328,7 +328,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				AssertSubcode(ae, ResultCode.FILTERED_OUT, SubCode.FILTERED_BINS);
+				AssertSubcodeAbsent(ae, ResultCode.FILTERED_OUT, "filtered out");
 				return;
 			}
 			Assert.Fail("Expected AerospikeException");
@@ -348,12 +348,95 @@ namespace Aerospike.Test
 			Assert.AreEqual(42, record.GetInt(binName));
 		}
 
-		/**
-		* Assert the server-supplied {@code (resultCode, subcode)} pair. The numeric
-		* subcode must be exposed first-class via {@link AerospikeException#getSubcode()}
-		* (not merely embedded in the message string), and the "subcode=N" suffix must
-		* still appear in the message for parity with the C client.
-		*/
+		// ---------------------------------------------------------------------
+		// Verbosity 3: expression build-failure trace (SERVER-1137).
+		//
+		// A type-mismatched comparison expression fails to build on the server.
+		// As a filter expression it yields "invalid metadata expression in request";
+		// as an expression write operation it yields "invalid expression in operation
+		// request". Both carry PARAMETER_ERROR + SubCode.NONE and, at verbosity 3,
+		// a structured build trace. Assert trace presence and shape, not exact offsets.
+		// ---------------------------------------------------------------------
+
+		private static Exp BadExp()
+		{
+			return Exp.EQ(Exp.Val(5), Exp.Val(6.0));
+		}
+
+		[TestMethod]
+		public void TestFilterExpBuildFailureTrace()
+		{
+			Policy p = new()
+			{
+				ErrorDetailVerbosity = 3,
+				filterExp = Exp.Build(BadExp())
+			};
+
+			try
+			{
+				client.Get(p, intKey);
+			}
+			catch (AerospikeException ae)
+			{
+				AssertBuildTrace(ae, "invalid metadata expression in request");
+				return;
+			}
+			Assert.Fail("Expected AerospikeException");
+		}
+
+		[TestMethod]
+		public void TestExpWriteBuildFailureTrace()
+		{
+			WritePolicy wp = new()
+			{
+				ErrorDetailVerbosity = 3
+			};
+
+			try
+			{
+				client.Operate(wp, intKey, ExpOperation.Write(binName, Exp.Build(BadExp()), ExpWriteFlags.DEFAULT));
+			}
+			catch (AerospikeException ae)
+			{
+				AssertBuildTrace(ae, "invalid expression in operation request");
+				return;
+			}
+			Assert.Fail("Expected AerospikeException");
+		}
+
+		[TestMethod]
+		public void TestFilterExpBuildFailureVerbosity2HasNoTrace()
+		{
+			Policy p = new()
+			{
+				ErrorDetailVerbosity = 2,
+				filterExp = Exp.Build(BadExp())
+			};
+
+			try
+			{
+				client.Get(p, intKey);
+			}
+			catch (AerospikeException ae)
+			{
+				Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+				Assert.AreEqual(SubCode.NONE, ae.SubCode);
+
+				string msg = ae.BaseMessage;
+				Assert.IsNotNull(msg);
+				Assert.IsTrue(msg.Contains("invalid metadata expression in request"),
+					"Expected filter-build message in: " + msg);
+				Assert.IsNull(ae.ExpTrace, "Verbosity 2 must surface no expression trace");
+				return;
+			}
+			Assert.Fail("Expected AerospikeException");
+		}
+
+		/// <summary>
+		/// Assert the server-supplied result code and subcode pair. The numeric
+		/// subcode must be exposed first-class on <see cref="AerospikeException.SubCode"/>
+		/// and still appear in the message for parity with the C client.
+		/// </summary>
 		private static void AssertSubcode(AerospikeException ae, int expectedResultCode, int expectedSubcode)
 		{
 			Assert.AreEqual(expectedResultCode, ae.Result);
@@ -364,13 +447,10 @@ namespace Aerospike.Test
 			Assert.IsTrue(msg.Contains("subcode=" + expectedSubcode));
 		}
 
-		/**
-		* Assert that the server surfaced a contextual message but NO subcode
-		* (AS_SUB_NONE): {@link AerospikeException#getSubcode()} is {@link SubCode#NONE}
-		* and the "(subcode=...)" suffix must never appear. Any expectedSubstrings are
-		* required in the message; pass none to skip the message-text check (mirrors a
-		* NULL expected_msg_substr in the C example).
-		*/
+		/// <summary>
+		/// Assert that the server surfaced a contextual message but no subcode
+		/// (<see cref="SubCode.NONE"/>). The "(subcode=...)" suffix must not appear.
+		/// </summary>
 		private static void AssertSubcodeAbsent(AerospikeException ae, int expectedResultCode, params string[] expectedSubstrings)
 		{
 			Assert.AreEqual(expectedResultCode, ae.Result);
@@ -384,6 +464,20 @@ namespace Aerospike.Test
 				Assert.IsTrue(msg.Contains(expected), "Expected '" + expected + "' in: " + msg);
 			}
 			Assert.IsFalse(msg.Contains("subcode="), "Expected NO subcode suffix in: " + msg);
+		}
+
+		private static void AssertBuildTrace(AerospikeException ae, string expectedSubstring)
+		{
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+			Assert.AreEqual(SubCode.NONE, ae.SubCode);
+
+			string msg = ae.BaseMessage;
+			Assert.IsNotNull(msg, "Expected server error message, got null. ae=" + ae);
+			Assert.IsTrue(msg.Contains(expectedSubstring), "Expected '" + expectedSubstring + "' in: " + msg);
+
+			ExpressionTrace trace = ae.ExpTrace;
+			Assert.IsNotNull(trace, "Expected a non-null expression trace at verbosity 3");
+			Assert.AreEqual(ExpressionTrace.PHASE_BUILD, trace.Phase);
 		}
 	}
 }

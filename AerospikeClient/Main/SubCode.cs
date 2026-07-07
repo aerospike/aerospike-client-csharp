@@ -307,7 +307,10 @@ namespace Aerospike.Client
 		public const int OPNOT_STRING_UTF8_INVALID = 11;
 
 		//-------------------------------------------------------
-		// Pairs with ResultCode.FILTERED_OUT (27)  [AS_ERR_FILTERED_OUT]
+		// ResultCode.FILTERED_OUT (27) [AS_ERR_FILTERED_OUT] carries NO subcode:
+		// the server emits AS_SUB_NONE plus a contextual "filtered out ..." message.
+		// (The as_sub_filtered_t enum was removed server-side and never shipped, so
+		// no FILTERED_* constants are defined here. Match on the message, not a subcode.)
 		//-------------------------------------------------------
 
 		/// <summary>

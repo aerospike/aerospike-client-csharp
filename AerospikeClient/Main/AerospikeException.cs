@@ -17,6 +17,7 @@
 using System.Collections.ObjectModel;
 using System.Text;
 using static Aerospike.Client.CommitError;
+using static Aerospike.Client.SubCode;
 
 namespace Aerospike.Client
 {
@@ -28,7 +29,8 @@ namespace Aerospike.Client
 		protected Node node;
 		protected Policy policy;
 		protected int resultCode = ResultCode.CLIENT_ERROR;
-		protected int subCode = Aerospike.Client.SubCode.NONE;
+		protected int subCode = NONE;
+		protected ExpressionTrace expTrace = null;
 		protected int iteration = -1;
 		protected bool inDoubt;
 
@@ -38,11 +40,12 @@ namespace Aerospike.Client
 			this.resultCode = resultCode;
 		}
 
-		public AerospikeException(int resultCode, string message, int subCode, Exception inner = null)
+		public AerospikeException(int resultCode, string message, int subCode, ExpressionTrace expTrace, Exception inner = null)
 			: base(message ?? string.Empty, inner)
 		{
 			this.resultCode = resultCode;
 			this.subCode = subCode;
+			this.expTrace = expTrace;
 		}
 
 		public AerospikeException(int resultCode, Exception e)
@@ -209,6 +212,26 @@ namespace Aerospike.Client
 			get
 			{
 				return subCode;
+			}
+		}
+
+		/// <summary>
+		/// Get the server-supplied expression build trace, or <c>null</c> when absent.
+		/// </summary>
+		/// <para>
+		/// Populated only at error-detail verbosity 3 (see
+		/// <see cref="Policy.ErrorDetailVerbosity"/>) on an expression build failure,
+		/// either a metadata filter (<c>filter_exp</c>) or an <c>exp_read</c>/<c>exp_write</c>
+		/// operation that the server could not build. Such failures carry
+		/// <see cref="ResultCode.PARAMETER_ERROR"/> and <see cref="SubCode.NONE"/>.
+		/// Returns <c>null</c> on every other failure, including non-expression failures
+		/// at verbosity 3. See <see cref="ExpressionTrace"/>.
+		/// </para>
+		public ExpressionTrace ExpTrace
+		{
+			get
+			{
+				return expTrace;
 			}
 		}
 
