@@ -907,8 +907,9 @@ namespace Aerospike.Client
 			try
 			{
 				Connection conn;
+				NodeMetrics nodeMetrics = metrics;
 
-				if (cluster.MetricsEnabled)
+				if (cluster.MetricsEnabled && nodeMetrics != null)
 				{
 					ValueStopwatch metricsWatch = ValueStopwatch.StartNew();
 
@@ -916,7 +917,7 @@ namespace Aerospike.Client
 					new TlsConnection(cluster, host.tlsName, address, timeout, this, pool) :
 					new Connection(address, timeout, this, pool);
 
-					metrics.AddLatency(null, LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
+					nodeMetrics.AddLatency(null, LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
 				}
 				else
 				{
@@ -1181,7 +1182,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBytesInTotal()
 		{
-			return metrics?.BytesInCounter == null ? 0 : metrics.BytesInCounter.GetTotal();
+			Counter counter = metrics?.BytesInCounter;
+			return counter == null ? 0 : counter.GetTotal();
 		}
 
 		/// <summary>
@@ -1189,7 +1191,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBytesInByNS(string ns)
 		{
-			return metrics?.BytesInCounter == null ? 0 : metrics.BytesInCounter.GetCountByNS(ns);
+			Counter counter = metrics?.BytesInCounter;
+			return counter == null ? 0 : counter.GetCountByNS(ns);
 		}
 
 		/// <summary>
@@ -1197,7 +1200,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBytesOutTotal()
 		{
-			return metrics?.BytesOutCounter == null ? 0 : metrics.BytesOutCounter.GetTotal();
+			Counter counter = metrics?.BytesOutCounter;
+			return counter == null ? 0 : counter.GetTotal();
 		}
 
 		/// <summary>
@@ -1205,7 +1209,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBytesOutByNS(string ns)
 		{
-			return metrics?.BytesOutCounter == null ? 0 : metrics.BytesOutCounter.GetCountByNS(ns);
+			Counter counter = metrics?.BytesOutCounter;
+			return counter == null ? 0 : counter.GetCountByNS(ns);
 		}
 
 		/// <summary>
