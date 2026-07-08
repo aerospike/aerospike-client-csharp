@@ -169,10 +169,6 @@ namespace Aerospike.Client
 			throw exception;
 		}
 
-		private static void SendUserAgent(Cluster cluster, Connection conn, Version serverVersion)
-		{
-		}
-
 		private static string BuildUserAgentCommand(Cluster cluster)
 		{
 			string appId = cluster.appId;
