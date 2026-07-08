@@ -44,10 +44,10 @@ namespace Aerospike.Test
 		public void TestDefaultVerbosityIsZero()
 		{
 			Policy p = new Policy();
-			Assert.AreEqual(0, p.ErrorDetailVerbosity);
+			Assert.AreEqual(0, p.errorDetailVerbosity);
 
 			WritePolicy wp = new();
-			Assert.AreEqual(0, wp.ErrorDetailVerbosity);
+			Assert.AreEqual(0, wp.errorDetailVerbosity);
 		}
 
 		[TestMethod]
@@ -55,7 +55,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 0
+				errorDetailVerbosity = 0
 			};
 			try
 			{
@@ -75,7 +75,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 1
+				errorDetailVerbosity = 1
 			};
 			Key key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "edv-subonly-key");
 			client.Put(new WritePolicy(), key, new Bin("other-bin", 1));
@@ -98,7 +98,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 			Key key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "edv-submsg-key");
 			client.Put(new WritePolicy(), key, new Bin("other-bin", 1));
@@ -123,7 +123,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 
 			try
@@ -144,7 +144,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2,
+				errorDetailVerbosity = 2,
 				generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL,
 				generation = 777
 			};
@@ -166,7 +166,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 
 			try
@@ -186,7 +186,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 
 			List<Value> hllList = new List<Value>();
@@ -210,7 +210,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 
 			Key key3 = new Key(SuiteHelpers.ns, SuiteHelpers.set, "edv-no-hll-key");
@@ -234,7 +234,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 
 			try
@@ -254,7 +254,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 
 			try
@@ -274,7 +274,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 			ListPolicy bounded = new(ListOrder.ORDERED, ListWriteFlags.INSERT_BOUNDED);
 
@@ -295,7 +295,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 			Key key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "edv-bits-key");
 			client.Put(new WritePolicy(), key, new Bin(binName, new byte[] { 0xAA, 0xBB, 0xCC, 0xDD }));
@@ -317,7 +317,7 @@ namespace Aerospike.Test
 		{
 			Policy p = new()
 			{
-				ErrorDetailVerbosity = 2,
+				errorDetailVerbosity = 2,
 				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(binName), Exp.Val(99))),
 				failOnFilteredOut = true
 			};
@@ -339,7 +339,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 			Key key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "edv-success-key");
 			client.Put(wp, key, new Bin(binName, 42));
@@ -368,7 +368,7 @@ namespace Aerospike.Test
 		{
 			Policy p = new()
 			{
-				ErrorDetailVerbosity = 3,
+				errorDetailVerbosity = 3,
 				filterExp = Exp.Build(BadExp())
 			};
 
@@ -389,7 +389,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 3
+				errorDetailVerbosity = 3
 			};
 
 			try
@@ -409,7 +409,7 @@ namespace Aerospike.Test
 		{
 			Policy p = new()
 			{
-				ErrorDetailVerbosity = 2,
+				errorDetailVerbosity = 2,
 				filterExp = Exp.Build(BadExp())
 			};
 

@@ -190,7 +190,7 @@ namespace Aerospike.Client
 			}
 			if (write.error_detail_verbosity.HasValue)
 			{
-				this.ErrorDetailVerbosity = write.error_detail_verbosity.Value;
+				this.errorDetailVerbosity = write.error_detail_verbosity.Value;
 			}
 		}
 

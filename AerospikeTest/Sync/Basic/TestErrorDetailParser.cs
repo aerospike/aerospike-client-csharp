@@ -15,7 +15,6 @@
  * the License.
  */
 using Aerospike.Client;
-using System.Reflection;
 using System.Text;
 
 namespace Aerospike.Test
@@ -288,9 +287,9 @@ namespace Aerospike.Test
 				Pair(IntKey(3), trace)
 			);
 
-			TestCommand command = ParseCommand(detail);
+			ErrorDetail command = ParseDetail(detail);
 
-			Assert.AreEqual("bad exp", command.ServerMessage);
+			Assert.AreEqual("bad exp", command.Message);
 			ExpressionTrace traceResult = command.ExpTrace;
 			Assert.IsNotNull(traceResult, "Expected a parsed expression trace");
 			Assert.AreEqual(ExpressionTrace.PHASE_BUILD, traceResult.Phase);
@@ -313,7 +312,7 @@ namespace Aerospike.Test
 			);
 			byte[] detail = FixMap(Pair(IntKey(3), trace));
 
-			ExpressionTrace traceResult = ParseCommand(detail).ExpTrace;
+			ExpressionTrace traceResult = ParseDetail(detail).ExpTrace;
 
 			Assert.IsNotNull(traceResult);
 			Assert.AreEqual(20, traceResult.Depth, "Depth reports the true count, not the truncated path length");
@@ -335,7 +334,7 @@ namespace Aerospike.Test
 			);
 			byte[] detail = FixMap(Pair(IntKey(3), trace));
 
-			ExpressionTrace traceResult = ParseCommand(detail).ExpTrace;
+			ExpressionTrace traceResult = ParseDetail(detail).ExpTrace;
 
 			Assert.IsNotNull(traceResult);
 			Assert.AreEqual(ExpressionTrace.PHASE_BUILD, traceResult.Phase);
@@ -359,7 +358,7 @@ namespace Aerospike.Test
 			);
 			byte[] detail = FixMap(Pair(IntKey(3), trace));
 
-			ExpressionTrace traceResult = ParseCommand(detail).ExpTrace;
+			ExpressionTrace traceResult = ParseDetail(detail).ExpTrace;
 
 			Assert.IsNotNull(traceResult);
 			Assert.AreEqual(ExpressionTrace.PHASE_BUILD, traceResult.Phase);
@@ -377,7 +376,7 @@ namespace Aerospike.Test
 			);
 			byte[] detail = FixMap(Pair(IntKey(3), trace));
 
-			ExpressionTrace traceResult = ParseCommand(detail).ExpTrace;
+			ExpressionTrace traceResult = ParseDetail(detail).ExpTrace;
 
 			Assert.IsNotNull(traceResult);
 			Assert.AreEqual(ExpressionTrace.LANG_MSGPACK, traceResult.Lang, "Absent lang must be treated as msgpack");
@@ -396,7 +395,7 @@ namespace Aerospike.Test
 			);
 			byte[] detail = FixMap(Pair(IntKey(3), trace));
 
-			ExpressionTrace traceResult = ParseCommand(detail).ExpTrace;
+			ExpressionTrace traceResult = ParseDetail(detail).ExpTrace;
 
 			Assert.IsNotNull(traceResult);
 			Assert.AreEqual(ExpressionTrace.LANG_AEL, traceResult.Lang);
@@ -412,9 +411,9 @@ namespace Aerospike.Test
 				Pair(IntKey(2), FixStr("plain"))
 			);
 
-			TestCommand command = ParseCommand(detail);
+			ErrorDetail command = ParseDetail(detail);
 
-			Assert.AreEqual("plain (subcode=4)", command.ServerMessage);
+			Assert.AreEqual("plain (subcode=4)", command.Message);
 			Assert.IsNull(command.ExpTrace, "No key 3 should yield no expression trace");
 		}
 
@@ -430,9 +429,9 @@ namespace Aerospike.Test
 				Pair(IntKey(2), FixStr("bad exp"))
 			);
 
-			TestCommand command = ParseCommand(detail);
+			ErrorDetail command = ParseDetail(detail);
 
-			Assert.AreEqual("bad exp", command.ServerMessage);
+			Assert.AreEqual("bad exp", command.Message);
 			Assert.IsNotNull(command.ExpTrace);
 			Assert.AreEqual("eq", command.ExpTrace.Op);
 		}
@@ -442,26 +441,24 @@ namespace Aerospike.Test
 		{
 			byte[] detail = FixMap(Pair(IntKey(3), FixMap()));
 
-			Assert.IsNull(ParseCommand(detail).ExpTrace);
+			Assert.IsNull(ParseDetail(detail).ExpTrace);
 		}
 
 		private static string ParseErrorField(byte[] msgpackDetail)
 		{
-			return ParseCommand(msgpackDetail).ServerMessage;
+			return ParseDetail(msgpackDetail).Message;
 		}
 
 		private static string ParseFields(byte[] fields, int fieldCount)
 		{
-			TestCommand command = new();
-			command.ParseFieldsForTest(fields, fieldCount);
-			return command.ServerMessage;
+			int offset = 0;
+			return ErrorDetailParser.ParseFields(fields, ref offset, fieldCount).Message;
 		}
 
-		private static TestCommand ParseCommand(byte[] msgpackDetail)
+		private static ErrorDetail ParseDetail(byte[] msgpackDetail)
 		{
-			TestCommand command = new();
-			command.ParseFieldsForTest(Fields((FieldType.ERROR_MESSAGE, msgpackDetail)), 1);
-			return command;
+			int offset = 0;
+			return ErrorDetailParser.ParseFields(Fields((FieldType.ERROR_MESSAGE, msgpackDetail)), ref offset, 1);
 		}
 
 		private static byte[] Fields(params (int Type, byte[] Data)[] fields)
@@ -581,52 +578,6 @@ namespace Aerospike.Test
 			bytes.Add((byte)((value >> 16) & 0xFF));
 			bytes.Add((byte)((value >> 8) & 0xFF));
 			bytes.Add((byte)(value & 0xFF));
-		}
-
-		private sealed class TestCommand : Command
-		{
-			private static readonly FieldInfo DataBufferField = typeof(Command).GetField(
-				"dataBuffer",
-				BindingFlags.Instance | BindingFlags.NonPublic);
-
-			private static readonly FieldInfo DataOffsetField = typeof(Command).GetField(
-				"dataOffset",
-				BindingFlags.Instance | BindingFlags.NonPublic);
-
-			public TestCommand()
-				: base(0, 0, 0)
-			{
-			}
-
-			public string ServerMessage => serverMessage;
-
-			public ExpressionTrace ExpTrace => expTrace;
-
-			public void ParseFieldsForTest(byte[] fields, int count)
-			{
-				serverMessage = null;
-				expTrace = null;
-				fieldCount = count;
-				DataBufferField.SetValue(this, fields);
-				DataOffsetField.SetValue(this, 0);
-
-				ParseFields(null, null, false);
-			}
-
-			protected override int SizeBuffer()
-			{
-				throw new NotSupportedException();
-			}
-
-			protected override void End()
-			{
-				throw new NotSupportedException();
-			}
-
-			protected override void SetLength(int length)
-			{
-				throw new NotSupportedException();
-			}
 		}
 	}
 }

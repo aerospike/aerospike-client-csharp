@@ -32,7 +32,7 @@ public sealed class ErrorMessage : SyncExample
 		Key intKey = new(ns, set, "error-message-key");
 		WritePolicy errorPolicy = new(writePolicy)
 		{
-			ErrorDetailVerbosity = 2
+			errorDetailVerbosity = 2
 		};
 
 		client.Put(errorPolicy, intKey, new Bin(BinName, 1));
@@ -65,7 +65,7 @@ public sealed class ErrorMessage : SyncExample
 	{
 		WritePolicy deletePolicy = new(writePolicy)
 		{
-			ErrorDetailVerbosity = 2,
+			errorDetailVerbosity = 2,
 			generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL,
 			generation = 777
 		};

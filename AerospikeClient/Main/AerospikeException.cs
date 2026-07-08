@@ -207,33 +207,21 @@ namespace Aerospike.Client
 		/// Server-supplied error subcode, or <see cref="Aerospike.Client.SubCode.NONE"/>
 		/// when the server did not return one.
 		/// </summary>
-		public int SubCode
-		{
-			get
-			{
-				return subCode;
-			}
-		}
+		public int SubCode => subCode;
 
 		/// <summary>
 		/// Get the server-supplied expression build trace, or <c>null</c> when absent.
 		/// </summary>
-		/// <para>
+		/// <remarks>
 		/// Populated only at error-detail verbosity 3 (see
-		/// <see cref="Policy.ErrorDetailVerbosity"/>) on an expression build failure,
+		/// <see cref="Policy.errorDetailVerbosity"/>) on an expression build failure,
 		/// either a metadata filter (<c>filter_exp</c>) or an <c>exp_read</c>/<c>exp_write</c>
 		/// operation that the server could not build. Such failures carry
-		/// <see cref="ResultCode.PARAMETER_ERROR"/> and <see cref="SubCode.NONE"/>.
+		/// <see cref="ResultCode.PARAMETER_ERROR"/> and <see cref="Aerospike.Client.SubCode.NONE"/>.
 		/// Returns <c>null</c> on every other failure, including non-expression failures
 		/// at verbosity 3. See <see cref="ExpressionTrace"/>.
-		/// </para>
-		public ExpressionTrace ExpTrace
-		{
-			get
-			{
-				return expTrace;
-			}
-		}
+		/// </remarks>
+		public ExpressionTrace ExpTrace => expTrace;
 
 		/// <summary>
 		/// Number of attempts before failing.

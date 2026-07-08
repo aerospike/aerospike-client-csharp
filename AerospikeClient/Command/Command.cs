@@ -2604,7 +2604,7 @@ namespace Aerospike.Client
 				txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 			}
 
-			txnAttr |= (policy.ErrorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
+			txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
 
 			dataOffset += 8;
 
@@ -2688,7 +2688,7 @@ namespace Aerospike.Client
 				txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 			}
 
-			txnAttr |= (policy.ErrorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
+			txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
 
 			switch (policy.readModeSC)
 			{
@@ -2777,7 +2777,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)readAttr;
 			dataBuffer[dataOffset++] = (byte)writeAttr;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
-			dataBuffer[dataOffset++] = (byte)((policy.ErrorDetailVerbosity <<
+			dataBuffer[dataOffset++] = (byte)((policy.errorDetailVerbosity <<
 				Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK); // error detail verbosity
 
 			for (int i = 0; i < 5; i++)
@@ -2824,7 +2824,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)readAttr;
 			dataBuffer[dataOffset++] = (byte)0;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
-			dataBuffer[dataOffset++] = (byte)((policy.ErrorDetailVerbosity <<
+			dataBuffer[dataOffset++] = (byte)((policy.errorDetailVerbosity <<
 				Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK); // error detail verbosity
 
 			for (int i = 0; i < 5; i++)
@@ -3247,7 +3247,7 @@ namespace Aerospike.Client
 
 			if (txn == null)
 			{
-				ParseFieldsError();
+				ApplyErrorDetail(ErrorDetailParser.ParseFields(dataBuffer, ref dataOffset, fieldCount));
 				return;
 			}
 
@@ -3274,7 +3274,7 @@ namespace Aerospike.Client
 				}
 				else if (type == FieldType.ERROR_MESSAGE && size > 0)
 				{
-					serverMessage = ParseErrorDetails(dataOffset, size);
+					ApplyErrorDetail(ErrorDetailParser.Parse(dataBuffer, dataOffset, size));
 				}
 				dataOffset += size;
 			}
@@ -3308,22 +3308,11 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void ParseFieldsError()
+		private void ApplyErrorDetail(in ErrorDetail detail)
 		{
-			for (int i = 0; i < fieldCount; i++)
-			{
-				int len = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4;
-
-				int type = dataBuffer[dataOffset++];
-				int size = len - 1;
-
-				if (type == FieldType.ERROR_MESSAGE && size > 0)
-				{
-					serverMessage = ParseErrorDetails(dataOffset, size);
-				}
-				dataOffset += size;
-			}
+			serverMessage = detail.Message;
+			serverSubCode = detail.SubCode;
+			expTrace = detail.ExpTrace;
 		}
 
 		/// <summary>
@@ -3335,504 +3324,6 @@ namespace Aerospike.Client
 		protected AerospikeException CreateException(int resultCode)
 		{
 			return new AerospikeException(resultCode, serverMessage, serverSubCode, expTrace);
-		}
-
-		/// <summary>
-		/// Parse error detail msgpack map from server response.
-		/// Map keys: 1 = subcode (uint), 2 = message (string).
-		/// Returns formatted error message string.
-		/// </summary>
-		private string ParseErrorDetails(int offset, int size)
-		{
-			int end = offset + size;
-
-			if (offset >= end)
-			{
-				return null;
-			}
-
-			// Read map header (fixmap, map16, map32).
-			int b = dataBuffer[offset++] & 0xFF;
-			int count;
-
-			if ((b & 0xF0) == 0x80)
-			{
-				count = b & 0x0F;
-			}
-			else if (b == 0xDE && offset + 2 <= end)
-			{
-				count = ByteUtil.BytesToShort(dataBuffer, offset) & 0xFFFF;
-				offset += 2;
-			}
-			else if (b == 0xDF && offset + 4 <= end)
-			{
-				count = ByteUtil.BytesToInt(dataBuffer, offset);
-				offset += 4;
-			}
-			else
-			{
-				return null;
-			}
-
-			if (count <= 0)
-			{
-				return null;
-			}
-
-			string message = null;
-			long subcode = -1;
-
-			for (int i = 0; i < count && offset < end; i++)
-			{
-				// Read key (positive fixint or uint8).
-				int key;
-				b = dataBuffer[offset++] & 0xFF;
-
-				if (b <= 0x7F)
-				{
-					key = b;
-				}
-				else if (b == 0xCC && offset < end)
-				{
-					key = dataBuffer[offset++] & 0xFF;
-				}
-				else
-				{
-					break;
-				}
-
-				switch (key)
-				{
-					case 1: // AS_ERROR_DETAIL_KEY_SUBCODE
-						subcode = UnpackUint(offset, end);
-						offset = SkipMsgpackValue(offset, end);
-						break;
-
-					case 2: // AS_ERROR_DETAIL_KEY_MESSAGE
-						int[] strResult = UnpackStr(offset, end);
-						if (strResult != null)
-						{
-							message = ByteUtil.Utf8ToString(dataBuffer, strResult[0], strResult[1]);
-							offset = strResult[0] + strResult[1];
-						}
-						else
-						{
-							offset = SkipMsgpackValue(offset, end);
-						}
-						break;
-
-					case ExpressionTrace.AS_ERROR_DETAIL_KEY_EXP_TRACE: // nested expression-trace map (verbosity 3)
-						expTrace = ParseExpTrace(offset, end);
-						offset = SkipMsgpackValue(offset, end);
-						break;
-
-					default:
-						offset = SkipMsgpackValue(offset, end);
-						break;
-				}
-			}
-
-			// Retain the numeric subcode as a first-class value. The server only
-			// serializes subcodes >= 1 (SubCode.NONE = 0 is never sent), so a parsed
-			// subcode always overrides the SubCode.NONE default.
-			if (subcode >= 0)
-			{
-				serverSubCode = (int)subcode;
-			}
-
-			if (message != null && subcode >= 0)
-			{
-				return message + " (subcode=" + subcode + ")";
-			}
-			else if (subcode >= 0)
-			{
-				return "error subcode=" + subcode;
-			}
-			else if (message != null)
-			{
-				return message;
-			}
-			return null;
-		}
-
-
-		/// <summary>
-		/// Parse the nested expression-trace map (top-level error-detail key 3, only sent
-		/// at verbosity 3 on expression build-failure paths) into an <see cref="ExpressionTrace"/>.
-		/// </summary>
-		/// <para>
-		/// Reuses the shared msgpack decoder. Treats every trace key as optional (never
-		/// requires key 1 — build failures carry AS_SUB_NONE), skips unknown trace keys,
-		/// tolerates the "..." path-truncation sentinel as an ordinary element, and never
-		/// throws on a missing/truncated trace. <c>lang</c> absent is left as -1 and
-		/// surfaces as msgpack via <see cref="ExpressionTrace.Lang"/>. Returns null when the
-		/// value is not a readable, non-empty map.
-		/// </para>
-		private ExpressionTrace ParseExpTrace(int offset, int end)
-		{
-			if (offset >= end)
-			{
-				return null;
-			}
-
-			// Read nested map header (fixmap, map16, map32).
-			int b = dataBuffer[offset++] & 0xFF;
-			int count;
-
-			if ((b & 0xF0) == 0x80)
-			{
-				count = b & 0x0F;
-			}
-			else if (b == 0xDE && offset + 2 <= end)
-			{
-				count = ByteUtil.BytesToShort(dataBuffer, offset) & 0xFFFF;
-				offset += 2;
-			}
-			else if (b == 0xDF && offset + 4 <= end)
-			{
-				count = ByteUtil.BytesToInt(dataBuffer, offset);
-				offset += 4;
-			}
-			else
-			{
-				return null;
-			}
-
-			if (count <= 0)
-			{
-				return null;
-			}
-
-			int phase = -1;
-			int byteOffset = -1;
-			string op = null;
-			int depth = -1;
-			string[] path = null;
-			string snippet = null;
-			int lang = -1;
-			int aelOffset = -1;
-			int aelSpan = -1;
-
-			for (int i = 0; i < count && offset < end; i++)
-			{
-				// Read key (positive fixint or uint8).
-				int key;
-				b = dataBuffer[offset++] & 0xFF;
-
-				if (b <= 0x7F)
-				{
-					key = b;
-				}
-				else if (b == 0xCC && offset < end)
-				{
-					key = dataBuffer[offset++] & 0xFF;
-				}
-				else
-				{
-					break;
-				}
-
-				switch (key)
-				{
-					case ExpressionTrace.KEY_PHASE:
-						phase = (int)UnpackUint(offset, end);
-						break;
-					case ExpressionTrace.KEY_BYTE_OFFSET:
-						byteOffset = (int)UnpackUint(offset, end);
-						break;
-					case ExpressionTrace.KEY_OP:
-						op = UnpackStrValue(offset, end);
-						break;
-					case ExpressionTrace.KEY_DEPTH:
-						depth = (int)UnpackUint(offset, end);
-						break;
-					case ExpressionTrace.KEY_PATH:
-						path = UnpackStrArray(offset, end);
-						break;
-					case ExpressionTrace.KEY_SNIPPET:
-						snippet = UnpackStrValue(offset, end);
-						break;
-					case ExpressionTrace.KEY_LANG:
-						lang = (int)UnpackUint(offset, end);
-						break;
-					case ExpressionTrace.KEY_AEL_OFFSET:
-						aelOffset = (int)UnpackUint(offset, end);
-						break;
-					case ExpressionTrace.KEY_AEL_SPAN:
-						aelSpan = (int)UnpackUint(offset, end);
-						break;
-					default:
-						// Unknown / reserved trace key (outcome, ael_line, ael_col, etc.) — skip.
-						break;
-				}
-
-				// Advance past the value regardless of whether the key was recognized.
-				offset = SkipMsgpackValue(offset, end);
-			}
-
-			return new ExpressionTrace(phase, byteOffset, op, depth, path, snippet, lang, aelOffset, aelSpan);
-		}
-
-		/// <summary>
-		/// Unpack a msgpack string value, or null if the value at the
-		/// offset is not a readable string.
-		/// </summary>
-		private string UnpackStrValue(int offset, int end)
-		{
-			int[] r = UnpackStr(offset, end);
-			if (r == null)
-			{
-				return null;
-			}
-			return ByteUtil.Utf8ToString(dataBuffer, r[0], r[1]);
-		}
-
-		/// <summary>
-		/// Unpack a msgpack array of strings (the expression-trace path). Preserves element
-		/// order, keeps the "..." truncation sentinel as an ordinary element, and leaves a
-		/// null slot for any element that is not a readable string. Returns null when the
-		/// value is not a readable array.
-		/// </summary>
-		private string[] UnpackStrArray(int offset, int end)
-		{
-			if (offset >= end)
-			{
-				return null;
-			}
-
-			int b = dataBuffer[offset++] & 0xFF;
-			int len;
-
-			if ((b & 0xF0) == 0x90)
-			{
-				len = b & 0x0F;
-			}
-			else if (b == 0xDC && offset + 2 <= end)
-			{
-				len = ByteUtil.BytesToShort(dataBuffer, offset) & 0xFFFF;
-				offset += 2;
-			}
-			else if (b == 0xDD && offset + 4 <= end)
-			{
-				len = ByteUtil.BytesToInt(dataBuffer, offset);
-				offset += 4;
-			}
-			else
-			{
-				return null;
-			}
-
-			if (len < 0)
-			{
-				return null;
-			}
-
-			string[] result = new string[len];
-
-			for (int i = 0; i < len && offset < end; i++)
-			{
-				result[i] = UnpackStrValue(offset, end);
-				offset = SkipMsgpackValue(offset, end);
-			}
-			return result;
-		}
-
-		/// <summary>
-		/// Unpack a msgpack unsigned integer value. Returns -1 on failure.
-		/// </summary>
-		private long UnpackUint(int offset, int end)
-		{
-			if (offset >= end)
-			{
-				return -1;
-			}
-
-			int b = dataBuffer[offset] & 0xFF;
-
-			if (b <= 0x7F)
-			{
-				return b;
-			}
-			else if (b == 0xCC && offset + 1 < end)
-			{
-				return dataBuffer[offset + 1] & 0xFF;
-			}
-			else if (b == 0xCD && offset + 2 < end)
-			{
-				return ByteUtil.BytesToShort(dataBuffer, offset + 1) & 0xFFFF;
-			}
-			else if (b == 0xCE && offset + 4 < end)
-			{
-				return ByteUtil.BytesToInt(dataBuffer, offset + 1) & 0xFFFFFFFFL;
-			}
-			else if (b == 0xCF && offset + 8 < end)
-			{
-				return ByteUtil.BytesToLong(dataBuffer, offset + 1);
-			}
-			return -1;
-		}
-
-		/// <summary>
-		/// Unpack a msgpack string. Returns [offset, length] or null on failure.
-		/// </summary>
-		private int[] UnpackStr(int offset, int end)
-		{
-			if (offset >= end)
-			{
-				return null;
-			}
-
-			int b = dataBuffer[offset++] & 0xFF;
-			int len;
-
-			if ((b & 0xE0) == 0xA0)
-			{
-				len = b & 0x1F;
-			}
-			else if (b == 0xD9 && offset < end)
-			{
-				len = dataBuffer[offset++] & 0xFF;
-			}
-			else if (b == 0xDA && offset + 1 < end)
-			{
-				len = ByteUtil.BytesToShort(dataBuffer, offset) & 0xFFFF;
-				offset += 2;
-			}
-			else if (b == 0xDB && offset + 3 < end)
-			{
-				len = ByteUtil.BytesToInt(dataBuffer, offset);
-				offset += 4;
-			}
-			else
-			{
-				return null;
-			}
-
-			if (len < 0 || offset + len > end)
-			{
-				return null;
-			}
-
-			return new int[] { offset, len };
-		}
-
-		/// <summary>
-		/// Skip a single msgpack value, returning the new offset.
-		/// </summary>
-		private int SkipMsgpackValue(int offset, int end)
-		{
-			if (offset >= end)
-			{
-				return end;
-			}
-
-			int b = dataBuffer[offset++] & 0xFF;
-
-			// Positive fixint / negative fixint
-			if (b <= 0x7F || b >= 0xE0)
-			{
-				return offset;
-			}
-			// fixstr
-			if ((b & 0xE0) == 0xA0)
-			{
-				return offset + (b & 0x1F);
-			}
-			// fixmap
-			if ((b & 0xF0) == 0x80)
-			{
-				int count = (b & 0x0F) * 2;
-				for (int i = 0; i < count && offset < end; i++)
-				{
-					offset = SkipMsgpackValue(offset, end);
-				}
-				return offset;
-			}
-			// fixarray
-			if ((b & 0xF0) == 0x90)
-			{
-				int count = b & 0x0F;
-				for (int i = 0; i < count && offset < end; i++)
-				{
-					offset = SkipMsgpackValue(offset, end);
-				}
-				return offset;
-			}
-
-			switch (b)
-			{
-				case 0xC0: // nil
-				case 0xC2: // false
-				case 0xC3: // true
-					return offset;
-				case 0xCC: // uint8
-				case 0xD0: // int8
-					return offset + 1;
-				case 0xCD: // uint16
-				case 0xD1: // int16
-					return offset + 2;
-				case 0xCE: // uint32
-				case 0xD2: // int32
-				case 0xCA: // float32
-					return offset + 4;
-				case 0xCF: // uint64
-				case 0xD3: // int64
-				case 0xCB: // float64
-					return offset + 8;
-				case 0xD9: // str8
-				case 0xC4: // bin8
-					if (offset < end)
-					{
-						return offset + 1 + (dataBuffer[offset] & 0xFF);
-					}
-					return end;
-				case 0xDA: // str16
-				case 0xC5: // bin16
-					if (offset + 1 < end)
-					{
-						return offset + 2 + (ByteUtil.BytesToShort(dataBuffer, offset) & 0xFFFF);
-					}
-					return end;
-				case 0xDB: // str32
-				case 0xC6: // bin32
-					if (offset + 3 < end)
-					{
-						return offset + 4 + ByteUtil.BytesToInt(dataBuffer, offset);
-					}
-					return end;
-				case 0xDC: // array16
-				case 0xDE:
-					{ // map16
-						if (offset + 1 >= end)
-						{
-							return end;
-						}
-						int count = (ByteUtil.BytesToShort(dataBuffer, offset) & 0xFFFF) * ((b == 0xDE) ? 2 : 1);
-						offset += 2;
-						for (int i = 0; i < count && offset < end; i++)
-						{
-							offset = SkipMsgpackValue(offset, end);
-						}
-						return offset;
-					}
-				case 0xDD: // array32
-				case 0xDF:
-					{ // map32
-						if (offset + 3 >= end)
-						{
-							return end;
-						}
-						int count = ByteUtil.BytesToInt(dataBuffer, offset) * ((b == 0xDF) ? 2 : 1);
-						offset += 4;
-						for (int i = 0; i < count && offset < end; i++)
-						{
-							offset = SkipMsgpackValue(offset, end);
-						}
-						return offset;
-					}
-				default:
-					return end;
-			}
 		}
 
 		public static bool BatchInDoubt(bool isWrite, int commandSentCounter)

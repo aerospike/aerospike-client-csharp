@@ -22,7 +22,7 @@ namespace Aerospike.Client
 	/// </summary>
 	/// <remarks>
 	/// <para>
-	/// When extended error detail is requested with <see cref="Policy.ErrorDetailVerbosity"/>,
+	/// When extended error detail is requested with <see cref="Policy.errorDetailVerbosity"/>,
 	/// the server may attach a numeric subcode to a failure response. The subcode is surfaced
 	/// on <see cref="AerospikeException.SubCode"/>.
 	/// </para>
@@ -312,18 +312,6 @@ namespace Aerospike.Client
 		// (The as_sub_filtered_t enum was removed server-side and never shipped, so
 		// no FILTERED_* constants are defined here. Match on the message, not a subcode.)
 		//-------------------------------------------------------
-
-		/// <summary>
-		/// Record filtered out by a metadata-only filter expression.
-		/// Value: 1
-		/// </summary>
-		public const int FILTERED_META = 1;
-
-		/// <summary>
-		/// Record filtered out by a bin-reading filter expression.
-		/// Value: 2
-		/// </summary>
-		public const int FILTERED_BINS = 2;
 
 		//-------------------------------------------------------
 		// Pairs with ResultCode.MRT_BLOCKED (120)  [AS_ERR_MRT_BLOCKED]

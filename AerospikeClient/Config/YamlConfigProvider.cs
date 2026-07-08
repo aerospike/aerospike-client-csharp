@@ -391,7 +391,7 @@ namespace Aerospike.Client
 				dynamicReadName, totalTimeout);
 			IConfigProvider.LogIntChange(dynamicRead.max_retries, readPolicy.maxRetries,
 				dynamicReadName, maxRetries);
-			IConfigProvider.LogIntChange(dynamicRead.error_detail_verbosity, readPolicy.ErrorDetailVerbosity,
+			IConfigProvider.LogIntChange(dynamicRead.error_detail_verbosity, readPolicy.errorDetailVerbosity,
 				dynamicReadName, errorDetailVerbosity);
 
 			// write policy
@@ -415,7 +415,7 @@ namespace Aerospike.Client
 				dynamicWriteName, maxRetries);
 			IConfigProvider.LogBoolChange(dynamicWrite.durable_delete, writePolicy.durableDelete,
 				dynamicWriteName, durableDelete);
-			IConfigProvider.LogIntChange(dynamicWrite.error_detail_verbosity, writePolicy.ErrorDetailVerbosity,
+			IConfigProvider.LogIntChange(dynamicWrite.error_detail_verbosity, writePolicy.errorDetailVerbosity,
 				dynamicWriteName, errorDetailVerbosity);
 
 			// query policy

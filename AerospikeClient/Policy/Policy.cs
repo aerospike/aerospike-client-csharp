@@ -270,22 +270,21 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool failOnFilteredOut;
 
-
 		/// <summary>
 		/// Request server error detail fields in responses.
+		/// <list type="bullet">
+		/// <item><description>0 - disabled (no error details).</description></item>
+		/// <item><description>1 - subcode only.</description></item>
+		/// <item><description>2 - subcode + message.</description></item>
+		/// <item><description>3 - subcode, message, and (on expression build-failure paths) a
+		///     structured expression trace, surfaced on
+		///     <see cref="Aerospike.Client.AerospikeException.ExpTrace"/>.</description></item>
+		/// </list>
 		/// <para>
-		/// <ul>
-		/// <li>0 - disabled (no error details).</li>
-		/// <li>1 - subcode only.</li>
-		/// <li>2 - subcode + message.</li>
-		/// <li>3 - subcode, message, and (on expression build-failure paths) a structured
-		///     expression trace, surfaced on
-		///     <see cref="Aerospike.Client.AerospikeException.ExpTrace"/>.</li>
-		/// </ul>
-		/// </para>
 		/// Default: 0
+		/// </para>
 		/// </summary>
-		public int ErrorDetailVerbosity;
+		public int errorDetailVerbosity;
 
 		/// <summary>
 		/// Alternate record parser.
@@ -314,7 +313,7 @@ namespace Aerospike.Client
 			this.sendKey = other.sendKey;
 			this.compress = other.compress;
 			this.failOnFilteredOut = other.failOnFilteredOut;
-			this.ErrorDetailVerbosity = other.ErrorDetailVerbosity;
+			this.errorDetailVerbosity = other.errorDetailVerbosity;
 			this.recordParser = other.recordParser;
 		}
 
@@ -377,7 +376,7 @@ namespace Aerospike.Client
 			}
 			if (read.error_detail_verbosity.HasValue)
 			{
-				this.ErrorDetailVerbosity = read.error_detail_verbosity.Value;
+				this.errorDetailVerbosity = read.error_detail_verbosity.Value;
 			}
 		}
 

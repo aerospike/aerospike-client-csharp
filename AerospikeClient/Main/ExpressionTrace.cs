@@ -22,9 +22,10 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Structured expression build/eval trace surfaced at error-detail verbosity 3.
 	/// </summary>
+	/// <remarks>
 	/// <para>
 	/// When extended error detail is requested at verbosity 3 (see
-	/// <see cref="Policy.ErrorDetailVerbosity"/>) and the server fails to build an
+	/// <see cref="Policy.errorDetailVerbosity"/>) and the server fails to build an
 	/// expression, it attaches this trace as a nested map under the field-45
 	/// error-detail key <see cref="AS_ERROR_DETAIL_KEY_EXP_TRACE"/>. This trace is
 	/// surfaced on <see cref="AerospikeException.ExpTrace"/>.
@@ -54,8 +55,7 @@ namespace Aerospike.Client
 	/// The nested-map key/value constants below mirror the server's <c>proto.h</c> names
 	/// so they stay greppable across repositories. They are append-only.
 	/// </para>
-	/// <remarks>
-	/// Construct a trace. Use <c>-1</c> / <c>null</c> for any absent field.
+	/// <para>Construct a trace. Use <c>-1</c> / <c>null</c> for any absent field.</para>
 	/// </remarks>
 	/// <param name="phase"><see cref="PHASE_BUILD"/> / <see cref="PHASE_EVAL"/>, or <c>-1</c> if absent.</param>
 	/// <param name="byteOffset">Byte offset into the msgpack expression payload, or <c>-1</c>.</param>
@@ -69,8 +69,6 @@ namespace Aerospike.Client
 	public class ExpressionTrace(int phase, int byteOffset, string op, int depth, string[] path,
 		string snippet, int lang, int aelOffset, int aelSpan)
 	{
-		private readonly long serialVersionUID = 1L;
-
 		//-------------------------------------------------------
 		// Wire constants (mirror server proto.h).
 		//-------------------------------------------------------
@@ -152,7 +150,7 @@ namespace Aerospike.Client
 		/// true nesting depth exceeds the path-frame cap. <see cref="Depth"/> still reports
 		/// the true count.
 		/// </summary>
-		public static string PATH_TRUNCATION_SENTINEL = "...";
+		public const string PATH_TRUNCATION_SENTINEL = "...";
 
 		//-------------------------------------------------------
 		// Fields (all optional; sentinels mark "absent").

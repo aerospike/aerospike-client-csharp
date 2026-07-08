@@ -44,7 +44,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 			ListPolicy bounded = new(ListOrder.ORDERED, ListWriteFlags.INSERT_BOUNDED);
 
@@ -73,7 +73,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2,
+				errorDetailVerbosity = 2,
 				generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL,
 				generation = 777
 			};
@@ -103,7 +103,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2,
+				errorDetailVerbosity = 2,
 				generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL,
 				generation = 777
 			};
@@ -133,7 +133,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 2,
+				errorDetailVerbosity = 2,
 				generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL,
 				generation = 777
 			};
@@ -164,7 +164,7 @@ namespace Aerospike.Test
 		{
 			Policy p = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 
 			client.Exists(p, new ExistsListenerHandler(this), intKey);
@@ -196,7 +196,7 @@ namespace Aerospike.Test
 		{
 			Policy p = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 
 			client.Get(p, new ReadVerbosityHandler(this), intKey);
@@ -227,7 +227,7 @@ namespace Aerospike.Test
 		{
 			Policy p = new()
 			{
-				ErrorDetailVerbosity = 2
+				errorDetailVerbosity = 2
 			};
 
 			client.GetHeader(p, new ReadHeaderVerbosityHandler(this), intKey);
@@ -269,7 +269,7 @@ namespace Aerospike.Test
 		{
 			Policy p = new()
 			{
-				ErrorDetailVerbosity = 3,
+				errorDetailVerbosity = 3,
 				filterExp = Exp.Build(BadExp())
 			};
 
@@ -285,7 +285,7 @@ namespace Aerospike.Test
 		{
 			WritePolicy wp = new()
 			{
-				ErrorDetailVerbosity = 3
+				errorDetailVerbosity = 3
 			};
 
 			caught = null;
@@ -301,7 +301,7 @@ namespace Aerospike.Test
 		{
 			Policy p = new()
 			{
-				ErrorDetailVerbosity = 2,
+				errorDetailVerbosity = 2,
 				filterExp = Exp.Build(BadExp())
 			};
 
