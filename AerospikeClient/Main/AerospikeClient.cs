@@ -609,9 +609,9 @@ namespace Aerospike.Client
 						throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED, "Transaction already aborted");
 				}
 			}
-			catch (AerospikeException.Commit)
+			catch (AerospikeException.Commit ae)
 			{
-				txn.MarkCommitFailed();
+				txn.MarkCommitFailed(ae.InDoubt);
 				throw;
 			}
 		}
