@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -129,11 +129,22 @@ namespace Aerospike.Client
 			throw new AerospikeException("Invalid GetBatchType call");
 		}
 
+		public virtual bool ResolveSendKey(
+			Policy parentPolicy,
+			IConfigProvider configProvider,
+			BatchWritePolicy writePolicyDefault,
+			BatchUDFPolicy udfPolicyDefault,
+			BatchDeletePolicy deletePolicyDefault
+		)
+		{
+			return false;
+		}
+
 		/// <summary>
 		/// Optimized reference equality check to determine batch wire protocol repeat flag.
 		/// For internal use only.
 		/// </summary>
-		public virtual bool Equals(BatchRecord other, IConfigProvider configProvider)
+		public virtual bool Equals(BatchRecord other)
 		{
 			return false;
 		}
@@ -141,7 +152,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return wire protocol size. For internal use only.
 		/// </summary>
-		public virtual int Size(Policy parentPolicy, IConfigProvider configProvider)
+		public virtual int Size(bool sendKey)
 		{
 			return 0;
 		}

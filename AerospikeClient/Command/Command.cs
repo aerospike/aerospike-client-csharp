@@ -1171,7 +1171,9 @@ namespace Aerospike.Client
 
 				dataOffset += key.digest.Length + 4;
 
-				if (CanRepeat(policy, key, record, prev, ver, verPrev, configProvider))
+				bool sendKey = record.ResolveSendKey(policy, configProvider, writePolicy, udfPolicy, deletePolicy);
+
+				if (!sendKey && CanRepeat(key, record, prev, ver, verPrev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataOffset++;
@@ -1183,7 +1185,7 @@ namespace Aerospike.Client
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 					SizeTxnBatch(txn, ver, record.hasWrite);
-					dataOffset += record.Size(policy, configProvider);
+					dataOffset += record.Size(sendKey);
 					prev = record;
 					verPrev = ver;
 				}
@@ -1218,7 +1220,9 @@ namespace Aerospike.Client
 				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
 				dataOffset += digest.Length;
 
-				if (CanRepeat(policy, key, record, prev, ver, verPrev, configProvider))
+				bool sendKey = record.ResolveSendKey(policy, configProvider, writePolicy, udfPolicy, deletePolicy);
+
+				if (!sendKey && CanRepeat(key, record, prev, ver, verPrev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
@@ -1270,15 +1274,15 @@ namespace Aerospike.Client
 							{
 								BatchWrite bw = (BatchWrite)record;
 								BatchWritePolicy bwp = bw.policy ?? writePolicy;
+								bool durableDelete = bwp.durableDelete;
 
 								if (configProvider != null && configProvider.ConfigurationData != null)
 								{
 									var batchWriteConfig = configProvider.ConfigurationData.dynamicConfig.batch_write;
-									bwp.sendKey = batchWriteConfig.send_key ?? bwp.sendKey;
-									bwp.durableDelete = batchWriteConfig.durable_delete ?? bwp.durableDelete;
+									durableDelete = batchWriteConfig.durable_delete ?? bwp.durableDelete;
 								}
 
-								attr.SetWrite(bwp);
+								attr.SetWrite(bwp, sendKey, durableDelete);
 								attr.AdjustWrite(bw.ops);
 								WriteBatchOperations(key, txn, ver, bw.ops, attr, attr.filterExp);
 								break;
@@ -1288,15 +1292,15 @@ namespace Aerospike.Client
 							{
 								BatchUDF bu = (BatchUDF)record;
 								BatchUDFPolicy bup = bu.policy ?? udfPolicy;
+								bool durableDelete = bup.durableDelete;
 
 								if (configProvider != null && configProvider.ConfigurationData != null)
 								{
 									var batchUdfConfig = configProvider.ConfigurationData.dynamicConfig.batch_udf;
-									bup.sendKey = batchUdfConfig.send_key ?? bup.sendKey;
-									bup.durableDelete = batchUdfConfig.durable_delete ?? bup.durableDelete;
+									durableDelete = batchUdfConfig.durable_delete ?? bup.durableDelete;
 								}
 
-								attr.SetUDF(bup);
+								attr.SetUDF(bup, sendKey, durableDelete);
 								WriteBatchWrite(key, txn, ver, attr, attr.filterExp, 3, 0);
 								WriteField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
 								WriteField(bu.functionName, FieldType.UDF_FUNCTION);
@@ -1308,15 +1312,15 @@ namespace Aerospike.Client
 							{
 								BatchDelete bd = (BatchDelete)record;
 								BatchDeletePolicy bdp = bd.policy ?? deletePolicy;
+								bool durableDelete = bdp.durableDelete;
 
 								if (configProvider != null && configProvider.ConfigurationData != null)
 								{
 									var batchDeleteConfig = configProvider.ConfigurationData.dynamicConfig.batch_delete;
-									bdp.sendKey = batchDeleteConfig.send_key ?? bdp.sendKey;
-									bdp.durableDelete = batchDeleteConfig.durable_delete ?? bdp.durableDelete;
+									durableDelete = batchDeleteConfig.durable_delete ?? bdp.durableDelete;
 								}
 
-								attr.SetDelete(bdp);
+								attr.SetDelete(bdp, sendKey, durableDelete);
 								WriteBatchWrite(key, txn, ver, attr, attr.filterExp, 0, 0);
 								break;
 							}
@@ -1618,13 +1622,11 @@ namespace Aerospike.Client
 		}
 
 		private static bool CanRepeat(
-			Policy policy,
 			Key key,
 			BatchRecord record,
 			BatchRecord prev,
 			long? ver,
-			long? verPrev,
-			IConfigProvider configProvider
+			long? verPrev
 		)
 		{
 			// Avoid relatively expensive full equality checks for performance reasons.
@@ -1634,17 +1636,6 @@ namespace Aerospike.Client
 			// Same goes for ver reference equality check.
 			if (!(verPrev == ver && prev != null && prev.key.ns == key.ns &&
 				prev.key.setName == key.setName))
-			{
-				return false;
-			}
-
-			bool sendKey = policy.sendKey;
-			if (configProvider != null && configProvider.ConfigurationData.HasDBWCsendKey())
-			{
-				sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
-			}
-
-			if (sendKey)
 			{
 				return false;
 			}
@@ -2457,7 +2448,15 @@ namespace Aerospike.Client
 
 		private int EstimateKeyAttrSize(Policy policy, Key key, BatchAttr attr, Expression filterExp)
 		{
-			int fieldCount = EstimateKeySize(policy, key, attr.hasWrite);
+			int fieldCount = EstimateKeySize(key);
+
+			fieldCount += SizeTxn(key, policy.Txn, attr.hasWrite);
+
+			if (attr.sendKey)
+			{
+				dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
+				fieldCount++;
+			}
 
 			if (filterExp != null)
 			{
@@ -2864,7 +2863,13 @@ namespace Aerospike.Client
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 
-			WriteKey(policy, key, attr.hasWrite);
+			WriteKey(key);
+			WriteTxn(policy.Txn, attr.hasWrite);
+
+			if (attr.sendKey)
+			{
+				WriteField(key.userKey, FieldType.KEY);
+			}
 
 			filterExp?.Write(this);
 		}

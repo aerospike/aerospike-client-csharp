@@ -439,6 +439,38 @@ namespace Aerospike.Test
 			Execute(cmds);
 		}
 
+		[TestMethod]
+		public void AsyncTxnAbortAfterCommitFailure()
+		{
+			using Txn txn = new();
+			SimulateCommitFailure(txn, true);
+			Assert.AreEqual(Txn.TxnState.COMMIT_FAILED, txn.State);
+
+			try
+			{
+				client.Abort(txn, CancellationToken.None);
+				throw new AerospikeException("Unexpected success");
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.TXN_FAILED)
+				{
+					throw;
+				}
+			}
+		}
+
+		[TestMethod]
+		public void AsyncTxnAbortAfterCleanCommitFailure()
+		{
+			using Txn txn = new();
+			SetTxnState(txn, Txn.TxnState.VERIFIED);
+			SimulateCommitFailure(txn, false);
+			Assert.AreEqual(Txn.TxnState.VERIFIED, txn.State);
+
+			client.Abort(txn, CancellationToken.None).Wait();
+		}
+
 		private void Execute(IRunner[] cmdArray)
 		{
 			Cmds a = new(this, cmdArray);
@@ -988,6 +1020,21 @@ namespace Aerospike.Test
 				Util.Sleep(sleepMillis);
 				parent.NotifyCompleted();
 			}
+		}
+
+		private static void SimulateCommitFailure(Txn txn, bool inDoubt)
+		{
+			MethodInfo markCommitFailed = typeof(Txn).GetMethod("MarkCommitFailed", BindingFlags.Instance | BindingFlags.NonPublic);
+
+			markCommitFailed.Invoke(txn, new object[] { inDoubt });
+		}
+
+		private static void SetTxnState(Txn txn, Txn.TxnState state)
+		{
+			PropertyInfo stateProperty = typeof(Txn).GetProperty("State");
+			MethodInfo stateSetter = stateProperty.GetSetMethod(true);
+
+			stateSetter.Invoke(txn, new object[] { state });
 		}
 
 		public interface IRunner
