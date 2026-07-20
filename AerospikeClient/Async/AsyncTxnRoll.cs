@@ -386,7 +386,7 @@ namespace Aerospike.Client
 
 		private void NotifyCommitFailure(AerospikeException.Commit aec)
 		{
-			txn.MarkCommitFailed();
+			txn.MarkCommitFailed(aec.InDoubt);
 
 			try
 			{

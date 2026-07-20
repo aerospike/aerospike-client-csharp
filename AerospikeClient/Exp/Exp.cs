@@ -1945,9 +1945,13 @@ namespace Aerospike.Client
 			{
 				// List values need an extra array and QUOTED in order to distinguish
 				// between a multiple argument array call and a local list.
+				// Value literals must be in canonical form (AER-6930): unordered maps
+				// at any depth are packed with keys sorted in server msgpack order.
+				packer.SortMaps(true);
 				packer.PackArrayBegin(2);
 				packer.PackNumber(QUOTED);
 				packer.PackList(list);
+				packer.SortMaps(false);
 			}
 		}
 
@@ -1970,7 +1974,11 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
+				// Value literals must be in canonical form (AER-6930): unordered maps
+				// at any depth are packed with keys sorted in server msgpack order.
+				packer.SortMaps(true);
 				packer.PackMap(map, order);
+				packer.SortMaps(false);
 			}
 		}
 

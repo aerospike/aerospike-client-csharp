@@ -258,9 +258,9 @@ namespace Aerospike.Client
 			Writes.Add(key);
 		}
 
-		internal void MarkCommitFailed()
+		internal void MarkCommitFailed(bool inDoubt)
 		{
-			if (State != TxnState.ABORTED && State != TxnState.COMMITTED)
+			if (inDoubt && State != TxnState.ABORTED && State != TxnState.COMMITTED)
 			{
 				State = TxnState.COMMIT_FAILED;
 			}

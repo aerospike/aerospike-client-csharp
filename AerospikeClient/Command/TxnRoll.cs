@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2029 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -128,6 +128,9 @@ namespace Aerospike.Client
 					throw aec;
 				}
 
+				txn.State = Txn.TxnState.COMMITTED;
+				txn.InDoubt = false;
+
 				// Roll-forward writes in batch.
 				try
 				{
@@ -138,9 +141,11 @@ namespace Aerospike.Client
 					return CommitStatusType.ROLL_FORWARD_ABANDONED;
 				}
 			}
-
-			txn.State = Txn.TxnState.COMMITTED;
-			txn.InDoubt = false;
+			else
+			{
+				txn.State = Txn.TxnState.COMMITTED;
+				txn.InDoubt = false;
+			}
 
 			if (txn.CloseMonitor())
 			{
