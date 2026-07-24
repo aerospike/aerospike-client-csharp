@@ -4,9 +4,8 @@
 This is the Aerospike C# Client library, a .NET 8.0 solution with multiple projects:
 - **AerospikeClient**: Main client library (net8.0)
 - **AerospikeTest**: Test project using MSTest
-- **AerospikeDemo**: Demo/example project
+- **AerospikeExample**: Example project
 - **AerospikeBenchmarks**: Performance benchmarking project
-- **AerospikeAdmin**: Admin tool (Windows Forms)
 
 ## Code Style & Conventions
 - Follow the `.editorconfig` file strictly
