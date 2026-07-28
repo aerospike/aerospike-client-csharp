@@ -467,6 +467,24 @@ namespace Aerospike.Test
 		//=================================================================
 
 		[TestMethod]
+		public void ToStringUsesCanonicalOpcodeEncoding()
+		{
+			byte[] expected =
+			[
+				0x92,       // [opcode, operand]
+				0x63,       // opcode 99
+				0x93,       // [BIN, type, name]
+				0x51,       // BIN opcode 81
+				0x02,       // INT type
+				0xA1, 0x6E // "n"
+			];
+
+			CollectionAssert.AreEqual(
+				expected,
+				Exp.Build(StringExp.ToString(Exp.IntBin("n"))).Bytes);
+		}
+
+		[TestMethod]
 		public void ToStringConvertsIntegerBin()
 		{
 			PutRaw(new Bin(bin, 42));

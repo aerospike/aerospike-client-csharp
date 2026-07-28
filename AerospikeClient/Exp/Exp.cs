@@ -1575,6 +1575,11 @@ namespace Aerospike.Client
 		// Internal
 		//--------------------------------------------------
 
+		internal static Exp ToStringExp(Exp src)
+		{
+			return new CmdExp(TO_STRING, src);
+		}
+
 		private const int UNKNOWN = 0;
 		private const int CMD_EQ = 1;
 		private const int CMD_NE = 2;
@@ -1627,6 +1632,7 @@ namespace Aerospike.Client
 		private const int KEY = 80;
 		private const int BIN = 81;
 		private const int BIN_TYPE = 82;
+		private const int TO_STRING = 99;
 		private const int RESULT_REMOVE = 100;
 		private const int MAP_KEYS = 101;
 		private const int MAP_VALUES = 102;

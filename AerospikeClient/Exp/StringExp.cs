@@ -65,7 +65,6 @@ namespace Aerospike.Client
 	public sealed class StringExp
 	{
 		private const int MODULE = 3; // CALL_STRING
-		private const int MODULE_REPR = 4; // CALL_REPR
 
 		//-----------------------------------------------------------------
 		// Read expressions
@@ -908,7 +907,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that returns the string representation of <see cref="Exp"/> src, where
-		/// <see cref="Exp"/> src may be any expression yielding an integer, float, string, or blob
+		/// <see cref="Exp"/> src may be any expression yielding an integer, float, string, boolean, or blob
 		/// value. Returns an error for any other source type.
 		/// </summary>
 		/// <example>
@@ -917,12 +916,11 @@ namespace Aerospike.Client
 		/// Exp s = StringExp.ToString(Exp.IntBin("n"));
 		/// </code>
 		/// </example>
-		/// <param name="src">source expression (integer, float, string, or blob)</param>
+		/// <param name="src">source expression (integer, float, string, boolean, or blob)</param>
 		/// <returns>string-typed expression yielding the string representation</returns>
 		public static Exp ToString(Exp src)
 		{
-			byte[] bytes = ReprPayload();
-			return new Exp.Module(src, bytes, (int)Exp.Type.STRING, MODULE_REPR);
+			return Exp.ToStringExp(src);
 		}
 
 		//-----------------------------------------------------------------
@@ -984,18 +982,5 @@ namespace Aerospike.Client
 			return packer.ToByteArray();
 		}
 
-		// Single-zero payload [0] for CALL_REPR (StringExp.toString). The server's
-		// parse_op_call at exp.c:3244 rejects an empty list (ele_count == 0), so the
-		// payload must contain at least one element. The CALL_REPR dispatcher at
-		// exp.c:5019 ignores the sub-op id and goes straight to as_bin_to_string, so
-		// the value carried here is unused. The spec previously documented this as `[]`;
-		// the server is the source of truth — see §2.7 in the cross-client spec.
-		private static byte[] ReprPayload()
-		{
-			Packer packer = new Packer();
-			packer.PackArrayBegin(1);
-			packer.PackNumber(0);
-			return packer.ToByteArray();
-		}
 	}
 }
