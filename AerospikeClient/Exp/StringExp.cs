@@ -210,7 +210,7 @@ namespace Aerospike.Client
 		/// </example>
 		/// <param name="needle">substring to test for</param>
 		/// <param name="src">source string expression</param>
-		/// <returns>boolean-typed expression indicating whether the substring matched</returns>
+		/// <returns>boolean-typed expression: true on match, false otherwise</returns>
 		public static Exp Contains(Exp needle, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(StringOperation.CONTAINS, needle);
@@ -228,7 +228,7 @@ namespace Aerospike.Client
 		/// </example>
 		/// <param name="prefix">prefix to test for</param>
 		/// <param name="src">source string expression</param>
-		/// <returns>boolean-typed expression indicating whether the prefix matched</returns>
+		/// <returns>boolean-typed expression: true on match, false otherwise</returns>
 		public static Exp StartsWith(Exp prefix, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(StringOperation.STARTS_WITH, prefix);
@@ -246,7 +246,7 @@ namespace Aerospike.Client
 		/// </example>
 		/// <param name="suffix">suffix to test for</param>
 		/// <param name="src">source string expression</param>
-		/// <returns>boolean-typed expression indicating whether the suffix matched</returns>
+		/// <returns>boolean-typed expression: true on match, false otherwise</returns>
 		public static Exp EndsWith(Exp suffix, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(StringOperation.ENDS_WITH, suffix);
@@ -315,7 +315,7 @@ namespace Aerospike.Client
 		/// </code>
 		/// </example>
 		/// <param name="src">source string expression</param>
-		/// <returns>boolean-typed expression indicating whether the source is numeric</returns>
+		/// <returns>boolean-typed expression: true if numeric, false otherwise</returns>
 		public static Exp IsNumeric(Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(StringOperation.IS_NUMERIC);
@@ -334,7 +334,7 @@ namespace Aerospike.Client
 		/// </example>
 		/// <param name="numericType">one of the <see cref="StringNumericType"/> constants</param>
 		/// <param name="src">source string expression</param>
-		/// <returns>boolean-typed expression indicating whether the source is numeric of the given type</returns>
+		/// <returns>boolean-typed expression: true if numeric of the given type, false otherwise</returns>
 		public static Exp IsNumeric(StringNumericType numericType, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(StringOperation.IS_NUMERIC, (int)numericType);
@@ -351,7 +351,7 @@ namespace Aerospike.Client
 		/// </code>
 		/// </example>
 		/// <param name="src">source string expression</param>
-		/// <returns>boolean-typed expression indicating whether the source is uppercase</returns>
+		/// <returns>boolean-typed expression: true if all-uppercase, false otherwise</returns>
 		public static Exp IsUpper(Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(StringOperation.IS_UPPER);
@@ -368,7 +368,7 @@ namespace Aerospike.Client
 		/// </code>
 		/// </example>
 		/// <param name="src">source string expression</param>
-		/// <returns>boolean-typed expression indicating whether the source is lowercase</returns>
+		/// <returns>boolean-typed expression: true if all-lowercase, false otherwise</returns>
 		public static Exp IsLower(Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(StringOperation.IS_LOWER);
@@ -457,7 +457,7 @@ namespace Aerospike.Client
 		/// </example>
 		/// <param name="pattern">ICU-syntax regex pattern (must be valid UTF-8)</param>
 		/// <param name="src">source string expression</param>
-		/// <returns>boolean-typed expression indicating whether the pattern matched</returns>
+		/// <returns>boolean-typed expression: true on match, false otherwise</returns>
 		public static Exp RegexCompare(Exp pattern, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(StringOperation.REGEX_COMPARE, pattern);
@@ -479,7 +479,7 @@ namespace Aerospike.Client
 		/// <param name="pattern">ICU-syntax regex pattern (must be valid UTF-8)</param>
 		/// <param name="regexFlags">bitwise-OR of <see cref="StringRegexFlags"/> constants</param>
 		/// <param name="src">source string expression</param>
-		/// <returns>boolean-typed expression indicating whether the pattern matched</returns>
+		/// <returns>boolean-typed expression: true on match, false otherwise</returns>
 		public static Exp RegexCompare(Exp pattern, StringRegexFlags regexFlags, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(StringOperation.REGEX_COMPARE, pattern, (int)regexFlags);
