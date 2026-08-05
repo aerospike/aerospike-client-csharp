@@ -3583,7 +3583,9 @@ namespace Aerospike.Test
 			client.Operate(null, rkey,
 				MapOperation.PutItems(MapPolicy.Default, binName, map));
 
+#pragma warning disable CS0618 // Verify the obsolete byte overload treats each byte as an integer key.
 			CTX ctx = CTX.MapKeysIn((byte)0x10, (byte)0x30);
+#pragma warning restore CS0618
 			Record result = client.Operate(null, rkey,
 				CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx));
 
