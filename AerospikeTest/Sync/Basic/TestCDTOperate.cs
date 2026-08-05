@@ -4103,6 +4103,86 @@ namespace Aerospike.Test
 			Assert.AreEqual(2, results.Count);
 		}
 
+		private static readonly int[] invalidSelectFlags = [-1, -2, -3, -9, -12, -16, 4, 5, 6, 7];
+		private static readonly int[] invalidModifyFlags = [-1, -2, -12, -16, 4, 5, 6, 7];
+
+		[TestMethod]
+		public void TestSelectByPathRejectsInvalidFlags()
+		{
+			foreach (int flag in invalidSelectFlags)
+			{
+				AssertParameterError(
+					() => CDTOperation.SelectByPath(binName, (SelectFlag)flag, CTX.AllChildren()));
+			}
+		}
+
+		[TestMethod]
+		public void TestModifyByPathRejectsInvalidFlags()
+		{
+			Expression modifyExp = Exp.Build(
+				Exp.Add(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(5)));
+
+			foreach (int flag in invalidModifyFlags)
+			{
+				AssertParameterError(
+					() => CDTOperation.ModifyByPath(
+						binName, (ModifyFlag)flag, modifyExp, CTX.AllChildren()));
+			}
+		}
+
+		[TestMethod]
+		public void TestCDTExpSelectByPathRejectsInvalidFlags()
+		{
+			foreach (int flag in invalidSelectFlags)
+			{
+				AssertParameterError(
+					() => CDTExp.SelectByPath(
+						Exp.Type.LIST, (SelectFlag)flag, Exp.MapBin(binName), CTX.AllChildren()));
+			}
+		}
+
+		[TestMethod]
+		public void TestCDTExpModifyByPathRejectsInvalidFlags()
+		{
+			Exp modifyExp = Exp.Add(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(5));
+
+			foreach (int flag in invalidModifyFlags)
+			{
+				AssertParameterError(
+					() => CDTExp.ModifyByPath(
+						Exp.Type.MAP,
+						(ModifyFlag)flag,
+						modifyExp,
+						Exp.MapBin(binName),
+						CTX.AllChildren()));
+			}
+		}
+
+		[TestMethod]
+		public void TestValidPathFlagsAreAccepted()
+		{
+			Expression modifyExpression = Exp.Build(
+				Exp.Add(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(5)));
+			Exp modifyExp = Exp.Add(Exp.IntLoopVar(LoopVarPart.VALUE), Exp.Val(5));
+
+			CDTOperation.SelectByPath(binName, SelectFlag.NO_FAIL, CTX.AllChildren());
+			CDTOperation.ModifyByPath(binName, ModifyFlag.NO_FAIL, modifyExpression, CTX.AllChildren());
+			CDTExp.SelectByPath(
+				Exp.Type.LIST, SelectFlag.NO_FAIL, Exp.MapBin(binName), CTX.AllChildren());
+			CDTExp.ModifyByPath(
+				Exp.Type.MAP,
+				ModifyFlag.NO_FAIL,
+				modifyExp,
+				Exp.MapBin(binName),
+				CTX.AllChildren());
+		}
+
+		private static void AssertParameterError(Action action)
+		{
+			AerospikeException exception = Assert.Throws<AerospikeException>(action);
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, exception.Result);
+		}
+
 		private static void CheckPathExpressionEnhancements()
 		{
 			CheckServerVersion(Node.SERVER_VERSION_8_1_2, "Path expression Enhancement");
