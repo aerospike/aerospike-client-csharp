@@ -201,6 +201,7 @@ namespace Aerospike.Client
 					break;
 
 				case Txn.TxnState.VERIFIED:
+				case Txn.TxnState.COMMIT_FAILED:
 					atr.Commit(listener);
 					break;
 
@@ -250,6 +251,9 @@ namespace Aerospike.Client
 				case Txn.TxnState.VERIFIED:
 					atr.Abort(listener);
 					break;
+
+				case Txn.TxnState.COMMIT_FAILED:
+					throw new AerospikeException(ResultCode.TXN_FAILED, "Transaction commit failed. Abort is not allowed.");
 
 				case Txn.TxnState.COMMITTED:
 					throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");

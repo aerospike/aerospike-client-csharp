@@ -710,6 +710,39 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void TxnAbortAfterCommitFailure()
+		{
+			using Txn txn = new();
+			SimulateCommitFailure(txn, true);
+			Assert.AreEqual(Txn.TxnState.COMMIT_FAILED, txn.State);
+
+			try
+			{
+				client.Abort(txn);
+				throw new AerospikeException("Unexpected success");
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.TXN_FAILED)
+				{
+					throw;
+				}
+			}
+		}
+
+		[TestMethod]
+		public void TxnAbortAfterCleanCommitFailure()
+		{
+			using Txn txn = new();
+			SetTxnState(txn, Txn.TxnState.VERIFIED);
+			SimulateCommitFailure(txn, false);
+			Assert.AreEqual(Txn.TxnState.VERIFIED, txn.State);
+
+			AbortStatus.AbortStatusType status = client.Abort(txn);
+			Assert.AreEqual(AbortStatus.AbortStatusType.OK, status);
+		}
+
+		[TestMethod]
 		public void TxnInvalidNamespace()
 		{
 			Key key = new("invalid", SuiteHelpers.set, "mrtkey");
@@ -857,6 +890,21 @@ namespace Aerospike.Test
 			};
 			Record r = client.Get(p, key0);
 			Assert.IsNull(r);
+		}
+
+		private static void SimulateCommitFailure(Txn txn, bool inDoubt)
+		{
+			MethodInfo markCommitFailed = typeof(Txn).GetMethod("MarkCommitFailed", BindingFlags.Instance | BindingFlags.NonPublic);
+
+			markCommitFailed.Invoke(txn, new object[] { inDoubt });
+		}
+
+		private static void SetTxnState(Txn txn, Txn.TxnState state)
+		{
+			PropertyInfo stateProperty = typeof(Txn).GetProperty("State");
+			MethodInfo stateSetter = stateProperty.GetSetMethod(true);
+
+			stateSetter.Invoke(txn, new object[] { state });
 		}
 
 		private static void AssertBatchEqual(Key[] keys, Record[] recs, int expected)

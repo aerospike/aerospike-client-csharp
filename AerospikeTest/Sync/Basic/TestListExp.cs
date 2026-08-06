@@ -16,6 +16,7 @@
  */
 using Aerospike.Client;
 using System.Collections;
+using System.Collections.Specialized;
 
 namespace Aerospike.Test
 {
@@ -143,6 +144,136 @@ namespace Aerospike.Test
 
 			IList results2 = record.GetList("var");
 			Assert.AreEqual(4, results2.Count);
+		}
+
+		[TestMethod]
+		public void NestedMapLiteralPacksCanonical()
+		{
+			ListDictionary inner = new()
+			{
+				{ "z", 26L },
+				{ "a", 1L }
+			};
+
+			ListDictionary innerSorted = new()
+			{
+				{ "a", 1L },
+				{ "z", 26L }
+			};
+
+			CollectionAssert.AreEqual(
+				Exp.Build(Exp.Val((IList)new List<object> { 0L, inner })).Bytes,
+				Exp.Build(Exp.Val((IList)new List<object> { 0L, innerSorted })).Bytes);
+
+			ListDictionary outer = new()
+			{
+				{ "k", inner }
+			};
+
+			ListDictionary outerSorted = new()
+			{
+				{ "k", innerSorted }
+			};
+
+			CollectionAssert.AreEqual(
+				Exp.Build(Exp.Val(outer, MapOrder.UNORDERED)).Bytes,
+				Exp.Build(Exp.Val(outerSorted, MapOrder.UNORDERED)).Bytes);
+		}
+
+		[TestMethod]
+		public void OperationPathPreservesInsertionOrder()
+		{
+			ListDictionary map = new()
+			{
+				{ "z", 26L },
+				{ "a", 1L }
+			};
+
+			ListDictionary reversed = new()
+			{
+				{ "a", 1L },
+				{ "z", 26L }
+			};
+
+			Assert.IsFalse(Packer.Pack(map, MapOrder.UNORDERED)
+				.SequenceEqual(Packer.Pack(reversed, MapOrder.UNORDERED)));
+		}
+
+		[TestMethod]
+		public void AppendItemsUnsortedMapLiteral()
+		{
+			// CLIENT-5039: server 8.1.2.3+ (AER-6930) rejects expression map literals
+			// that are not in canonical (key sorted) form.
+			client.Operate(null, keyA,
+				ListOperation.AppendItems(ListPolicy.Default, binA,
+					(IList)new List<Value> { Value.Get(0), Value.Get(1) }));
+
+			// ListDictionary is an unordered map with a deterministic, deliberately
+			// unsorted iteration order.
+			ListDictionary map = new()
+			{
+				{ "zz", 4L },
+				{ "aa", 1L },
+				{ "mm", 2L },
+				{ "cc", 3L }
+			};
+
+			Expression exp = Exp.Build(
+				ListExp.Size(
+					ListExp.AppendItems(ListPolicy.Default, Exp.Val((IList)new List<object> { map }),
+						Exp.ListBin(binA))));
+
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Read("result", exp, ExpReadFlags.DEFAULT));
+
+			Assert.AreEqual(3L, record.GetLong("result"));
+		}
+
+		[TestMethod]
+		public void AppendItemsUnsortedIntKeyMapLiteral()
+		{
+			// Exact CLIENT-5039 ticket repro: integer keys in non-sorted order.
+			client.Operate(null, keyA,
+				ListOperation.AppendItems(ListPolicy.Default, binA,
+					(IList)new List<Value> { Value.Get(0), Value.Get(1) }));
+
+			ListDictionary map = new()
+			{
+				{ 1402L, 1802L },
+				{ 2003L, 3946L },
+				{ 834L, 1374L },
+				{ 3117L, 1295L }
+			};
+
+			Expression exp = Exp.Build(
+				ListExp.AppendItems(ListPolicy.Default, Exp.Val((IList)new List<object> { map }),
+					Exp.ListBin(binA)));
+
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Read("result", exp, ExpReadFlags.DEFAULT));
+
+			Assert.AreEqual(3, record.GetList("result").Count);
+		}
+
+		[TestMethod]
+		public void AppendItemsOperationUnsortedMap()
+		{
+			ListDictionary map = new()
+			{
+				{ "z", 26L },
+				{ "a", 1L },
+				{ "m", 13L }
+			};
+
+			// Non-expression (operation) packing keeps insertion order and is not
+			// canonicalized.
+			client.Operate(null, keyB,
+				ListOperation.AppendItems(ListPolicy.Default, binB,
+					(IList)new List<Value> { Value.Get(0), Value.Get(map) }));
+
+			Record record = client.Get(null, keyB, binB);
+			AssertRecordFound(keyB, record);
+			Assert.AreEqual(2, record.GetList(binB).Count);
 		}
 	}
 }

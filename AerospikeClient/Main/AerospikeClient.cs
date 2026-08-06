@@ -589,21 +589,30 @@ namespace Aerospike.Client
 		{
 			TxnRoll tr = new(cluster, txn);
 
-			switch (txn.State)
+			try
 			{
-				default:
-				case Txn.TxnState.OPEN:
-					tr.Verify(mergedTxnVerifyPolicyDefault, mergedTxnRollPolicyDefault);
-					return tr.Commit(mergedTxnRollPolicyDefault);
+				switch (txn.State)
+				{
+					default:
+					case Txn.TxnState.OPEN:
+						tr.Verify(mergedTxnVerifyPolicyDefault, mergedTxnRollPolicyDefault);
+						return tr.Commit(mergedTxnRollPolicyDefault);
 
-				case Txn.TxnState.VERIFIED:
-					return tr.Commit(mergedTxnRollPolicyDefault);
+					case Txn.TxnState.VERIFIED:
+					case Txn.TxnState.COMMIT_FAILED:
+						return tr.Commit(mergedTxnRollPolicyDefault);
 
-				case Txn.TxnState.COMMITTED:
-					return CommitStatus.CommitStatusType.ALREADY_COMMITTED;
+					case Txn.TxnState.COMMITTED:
+						return CommitStatus.CommitStatusType.ALREADY_COMMITTED;
 
-				case Txn.TxnState.ABORTED:
-					throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED, "Transaction already aborted");
+					case Txn.TxnState.ABORTED:
+						throw new AerospikeException(ResultCode.TXN_ALREADY_ABORTED, "Transaction already aborted");
+				}
+			}
+			catch (AerospikeException.Commit ae)
+			{
+				txn.MarkCommitFailed(ae.InDoubt);
+				throw;
 			}
 		}
 
@@ -625,6 +634,9 @@ namespace Aerospike.Client
 				case Txn.TxnState.OPEN:
 				case Txn.TxnState.VERIFIED:
 					return tr.Abort(mergedTxnRollPolicyDefault);
+
+				case Txn.TxnState.COMMIT_FAILED:
+					throw new AerospikeException(ResultCode.TXN_FAILED, "Transaction commit failed. Abort is not allowed.");
 
 				case Txn.TxnState.COMMITTED:
 					throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");

@@ -14,8 +14,7 @@ The Aerospike C# client library provides a .NET interface to the Aerospike datab
 | **AerospikeClient** | C# client library |
 | **AerospikeTest** | Unit tests |
 | **AerospikeBenchmarks** | Benchmarks command line application |
-| **AerospikeDemo** | Examples WinForms application (Windows only) |
-| **AerospikeAdmin** | User administration WinForms application (Windows only, enterprise servers only) |
+| **AerospikeExample** | Examples command line application |
 
 ## Quick Start
 

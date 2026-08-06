@@ -1,5 +1,5 @@
-﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+/*
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,23 +14,29 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System;
-using System.Windows.Forms;
+using Aerospike.Client;
 
-namespace Aerospike.Admin
+namespace Aerospike.Test
 {
-	static class Program
+	[TestClass]
+	public class TestPacker
 	{
-		/// <summary>
-		/// The main entry point for the application.
-		/// </summary>
-		[STAThread]
-		static void Main()
+		[TestMethod]
+		public void PackNumberUsesSignedIntegerBoundaries()
 		{
-			Application.EnableVisualStyles();
-			Application.SetHighDpiMode(HighDpiMode.SystemAware);
-			Application.SetCompatibleTextRenderingDefault(false);
-			Application.Run(new LoginForm());
+			AssertPacked(-32L, 0xe0);
+			AssertPacked(-33L, 0xd0, 0xdf);
+			AssertPacked(sbyte.MinValue, 0xd0, 0x80);
+			AssertPacked(-129L, 0xd1, 0xff, 0x7f);
+			AssertPacked(short.MinValue, 0xd1, 0x80, 0x00);
+		}
+
+		private static void AssertPacked(long value, params byte[] expected)
+		{
+			Packer packer = new();
+			packer.PackNumber(value);
+
+			CollectionAssert.AreEqual(expected, packer.ToByteArray(), $"Unexpected MessagePack encoding for {value}.");
 		}
 	}
 }
