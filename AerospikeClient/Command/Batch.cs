@@ -55,6 +55,7 @@ namespace Aerospike.Client
 			BatchRead record = records[batchIndex];
 
 			ParseFieldsRead(record.key);
+			ApplyErrorDetail(record);
 
 			if (resultCode == 0)
 			{
@@ -740,6 +741,8 @@ namespace Aerospike.Client
 			{
 				SkipKey(fieldCount);
 			}
+
+			ApplyErrorDetail(br);
 		}
 
 		protected override Latency.LatencyType GetLatencyType()
