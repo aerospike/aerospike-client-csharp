@@ -498,7 +498,7 @@ namespace Aerospike.Client
 		/// <code>
 		/// // "aGVsbG8=" -> System.Text.Encoding.UTF8.GetBytes("hello")
 		/// Record r = client.Operate(null, key, StringOperation.B64Decode("text"));
-		/// byte[] decoded = (byte[]) r.GetBytes("text");
+		/// byte[] decoded = (byte[])r.GetValue("text");
 		/// </code>
 		/// </example>
 		/// <param name="binName">name of the string bin holding base64 text</param>
@@ -989,7 +989,7 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.RegexReplace(StringPolicy.Default, "text", "[0-9]+", "NUM", StringRegexFlags.GLOBAL));
 		/// </code>
 		/// </example>
-		/// <param name="policy">kept for API symmetry with other modify ops; unused because the server's regex_replace op does not accept policy flags</param>
+		/// <param name="policy">write policy controlling create/update and no-fail semantics</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="pattern">ICU-syntax regex pattern (must be valid UTF-8)</param>
 		/// <param name="replacement">replacement text (must be valid UTF-8)</param>
@@ -1007,8 +1007,7 @@ namespace Aerospike.Client
 		)
 		{
 			List<Value> list = Pair(pattern, replacement);
-			// Server's regex_replace op table accepts only [list, regexFlags]; no slot for policy flags.
-			byte[] bytes = PackStringOp(REGEX_REPLACE, list, (int)regexFlags, ctx);
+			byte[] bytes = PackStringOp(REGEX_REPLACE, list, (int)regexFlags, (int)policy.flags, ctx);
 			return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 		}
 
@@ -1189,6 +1188,18 @@ namespace Aerospike.Client
 			p.PackNumber(subop);
 			p.PackList(list);
 			p.PackNumber(v2);
+			return p.ToByteArray();
+		}
+
+		// [SUBOP, list, v2, v3]  (List<Value>, int, int)
+		private static byte[] PackStringOp(int subop, List<Value> list, int v2, int v3, CTX[] ctx)
+		{
+			Packer p = new Packer();
+			WriteOuterHeader(p, 4, ctx);
+			p.PackNumber(subop);
+			p.PackList(list);
+			p.PackNumber(v2);
+			p.PackNumber(v3);
 			return p.ToByteArray();
 		}
 	}

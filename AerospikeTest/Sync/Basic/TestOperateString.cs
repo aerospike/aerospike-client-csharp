@@ -722,6 +722,14 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void AppendToEmptyStringYieldsValue()
+		{
+			Put("");
+			Operate(StringOperation.Append(policy, bin, "hi"));
+			Assert.AreEqual("hi", StringValue());
+		}
+
+		[TestMethod]
 		public void AppendPreservesMultibyteCodepoints()
 		{
 			// Unicode/DBCS-aware: appending a multi-byte string must not corrupt
@@ -741,10 +749,18 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void PrependToEmptyStringYieldsValue()
+		{
+			Put("");
+			Operate(StringOperation.Prepend(policy, bin, "hi"));
+			Assert.AreEqual("hi", StringValue());
+		}
+
+		[TestMethod]
 		public void PrependPreservesMultibyteCodepoints()
 		{
-		// Unicode/DBCS-aware: prepending a multi-byte string must not corrupt
-		// either side. "語" prepended with "日本" -> "日本語".
+			// Unicode/DBCS-aware: prepending a multi-byte string must not corrupt
+			// either side. "語" prepended with "日本" -> "日本語".
 			Put("語");
 			Operate(StringOperation.Prepend(policy, bin, "日本"));
 			Assert.AreEqual("日本語", StringValue());
@@ -788,6 +804,31 @@ namespace Aerospike.Test
 			Put("hello");
 			Operate(StringOperation.RegexReplace(policy, bin, "[0-9]+", "NUM", StringRegexFlags.GLOBAL));
 			Assert.AreEqual("hello", StringValue());
+		}
+
+		[TestMethod]
+		public void RegexReplacePacksPolicyFlags()
+		{
+			StringPolicy updateOnly = new(StringWriteFlags.UPDATE_ONLY);
+			Operation op = StringOperation.RegexReplace(
+				updateOnly, bin, "[0-9]+", "NUM", StringRegexFlags.GLOBAL);
+			byte[] bytes = ((Value.BytesValue)op.value).Bytes;
+			List<object> args = (List<object>)new Unpacker(bytes, 0, bytes.Length, false).UnpackList();
+
+			Assert.HasCount(4, args);
+			Assert.AreEqual((long)StringRegexFlags.GLOBAL, args[2]);
+			Assert.AreEqual((long)StringWriteFlags.UPDATE_ONLY, args[3]);
+		}
+
+		[TestMethod]
+		public void UpdateOnlyAllowsModifyOnExistingBin()
+		{
+			Put("hello");
+			StringPolicy updateOnly = new(StringWriteFlags.UPDATE_ONLY);
+
+			Operate(StringOperation.Append(updateOnly, bin, " world"));
+
+			Assert.AreEqual("hello world", StringValue());
 		}
 
 		//=================================================================

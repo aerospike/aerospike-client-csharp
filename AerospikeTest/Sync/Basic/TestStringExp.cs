@@ -462,6 +462,25 @@ namespace Aerospike.Test
 			Assert.AreEqual("abcNUMdefNUM", r2.GetString(var));
 		}
 
+		[TestMethod]
+		public void RegexReplacePacksPolicyFlags()
+		{
+			StringPolicy updateOnly = new(StringWriteFlags.UPDATE_ONLY);
+			Expression expression = Exp.Build(StringExp.RegexReplace(
+				updateOnly,
+				Exp.Val("[0-9]+"),
+				Exp.Val("NUM"),
+				StringRegexFlags.GLOBAL,
+				Exp.StringBin(bin)));
+			List<object> call = (List<object>)new Unpacker(
+				expression.Bytes, 0, expression.Bytes.Length, false).UnpackList();
+			List<object> args = (List<object>)call[3];
+
+			Assert.HasCount(4, args);
+			Assert.AreEqual((long)StringRegexFlags.GLOBAL, args[2]);
+			Assert.AreEqual((long)StringWriteFlags.UPDATE_ONLY, args[3]);
+		}
+
 		//=================================================================
 		// Type conversion expression
 		//=================================================================

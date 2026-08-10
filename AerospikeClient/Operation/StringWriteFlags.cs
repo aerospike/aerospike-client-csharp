@@ -21,7 +21,7 @@ namespace Aerospike.Client
 	/// </summary>
 	/// <example>
 	/// <code>
-	/// int flags = StringWriteFlags.NO_FAIL;
+	/// StringWriteFlags flags = StringWriteFlags.NO_FAIL;
 	/// </code>
 	/// </example>
 	[Flags]
@@ -31,6 +31,11 @@ namespace Aerospike.Client
 		/// Default. Allow create or update.
 		/// </summary>
 		DEFAULT = 0,
+
+		/// <summary>
+		/// Update existing values only.
+		/// </summary>
+		UPDATE_ONLY = 2,
 
 		/// <summary>
 		/// Do not raise error if operation cannot be applied to the bin

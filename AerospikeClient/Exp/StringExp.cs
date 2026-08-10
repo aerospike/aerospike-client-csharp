@@ -255,7 +255,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that parses <see cref="Exp"/> src as an int64. The expression returns
-		/// an error <code>Exp.Val(0)</code> if the source cannot be parsed as an integer.
+		/// an error if the source cannot be parsed as an integer.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -272,7 +272,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that parses <see cref="Exp"/> src as a 64-bit float. The expression
-		/// returns an error <code>Exp.Val(0)</code> if the source cannot be parsed as a double.
+		/// returns an error if the source cannot be parsed as a double.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -886,9 +886,7 @@ namespace Aerospike.Client
 		///     Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">	kept for API symmetry with the other modify ops; unused — the
-		///						regex_replace server op does not accept policy flags
-		///						(see implementation note)</param>
+		/// <param name="policy">string policy</param>
 		/// <param name="pattern">ICU-syntax regex pattern (must be valid UTF-8)</param>
 		/// <param name="replacement">replacement text (must be valid UTF-8)</param>
 		/// <param name="regexFlags">bitwise-OR of <see cref="StringRegexFlags"/> constants</param>
@@ -896,7 +894,7 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the modified string</returns>
 		public static Exp RegexReplace(StringPolicy policy, Exp pattern, Exp replacement, StringRegexFlags regexFlags, Exp src)
 		{
-			byte[] bytes = PackRegexReplace(pattern, replacement, (int)regexFlags);
+			byte[] bytes = PackRegexReplace(pattern, replacement, (int)regexFlags, (int)policy.flags);
 			return AddModify(src, bytes);
 		}
 
@@ -907,7 +905,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that returns the string representation of <see cref="Exp"/> src, where
-		/// <see cref="Exp"/> src may be any expression yielding an integer, float, string, boolean, or blob
+		/// <see cref="Exp"/> src may be any expression yielding an integer, float, string, or blob
 		/// value. Returns an error for any other source type.
 		/// </summary>
 		/// <example>
@@ -916,7 +914,7 @@ namespace Aerospike.Client
 		/// Exp s = StringExp.ToString(Exp.IntBin("n"));
 		/// </code>
 		/// </example>
-		/// <param name="src">source expression (integer, float, string, boolean, or blob)</param>
+		/// <param name="src">source expression (integer, float, string, or blob)</param>
 		/// <returns>string-typed expression yielding the string representation</returns>
 		public static Exp ToString(Exp src)
 		{
@@ -962,16 +960,10 @@ namespace Aerospike.Client
 			return packer.ToByteArray();
 		}
 
-		// [REGEX_REPLACE, [pattern, repl], regexFlags] — 3 elements.
-		// Server's regex_replace op table accepts only [list, regexFlags]; no slot for
-		// policy flags (max_args=2 in particle_string.c:476). Specialized packing method
-		// kept in StringExp instead of moving to Pack since the structure is specific to
-		// string replace operations and doesn't fit the usual pattern of a command
-		// followed by a flat list of arguments.
-		private static byte[] PackRegexReplace(Exp pattern, Exp replacement, int regexFlags)
+		private static byte[] PackRegexReplace(Exp pattern, Exp replacement, int regexFlags, int policyFlags)
 		{
 			Packer packer = new Packer();
-			packer.PackArrayBegin(3);
+			packer.PackArrayBegin(4);
 			packer.PackNumber(StringOperation.REGEX_REPLACE);
 			packer.PackArrayBegin(2);
 			packer.PackNumber(QUOTED);
@@ -979,6 +971,7 @@ namespace Aerospike.Client
 			pattern.Pack(packer);
 			replacement.Pack(packer);
 			packer.PackNumber(regexFlags);
+			packer.PackNumber(policyFlags);
 			return packer.ToByteArray();
 		}
 
