@@ -27,7 +27,7 @@ public sealed class ErrorMessage : SyncExample
 	/// </summary>
 	public override void RunExample()
 	{
-		//RequireMinServerVersion(Node.SERVER_VERSION_8_1_3);
+		RequireMinServerVersion(Node.SERVER_VERSION_8_1_3);
 
 		Key intKey = new(ns, set, "error-message-key");
 		WritePolicy errorPolicy = new(writePolicy)
