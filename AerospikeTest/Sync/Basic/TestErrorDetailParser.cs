@@ -20,15 +20,8 @@ using System.Text;
 namespace Aerospike.Test
 {
 	[TestClass]
-	public class TestErrorDetailParser : TestSync
+	public class TestErrorDetailParser
 	{
-
-		[ClassInitialize]
-		public static void CheckServerVersion()
-		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "extended errors");
-		}
-
 		[TestMethod]
 		public void VerbosityShiftAndMaskAreConsistent()
 		{
