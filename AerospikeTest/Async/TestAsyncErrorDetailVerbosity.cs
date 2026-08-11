@@ -29,7 +29,7 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void Setup(TestContext testContext)
 		{
-			//CheckServerVersion(new Version(8, 1, 3, 0), "extended errors");
+			CheckServerVersion(new Version(8, 1, 3, 0), "extended errors");
 
 			WritePolicy wp = new();
 			intKey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "edv-int-key");

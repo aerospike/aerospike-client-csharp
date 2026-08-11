@@ -38,7 +38,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void Setup(TestContext testContext)
 		{
-			//CheckServerVersion(Node.SERVER_VERSION_8_1_3, "extended errors");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "extended errors");
 
 			stdKey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "eed-std-key");
 			scratchKey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "eed-scratch-key");

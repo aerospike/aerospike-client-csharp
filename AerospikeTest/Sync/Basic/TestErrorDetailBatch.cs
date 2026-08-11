@@ -27,7 +27,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void Setup(TestContext testContext)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "batch extended errors");
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "extended errors");
 			listKey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "edb-list-key");
 			client.Put(new WritePolicy(), listKey, new Bin(BinName, new List<int> { 10, 20, 30 }));
 		}
