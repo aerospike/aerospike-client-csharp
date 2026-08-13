@@ -22,19 +22,23 @@ namespace Aerospike.Client
 	public enum MaxCommandAction
 	{
 		/// <summary>
-		/// Reject database command.
+		/// Reject the command immediately with <see cref="AerospikeException.CommandRejected"/>.
 		/// </summary>
 		REJECT,
 
 		/// <summary>
-		/// Block until a previous command completes. 
+		/// Block the calling thread until a command slot becomes available.
+		/// Avoid this action on threads that must remain responsive.
 		/// </summary>
 		BLOCK,
 
 		/// <summary>
-		/// Delay until a previous command completes.
+		/// Queue the command until a slot becomes available without blocking the calling thread.
 		/// </summary>
-		/// <remarks>This is the asynchronous equivalent of <see cref="BLOCK"/>.</remarks>
+		/// <remarks>
+		/// The queue is bounded by <see cref="AsyncClientPolicy.asyncMaxCommandsInQueue"/>
+		/// when that value is greater than zero.
+		/// </remarks>
 		DELAY,
 	}
 }

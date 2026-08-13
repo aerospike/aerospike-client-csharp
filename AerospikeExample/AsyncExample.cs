@@ -35,6 +35,8 @@ public abstract class AsyncExample : Example
 			tlsPolicy = args.tlsPolicy,
 			authMode = args.authMode,
 			asyncMaxCommands = args.commandMax,
+			asyncMaxCommandAction = MaxCommandAction.DELAY,
+			asyncMaxCommandsInQueue = 1000,
 			useServicesAlternate = args.useServicesAlternate,
 			failIfNotConnected = true
 		};

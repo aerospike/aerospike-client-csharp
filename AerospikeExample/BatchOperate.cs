@@ -143,11 +143,19 @@ public sealed class BatchOperate : SyncExample
 
 		Key[] keys = BuildKeys();
 
+		BatchPolicy batchPolicy = new(client.BatchParentPolicyWriteDefault)
+		{
+			// 0 issues all node requests in parallel. Positive values cap the thread count.
+			maxConcurrentThreads = 4
+		};
+
 		// Append integer to list and get size and last element of list bin for all records.
-		BatchResults batch = client.Operate(null, null, keys,
+		BatchResults batch = client.Operate(batchPolicy, null, keys,
 			ListOperation.Append(ListPolicy.Default, BinName3, Value.Get(999)),
 			ListOperation.Size(BinName3),
 			ListOperation.GetByIndex(BinName3, -1, ListReturnType.VALUE));
+
+		console.Info($"All batch sub-commands succeeded: {batch.status}");
 
 		for (int i = 0; i < batch.records.Length; i++)
 		{
@@ -160,7 +168,9 @@ public sealed class BatchOperate : SyncExample
 			}
 			else
 			{
-				console.Info($"Result[{i}]: error: {ResultCode.GetResultString(br.resultCode)}");
+				console.Info(
+					$"Result[{i}]: error={ResultCode.GetResultString(br.resultCode)} " +
+					$"inDoubt={br.inDoubt}");
 			}
 		}
 	}
@@ -199,7 +209,9 @@ public sealed class BatchOperate : SyncExample
 			new BatchDelete(new Key(ns, set, $"{KeyPrefix}6")),
 		];
 
-		client.Operate(null, records);
+		// Retain the aggregate status; per-record resultCode still identifies partial failures.
+		bool allSucceeded = client.Operate(null, records);
+		console.Info($"All batch sub-commands succeeded: {allSucceeded}");
 
 		for (int i = 0; i < records.Count; i++)
 		{
@@ -213,7 +225,9 @@ public sealed class BatchOperate : SyncExample
 			}
 			else
 			{
-				console.Info($"Result[{i}]: error: {ResultCode.GetResultString(record.resultCode)}");
+				console.Info(
+					$"Result[{i}]: error={ResultCode.GetResultString(record.resultCode)} " +
+					$"inDoubt={record.inDoubt}");
 			}
 		}
 	}

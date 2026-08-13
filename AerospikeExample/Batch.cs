@@ -107,20 +107,33 @@ public sealed class Batch : SyncExample
 			new(new Key(ns, set, "keynotfound"), bins),
 		];
 
-		client.Get(null, records);
-
-		foreach (BatchRead read in records)
+		try
 		{
-			Key key = read.key;
+			client.Get(null, records);
 
-			if (read.record != null)
+			foreach (BatchRead read in records)
 			{
-				console.Info($"Record: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={read.record.GetValue(BinName)}");
+				Key key = read.key;
+
+				if (read.resultCode == ResultCode.OK)
+				{
+					console.Info($"Record: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={read.record?.GetValue(BinName)}");
+				}
+				else if (read.resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
+				{
+					console.Info($"Record not found: ns={key.ns} set={key.setName} key={key.userKey}");
+				}
+				else
+				{
+					console.Error($"Record failed: key={key.userKey} result={ResultCode.GetResultString(read.resultCode)}");
+				}
 			}
-			else
-			{
-				console.Info($"Record not found: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName}");
-			}
+		}
+		catch (AerospikeException ae)
+		{
+			// A batch exception represents a command/node failure, not an ordinary missing key.
+			console.Error("Batch command failed.", ae);
+			throw;
 		}
 	}
 

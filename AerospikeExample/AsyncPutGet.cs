@@ -49,7 +49,8 @@ public sealed class AsyncPutGet : AsyncExample
 	{
 		console.Info($"Put with task: namespace={key.ns} set={key.setName} key={key.userKey} value={bin.value}");
 
-		CancellationToken token = CancellationToken.None;
+		using CancellationTokenSource cancellation = new(TimeSpan.FromSeconds(5));
+		CancellationToken token = cancellation.Token;
 		await client.Put(writePolicy, token, key, bin);
 
 		Record record = await client.Get(policy, token, key);
