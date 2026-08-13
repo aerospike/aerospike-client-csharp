@@ -894,7 +894,12 @@ namespace Aerospike.Client
 		/// <returns>string-typed expression yielding the modified string</returns>
 		public static Exp RegexReplace(StringPolicy policy, Exp pattern, Exp replacement, StringRegexFlags regexFlags, Exp src)
 		{
-			byte[] bytes = PackRegexReplace(pattern, replacement, (int)regexFlags, (int)policy.flags);
+			byte[] bytes = PackReplace(
+				StringOperation.REGEX_REPLACE,
+				pattern,
+				replacement,
+				(int)policy.flags,
+				(int)regexFlags);
 			return AddModify(src, bytes);
 		}
 
@@ -942,35 +947,32 @@ namespace Aerospike.Client
 		// opcode, which fails with PARAMETER_ERROR for our string-pair lists.
 		private const int QUOTED = 126;
 
-		// [cmd, [needle, repl], flags] — needle/replacement nested inside a 2-element list.
+		// [cmd, [needle, repl], policyFlags] or
+		// [cmd, [needle, repl], regexFlags, policyFlags].
 		// Specialized packing method. Leaving in StringExp instead of moving to Pack since the 
 		// structure is specific to string replace operations and doesn't fit the usual pattern
 		// of a command followed by a flat list of arguments.
-		private static byte[] PackReplace(int command, Exp needle, Exp replacement, int flags)
+		private static byte[] PackReplace(
+			int command,
+			Exp needle,
+			Exp replacement,
+			int policyFlags,
+			int? regexFlags = null)
 		{
 			Packer packer = new Packer();
-			packer.PackArrayBegin(3);
+			packer.PackArrayBegin(regexFlags.HasValue ? 4 : 3);
 			packer.PackNumber(command);
 			packer.PackArrayBegin(2);
 			packer.PackNumber(QUOTED);
 			packer.PackArrayBegin(2);
 			needle.Pack(packer);
 			replacement.Pack(packer);
-			packer.PackNumber(flags);
-			return packer.ToByteArray();
-		}
 
-		private static byte[] PackRegexReplace(Exp pattern, Exp replacement, int regexFlags, int policyFlags)
-		{
-			Packer packer = new Packer();
-			packer.PackArrayBegin(4);
-			packer.PackNumber(StringOperation.REGEX_REPLACE);
-			packer.PackArrayBegin(2);
-			packer.PackNumber(QUOTED);
-			packer.PackArrayBegin(2);
-			pattern.Pack(packer);
-			replacement.Pack(packer);
-			packer.PackNumber(regexFlags);
+			if (regexFlags.HasValue)
+			{
+				packer.PackNumber(regexFlags.Value);
+			}
+
 			packer.PackNumber(policyFlags);
 			return packer.ToByteArray();
 		}
