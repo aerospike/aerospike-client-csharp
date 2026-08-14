@@ -303,29 +303,6 @@ namespace Aerospike.Client
 		/// <param name="setName">optional set name, enter null when set does not exist</param>
 		/// <param name="key">user defined unique identifier within set.</param>
 		/// <exception cref="AerospikeException">if digest computation fails</exception>
-		public Key(string ns, string setName, bool key)
-		{
-			this.ns = ns;
-			this.setName = setName;
-			this.userKey = new Value.BooleanValue(key);
-			digest = ComputeDigest(setName, this.userKey);
-		}
-
-		/// <summary>
-		/// Initialize key from namespace, optional set name and user key.
-		/// The set name and user defined key are converted to a digest before sending to the server.
-		/// The user key is not used or returned by the server by default. If the user key needs 
-		/// to persist on the server, use one of the following methods: 
-		/// <list type="bullet">
-		/// <item>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
-		/// and retrieved on multi-record scans and queries.</item>
-		/// <item>Explicitly store and retrieve the key in a bin.</item>
-		/// </list>
-		/// </summary>
-		/// <param name="ns">namespace</param>
-		/// <param name="setName">optional set name, enter null when set does not exist</param>
-		/// <param name="key">user defined unique identifier within set.</param>
-		/// <exception cref="AerospikeException">if digest computation fails</exception>
 		public Key(string ns, string setName, byte key)
 		{
 			this.ns = ns;
