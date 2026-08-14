@@ -46,7 +46,7 @@ public sealed class Batch : SyncExample
 		for (int i = 0; i < existsArray.Length; i++)
 		{
 			Key key = keys[i];
-			console.Info($"Record: namespace={key.ns} set={key.setName} key={key.userKey} exists={existsArray[i]}");
+			Console.WriteLine($"Record: namespace={key.ns} set={key.setName} key={key.userKey} exists={existsArray[i]}");
 		}
 	}
 
@@ -62,7 +62,7 @@ public sealed class Batch : SyncExample
 		{
 			Key key = keys[i];
 			object value = records[i]?.GetValue(BinName);
-			console.Info($"Record: namespace={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={value}");
+			Console.WriteLine($"Record: namespace={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={value}");
 		}
 	}
 
@@ -78,7 +78,7 @@ public sealed class Batch : SyncExample
 		{
 			Key key = keys[i];
 			Record record = records[i];
-			console.Info(
+			Console.WriteLine(
 				$"Record: namespace={key.ns} set={key.setName} key={key.userKey} " +
 				$"generation={record?.generation} expiration={record?.expiration}");
 		}
@@ -117,22 +117,22 @@ public sealed class Batch : SyncExample
 
 				if (read.resultCode == ResultCode.OK)
 				{
-					console.Info($"Record: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={read.record?.GetValue(BinName)}");
+					Console.WriteLine($"Record: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={read.record?.GetValue(BinName)}");
 				}
 				else if (read.resultCode == ResultCode.KEY_NOT_FOUND_ERROR)
 				{
-					console.Info($"Record not found: ns={key.ns} set={key.setName} key={key.userKey}");
+					Console.WriteLine($"Record not found: ns={key.ns} set={key.setName} key={key.userKey}");
 				}
 				else
 				{
-					console.Error($"Record failed: key={key.userKey} result={ResultCode.GetResultString(read.resultCode)}");
+					Console.Error.WriteLine($"Record failed: key={key.userKey} result={ResultCode.GetResultString(read.resultCode)}");
 				}
 			}
 		}
 		catch (AerospikeException ae)
 		{
 			// A batch exception represents a command/node failure, not an ordinary missing key.
-			console.Error("Batch command failed.", ae);
+			Console.Error.WriteLine($"Batch command failed: {ae.Message}");
 			throw;
 		}
 	}

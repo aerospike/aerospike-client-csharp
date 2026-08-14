@@ -39,8 +39,13 @@ public static class Program
 				return 1;
 			}
 
-			Console console = new();
-			List<ExampleResultInfo> results = RunExamples(console, arguments);
+			List<ExampleResultInfo> results;
+
+			using (ExampleOutput.Install())
+			{
+				results = RunExamples(arguments);
+			}
+
 			if (!string.IsNullOrEmpty(arguments.reportTrxPath))
 			{
 				WriteTrxReport(arguments.reportTrxPath, results);
@@ -356,18 +361,18 @@ public static class Program
 		return settings;
 	}
 
-	private static List<ExampleResultInfo> RunExamples(Console console, Arguments args)
+	private static List<ExampleResultInfo> RunExamples(Arguments args)
 	{
 		List<ExampleResultInfo> results = [];
 
 		if (args.syncExamples.Count > 0)
 		{
-			results.AddRange(SyncExample.RunExamples(console, args));
+			results.AddRange(SyncExample.RunExamples(args));
 		}
 
 		if (args.asyncExamples.Count > 0)
 		{
-			results.AddRange(AsyncExample.RunExamples(console, args));
+			results.AddRange(AsyncExample.RunExamples(args));
 		}
 
 		return results;

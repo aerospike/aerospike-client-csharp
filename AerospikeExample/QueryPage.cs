@@ -58,7 +58,7 @@ public sealed class QueryPage : SyncExample
 			}
 
 			page++;
-			console.Info($"Page {page} | {count} records");
+			Console.WriteLine($"Page {page} | {count} records");
 		}
 	}
 }

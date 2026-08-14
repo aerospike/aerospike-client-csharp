@@ -32,7 +32,7 @@ public sealed class Connect : SyncExample
 		RunAuthConnect();
 		RunTlsConnect();
 		RunTlsPkiConnect();
-		console.Info("Connect completed successfully.");
+		Console.WriteLine("Connect completed successfully.");
 	}
 
 	private void ShowPolicyOptions()
@@ -87,7 +87,7 @@ public sealed class Connect : SyncExample
 		AerospikeClient client = new(host, port);
 		// @@@SNIPEND
 
-		console.Info($"Basic connect: host={host} port={port}");
+		Console.WriteLine($"Basic connect: host={host} port={port}");
 
 		// @@@SNIPSTART csharp-client-connect-close
 		client.Close();
@@ -112,7 +112,7 @@ public sealed class Connect : SyncExample
 		AerospikeClient client = new(policy, host, port);
 		// @@@SNIPEND
 
-		console.Info($"Auth connect: host={host} port={port} user={user}");
+		Console.WriteLine($"Auth connect: host={host} port={port} user={user}");
 		client.Close();
 	}
 
@@ -136,7 +136,7 @@ public sealed class Connect : SyncExample
 		AerospikeClient client = new(policy, tlsHost);
 		// @@@SNIPEND
 
-		console.Info($"TLS connect: host={host} tlsName={tlsName} port={port}");
+		Console.WriteLine($"TLS connect: host={host} tlsName={tlsName} port={port}");
 		client.Close();
 	}
 
@@ -170,7 +170,7 @@ public sealed class Connect : SyncExample
 		AerospikeClient client = new(policy, tlsHost);
 		// @@@SNIPEND
 
-		console.Info($"TLS+PKI connect: host={host} tlsName={tlsName} port={port}");
+		Console.WriteLine($"TLS+PKI connect: host={host} tlsName={tlsName} port={port}");
 		client.Close();
 	}
 }

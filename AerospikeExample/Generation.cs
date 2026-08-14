@@ -29,19 +29,19 @@ public sealed class Generation : SyncExample
 		string binName = "genbin";
 
 		Bin first = new(binName, "genvalue1");
-		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={first.value}");
+		Console.WriteLine($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={first.value}");
 		client.Put(writePolicy, key, first);
 
 		Bin second = new(binName, "genvalue2");
-		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={second.value}");
+		Console.WriteLine($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={second.value}");
 		client.Put(writePolicy, key, second);
 
 		Record record = client.Get(policy, key, binName);
-		console.Info($"Get: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={record?.GetValue(binName)} generation={record?.generation}");
+		Console.WriteLine($"Get: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={record?.GetValue(binName)} generation={record?.generation}");
 
 		Bin third = new(binName, "genvalue3");
 		int expectedGeneration = record?.generation ?? 0;
-		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={third.value} expected generation={expectedGeneration}");
+		Console.WriteLine($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={third.value} expected generation={expectedGeneration}");
 
 		WritePolicy expectGenPolicy = new(writePolicy)
 		{
@@ -55,16 +55,16 @@ public sealed class Generation : SyncExample
 		{
 			generation = 9999
 		};
-		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={fourth.value} expected generation={invalidGenPolicy.generation}");
+		Console.WriteLine($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={binName} value={fourth.value} expected generation={invalidGenPolicy.generation}");
 
 		try
 		{
 			client.Put(invalidGenPolicy, key, fourth);
-			console.Info("Put with invalid generation completed unexpectedly.");
+			Console.WriteLine("Put with invalid generation completed unexpectedly.");
 		}
 		catch (AerospikeException ae) when (ae.Result == ResultCode.GENERATION_ERROR)
 		{
-			console.Info("Success: Generation error returned as expected.");
+			Console.WriteLine("Success: Generation error returned as expected.");
 		}
 	}
 }

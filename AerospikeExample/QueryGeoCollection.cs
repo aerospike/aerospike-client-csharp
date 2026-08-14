@@ -43,7 +43,7 @@ public sealed class QueryGeoCollection : SyncExample
 
 	private void RunQuery(string binName, IndexCollectionType indexType)
 	{
-		console.Info($"Query for: ns={ns} set={set} bin={binName} {indexType} within <region>");
+		Console.WriteLine($"Query for: ns={ns} set={set} bin={binName} {indexType} within <region>");
 
 		Statement stmt = new()
 		{
@@ -61,6 +61,6 @@ public sealed class QueryGeoCollection : SyncExample
 			uniques.Add(rs.Record.GetString(UniqueBinName));
 		}
 
-		console.Info($"Query returned {uniques.Count} unique records");
+		Console.WriteLine($"Query returned {uniques.Count} unique records");
 	}
 }

@@ -43,7 +43,7 @@ public sealed class QueryPrimary : SyncExample
 		{
 			while (recordSet.Next())
 			{
-				console.Info($"Key: {recordSet.Key.userKey} | Record: {recordSet.Record}");
+				Console.WriteLine($"Key: {recordSet.Key.userKey} | Record: {recordSet.Record}");
 			}
 		}
 	}
@@ -69,7 +69,7 @@ public sealed class QueryPrimary : SyncExample
 		{
 			while (recordSet.Next())
 			{
-				console.Info($"Key: {recordSet.Key.userKey} | Record: {recordSet.Record}");
+				Console.WriteLine($"Key: {recordSet.Key.userKey} | Record: {recordSet.Record}");
 			}
 		}
 	}

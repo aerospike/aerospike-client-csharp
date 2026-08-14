@@ -28,18 +28,18 @@ public sealed class Operate : SyncExample
 		Key key = new(ns, set, "opkey");
 		Bin intBin = new("optintbin", 7);
 		Bin stringBin = new("optstringbin", "string value");
-		console.Info(
+		Console.WriteLine(
 			$"Initial record: namespace={key.ns} set={key.setName} key={key.userKey} " +
 			$"binname1={intBin.name} binvalue1={intBin.value} " +
 			$"binname2={stringBin.name} binvalue2={stringBin.value}");
 
 		Bin addBin = new(intBin.name, 4);
 		Bin replaceBin = new(stringBin.name, "new string");
-		console.Info($"Add: {addBin.value}");
-		console.Info($"Write: {replaceBin.value}");
-		console.Info("Read:");
+		Console.WriteLine($"Add: {addBin.value}");
+		Console.WriteLine($"Write: {replaceBin.value}");
+		Console.WriteLine("Read:");
 
 		Record record = client.Operate(writePolicy, key, Operation.Add(addBin), Operation.Put(replaceBin), Operation.Get());
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 	}
 }

@@ -51,7 +51,7 @@ public sealed class ExpressionOperations : SyncExample
 			ExpOperation.Read("strict", BonusScore, ExpReadFlags.DEFAULT),
 			ExpOperation.Read("tolerant", BonusScore, ExpReadFlags.EVAL_NO_FAIL));
 
-		console.Info($"Bonus score: {result.GetValue("tolerant")}");
+		Console.WriteLine($"Bonus score: {result.GetValue("tolerant")}");
 
 		if (result.GetInt("strict") != 15 || client.Get(null, key).GetInt("bonus") != 15)
 		{
@@ -75,7 +75,7 @@ public sealed class ExpressionOperations : SyncExample
 		}
 		catch (AerospikeException ae) when (ae.Result == ResultCode.OP_NOT_APPLICABLE)
 		{
-			console.Info("DEFAULT read rejected the unknown result, as expected.");
+			Console.WriteLine("DEFAULT read rejected the unknown result, as expected.");
 		}
 	}
 
@@ -89,7 +89,7 @@ public sealed class ExpressionOperations : SyncExample
 			ExpOperation.Write("bonus", BonusScore, ExpWriteFlags.EVAL_NO_FAIL),
 			ExpOperation.Read("tolerant", BonusScore, ExpReadFlags.EVAL_NO_FAIL));
 
-		console.Info($"Tolerant read returned: {result.GetValue("tolerant") ?? "no value"}");
+		Console.WriteLine($"Tolerant read returned: {result.GetValue("tolerant") ?? "no value"}");
 
 		if (client.Get(null, key).GetInt("bonus") != 15)
 		{

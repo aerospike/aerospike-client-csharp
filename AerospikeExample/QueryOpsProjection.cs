@@ -52,10 +52,10 @@ public sealed class QueryOpsProjection : SyncExample
 			Key key = recordSet.Key;
 			Record record = recordSet.Record;
 
-			console.Info($"Key: {key.userKey}");
-			console.Info($"  test-bin-1: {record.GetValue("test-bin-1")}");
-			console.Info($"  test-bin-2: {record.GetValue("test-bin-2")}");
-			console.Info($"  test-map-bin: {record.GetValue("test-map-bin")}");
+			Console.WriteLine($"Key: {key.userKey}");
+			Console.WriteLine($"  test-bin-1: {record.GetValue("test-bin-1")}");
+			Console.WriteLine($"  test-bin-2: {record.GetValue("test-bin-2")}");
+			Console.WriteLine($"  test-map-bin: {record.GetValue("test-map-bin")}");
 		}
 	}
 
@@ -92,9 +92,9 @@ public sealed class QueryOpsProjection : SyncExample
 		while (recordSet.Next())
 		{
 			Record record = recordSet.Record;
-			console.Info($"Original: {record.GetValue("original-value")}");
-			console.Info($"Doubled: {record.GetValue("doubled-value")}");
-			console.Info($"Status: {record.GetValue("status")}");
+			Console.WriteLine($"Original: {record.GetValue("original-value")}");
+			Console.WriteLine($"Doubled: {record.GetValue("doubled-value")}");
+			Console.WriteLine($"Status: {record.GetValue("status")}");
 		}
 	}
 }

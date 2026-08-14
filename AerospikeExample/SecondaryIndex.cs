@@ -49,17 +49,17 @@ public sealed class SecondaryIndex : SyncExample
 				IndexType.NUMERIC);
 
 			task.Wait();
-			console.Info($"Created index {IndexName}");
+			Console.WriteLine($"Created index {IndexName}");
 		}
 		catch (AerospikeException.Timeout ae)
 		{
 			// Wait() stopped polling. The server keeps building the index.
-			console.Error($"Still waiting on index {IndexName}; the server is building it.", ae);
+			Console.Error.WriteLine($"Still waiting on index {IndexName}: {ae.Message}");
 			throw;
 		}
 		catch (AerospikeException ae) when (ae.Result == ResultCode.INDEX_ALREADY_EXISTS)
 		{
-			console.Info($"Index {IndexName} already exists");
+			Console.WriteLine($"Index {IndexName} already exists");
 		}
 	}
 
@@ -68,11 +68,11 @@ public sealed class SecondaryIndex : SyncExample
 		try
 		{
 			client.DropIndex(indexPolicy, ns, SetName, IndexName).Wait();
-			console.Info($"Dropped index {IndexName}");
+			Console.WriteLine($"Dropped index {IndexName}");
 		}
 		catch (AerospikeException ae) when (ae.Result == ResultCode.INDEX_NOTFOUND)
 		{
-			console.Info($"Index {IndexName} does not exist");
+			Console.WriteLine($"Index {IndexName} does not exist");
 		}
 	}
 }

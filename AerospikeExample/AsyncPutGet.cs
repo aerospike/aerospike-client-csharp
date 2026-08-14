@@ -39,7 +39,7 @@ public sealed class AsyncPutGet : AsyncExample
 
 	private void RunPutGetListener(Key key, Bin bin)
 	{
-		console.Info($"Put inline: namespace={key.ns} set={key.setName} key={key.userKey} value={bin.value}");
+		Console.WriteLine($"Put inline: namespace={key.ns} set={key.setName} key={key.userKey} value={bin.value}");
 
 		client.Put(writePolicy, new WriteHandler(this, client, policy, bin), key, bin);
 		completed.Wait();
@@ -47,7 +47,7 @@ public sealed class AsyncPutGet : AsyncExample
 
 	private async Task RunPutGetWithTask(Key key, Bin bin)
 	{
-		console.Info($"Put with task: namespace={key.ns} set={key.setName} key={key.userKey} value={bin.value}");
+		Console.WriteLine($"Put with task: namespace={key.ns} set={key.setName} key={key.userKey} value={bin.value}");
 
 		using CancellationTokenSource cancellation = new(TimeSpan.FromSeconds(5));
 		CancellationToken token = cancellation.Token;
@@ -64,13 +64,13 @@ public sealed class AsyncPutGet : AsyncExample
 
 		if (received != null && received.Equals(expected))
 		{
-			console.Info(
+			Console.WriteLine(
 				$"Bin matched: namespace={key.ns} set={key.setName} key={key.userKey} " +
 				$"bin={bin.name} value={received} generation={record.generation} expiration={record.expiration}");
 		}
 		else
 		{
-			console.Error($"Put/Get mismatch: expected {expected}, received {received}");
+			Console.Error.WriteLine($"Put/Get mismatch: expected {expected}, received {received}");
 		}
 	}
 
@@ -86,19 +86,19 @@ public sealed class AsyncPutGet : AsyncExample
 		{
 			try
 			{
-				parent.console.Info($"Get: namespace={key.ns} set={key.setName} key={key.userKey}");
+				Console.WriteLine($"Get: namespace={key.ns} set={key.setName} key={key.userKey}");
 				client.Get(policy, new RecordHandler(parent, bin), key);
 			}
 			catch (Exception ex)
 			{
-				parent.console.Error("Failed to read", ex);
+				Console.Error.WriteLine($"Failed to read: {ex.Message}");
 				parent.Complete();
 			}
 		}
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error("Failed to put", e);
+			Console.Error.WriteLine($"Failed to put: {e.Message}");
 			parent.Complete();
 		}
 	}
@@ -113,7 +113,7 @@ public sealed class AsyncPutGet : AsyncExample
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error("Failed to get", e);
+			Console.Error.WriteLine($"Failed to get: {e.Message}");
 			parent.Complete();
 		}
 	}

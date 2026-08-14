@@ -63,11 +63,11 @@ public sealed class CreateOnly : SyncExample
 		}
 		catch (AerospikeException ae) when (ae.Result == ResultCode.KEY_EXISTS_ERROR)
 		{
-			console.Info("The record was already created.");
+			Console.WriteLine("The record was already created.");
 		}
 		catch (AerospikeException ae)
 		{
-			console.Error($"Create failed: {ResultCode.GetResultString(ae.Result)}", ae);
+			Console.Error.WriteLine($"Create failed: {ResultCode.GetResultString(ae.Result)}");
 			throw;
 		}
 
@@ -78,7 +78,7 @@ public sealed class CreateOnly : SyncExample
 		}
 		catch (AerospikeException ae) when (ae.Result == ResultCode.KEY_EXISTS_ERROR)
 		{
-			console.Info("Create-only correctly rejected the duplicate record.");
+			Console.WriteLine("Create-only correctly rejected the duplicate record.");
 		}
 	}
 }

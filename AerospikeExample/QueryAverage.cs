@@ -28,7 +28,7 @@ public sealed class QueryAverage : SyncExample
 		const string indexName = "avgindex";
 		const string binName = "l2";
 
-		console.Info($"Query for: ns={ns} set={set} index={indexName} bin={binName}");
+		Console.WriteLine($"Query for: ns={ns} set={set} index={indexName} bin={binName}");
 
 		Statement stmt = new()
 		{
@@ -44,7 +44,7 @@ public sealed class QueryAverage : SyncExample
 			double sum = Convert.ToDouble((long)map["sum"]);
 			double count = Convert.ToDouble((long)map["count"]);
 			double avg = sum / count;
-			console.Info($"Sum={sum} Count={count} Average={avg}");
+			Console.WriteLine($"Sum={sum} Count={count} Average={avg}");
 		}
 	}
 }

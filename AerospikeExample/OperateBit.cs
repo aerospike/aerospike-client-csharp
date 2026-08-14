@@ -40,7 +40,7 @@ public sealed class OperateBit : SyncExample
 
 		foreach (byte b in bytes)
 		{
-			console.Info(Convert.ToString(b));
+			Console.WriteLine(Convert.ToString(b));
 		}
 	}
 }

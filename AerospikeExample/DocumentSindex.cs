@@ -59,11 +59,11 @@ public sealed class DocumentSindex : SyncExample
 			{
 				client.Put(documentWritePolicy, key, nameBin, transactionBin);
 				Record record = client.Get(null, key);
-				console.Info($"Create succeeded\nKey: {key.userKey}\nRecord: {record}");
+				Console.WriteLine($"Create succeeded\nKey: {key.userKey}\nRecord: {record}");
 			}
 			catch (AerospikeException ae)
 			{
-				console.Error($"Create failed for key {userKey}.", ae);
+				Console.Error.WriteLine($"Create failed for key {userKey}: {ae.Message}");
 				throw;
 			}
 		}
@@ -85,7 +85,7 @@ public sealed class DocumentSindex : SyncExample
 
 		while (records.Next())
 		{
-			console.Info($"Key: {records.Key.userKey} | Record: {records.Record}");
+			Console.WriteLine($"Key: {records.Key.userKey} | Record: {records.Record}");
 		}
 	}
 
@@ -112,7 +112,7 @@ public sealed class DocumentSindex : SyncExample
 
 		while (records.Next())
 		{
-			console.Info($"Key: {records.Key.userKey} | Record: {records.Record}");
+			Console.WriteLine($"Key: {records.Key.userKey} | Record: {records.Record}");
 		}
 	}
 }

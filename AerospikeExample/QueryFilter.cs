@@ -30,7 +30,7 @@ public sealed class QueryFilter : SyncExample
 		const string nameFilter = "Bill";
 		const string passwordFilter = "hknfpkj";
 
-		console.Info($"Query for: ns={ns} set={set} index={indexName} name={nameFilter} pass={passwordFilter}");
+		Console.WriteLine($"Query for: ns={ns} set={set} index={indexName} name={nameFilter} pass={passwordFilter}");
 
 		Statement stmt = new()
 		{
@@ -46,7 +46,7 @@ public sealed class QueryFilter : SyncExample
 		while (rs.Next())
 		{
 			Dictionary<object, object> map = (Dictionary<object, object>)rs.Object;
-			console.Info($"Record found: name={map["name"]} password={map["password"]}");
+			Console.WriteLine($"Record found: name={map["name"]} password={map["password"]}");
 		}
 	}
 }
