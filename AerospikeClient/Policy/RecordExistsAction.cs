@@ -22,8 +22,8 @@ namespace Aerospike.Client
 	public enum RecordExistsAction
 	{
 		/// <summary>
-		/// Create or update record.
-		/// Merge write command bins with existing bins.
+		/// Create or update the record. Merge write command bins with existing bins,
+		/// leaving bins not named by the command unchanged. This is the default action.
 		/// </summary>
 		UPDATE,
 
@@ -48,7 +48,7 @@ namespace Aerospike.Client
 		REPLACE_ONLY,
 
 		/// <summary>
-		/// Create only.  Fail if record exists. 
+		/// Create only. Fail with <see cref="ResultCode.KEY_EXISTS_ERROR"/> if the record exists.
 		/// </summary>
 		CREATE_ONLY
 	}

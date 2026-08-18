@@ -28,7 +28,7 @@ public sealed class ScanSeries : SyncExample
 	/// </summary>
 	public override void RunExample()
 	{
-		console.Info($"Scan series: namespace={ns} set={set}");
+		Console.WriteLine($"Scan series: namespace={ns} set={set}");
 		setMap.Clear();
 
 		ScanPolicy scanPolicy = new()
@@ -40,30 +40,30 @@ public sealed class ScanSeries : SyncExample
 
 		foreach (Node node in client.Nodes)
 		{
-			console.Info($"Scan node {node.Name}");
+			Console.WriteLine($"Scan node {node.Name}");
 			client.ScanNode(scanPolicy, node, ns, set, ScanCallback);
 
 			foreach (KeyValuePair<string, Metrics> entry in setMap)
 			{
-				console.Info($"Node {node.Name} set {entry.Key} count: {entry.Value.count}");
+				Console.WriteLine($"Node {node.Name} set {entry.Key} count: {entry.Value.count}");
 				entry.Value.total += entry.Value.count;
 				entry.Value.count = 0;
 			}
 		}
 
 		double seconds = (DateTime.Now - begin).TotalSeconds;
-		console.Info($"Elapsed time: {seconds} seconds");
+		Console.WriteLine($"Elapsed time: {seconds} seconds");
 
 		long total = 0;
 
 		foreach (KeyValuePair<string, Metrics> entry in setMap)
 		{
-			console.Info($"Total set {entry.Key} count: {entry.Value.total}");
+			Console.WriteLine($"Total set {entry.Key} count: {entry.Value.total}");
 			total += entry.Value.total;
 		}
 
-		console.Info($"Grand total: {total}");
-		console.Info($"Records/second: {Math.Round(total / seconds)}");
+		Console.WriteLine($"Grand total: {total}");
+		Console.WriteLine($"Records/second: {Math.Round(total / seconds)}");
 	}
 
 	private void ScanCallback(Key key, Record record)

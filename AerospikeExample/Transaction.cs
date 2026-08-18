@@ -33,7 +33,7 @@ public sealed class Transaction : SyncExample
 	private void TxnReadWrite()
 	{
 		using Txn txn = new();
-		console.Info($"Begin txn: {txn.Id}");
+		Console.WriteLine($"Begin txn: {txn.Id}");
 
 		try
 		{
@@ -42,15 +42,15 @@ public sealed class Transaction : SyncExample
 				Txn = txn
 			};
 
-			console.Info("Run put");
+			Console.WriteLine("Run put");
 			Key key1 = new(ns, set, 1);
 			client.Put(wp, key1, new Bin("a", "val1"));
 
-			console.Info("Run another put");
+			Console.WriteLine("Run another put");
 			Key key2 = new(ns, set, 2);
 			client.Put(wp, key2, new Bin("b", "val2"));
 
-			console.Info("Run get");
+			Console.WriteLine("Run get");
 			Policy p = new(client.ReadPolicyDefault)
 			{
 				Txn = txn
@@ -58,9 +58,9 @@ public sealed class Transaction : SyncExample
 
 			Key key3 = new(ns, set, 3);
 			Record rec = client.Get(p, key3);
-			console.Info($"Get result: {rec}");
+			Console.WriteLine($"Get result: {rec}");
 
-			console.Info("Run delete");
+			Console.WriteLine("Run delete");
 			WritePolicy dp = new(client.WritePolicyDefault)
 			{
 				Txn = txn,
@@ -70,12 +70,12 @@ public sealed class Transaction : SyncExample
 		}
 		catch
 		{
-			console.Info($"Abort txn: {txn.Id}");
+			Console.WriteLine($"Abort txn: {txn.Id}");
 			client.Abort(txn);
 			throw;
 		}
 
-		console.Info($"Commit txn: {txn.Id}");
+		Console.WriteLine($"Commit txn: {txn.Id}");
 		client.Commit(txn);
 	}
 }

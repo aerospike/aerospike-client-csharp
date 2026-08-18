@@ -18,6 +18,14 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Task used to poll for long running create index completion.
+	/// Polling copies <see cref="Policy.socketTimeout"/> from the policy supplied to
+	/// CreateIndex into <see cref="InfoPolicy.timeout"/>. That value is used both for
+	/// each polling info command and as the overall client-side deadline in
+	/// <see cref="BaseTask.Wait()"/>. Zero disables both limits. When CreateIndex
+	/// receives a null policy, the client's default write policy supplies the socket
+	/// timeout. The stock <see cref="Policy.socketTimeout"/> is 30000 milliseconds, but
+	/// <see cref="ClientPolicy.writePolicyDefault"/> or dynamic configuration can
+	/// override it.
 	/// </summary>
 	public sealed class IndexTask : BaseTask
 	{

@@ -36,7 +36,7 @@ public sealed class Replace : SyncExample
 		Key key = new(ns, set, "replacekey");
 		Bin bin3 = new("bin3", "value3");
 
-		console.Info($"Replace with: namespace={key.ns} set={key.setName} key={key.userKey} bin={bin3.name} value={bin3.value}");
+		Console.WriteLine($"Replace with: namespace={key.ns} set={key.setName} key={key.userKey} bin={bin3.name} value={bin3.value}");
 
 		WritePolicy replacePolicy = new(writePolicy)
 		{
@@ -50,7 +50,7 @@ public sealed class Replace : SyncExample
 		Key key = new(ns, set, "replaceonlykey");
 		Bin bin = new("bin", "value");
 
-		console.Info($"Replace record requiring that it exists: namespace={key.ns} set={key.setName} key={key.userKey}");
+		Console.WriteLine($"Replace record requiring that it exists: namespace={key.ns} set={key.setName} key={key.userKey}");
 
 		WritePolicy replaceOnlyPolicy = new(writePolicy)
 		{
@@ -60,11 +60,11 @@ public sealed class Replace : SyncExample
 		try
 		{
 			client.Put(replaceOnlyPolicy, key, bin);
-			console.Info("Replace-only put completed.");
+			Console.WriteLine("Replace-only put completed.");
 		}
 		catch (AerospikeException ae) when (ae.Result is ResultCode.KEY_NOT_FOUND_ERROR or ResultCode.FILTERED_OUT)
 		{
-			console.Info("Success. Replace-only rejected because the record does not exist.");
+			Console.WriteLine("Success. Replace-only rejected because the record does not exist.");
 		}
 	}
 }

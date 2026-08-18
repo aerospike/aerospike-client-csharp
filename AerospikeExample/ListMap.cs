@@ -34,19 +34,19 @@ public sealed class ListMap : SyncExample
 
 	private void RoundTripListStrings()
 	{
-		console.Info("Read/Write List<string>");
+		Console.WriteLine("Read/Write List<string>");
 		Key key = new(ns, set, "listkey1");
 		Bin bin = new("listbin1", new List<object> { "string1", "string2", "string3" });
 
 		client.Put(writePolicy, key, bin);
 
 		Record record = client.Get(policy, key, bin.name);
-		console.Info($"Read/Write List<string>: {record?.GetValue(bin.name)}");
+		Console.WriteLine($"Read/Write List<string>: {record?.GetValue(bin.name)}");
 	}
 
 	private void RoundTripListComplex()
 	{
-		console.Info("Read/Write List<object>");
+		Console.WriteLine("Read/Write List<object>");
 		Key key = new(ns, set, "listkey2");
 
 		byte[] blob = [3, 52, 125];
@@ -55,12 +55,12 @@ public sealed class ListMap : SyncExample
 		client.Put(writePolicy, key, bin);
 
 		Record record = client.Get(policy, key, bin.name);
-		console.Info($"Read/Write List<object>: {record?.GetValue(bin.name)}");
+		Console.WriteLine($"Read/Write List<object>: {record?.GetValue(bin.name)}");
 	}
 
 	private void RoundTripMapStrings()
 	{
-		console.Info("Read/Write Dictionary<string, string>");
+		Console.WriteLine("Read/Write Dictionary<string, string>");
 		Key key = new(ns, set, "mapkey1");
 
 		Dictionary<object, object> map = new()
@@ -73,12 +73,12 @@ public sealed class ListMap : SyncExample
 		client.Put(writePolicy, key, bin);
 
 		Record record = client.Get(policy, key, bin.name);
-		console.Info($"Read/Write Dictionary<string, string>: {record?.GetValue(bin.name)}");
+		Console.WriteLine($"Read/Write Dictionary<string, string>: {record?.GetValue(bin.name)}");
 	}
 
 	private void RoundTripMapComplex()
 	{
-		console.Info("Read/Write Dictionary<object, object>");
+		Console.WriteLine("Read/Write Dictionary<object, object>");
 		Key key = new(ns, set, "mapkey2");
 
 		byte[] blob = [3, 52, 125];
@@ -96,12 +96,12 @@ public sealed class ListMap : SyncExample
 		client.Put(writePolicy, key, bin);
 
 		Record record = client.Get(policy, key, bin.name);
-		console.Info($"Read/Write Dictionary<object, object>: {record?.GetValue(bin.name)}");
+		Console.WriteLine($"Read/Write Dictionary<object, object>: {record?.GetValue(bin.name)}");
 	}
 
 	private void RoundTripListMapCombined()
 	{
-		console.Info("Read/Write List/Dictionary");
+		Console.WriteLine("Read/Write List/Dictionary");
 		Key key = new(ns, set, "listmapkey");
 
 		byte[] blob = [3, 52, 125];
@@ -121,6 +121,6 @@ public sealed class ListMap : SyncExample
 		client.Put(writePolicy, key, bin);
 
 		Record record = client.Get(policy, key, bin.name);
-		console.Info($"Read/Write List/Dictionary: {record?.GetValue(bin.name)}");
+		Console.WriteLine($"Read/Write List/Dictionary: {record?.GetValue(bin.name)}");
 	}
 }

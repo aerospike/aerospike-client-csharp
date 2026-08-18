@@ -39,8 +39,13 @@ public static class Program
 				return 1;
 			}
 
-			Console console = new();
-			List<ExampleResultInfo> results = RunExamples(console, arguments);
+			List<ExampleResultInfo> results;
+
+			using (ExampleOutput.Install())
+			{
+				results = RunExamples(arguments);
+			}
+
 			if (!string.IsNullOrEmpty(arguments.reportTrxPath))
 			{
 				WriteTrxReport(arguments.reportTrxPath, results);
@@ -77,6 +82,7 @@ public static class Program
 		string tlsProtocols = null;
 		string tlsRevoke = null;
 		string tlsClientCertFile = null;
+		string tlsClientCertPassword = null;
 		bool tlsLoginOnly = false;
 		AuthMode authMode = AuthMode.INTERNAL;
 		bool useServicesAlternate = false;
@@ -168,6 +174,11 @@ public static class Program
 					cliOverrides.Add("TlsClientCertFile");
 					break;
 
+				case "--tlsClientCertPassword":
+					if (!TryNext(args, ref i, out tlsClientCertPassword)) { PrintUsage(); return null; }
+					cliOverrides.Add("TlsClientCertPassword");
+					break;
+
 				case "--tlsLoginOnly":
 					tlsLoginOnly = true;
 					cliOverrides.Add("TlsLoginOnly");
@@ -247,6 +258,7 @@ public static class Program
 			Apply("TlsProtocols", v => tlsProtocols = v);
 			Apply("TlsRevoke", v => tlsRevoke = v);
 			Apply("TlsClientCertFile", v => tlsClientCertFile = v);
+			Apply("TlsClientCertPassword", v => tlsClientCertPassword = v);
 			Apply("TlsLoginOnly", v => tlsLoginOnly = bool.Parse(v));
 		}
 
@@ -272,6 +284,8 @@ public static class Program
 			password = password,
 			clusterName = clusterName,
 			tlsPolicy = tlsPolicy,
+			tlsClientCertFile = tlsClientCertFile,
+			tlsClientCertPassword = tlsClientCertPassword,
 			authMode = authMode,
 			useServicesAlternate = useServicesAlternate,
 			commandMax = commandMax,
@@ -347,18 +361,18 @@ public static class Program
 		return settings;
 	}
 
-	private static List<ExampleResultInfo> RunExamples(Console console, Arguments args)
+	private static List<ExampleResultInfo> RunExamples(Arguments args)
 	{
 		List<ExampleResultInfo> results = [];
 
 		if (args.syncExamples.Count > 0)
 		{
-			results.AddRange(SyncExample.RunExamples(console, args));
+			results.AddRange(SyncExample.RunExamples(args));
 		}
 
 		if (args.asyncExamples.Count > 0)
 		{
-			results.AddRange(AsyncExample.RunExamples(console, args));
+			results.AddRange(AsyncExample.RunExamples(args));
 		}
 
 		return results;
@@ -547,6 +561,7 @@ public static class Program
 			"       --tlsProtocols <p>       TLS protocols (e.g. TLSv1.2)\n" +
 			"       --tlsRevoke <list>       Revoke certificates by serial number\n" +
 			"       --tlsClientCertFile <f>  TLS client certificate file\n" +
+			"       --tlsClientCertPassword <p>  TLS client certificate password\n" +
 			"       --tlsLoginOnly           Use TLS on login only\n" +
 			$"       --auth <mode>            Authentication mode: {string.Join(", ", Enum.GetNames<AuthMode>())}\n" +
 			"       --useServicesAlternate   Use services-alternate for cluster discovery\n" +

@@ -49,19 +49,19 @@ public sealed class OperateMap : SyncExample
 
 		Record record = client.Operate(writePolicy, key,
 			MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 
 		// Remove a key, returning its value, and report the new map size.
 		record = client.Operate(writePolicy, key,
 			MapOperation.RemoveByKey(binName, Value.Get(1), MapReturnType.VALUE),
 			MapOperation.Size(binName));
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 
 		IList results = record.GetList(binName);
 
 		foreach (object value in results)
 		{
-			console.Info($"Received: {value}");
+			Console.WriteLine($"Received: {value}");
 		}
 	}
 
@@ -80,13 +80,13 @@ public sealed class OperateMap : SyncExample
 
 		Record record = client.Operate(writePolicy, key,
 			MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 
 		// Increment two user scores.
 		record = client.Operate(writePolicy, key,
 			MapOperation.Increment(MapPolicy.Default, binName, Value.Get("John"), Value.Get(5)),
 			MapOperation.Increment(MapPolicy.Default, binName, Value.Get("Jim"), Value.Get(-4)));
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 
 		// Read the top two scores.
 		record = client.Operate(writePolicy, key,
@@ -96,7 +96,7 @@ public sealed class OperateMap : SyncExample
 
 		foreach (object value in results)
 		{
-			console.Info($"Received: {value}");
+			Console.WriteLine($"Received: {value}");
 		}
 	}
 
@@ -125,13 +125,13 @@ public sealed class OperateMap : SyncExample
 
 		Record record = client.Operate(writePolicy, key,
 			MapOperation.PutItems(MapPolicy.Default, binName, inputMap));
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 
 		List<Value> end = [MillisSinceEpoch(new DateTime(2018, 2, 2)), Value.AsNull];
 
 		record = client.Operate(writePolicy, key,
 			MapOperation.RemoveByValueRange(binName, null, Value.Get(end), MapReturnType.COUNT));
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 	}
 
 	private static Value MillisSinceEpoch(DateTime dt)
@@ -171,7 +171,7 @@ public sealed class OperateMap : SyncExample
 			Operation.Get(binName));
 
 		Record record = client.Get(policy, key);
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 	}
 
 	private void RunNestedMapCreateExample()
@@ -207,7 +207,7 @@ public sealed class OperateMap : SyncExample
 			Operation.Get(binName));
 
 		Record record = client.Get(policy, key);
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 	}
 
 	private void RunNestedListCreateExample()
@@ -233,6 +233,6 @@ public sealed class OperateMap : SyncExample
 			Operation.Get(binName));
 
 		Record record = client.Get(policy, key);
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 	}
 }

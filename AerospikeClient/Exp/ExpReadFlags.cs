@@ -23,12 +23,15 @@ namespace Aerospike.Client
 	public enum ExpReadFlags
 	{
 		/// <summary>
-		/// Default.
+		/// Default. Expression evaluation failures fail the operation with
+		/// <see cref="ResultCode.OP_NOT_APPLICABLE"/>.
 		/// </summary>
 		DEFAULT = 0,
 
 		/// <summary>
 		/// Ignore failures caused by the expression resolving to unknown or a non-bin type.
+		/// The expression result is not returned for the failed read, and other operations in
+		/// the command can continue.
 		/// </summary>
 		EVAL_NO_FAIL = 16
 	}
