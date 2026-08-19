@@ -29,9 +29,9 @@ namespace Aerospike.Client
 		{
 			OPEN,
 			VERIFIED,
-			COMMIT_FAILED,
 			COMMITTED,
-			ABORTED
+			ABORTED,
+			COMMIT_FAILED
 		}
 
 		private static long randomState = DateTime.UtcNow.Ticks;
