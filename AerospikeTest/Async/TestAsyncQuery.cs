@@ -23,7 +23,7 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "asqindex";
 		private const string keyPrefix = "asqkey";
-		private static readonly string binName = Suite.GetBinName("asqbin");
+		private static readonly string binName = "asqbin";
 		private const int size = 50;
 
 		[ClassInitialize()]

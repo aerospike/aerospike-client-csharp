@@ -38,10 +38,12 @@ namespace Aerospike.Test
 		[ClassInitialize()]
 		public static void WriteRecords(TestContext testContext)
 		{
-			WritePolicy policy = new()
+			WritePolicy policy = new();
+
+			if (SuiteHelpers.hasTtl)
 			{
-				expiration = 2592000
-			};
+				policy.expiration = 2592000;
+			}
 
 			for (int i = 1; i <= Size; i++)
 			{
@@ -177,8 +179,11 @@ namespace Aerospike.Test
 
 				AssertRecordFound(key, record);
 				Assert.AreNotEqual(0, record.generation);
-				// ttl can be zero if server default-ttl = 0.
-				//Assert.AreNotEqual(0, record.expiration);
+
+				if (SuiteHelpers.hasTtl)
+				{
+					Assert.AreNotEqual(0, record.expiration);
+				}
 			}
 		}
 
@@ -829,6 +834,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void BatchReadTTL()
 		{
+			Suite.RequireTtlSupport();
+
+			if (SuiteHelpers.serverVersion < new Version(7, 0, 0, 0))
+			{
+				Assert.Inconclusive("Skipping test: server version is < 7.0");
+			}
+
 			// WARNING: This test takes a long time to run due to sleeps.
 			// Define keys
 			Key key1 = new(SuiteHelpers.ns, SuiteHelpers.set, 88888);
@@ -925,8 +937,11 @@ namespace Aerospike.Test
 			BatchRead batch = list[i];
 			AssertRecordFound(batch.key, batch.record);
 			Assert.AreNotEqual(0, batch.record.generation);
-			// ttl can be zero if server default-ttl = 0.
-			// Assert.AreNotEqual(0, batch.record.expiration);
+
+			if (SuiteHelpers.hasTtl)
+			{
+				Assert.AreNotEqual(0, batch.record.expiration);
+			}
 		}
 
 		private static void AssertPrepareRetry(BatchSingleCommand command)

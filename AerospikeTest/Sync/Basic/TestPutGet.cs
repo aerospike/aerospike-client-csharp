@@ -27,24 +27,13 @@ namespace Aerospike.Test
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetkey");
 			Record record;
 
-			if (SuiteHelpers.singleBin)
-			{
-				Bin bin = new("", "value");
+			Bin bin1 = new("bin1", "value1");
+			Bin bin2 = new("bin2", "value2");
 
-				client.Put(null, key, bin);
-				record = client.Get(null, key);
-				AssertBinEqual(key, record, bin);
-			}
-			else
-			{
-				Bin bin1 = new("bin1", "value1");
-				Bin bin2 = new("bin2", "value2");
-
-				client.Put(null, key, bin1, bin2);
-				record = client.Get(null, key);
-				AssertBinEqual(key, record, bin1);
-				AssertBinEqual(key, record, bin2);
-			}
+			client.Put(null, key, bin1, bin2);
+			record = client.Get(null, key);
+			AssertBinEqual(key, record, bin1);
+			AssertBinEqual(key, record, bin2);
 
 			record = client.GetHeader(null, key);
 			AssertRecordFound(key, record);
@@ -62,24 +51,13 @@ namespace Aerospike.Test
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "putgetbyteskey");
 			Record record;
 
-			if (SuiteHelpers.singleBin)
-			{
-				Bin bin = new("", "value"u8.ToArray().AsMemory());
+			Bin bin1 = new("bin1", (Memory<byte>)"value1"u8.ToArray());
+			Bin bin2 = new("bin2", (ReadOnlyMemory<byte>)"value2"u8.ToArray());
 
-				client.Put(null, key, bin);
-				record = client.Get(null, key);
-				AssertBinBlobEqual(key, record, bin);
-			}
-			else
-			{
-				Bin bin1 = new("bin1", (Memory<byte>)"value1"u8.ToArray());
-				Bin bin2 = new("bin2", (ReadOnlyMemory<byte>)"value2"u8.ToArray());
-
-				client.Put(null, key, bin1, bin2);
-				record = client.Get(null, key);
-				AssertBinBlobEqual(key, record, bin1);
-				AssertBinBlobEqual(key, record, bin2);
-			}
+			client.Put(null, key, bin1, bin2);
+			record = client.Get(null, key);
+			AssertBinBlobEqual(key, record, bin1);
+			AssertBinBlobEqual(key, record, bin2);
 
 			record = client.GetHeader(null, key);
 			AssertRecordFound(key, record);

@@ -83,12 +83,12 @@ namespace Aerospike.Client
 			{
 				if (policy.failOnFilteredOut)
 				{
-					throw new AerospikeException(resultCode);
+					throw CreateException(resultCode);
 				}
 				return true;
 			}
 
-			throw new AerospikeException(resultCode);
+			throw CreateException(resultCode);
 		}
 
 		private void HandleUdfError(int resultCode)

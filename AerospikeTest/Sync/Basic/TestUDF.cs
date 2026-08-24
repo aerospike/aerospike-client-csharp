@@ -35,7 +35,7 @@ namespace Aerospike.Test
 		public void WriteUsingUdf()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "udfkey1");
-			Bin bin = new(Suite.GetBinName("udfbin1"), "string value");
+			Bin bin = new("udfbin1", "string value");
 
 			client.Execute(null, key, "record_example", "writeBin", Value.Get(bin.name), bin.value);
 
@@ -47,7 +47,7 @@ namespace Aerospike.Test
 		public void WriteIfGenerationNotChanged()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "udfkey2");
-			Bin bin = new(Suite.GetBinName("udfbin2"), "string value");
+			Bin bin = new("udfbin2", "string value");
 
 			// Seed record.
 			client.Put(null, key, bin);
@@ -137,7 +137,7 @@ namespace Aerospike.Test
 
 			List<object> list = ["string1", 4L, inner, innerMap];
 
-			string binName = Suite.GetBinName("udfbin5");
+			string binName = "udfbin5";
 
 			client.Execute(null, key, "record_example", "writeBin", Value.Get(binName), Value.Get(list));
 
@@ -173,7 +173,7 @@ namespace Aerospike.Test
 
 			List<object> list = ["string1", 4L, inner, innerMap];
 
-			string binName = Suite.GetBinName("udfbin6");
+			string binName = "udfbin6";
 
 			// Write list.
 			client.Execute(null, key, "record_example", "writeBin", Value.Get(binName), Value.Get(list));

@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -27,7 +27,7 @@ namespace Aerospike.Test
 		private const string keyPrefix = "qkey";
 		private const string mapKeyPrefix = "mkey";
 		private const string mapValuePrefix = "qvalue";
-		private static readonly string binName = Suite.GetBinName("map_bin");
+		private static readonly string binName = "map_bin";
 		private const int size = 20;
 
 		[ClassInitialize()]

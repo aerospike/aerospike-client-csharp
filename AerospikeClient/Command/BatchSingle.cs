@@ -133,6 +133,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, false);
+				ApplyErrorDetail(record);
 				status.SetRowError();
 			}
 		}
@@ -204,6 +205,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
+				ApplyErrorDetail(record);
 				status.SetRowError();
 			}
 		}
@@ -253,6 +255,7 @@ namespace Aerospike.Client
 				// A KEY_NOT_FOUND_ERROR on a delete is benign, but still results in an overall
 				// batch status of false to be consistent with the original batch code.
 				record.SetError(resultCode, Command.BatchInDoubt(true, commandSentCounter));
+				ApplyErrorDetail(record);
 				status.SetRowError();
 			}
 		}
@@ -324,6 +327,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(true, commandSentCounter));
+				ApplyErrorDetail(record);
 				status.SetRowError();
 			}
 		}

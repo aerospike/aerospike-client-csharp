@@ -66,12 +66,12 @@ namespace Aerospike.Client
 			{
 				if (policy.failOnFilteredOut)
 				{
-					throw new AerospikeException(resultCode);
+					throw CreateException(resultCode);
 				}
 				return;
 			}
 
-			throw new AerospikeException(resultCode);
+			throw CreateException(resultCode);
 		}
 
 		private void HandleUdfError(int resultCode)

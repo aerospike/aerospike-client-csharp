@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,7 +24,7 @@ namespace Aerospike.Test
 		private const string indexName = "queryindex";
 		private const string keyPrefix = "querykey";
 		private const string valuePrefix = "queryvalue";
-		private static readonly string binName = Suite.GetBinName("querybin");
+		private static readonly string binName = "querybin";
 		private static readonly int size = 5;
 
 		[ClassInitialize()]

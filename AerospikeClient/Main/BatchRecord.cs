@@ -49,6 +49,30 @@ namespace Aerospike.Client
 		public bool inDoubt;
 
 		/// <summary>
+		/// Formatted server-side error detail (human-readable message and/or sub-code) for this
+		/// record, populated when the batch opted into
+		/// <see cref="Policy.errorDetailVerbosity"/> greater than zero and the server attached
+		/// an extended error detail. <c>null</c> otherwise.
+		/// Requires server version 8.1.3+.
+		/// </summary>
+		public string serverMessage;
+
+		/// <summary>
+		/// Server-supplied error sub-code for this record, or <see cref="SubCode.NONE"/> when
+		/// the server did not send one. A sub-code is only meaningful when interpreted together
+		/// with <see cref="resultCode"/>: sub-code integer values are scoped to their parent
+		/// result code and are not globally unique. See <see cref="SubCode"/>.
+		/// </summary>
+		public int subCode = SubCode.NONE;
+
+		/// <summary>
+		/// Server-supplied expression trace for this record, sent only at
+		/// <see cref="Policy.errorDetailVerbosity"/> level 3 on expression failure
+		/// paths. <c>null</c> when absent. See <see cref="ExpressionTrace"/>.
+		/// </summary>
+		public ExpressionTrace expTrace;
+
+		/// <summary>
 		/// Does this command contain a write operation. For internal use only.
 		/// </summary>
 		public readonly bool hasWrite;
@@ -95,6 +119,20 @@ namespace Aerospike.Client
 			this.record = null;
 			this.resultCode = ResultCode.NO_RESPONSE;
 			this.inDoubt = false;
+			this.serverMessage = null;
+			this.subCode = SubCode.NONE;
+			this.expTrace = null;
+		}
+
+		/// <summary>
+		/// Set the server-supplied error detail (extended error) for this record.
+		/// For internal use only.
+		/// </summary>
+		internal void SetErrorDetail(string serverMessage, int subCode, ExpressionTrace expTrace)
+		{
+			this.serverMessage = serverMessage;
+			this.subCode = subCode;
+			this.expTrace = expTrace;
 		}
 
 		/// <summary>

@@ -66,6 +66,11 @@ internal static class ExampleRegistry
 		Sync<Generation>(ValidateAndCleanup<Generation>(ExampleStateValidation.Generation, "genkey")),
 		Sync<Expire>(ValidateAndCleanup<Expire>(ExampleStateValidation.Expire, "expirekey")),
 		Sync<Touch>(ValidateAndCleanup<Touch>(ExampleStateValidation.Touch, "touchkey")),
+		Sync<ErrorMessage>(ValidateAndCleanup<ErrorMessage>(
+			ExampleStateValidation.ErrorMessage,
+			"error-message-key",
+			"error-message-key-2",
+			"error-message-key-3")),
 		Sync<Transaction>(Cleanup<Transaction>(1, 2, 3)),
 		Sync<Operate>(Fixture<Operate>(
 			setup: ExampleStateValidation.SetupOperate,

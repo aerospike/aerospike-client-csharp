@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -55,10 +55,12 @@ namespace Aerospike.Test
 			AsyncMonitor monitor = new();
 			WriteHandler handler = new(monitor, Size + 5);
 
-			WritePolicy policy = new()
+			WritePolicy policy = new();
+
+			if (SuiteHelpers.hasTtl)
 			{
-				expiration = 2592000
-			};
+				policy.expiration = 2592000;
+			}
 
 			for (int i = 1; i <= Size; i++)
 			{
@@ -379,7 +381,7 @@ namespace Aerospike.Test
 						break;
 					}
 
-					if (!parent.AssertGreaterThanZero(record.expiration))
+					if (SuiteHelpers.hasTtl && !parent.AssertGreaterThanZero(record.expiration))
 					{
 						break;
 					}
@@ -438,7 +440,7 @@ namespace Aerospike.Test
 					return;
 				}
 
-				if (!parent.AssertValidExpiration(record.expiration))
+				if (SuiteHelpers.hasTtl && !parent.AssertValidExpiration(record.expiration))
 				{
 					parent.NotifyCompleted();
 					return;

@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,8 +24,10 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TouchOperate()
 		{
+			Suite.RequireTtlSupport();
+
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "TouchOperate");
-			Bin bin = new(Suite.GetBinName("touchbin"), "touchvalue");
+			Bin bin = new("touchbin", "touchvalue");
 
 			WritePolicy writePolicy = new()
 			{
@@ -54,8 +56,10 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void Touch()
 		{
+			Suite.RequireTtlSupport();
+
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "touch");
-			Bin bin = new(Suite.GetBinName("touchbin"), "touchvalue");
+			Bin bin = new("touchbin", "touchvalue");
 
 			WritePolicy writePolicy = new()
 			{
@@ -82,6 +86,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void Touched()
 		{
+			Suite.RequireTtlSupport();
+
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "touched");
 
 			client.Delete(null, key);

@@ -33,7 +33,8 @@ internal static class SuiteHelpers
 	public static string tlsName;
 	public static TlsPolicy tlsPolicy;
 	public static AuthMode authMode;
-	public static bool singleBin;
 	public static bool enterprise;
+	public static bool hasTtl;
 	public static bool scMode;
+	public static Version serverVersion;
 }
