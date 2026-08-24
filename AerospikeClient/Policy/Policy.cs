@@ -276,7 +276,7 @@ namespace Aerospike.Client
 		/// <item><description>0 - disabled (no error details).</description></item>
 		/// <item><description>1 - subcode only.</description></item>
 		/// <item><description>2 - subcode + message.</description></item>
-		/// <item><description>3 - subcode, message, and (on expression build-failure paths) a
+		/// <item><description>3 - subcode, message, and (on expression failure paths) a
 		///     structured expression trace, surfaced on
 		///     <see cref="Aerospike.Client.AerospikeException.ExpTrace"/>.</description></item>
 		/// </list>

@@ -63,8 +63,8 @@ namespace Aerospike.Client
 		public int subCode = SubCode.NONE;
 
 		/// <summary>
-		/// Server-supplied expression build trace for this record, sent only at
-		/// <see cref="Policy.errorDetailVerbosity"/> level 3 on expression build-failure
+		/// Server-supplied expression trace for this record, sent only at
+		/// <see cref="Policy.errorDetailVerbosity"/> level 3 on expression failure
 		/// paths. <c>null</c> when absent. See <see cref="ExpressionTrace"/>.
 		/// </summary>
 		public ExpressionTrace expTrace;

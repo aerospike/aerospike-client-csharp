@@ -15,12 +15,16 @@
  * the License.
  */
 using Aerospike.Client;
+using System.Reflection;
 
 namespace Aerospike.Test
 {
 	[TestClass]
 	public class TestExpErrorDetail : TestSync
 	{
+		private const string WriteOnlyUser = "eed_errdetail_wuser";
+		private const string WriteOnlyPassword = "eed_errdetail_wpwd";
+
 		private const string BIN_INT = "x";
 		private const string BIN_FLOAT = "y";
 		private const string BIN_STR = "name";
@@ -34,6 +38,9 @@ namespace Aerospike.Test
 
 		private static Key stdKey;
 		private static Key scratchKey;
+		private static bool writeOnlyReady;
+		private static bool writeOnlyUserCreated;
+		private static AerospikeClient writeOnlyClient;
 
 		[ClassInitialize]
 		public static void Setup(TestContext testContext)
@@ -52,6 +59,136 @@ namespace Aerospike.Test
 				new Bin(BIN_MAP2, new Dictionary<string, int> { { "b", 2 } }));
 
 			ReseedScratch();
+			RegisterUdf();
+			writeOnlyReady = TrySetupWriteOnlyClient();
+		}
+
+		[ClassCleanup]
+		public static void Cleanup()
+		{
+			TeardownWriteOnlyClient();
+		}
+
+		private static void RegisterUdf()
+		{
+			Assembly assembly = Assembly.GetExecutingAssembly();
+			RegisterTask task = client.Register(null, assembly, "Aerospike.Test.LuaResources.record_example.lua",
+				"record_example.lua", Language.LUA);
+			task.Wait();
+		}
+
+		private static bool TrySetupWriteOnlyClient()
+		{
+			writeOnlyUserCreated = false;
+
+			if (string.IsNullOrEmpty(SuiteHelpers.user) || !CurrentUserCanProvisionWriteOnlyPrincipal())
+			{
+				return false;
+			}
+
+			AdminPolicy adminPolicy = new();
+
+			try
+			{
+				try
+				{
+					client.DropUser(adminPolicy, WriteOnlyUser);
+				}
+				catch (AerospikeException)
+				{
+				}
+
+				client.CreateUser(adminPolicy, WriteOnlyUser, WriteOnlyPassword, [Role.Write]);
+				writeOnlyUserCreated = true;
+
+				writeOnlyClient?.Close();
+				writeOnlyClient = CreateWriteOnlyClient();
+				return true;
+			}
+			catch (AerospikeException)
+			{
+				writeOnlyClient?.Close();
+				writeOnlyClient = null;
+
+				if (writeOnlyUserCreated)
+				{
+					try
+					{
+						client.DropUser(adminPolicy, WriteOnlyUser);
+					}
+					catch (AerospikeException)
+					{
+					}
+
+					writeOnlyUserCreated = false;
+				}
+
+				return false;
+			}
+		}
+
+		/// <summary>
+		/// The write-only explainer test provisions a temporary user and needs
+		/// <see cref="Role.UserAdmin"/> on the runsettings test account.
+		/// </summary>
+		private static bool CurrentUserCanProvisionWriteOnlyPrincipal()
+		{
+			AdminPolicy adminPolicy = new();
+
+			try
+			{
+				User user = client.QueryUser(adminPolicy, SuiteHelpers.user);
+				return user.roles != null && user.roles.Contains(Role.UserAdmin);
+			}
+			catch (AerospikeException e)
+			{
+				if (e.Result == ResultCode.SECURITY_NOT_ENABLED ||
+					e.Result == ResultCode.SECURITY_NOT_SUPPORTED)
+				{
+					return false;
+				}
+
+				return false;
+			}
+		}
+
+		private static AerospikeClient CreateWriteOnlyClient()
+		{
+			ClientPolicy policy = new()
+			{
+				clusterName = SuiteHelpers.clusterName,
+				tlsPolicy = SuiteHelpers.tlsPolicy,
+				authMode = SuiteHelpers.authMode,
+				timeout = SuiteHelpers.timeout,
+				useServicesAlternate = SuiteHelpers.useServicesAlternate,
+				user = WriteOnlyUser,
+				password = WriteOnlyPassword
+			};
+
+			return new AerospikeClient(policy, SuiteHelpers.hosts);
+		}
+
+		private static void TeardownWriteOnlyClient()
+		{
+			writeOnlyClient?.Close();
+			writeOnlyClient = null;
+
+			if (!writeOnlyUserCreated || string.IsNullOrEmpty(SuiteHelpers.user))
+			{
+				return;
+			}
+
+			AdminPolicy adminPolicy = new();
+
+			try
+			{
+				client.DropUser(adminPolicy, WriteOnlyUser);
+			}
+			catch (AerospikeException)
+			{
+			}
+
+			writeOnlyUserCreated = false;
 		}
 
 		private static void ReseedScratch()
@@ -308,7 +445,7 @@ namespace Aerospike.Test
 					FilterPolicy(3, BuildErrorExp()), ResultCode.PARAMETER_ERROR);
 
 				Assert.AreEqual(SubCode.NONE, ae.SubCode, verb);
-				AssertMessageContains(ae, "invalid metadata expression in request");
+				AssertMessageContains(ae, "invalid filter expression in request");
 				AssertBuildTrace(ae);
 			}
 		}
@@ -639,6 +776,169 @@ namespace Aerospike.Test
 					ExpWriteFlags.EVAL_NO_FAIL));
 
 			Assert.IsNotNull(record);
+		}
+
+		// Filter-decision explainer: outcome (key 7) and decisive operands (key 13).
+
+		[TestMethod]
+		public void TestExplainerCleanFalseWithOperands()
+		{
+			// BIN_INT is 10; compare against 11 so the expression is valid but false.
+			Expression expression = Exp.Build(Exp.EQ(Exp.IntBin(BIN_INT), Exp.Val(11)));
+			AerospikeException ae = ExpectFilteredGet(3, expression, ResultCode.FILTERED_OUT);
+
+			ExpressionTrace trace = ae.ExpTrace;
+			Assert.IsNotNull(trace);
+			Assert.AreEqual(ExpressionTrace.PHASE_EVAL, trace.Phase);
+			Assert.AreEqual(ExpressionTrace.OUTCOME_FALSE, trace.Outcome);
+
+			// Operands are optional because the server drops them first when the
+			// error-detail byte budget is tight.
+			if (trace.Operands != null)
+			{
+				CollectionAssert.AreEqual(new[] { "10", "11" }, trace.Operands);
+			}
+		}
+
+		[TestMethod]
+		public void TestExplainerAbsentOutcomeHasNoOperands()
+		{
+			Expression expression = Exp.Build(Exp.EQ(Exp.IntBin(BIN_MISSING), Exp.Val(2)));
+			AerospikeException ae = ExpectFilteredGet(3, expression, ResultCode.FILTERED_OUT);
+
+			ExpressionTrace trace = ae.ExpTrace;
+			Assert.IsNotNull(trace);
+			Assert.AreEqual(ExpressionTrace.PHASE_EVAL, trace.Phase);
+			Assert.AreEqual(ExpressionTrace.OUTCOME_ABSENT, trace.Outcome);
+			Assert.IsNull(trace.Operands);
+		}
+
+		// Multi-record paths use different field walks than single-record commands.
+
+		[TestMethod]
+		public void TestQueryFilterBuildFailureTrace()
+		{
+			QueryPolicy policy = new()
+			{
+				errorDetailVerbosity = 3,
+				filterExp = BuildErrorExp()
+			};
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = SuiteHelpers.set
+			};
+
+			AerospikeException caught = Assert.Throws<AerospikeException>(() =>
+			{
+				using RecordSet records = client.Query(policy, stmt);
+
+				while (records.Next())
+				{
+					// Drain because the failure can surface when the stream advances.
+				}
+			});
+
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, caught.Result);
+			AssertMessageContains(caught, "invalid filter expression in query");
+
+			ExpressionTrace trace = AssertBuildTrace(caught);
+			// A query filters many records per request, so the server does not
+			// include the per-record outcome explainer on this build trace.
+			Assert.AreEqual(-1, trace.Outcome);
+			Assert.IsNull(trace.Operands);
+		}
+
+		[TestMethod]
+		public void TestBatchRowFilterBuildFailureTrace()
+		{
+			BatchPolicy policy = new()
+			{
+				errorDetailVerbosity = 3,
+				respondAllKeys = true
+			};
+
+			// A per-row filter failure is returned on that row. A batch-wide filter
+			// build failure aborts the entire batch before individual rows are returned.
+			BatchReadPolicy rowPolicy = new()
+			{
+				filterExp = BuildErrorExp()
+			};
+			BatchRead errorRow = new(rowPolicy, stdKey, true);
+			BatchRead successRow = new(scratchKey, true);
+			List<BatchRead> records = [errorRow, successRow];
+
+			// respondAllKeys reports the failure on the row instead of throwing.
+			client.Get(policy, records);
+
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, errorRow.resultCode);
+			Assert.IsNotNull(errorRow.serverMessage);
+			StringAssert.Contains(errorRow.serverMessage, "invalid filter expression in batch request");
+			Assert.IsNotNull(errorRow.expTrace);
+			Assert.AreEqual(ExpressionTrace.PHASE_BUILD, errorRow.expTrace.Phase);
+			Assert.IsTrue(errorRow.expTrace.ByteOffset >= 0);
+			Assert.IsNull(successRow.expTrace, "Error detail must not leak between batch rows");
+		}
+
+		// Requires the runsettings test user to have the user-admin role so the suite
+		// can provision a temporary principal with only the write role.
+		[TestMethod]
+		public void TestExplainerWriteOnlyPrincipalNoTrace()
+		{
+			if (!writeOnlyReady)
+			{
+				Assert.Inconclusive(
+					"Test user must have the user-admin role to provision a write-only principal.");
+			}
+
+			WritePolicy policy = new()
+			{
+				errorDetailVerbosity = 3,
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(BIN_INT), Exp.Val(99999))),
+				failOnFilteredOut = true
+			};
+
+			AerospikeException ae = null;
+
+			try
+			{
+				writeOnlyClient.Put(policy, stdKey, new Bin(BIN_INT, 99));
+			}
+			catch (AerospikeException e)
+			{
+				ae = e;
+			}
+
+			Assert.IsNotNull(ae);
+			Assert.AreEqual(ResultCode.FILTERED_OUT, ae.Result);
+			Assert.AreEqual(SubCode.NONE, ae.SubCode);
+			AssertMessageContains(ae, "filtered out");
+			Assert.IsNull(ae.ExpTrace, "Write-only principal must not receive filter explainer trace");
+		}
+
+		[TestMethod]
+		public void TestExecuteFilterExpFilteredOutNoDetail()
+		{
+			WritePolicy policy = new()
+			{
+				errorDetailVerbosity = 3,
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(BIN_INT), Exp.Val(99999))),
+				failOnFilteredOut = true
+			};
+
+			AerospikeException ae = null;
+
+			try
+			{
+				client.Execute(policy, stdKey, "record_example", "writeBin", Value.Get(BIN_INT), Value.Get(99));
+			}
+			catch (AerospikeException e)
+			{
+				ae = e;
+			}
+
+			Assert.IsNotNull(ae);
+			AssertNoDetails(ae, ResultCode.FILTERED_OUT);
 		}
 	}
 }

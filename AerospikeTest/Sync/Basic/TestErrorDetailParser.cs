@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client;
+using System.Reflection;
 using System.Text;
 
 namespace Aerospike.Test
@@ -35,26 +36,18 @@ namespace Aerospike.Test
 		{
 			for (int v = 0; v <= 3; v++)
 			{
-				int actual = (v << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
+				int actual = EncodeErrorVerbosity(v);
 				Assert.AreEqual(v << Command.INFO4_ERROR_VERBOSITY_SHIFT, actual, "v=" + v);
 			}
 		}
 
 		[TestMethod]
-		public void VerbosityOutOfRangeCannotCorruptOtherInfo4Bits()
+		public void VerbosityOutOfRangeIsClamped()
 		{
-			int otherBits = ~Command.INFO4_ERROR_VERBOSITY_MASK & 0xFF;
-
-			foreach (int v in new[] { 0, 1, 2, 3, 4, 8, 16, 255, int.MaxValue, -1 })
-			{
-				int written = (v << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
-				Assert.AreEqual(0, written & otherBits, "v=" + v);
-				Assert.AreEqual(written, written & Command.INFO4_ERROR_VERBOSITY_MASK, "v=" + v);
-			}
-
-			Assert.AreEqual(0, (4 << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK);
-			Assert.AreEqual(0, (8 << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK);
-			Assert.AreEqual(0, (16 << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK);
+			Assert.AreEqual(0, EncodeErrorVerbosity(-1));
+			Assert.AreEqual(0, EncodeErrorVerbosity(int.MinValue));
+			Assert.AreEqual(0x60, EncodeErrorVerbosity(4));
+			Assert.AreEqual(0x60, EncodeErrorVerbosity(int.MaxValue));
 		}
 
 		[TestMethod]
@@ -341,8 +334,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ParsesTraceSkippingUnknownTraceKeys()
 		{
+			// Reserved keys 11/12 and unknown key 99 must not disturb known fields.
 			byte[] trace = FixMap(
-				Pair(IntKey(ExpressionTrace.KEY_OUTCOME), FixInt(5)),
 				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_BUILD)),
 				Pair(IntKey(ExpressionTrace.KEY_AEL_LINE), FixInt(9)),
 				Pair(IntKey(ExpressionTrace.KEY_BYTE_OFFSET), FixInt(4)),
@@ -358,6 +351,121 @@ namespace Aerospike.Test
 			Assert.AreEqual(4, traceResult.ByteOffset);
 			Assert.IsNull(traceResult.Op);
 			Assert.AreEqual(-1, traceResult.Depth);
+		}
+
+		[TestMethod]
+		public void ParsesTraceMaxLengthPath()
+		{
+			// The server caps the path at 16 frames. The "..." sentinel is an
+			// additional element, so the true maximum is 17 and requires array16.
+			byte[][] elements = new byte[17][];
+
+			for (int i = 0; i < 15; i++)
+			{
+				elements[i] = FixStr("and");
+			}
+			elements[15] = FixStr(ExpressionTrace.PATH_TRUNCATION_SENTINEL);
+			elements[16] = FixStr("eq");
+
+			byte[] trace = FixMap(
+				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_BUILD)),
+				Pair(IntKey(ExpressionTrace.KEY_DEPTH), FixInt(40)),
+				Pair(IntKey(ExpressionTrace.KEY_PATH), Array16(elements))
+			);
+
+			ExpressionTrace traceResult = ParseDetail(FixMap(Pair(IntKey(3), trace))).ExpTrace;
+
+			Assert.IsNotNull(traceResult);
+			Assert.AreEqual(40, traceResult.Depth);
+			Assert.AreEqual(17, traceResult.Path.Length);
+			Assert.AreEqual(ExpressionTrace.PATH_TRUNCATION_SENTINEL, traceResult.Path[15]);
+			Assert.AreEqual("eq", traceResult.Path[16]);
+		}
+
+		[TestMethod]
+		public void ParsesTraceOutcomeAndOperands()
+		{
+			byte[] trace = FixMap(
+				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_EVAL)),
+				Pair(IntKey(ExpressionTrace.KEY_OP), FixStr("cmp_gt")),
+				Pair(IntKey(ExpressionTrace.KEY_OUTCOME), FixInt(ExpressionTrace.OUTCOME_FALSE)),
+				Pair(IntKey(ExpressionTrace.KEY_OPERANDS), FixArray(FixStr("15"), FixStr("18")))
+			);
+
+			ExpressionTrace traceResult = ParseDetail(FixMap(Pair(IntKey(3), trace))).ExpTrace;
+
+			Assert.IsNotNull(traceResult);
+			Assert.AreEqual(ExpressionTrace.PHASE_EVAL, traceResult.Phase);
+			Assert.AreEqual(ExpressionTrace.OUTCOME_FALSE, traceResult.Outcome);
+			CollectionAssert.AreEqual(new[] { "15", "18" }, traceResult.Operands);
+		}
+
+		[TestMethod]
+		public void ParsesTraceOperandsAlreadyClippedByServer()
+		{
+			// The server may clip long string operands before staging them. The client
+			// must pass the rendered values through without truncating further.
+			string lhs = new('a', 48);
+			string rhs = new('b', 48);
+
+			byte[] trace = FixMap(
+				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_EVAL)),
+				Pair(IntKey(ExpressionTrace.KEY_OUTCOME), FixInt(ExpressionTrace.OUTCOME_FALSE)),
+				Pair(IntKey(ExpressionTrace.KEY_OPERANDS), FixArray(Str8(lhs), Str8(rhs)))
+			);
+
+			ExpressionTrace traceResult = ParseDetail(FixMap(Pair(IntKey(3), trace))).ExpTrace;
+
+			Assert.IsNotNull(traceResult);
+			CollectionAssert.AreEqual(new[] { lhs, rhs }, traceResult.Operands);
+		}
+
+		[TestMethod]
+		public void ParsesTraceOutcomesWithoutOperands()
+		{
+			foreach (int outcome in new[] { ExpressionTrace.OUTCOME_FAULT, ExpressionTrace.OUTCOME_ABSENT })
+			{
+				byte[] trace = FixMap(
+					Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_EVAL)),
+					Pair(IntKey(ExpressionTrace.KEY_OUTCOME), FixInt(outcome))
+				);
+
+				ExpressionTrace traceResult = ParseDetail(FixMap(Pair(IntKey(3), trace))).ExpTrace;
+
+				Assert.IsNotNull(traceResult);
+				Assert.AreEqual(outcome, traceResult.Outcome);
+				Assert.IsNull(traceResult.Operands);
+			}
+		}
+
+		[TestMethod]
+		public void ParsesFalseOutcomeWithOperandsDropped()
+		{
+			byte[] trace = FixMap(
+				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_EVAL)),
+				Pair(IntKey(ExpressionTrace.KEY_OUTCOME), FixInt(ExpressionTrace.OUTCOME_FALSE))
+			);
+
+			ExpressionTrace traceResult = ParseDetail(FixMap(Pair(IntKey(3), trace))).ExpTrace;
+
+			Assert.IsNotNull(traceResult);
+			Assert.AreEqual(ExpressionTrace.OUTCOME_FALSE, traceResult.Outcome);
+			Assert.IsNull(traceResult.Operands);
+		}
+
+		[TestMethod]
+		public void ParsesBuildTraceWithoutOutcomeOrOperands()
+		{
+			byte[] trace = FixMap(
+				Pair(IntKey(ExpressionTrace.KEY_PHASE), FixInt(ExpressionTrace.PHASE_BUILD)),
+				Pair(IntKey(ExpressionTrace.KEY_BYTE_OFFSET), FixInt(3))
+			);
+
+			ExpressionTrace traceResult = ParseDetail(FixMap(Pair(IntKey(3), trace))).ExpTrace;
+
+			Assert.IsNotNull(traceResult);
+			Assert.AreEqual(-1, traceResult.Outcome);
+			Assert.IsNull(traceResult.Operands);
 		}
 
 		[TestMethod]
@@ -442,6 +550,15 @@ namespace Aerospike.Test
 			return ParseDetail(msgpackDetail).Message;
 		}
 
+		private static int EncodeErrorVerbosity(int verbosity)
+		{
+			MethodInfo method = typeof(Command).GetMethod(
+				"ErrorVerbosityBits",
+				BindingFlags.Static | BindingFlags.NonPublic);
+			Assert.IsNotNull(method);
+			return (int)method.Invoke(null, [verbosity]);
+		}
+
 		private static string ParseFields(byte[] fields, int fieldCount)
 		{
 			int offset = 0;
@@ -471,6 +588,18 @@ namespace Aerospike.Test
 		{
 			Assert.IsTrue(elements.Length <= 15);
 			List<byte> bytes = new() { (byte)(0x90 | elements.Length) };
+
+			foreach (byte[] element in elements)
+			{
+				bytes.AddRange(element);
+			}
+			return bytes.ToArray();
+		}
+
+		private static byte[] Array16(params byte[][] elements)
+		{
+			List<byte> bytes = new() { 0xDC };
+			WriteShort(bytes, elements.Length);
 
 			foreach (byte[] element in elements)
 			{

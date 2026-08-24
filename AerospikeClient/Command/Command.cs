@@ -1721,7 +1721,17 @@ namespace Aerospike.Client
 		/// </summary>
 		private static int BatchErrorVerbosityBits(BatchPolicy policy)
 		{
-			return (policy.errorDetailVerbosity << INFO4_ERROR_VERBOSITY_SHIFT) & INFO4_ERROR_VERBOSITY_MASK;
+			return ErrorVerbosityBits(policy.errorDetailVerbosity);
+		}
+
+		/// <summary>
+		/// Clamp error-detail verbosity before folding it into info4 bits 5-6.
+		/// Masking alone would encode a negative value as maximum verbosity.
+		/// </summary>
+		private static int ErrorVerbosityBits(int verbosity)
+		{
+			verbosity = Math.Clamp(verbosity, 0, 3);
+			return (verbosity << INFO4_ERROR_VERBOSITY_SHIFT) & INFO4_ERROR_VERBOSITY_MASK;
 		}
 
 		/// <summary>
@@ -2655,7 +2665,7 @@ namespace Aerospike.Client
 				txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 			}
 
-			txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
+			txnAttr |= ErrorVerbosityBits(policy.errorDetailVerbosity);
 
 			dataOffset += 8;
 
@@ -2739,7 +2749,7 @@ namespace Aerospike.Client
 				txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 			}
 
-			txnAttr |= (policy.errorDetailVerbosity << Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK;
+			txnAttr |= ErrorVerbosityBits(policy.errorDetailVerbosity);
 
 			switch (policy.readModeSC)
 			{
@@ -2828,8 +2838,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)readAttr;
 			dataBuffer[dataOffset++] = (byte)writeAttr;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
-			dataBuffer[dataOffset++] = (byte)((policy.errorDetailVerbosity <<
-				Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK); // error detail verbosity
+			dataBuffer[dataOffset++] = (byte)ErrorVerbosityBits(policy.errorDetailVerbosity);
 
 			for (int i = 0; i < 5; i++)
 			{
@@ -2875,8 +2884,7 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)readAttr;
 			dataBuffer[dataOffset++] = (byte)0;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
-			dataBuffer[dataOffset++] = (byte)((policy.errorDetailVerbosity <<
-				Command.INFO4_ERROR_VERBOSITY_SHIFT) & Command.INFO4_ERROR_VERBOSITY_MASK); // error detail verbosity
+			dataBuffer[dataOffset++] = (byte)ErrorVerbosityBits(policy.errorDetailVerbosity);
 
 			for (int i = 0; i < 5; i++)
 			{
@@ -2911,8 +2919,7 @@ namespace Aerospike.Client
 			// Single-key batch commands send standard single-record messages through this
 			// path, so fold the parent policy's error-detail verbosity into info4 here.
 			// BatchAttr.errorDetailBits is used only by multi-record row writers.
-			int info4 = attr.txnAttr |
-				((policy.errorDetailVerbosity << INFO4_ERROR_VERBOSITY_SHIFT) & INFO4_ERROR_VERBOSITY_MASK);
+			int info4 = attr.txnAttr | ErrorVerbosityBits(policy.errorDetailVerbosity);
 			dataBuffer[dataOffset++] = (byte)info4;
 			dataBuffer[dataOffset++] = 0; // clear the result code
 			dataOffset += ByteUtil.IntToBytes((uint)attr.generation, dataBuffer, dataOffset);
@@ -3255,6 +3262,10 @@ namespace Aerospike.Client
 			Value userKey = null;
 			bval = 0;
 
+			// Reset first so a row without field 45 does not inherit the
+			// previous row's error detail.
+			ResetServerErrorDetail();
+
 			for (int i = 0; i < fieldCount; i++)
 			{
 				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
@@ -3286,6 +3297,14 @@ namespace Aerospike.Client
 
 					case FieldType.BVAL_ARRAY:
 						bval = (ulong)ByteUtil.LittleBytesToLong(dataBuffer, dataOffset);
+						break;
+
+					case FieldType.ERROR_MESSAGE:
+						// Query/scan start-failure rows carry their detail here.
+						if (size > 0)
+						{
+							CaptureErrorDetail(dataOffset, size);
+						}
 						break;
 				}
 				dataOffset += size;

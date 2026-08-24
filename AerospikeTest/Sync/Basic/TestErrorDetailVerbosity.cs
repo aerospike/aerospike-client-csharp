@@ -352,7 +352,7 @@ namespace Aerospike.Test
 		// Verbosity 3: expression build-failure trace (SERVER-1137).
 		//
 		// A type-mismatched comparison expression fails to build on the server.
-		// As a filter expression it yields "invalid metadata expression in request";
+		// As a filter expression it yields "invalid filter expression in request";
 		// as an expression write operation it yields "invalid expression in operation
 		// request". Both carry PARAMETER_ERROR + SubCode.NONE and, at verbosity 3,
 		// a structured build trace. Assert trace presence and shape, not exact offsets.
@@ -378,7 +378,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				AssertBuildTrace(ae, "invalid metadata expression in request");
+				AssertBuildTrace(ae, "invalid filter expression in request");
 				return;
 			}
 			Assert.Fail("Expected AerospikeException");
@@ -424,7 +424,7 @@ namespace Aerospike.Test
 
 				string msg = ae.BaseMessage;
 				Assert.IsNotNull(msg);
-				Assert.IsTrue(msg.Contains("invalid metadata expression in request"),
+				Assert.IsTrue(msg.Contains("invalid filter expression in request"),
 					"Expected filter-build message in: " + msg);
 				Assert.IsNull(ae.ExpTrace, "Verbosity 2 must surface no expression trace");
 				return;

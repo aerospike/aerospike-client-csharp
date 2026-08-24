@@ -25,22 +25,23 @@ namespace Aerospike.Client
 	/// <remarks>
 	/// <para>
 	/// When extended error detail is requested at verbosity 3 (see
-	/// <see cref="Policy.errorDetailVerbosity"/>) and the server fails to build an
-	/// expression, it attaches this trace as a nested map under the field-45
+	/// <see cref="Policy.errorDetailVerbosity"/>) and the server fails to process an
+	/// expression, it can attach this trace as a nested map under the field-45
 	/// error-detail key <see cref="AS_ERROR_DETAIL_KEY_EXP_TRACE"/>. This trace is
 	/// surfaced on <see cref="AerospikeException.ExpTrace"/>.
 	/// </para>
 	/// <para>
-	/// Expression build failures carry <see cref="ResultCode.PARAMETER_ERROR"/> and
-	/// <see cref="SubCode.NONE"/> (no subcode); the contextual message is on the exception.
-	/// The trace is purely additive diagnostic detail — it never changes the result
-	/// code, subcode, or message-string format.
+	/// Build traces identify where decoding failed. Evaluation traces can additionally
+	/// identify whether evaluation faulted, returned false, or referenced absent data,
+	/// and may include the decisive comparison operands. The trace is purely additive
+	/// diagnostic detail — it never changes the result code, subcode, or message format.
 	/// </para>
 	/// <para>
 	/// <b>Every field is optional.</b> The server caps the whole error-detail payload
-	/// and drops <c>snippet</c> first, then <c>path</c>, when the budget is tight, so
-	/// those may be absent even within a present trace. Absent integer fields read as
-	/// <c>-1</c> (except <see cref="Lang"/>, which defaults to
+	/// and drops optional context such as <c>operands</c>, <c>snippet</c>, and
+	/// <c>path</c> when the budget is tight, so those may be absent even within a
+	/// present trace. Absent integer fields read as <c>-1</c> (except
+	/// <see cref="Lang"/>, which defaults to
 	/// <see cref="LANG_MSGPACK"/>); absent object fields read as <c>null</c>.
 	/// Never require any field.
 	/// </para>
@@ -48,8 +49,7 @@ namespace Aerospike.Client
 	/// <b>Two coordinate spaces — do not conflate them.</b> <see cref="ByteOffset"/> is a
 	/// byte offset into the <i>msgpack expression payload</i> the client sent. The
 	/// <see cref="AelOffset"/>/<see cref="AelSpan"/> pair are offsets into <i>AEL source
-	/// text</i> — a different coordinate space, reserved for a future server branch and
-	/// absent on today's msgpack build traces.
+	/// text</i> — a different coordinate space.
 	/// </para>
 	/// <para>
 	/// The nested-map key/value constants below mirror the server's <c>proto.h</c> names
@@ -103,7 +103,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int KEY_SNIPPET = 6;
 		/// <summary>
-		/// Nested trace key: eval-phase outcome (uint; reserved, SERVER-1138).
+		/// Nested trace key: eval-phase outcome (uint; <see cref="OUTCOME_FAULT"/>,
+		/// <see cref="OUTCOME_FALSE"/>, or <see cref="OUTCOME_ABSENT"/>).
 		/// </summary>
 		public const int KEY_OUTCOME = 7;
 		/// <summary>
@@ -111,11 +112,11 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int KEY_LANG = 8;
 		/// <summary>
-		/// Nested trace key: char offset into AEL source text (uint; reserved).
+		/// Nested trace key: char offset into AEL source text (uint).
 		/// </summary>
 		public const int KEY_AEL_OFFSET = 9;
 		/// <summary>
-		/// Nested trace key: byte width of the offending AEL source region (uint; reserved).
+		/// Nested trace key: byte width of the offending AEL source region (uint).
 		/// </summary>
 		public const int KEY_AEL_SPAN = 10;
 		/// <summary>
@@ -126,22 +127,39 @@ namespace Aerospike.Client
 		/// Nested trace key: 1-based column in AEL source (uint; reserved).
 		/// </summary>
 		public const int KEY_AEL_COL = 12;
+		/// <summary>
+		/// Nested trace key: decisive comparison's operand values (array of two strings).
+		/// </summary>
+		public const int KEY_OPERANDS = 13;
 
 		/// <summary>
 		/// Phase value: expression build failed.
 		/// </summary>
 		public const int PHASE_BUILD = 1;
 		/// <summary>
-		/// Phase value: expression evaluation failed (reserved, SERVER-1138).
+		/// Phase value: expression evaluation failed.
 		/// </summary>
 		public const int PHASE_EVAL = 2;
+
+		/// <summary>
+		/// Outcome value: evaluation faulted.
+		/// </summary>
+		public const int OUTCOME_FAULT = 1;
+		/// <summary>
+		/// Outcome value: the expression evaluated cleanly to false.
+		/// </summary>
+		public const int OUTCOME_FALSE = 2;
+		/// <summary>
+		/// Outcome value: a referenced bin or key was absent.
+		/// </summary>
+		public const int OUTCOME_ABSENT = 3;
 
 		/// <summary>
 		/// Source language: msgpack (the implied default when <c>lang</c> is absent).
 		/// </summary>
 		public const int LANG_MSGPACK = 1;
 		/// <summary>
-		/// Source language: AEL DSL (reserved for a future server branch).
+		/// Source language: AEL DSL.
 		/// </summary>
 		public const int LANG_AEL = 2;
 
@@ -165,11 +183,24 @@ namespace Aerospike.Client
 		private readonly int lang = lang;
 		private readonly int aelOffset = aelOffset;
 		private readonly int aelSpan = aelSpan;
+		private readonly int outcome = -1;
+		private readonly string[] operands;
 
 		/// <summary>
-		/// Phase that failed: <see cref="PHASE_BUILD"/> or <see cref="PHASE_EVAL"/>. Returns
-		/// <c>-1</c> when absent. Today the server emits build traces only
-		/// (<see cref="PHASE_BUILD"/>).
+		/// Construct a trace including eval-phase outcome details. Use <c>-1</c> /
+		/// <c>null</c> for absent fields.
+		/// </summary>
+		public ExpressionTrace(int phase, int byteOffset, string op, int depth, string[] path,
+			string snippet, int lang, int aelOffset, int aelSpan, int outcome, string[] operands)
+			: this(phase, byteOffset, op, depth, path, snippet, lang, aelOffset, aelSpan)
+		{
+			this.outcome = outcome;
+			this.operands = operands;
+		}
+
+		/// <summary>
+		/// Phase that failed: <see cref="PHASE_BUILD"/> or <see cref="PHASE_EVAL"/>.
+		/// Returns <c>-1</c> when absent.
 		/// </summary>
 		/// <returns>The failed phase, or <c>-1</c> when absent.</returns>
 		public int Phase => phase;
@@ -215,17 +246,31 @@ namespace Aerospike.Client
 		public int Lang => (lang < 0) ? LANG_MSGPACK : lang;
 
 		/// <summary>
-		/// Char offset into the AEL source text, or <c>-1</c> when absent. Reserved for the
-		/// AEL DSL branch; absent on today's msgpack build traces. A different coordinate
-		/// space from <see cref="ByteOffset"/>.
+		/// Char offset into the AEL source text, or <c>-1</c> when absent. A different
+		/// coordinate space from <see cref="ByteOffset"/>.
 		/// </summary>
 		public int AelOffset => aelOffset;
 
 		/// <summary>
 		/// Byte width of the offending AEL source region, or <c>-1</c> when absent.
-		/// Reserved for the AEL DSL branch.
 		/// </summary>
 		public int AelSpan => aelSpan;
+
+		/// <summary>
+		/// Why an eval-phase expression did not match: <see cref="OUTCOME_FAULT"/>,
+		/// <see cref="OUTCOME_FALSE"/>, or <see cref="OUTCOME_ABSENT"/>. Returns
+		/// <c>-1</c> when absent. Build-phase traces do not include an outcome.
+		/// </summary>
+		public int Outcome => outcome;
+
+		/// <summary>
+		/// Decisive comparison values as <c>[lhs, rhs]</c>, or <c>null</c> when absent.
+		/// This optional field is emitted only for a clean-false comparison and is the
+		/// first field dropped to satisfy the server's error-detail byte budget. Values
+		/// are server-rendered display strings capped at 48 bytes; non-scalars use
+		/// placeholders such as <c>&lt;blob&gt;</c> or <c>&lt;collection&gt;</c>.
+		/// </summary>
+		public string[] Operands => operands;
 
 		public override string ToString()
 		{
@@ -244,6 +289,15 @@ namespace Aerospike.Client
 			if (snippet != null)
 			{
 				sb.Append(", snippet=").Append(snippet);
+			}
+			// Zero is not a wire value, so this also skips a default trace.
+			if (outcome > 0)
+			{
+				sb.Append(", outcome=").Append(outcome);
+			}
+			if (operands != null)
+			{
+				sb.Append(", operands=").Append(string.Join(", ", operands));
 			}
 			sb.Append(", lang=").Append(Lang);
 			if (aelOffset >= 0)

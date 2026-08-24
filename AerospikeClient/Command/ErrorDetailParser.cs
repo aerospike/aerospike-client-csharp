@@ -201,9 +201,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Parse the nested expression-trace map (top-level error-detail key 3, only sent
-		/// at verbosity 3 on expression build-failure paths) into an <see cref="ExpressionTrace"/>.
-		/// Treats every trace key as optional (never requires key 1 — build failures carry
-		/// <see cref="SubCode.NONE"/>), skips unknown trace keys, tolerates the "..."
+		/// at verbosity 3 on expression failure paths) into an <see cref="ExpressionTrace"/>.
+		/// Treats every trace key as optional, skips unknown trace keys, tolerates the "..."
 		/// path-truncation sentinel as an ordinary element, and never throws on a
 		/// missing/truncated trace. An absent <c>lang</c> is left as -1 and surfaces as
 		/// msgpack via <see cref="ExpressionTrace.Lang"/>. Returns <c>null</c> when the
@@ -253,6 +252,8 @@ namespace Aerospike.Client
 			int lang = -1;
 			int aelOffset = -1;
 			int aelSpan = -1;
+			int outcome = -1;
+			string[] operands = null;
 
 			for (int i = 0; i < count && offset < end; i++)
 			{
@@ -293,6 +294,12 @@ namespace Aerospike.Client
 					case ExpressionTrace.KEY_SNIPPET:
 						snippet = UnpackStrValue(buffer, offset, end);
 						break;
+					case ExpressionTrace.KEY_OUTCOME:
+						outcome = (int)UnpackUint(buffer, offset, end);
+						break;
+					case ExpressionTrace.KEY_OPERANDS:
+						operands = UnpackStrArray(buffer, offset, end);
+						break;
 					case ExpressionTrace.KEY_LANG:
 						lang = (int)UnpackUint(buffer, offset, end);
 						break;
@@ -303,7 +310,7 @@ namespace Aerospike.Client
 						aelSpan = (int)UnpackUint(buffer, offset, end);
 						break;
 					default:
-						// Unknown / reserved trace key (outcome, ael_line, ael_col, etc.) - skip.
+						// Unknown / reserved trace key (ael_line, ael_col, etc.) - skip.
 						break;
 				}
 
@@ -311,7 +318,8 @@ namespace Aerospike.Client
 				offset = SkipMsgpackValue(buffer, offset, end);
 			}
 
-			return new ExpressionTrace(phase, byteOffset, op, depth, path, snippet, lang, aelOffset, aelSpan);
+			return new ExpressionTrace(phase, byteOffset, op, depth, path, snippet, lang, aelOffset,
+				aelSpan, outcome, operands);
 		}
 
 		/// <summary>
