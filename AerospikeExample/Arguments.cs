@@ -37,6 +37,8 @@ public sealed class Arguments
 	public string ns;
 	public string set;
 	public TlsPolicy tlsPolicy;
+	public string tlsClientCertFile;
+	public string tlsClientCertPassword;
 	public AuthMode authMode;
 	public bool useServicesAlternate;
 	public int commandMax;

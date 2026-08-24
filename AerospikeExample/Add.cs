@@ -29,16 +29,16 @@ public sealed class Add : SyncExample
 		string binName = "addbin";
 
 		Bin initial = new(binName, 10);
-		console.Info($"Initial add will create record. Initial value is {initial.value}.");
+		Console.WriteLine($"Initial add will create record. Initial value is {initial.value}.");
 		client.Add(writePolicy, key, initial);
 
 		Bin increment = new(binName, 5);
-		console.Info($"Add {increment.value} to existing record.");
+		Console.WriteLine($"Add {increment.value} to existing record.");
 		client.Add(writePolicy, key, increment);
 
 		Bin combined = new(binName, 30);
-		console.Info($"Add {combined.value} to existing record.");
+		Console.WriteLine($"Add {combined.value} to existing record.");
 		Record record = client.Operate(writePolicy, key, Operation.Add(combined), Operation.Get(combined.name));
-		console.Info($"Add result: namespace={key.ns} set={key.setName} key={key.userKey} bin={combined.name} value={record.GetInt(combined.name)}");
+		Console.WriteLine($"Add result: namespace={key.ns} set={key.setName} key={key.userKey} bin={combined.name} value={record.GetInt(combined.name)}");
 	}
 }

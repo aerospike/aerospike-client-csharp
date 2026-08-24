@@ -67,6 +67,37 @@ internal static class ExampleFixtureSupport
 		}
 	}
 
+	public static void AssertQueryCount(
+		IAerospikeClient client,
+		Arguments args,
+		string setName,
+		Filter filter,
+		int expected,
+		string label)
+	{
+		Statement statement = new()
+		{
+			Namespace = args.ns,
+			SetName = setName,
+			Filter = filter
+		};
+
+		int count = 0;
+
+		using (RecordSet records = client.Query(null, statement))
+		{
+			while (records.Next())
+			{
+				count++;
+			}
+		}
+
+		if (count != expected)
+		{
+			throw new Exception($"Verification failed: {label} query expected {expected} records, but returned {count}.");
+		}
+	}
+
 	public static void PutBins(IAerospikeClient client, Arguments args, object userKey, params Bin[] bins)
 		=> client.Put(args.writePolicy, Key(args, userKey), bins);
 

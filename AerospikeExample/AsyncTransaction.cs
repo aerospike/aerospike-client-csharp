@@ -33,14 +33,14 @@ public sealed class AsyncTransaction : AsyncExample
 		completed.Reset();
 
 		using Txn txn = new();
-		console.Info($"Begin txn: {txn.Id}");
+		Console.WriteLine($"Begin txn: {txn.Id}");
 		Put(txn);
 		completed.Wait();
 	}
 
 	private void Put(Txn txn)
 	{
-		console.Info("Run put");
+		Console.WriteLine("Run put");
 		WritePolicy wp = TxnWritePolicy(txn);
 		Key key = new(ns, set, 1);
 
@@ -49,7 +49,7 @@ public sealed class AsyncTransaction : AsyncExample
 
 	private void PutAnother(Txn txn)
 	{
-		console.Info("Run another put");
+		Console.WriteLine("Run another put");
 		WritePolicy wp = TxnWritePolicy(txn);
 		Key key = new(ns, set, 2);
 
@@ -58,7 +58,7 @@ public sealed class AsyncTransaction : AsyncExample
 
 	private void Get(Txn txn)
 	{
-		console.Info("Run get");
+		Console.WriteLine("Run get");
 		Policy p = new(client.ReadPolicyDefault)
 		{
 			Txn = txn
@@ -70,7 +70,7 @@ public sealed class AsyncTransaction : AsyncExample
 
 	private void Delete(Txn txn)
 	{
-		console.Info("Run delete");
+		Console.WriteLine("Run delete");
 		WritePolicy dp = new(client.WritePolicyDefault)
 		{
 			Txn = txn,
@@ -83,13 +83,13 @@ public sealed class AsyncTransaction : AsyncExample
 
 	private void Commit(Txn txn)
 	{
-		console.Info("Run commit");
+		Console.WriteLine("Run commit");
 		client.Commit(new CommitHandler(this, txn), txn);
 	}
 
 	private void Abort(Txn txn)
 	{
-		console.Info("Run abort");
+		Console.WriteLine("Run abort");
 		client.Abort(new AbortHandler(this, txn), txn);
 	}
 
@@ -106,7 +106,7 @@ public sealed class AsyncTransaction : AsyncExample
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Failed to write: namespace={key.ns} set={key.setName} key={key.userKey} exception={e.Message}");
+			Console.Error.WriteLine($"Failed to write: namespace={key.ns} set={key.setName} key={key.userKey} exception={e.Message}");
 			parent.Abort(txn);
 		}
 	}
@@ -117,7 +117,7 @@ public sealed class AsyncTransaction : AsyncExample
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Failed to read: namespace={key.ns} set={key.setName} key={key.userKey} exception={e.Message}");
+			Console.Error.WriteLine($"Failed to read: namespace={key.ns} set={key.setName} key={key.userKey} exception={e.Message}");
 			parent.Abort(txn);
 		}
 	}
@@ -128,7 +128,7 @@ public sealed class AsyncTransaction : AsyncExample
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Failed to delete: namespace={key.ns} set={key.setName} key={key.userKey} exception={e.Message}");
+			Console.Error.WriteLine($"Failed to delete: namespace={key.ns} set={key.setName} key={key.userKey} exception={e.Message}");
 			parent.Abort(txn);
 		}
 	}
@@ -137,13 +137,13 @@ public sealed class AsyncTransaction : AsyncExample
 	{
 		public void OnSuccess(CommitStatus.CommitStatusType status)
 		{
-			parent.console.Info($"Txn committed: {txn.Id}");
+			Console.WriteLine($"Txn committed: {txn.Id}");
 			parent.NotifyComplete();
 		}
 
 		public void OnFailure(AerospikeException.Commit ae)
 		{
-			parent.console.Error($"Txn commit failed: {txn.Id}");
+			Console.Error.WriteLine($"Txn commit failed: {txn.Id}");
 			parent.NotifyComplete();
 		}
 	}
@@ -152,7 +152,7 @@ public sealed class AsyncTransaction : AsyncExample
 	{
 		public void OnSuccess(AbortStatus.AbortStatusType status)
 		{
-			parent.console.Error($"Txn aborted: {txn.Id}");
+			Console.Error.WriteLine($"Txn aborted: {txn.Id}");
 			parent.NotifyComplete();
 		}
 	}

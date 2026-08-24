@@ -45,20 +45,20 @@ public sealed class OperateList : SyncExample
 		};
 
 		Record record = client.Operate(writePolicy, key, ListOperation.AppendItems(binName, inputList));
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 
 		// Pop value from end of list and return new size of list.
 		record = client.Operate(writePolicy, key,
 			ListOperation.Pop(binName, -1),
 			ListOperation.Size(binName));
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 
 		// Two operations on the same bin produce a list of two results.
 		IList results = record.GetList(binName);
 
 		foreach (object value in results)
 		{
-			console.Info($"Received: {value}");
+			Console.WriteLine($"Received: {value}");
 		}
 	}
 
@@ -83,6 +83,6 @@ public sealed class OperateList : SyncExample
 			Operation.Get(binName));
 
 		Record record = client.Get(policy, key);
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 	}
 }

@@ -33,7 +33,7 @@ public sealed class AsyncQuery : AsyncExample
 
 		completed.Reset();
 
-		console.Info($"Query for: ns={ns} set={set} bin={binName} >= {begin} <= {end}");
+		Console.WriteLine($"Query for: ns={ns} set={set} bin={binName} >= {begin} <= {end}");
 
 		Statement stmt = new()
 		{
@@ -58,14 +58,14 @@ public sealed class AsyncQuery : AsyncExample
 	{
 		public void OnRecord(Key key, Record record)
 		{
-			parent.console.Info($"Result: {record.GetInt(binName)}");
+			Console.WriteLine($"Result: {record.GetInt(binName)}");
 		}
 
 		public void OnSuccess() => parent.NotifyCompleted();
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Query failed: {Util.GetErrorMessage(e)}");
+			Console.Error.WriteLine($"Query failed: {Util.GetErrorMessage(e)}");
 			parent.NotifyCompleted();
 		}
 	}

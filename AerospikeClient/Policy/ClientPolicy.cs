@@ -52,6 +52,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Authentication mode.
+		/// <see cref="AuthMode.EXTERNAL"/> and <see cref="AuthMode.PKI"/> require TLS.
+		/// PKI authentication also requires a client certificate and does not use a password.
 		/// <para>Default: AuthMode.INTERNAL</para>
 		/// </summary>
 		public AuthMode authMode = AuthMode.INTERNAL;
@@ -88,9 +90,9 @@ namespace Aerospike.Client
 		public int minConnsPerNode;
 
 		/// <summary>
-		/// Maximum number of synchronous connections allowed per server node.  Commands will go
-		/// through retry logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS" if the maximum
-		/// number of connections would be exceeded.
+		/// Maximum number of synchronous connections allowed per server node. Commands go through
+		/// retry logic and can fail with <see cref="ResultCode.NO_MORE_CONNECTIONS"/> when the pool is
+		/// exhausted. This limit is per node, not cluster-wide.
 		/// <para>
 		/// The number of connections used per node depends on how many concurrent threads issue
 		/// database commands plus sub-threads used for parallel multi-node commands (batch, scan,
@@ -182,8 +184,9 @@ namespace Aerospike.Client
 		/// but all peers from that seed are not reachable.
 		/// </para>
 		/// <para>
-		/// If false, a partial cluster will be created and the client will automatically connect
-		/// to the remaining nodes when they become available.
+		/// If false, the client can start with no seed connection or with a partial cluster view.
+		/// The cluster tend thread will continue attempting discovery and connect to nodes when
+		/// they become available. Database commands can fail until a suitable node is discovered.
 		/// </para>
 		/// <para>
 		/// Default: true
@@ -258,6 +261,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Secure connection policy for servers that require TLS connections.
 		/// Secure connections are supported for both synchronous and asynchronous commands.
+		/// TLS is required by <see cref="AuthMode.EXTERNAL"/> and <see cref="AuthMode.PKI"/>.
 		/// <para>Default: null (Use normal sockets)</para>
 		/// </summary>
 		public TlsPolicy tlsPolicy;
@@ -276,6 +280,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Flag to signify if alternate IP address discovery info commands should be used.
+		/// Enable this when the addresses advertised by standard service/peer commands are not
+		/// reachable from the client, such as clients outside a container or private network.
 		/// 
 		/// If false, use:
 		/// IP address: service-clear-std

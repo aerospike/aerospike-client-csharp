@@ -236,6 +236,12 @@ namespace Aerospike.Client
 		/// Determine value given generic object.
 		/// This is the slowest of the Value get() methods.
 		/// Useful when copying records from one cluster to another.
+		/// <para>
+		/// Unsupported object types fall back to <see cref="BlobValue"/>. The default build no
+		/// longer provides generic object serialization, so that fallback expects a byte array
+		/// and can fail at command serialization time. Convert custom objects to a supported
+		/// scalar, byte array, list, or map before calling this method.
+		/// </para>
 		/// </summary>
 		static public Value Get<T>(T obj)
 		{

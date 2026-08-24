@@ -27,7 +27,7 @@ public sealed class ScanParallel : SyncExample
 	/// </summary>
 	public override void RunExample()
 	{
-		console.Info($"Scan parallel: namespace={ns} set={set}");
+		Console.WriteLine($"Scan parallel: namespace={ns} set={set}");
 		recordCount = 0;
 
 		DateTime begin = DateTime.Now;
@@ -35,9 +35,9 @@ public sealed class ScanParallel : SyncExample
 		client.ScanAll(scanPolicy, ns, set, ScanCallback);
 
 		double seconds = (DateTime.Now - begin).TotalSeconds;
-		console.Info($"Total records returned: {recordCount}");
-		console.Info($"Elapsed time: {seconds} seconds");
-		console.Info($"Records/second: {Math.Round(recordCount / seconds)}");
+		Console.WriteLine($"Total records returned: {recordCount}");
+		Console.WriteLine($"Elapsed time: {seconds} seconds");
+		Console.WriteLine($"Records/second: {Math.Round(recordCount / seconds)}");
 	}
 
 	private void ScanCallback(Key key, Record record)
@@ -48,7 +48,7 @@ public sealed class ScanParallel : SyncExample
 
 		if (count % 10000 == 0)
 		{
-			console.Info($"Records {count}");
+			Console.WriteLine($"Records {count}");
 		}
 	}
 }

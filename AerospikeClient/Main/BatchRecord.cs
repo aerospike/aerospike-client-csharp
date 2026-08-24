@@ -35,6 +35,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Result code for this returned record. See <see cref="Aerospike.Client.ResultCode"/>.
 		/// If not <see cref="Aerospike.Client.ResultCode.OK"/>, the record will be null.
+		/// Key-specific errors can be reported here even when other records in the same batch succeed.
 		/// </summary>
 		public int resultCode;
 
@@ -42,6 +43,8 @@ namespace Aerospike.Client
 		/// Is it possible that the write command may have completed even though an error
 		/// occurred for this record. This may be the case when a client error occurs (like timeout)
 		/// after the command was sent to the server.
+		/// This field is meaningful for batch records that contain writes; applications should
+		/// resolve an in-doubt result before blindly retrying a non-idempotent operation.
 		/// </summary>
 		public bool inDoubt;
 

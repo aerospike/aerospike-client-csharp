@@ -76,11 +76,11 @@ public sealed class PathExpression : SyncExample
 
 		Dictionary<object, object> resultMap = (Dictionary<object, object>)record.GetMap(InventoryBinName);
 		Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
-		console.Info($"SelectByPath featured + in-stock: found {products.Count} product(s)");
+		Console.WriteLine($"SelectByPath featured + in-stock: found {products.Count} product(s)");
 
 		foreach (KeyValuePair<object, object> entry in products)
 		{
-			console.Info($"  Product {entry.Key}");
+			Console.WriteLine($"  Product {entry.Key}");
 		}
 	}
 
@@ -105,11 +105,11 @@ public sealed class PathExpression : SyncExample
 
 		Dictionary<object, object> resultMap = (Dictionary<object, object>)record.GetMap(InventoryBinName);
 		Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
-		console.Info($"SelectByPath regex '10000.*': found {products.Count} product(s)");
+		Console.WriteLine($"SelectByPath regex '10000.*': found {products.Count} product(s)");
 
 		foreach (KeyValuePair<object, object> entry in products)
 		{
-			console.Info($"  Product {entry.Key}");
+			Console.WriteLine($"  Product {entry.Key}");
 		}
 	}
 
@@ -149,11 +149,11 @@ public sealed class PathExpression : SyncExample
 
 		Dictionary<object, object> resultMap = (Dictionary<object, object>)record.GetMap(InventoryBinName);
 		Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
-		console.Info($"SelectByPath cheap + in-stock (price<50, qty>0): found {products.Count} product(s)");
+		Console.WriteLine($"SelectByPath cheap + in-stock (price<50, qty>0): found {products.Count} product(s)");
 
 		foreach (KeyValuePair<object, object> entry in products)
 		{
-			console.Info($"  Product {entry.Key}");
+			Console.WriteLine($"  Product {entry.Key}");
 		}
 	}
 
@@ -221,7 +221,7 @@ public sealed class PathExpression : SyncExample
 		Dictionary<object, object> variants = (Dictionary<object, object>)product1["variants"];
 		Dictionary<object, object> variant2001 = (Dictionary<object, object>)variants["2001"];
 
-		console.Info($"ModifyByPath: product 10000001, variant 2001 quantity after +10: {variant2001["quantity"]} (was 100)");
+		Console.WriteLine($"ModifyByPath: product 10000001, variant 2001 quantity after +10: {variant2001["quantity"]} (was 100)");
 	}
 
 	/// <summary>
@@ -262,11 +262,11 @@ public sealed class PathExpression : SyncExample
 
 		Dictionary<object, object> resultMap = (Dictionary<object, object>)record.GetMap(InventoryBinName);
 		Dictionary<object, object> products = (Dictionary<object, object>)resultMap["inventory"];
-		console.Info($"SelectByPath with NO_FAIL (malformed product tolerated): found {products.Count} product(s)");
+		Console.WriteLine($"SelectByPath with NO_FAIL (malformed product tolerated): found {products.Count} product(s)");
 
 		foreach (KeyValuePair<object, object> entry in products)
 		{
-			console.Info($"  Product {entry.Key}");
+			Console.WriteLine($"  Product {entry.Key}");
 		}
 	}
 }

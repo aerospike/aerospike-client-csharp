@@ -79,7 +79,7 @@ public sealed class UserDefinedFunction : SyncExample
 		}
 		catch (AerospikeException)
 		{
-			console.Info("UDF rejected the invalid value as expected.");
+			Console.WriteLine("UDF rejected the invalid value as expected.");
 		}
 	}
 
@@ -102,7 +102,7 @@ public sealed class UserDefinedFunction : SyncExample
 		client.Execute(writePolicy, key, Package, "writeBin", Value.Get(binName), Value.Get(list));
 
 		object received = client.Execute(writePolicy, key, Package, "readBin", Value.Get(binName));
-		console.Info($"UDF returned: {received}");
+		Console.WriteLine($"UDF returned: {received}");
 	}
 
 	private void ServerSideExists()
@@ -111,6 +111,6 @@ public sealed class UserDefinedFunction : SyncExample
 		string binName = "udfbin7";
 
 		long exists = (long)client.Execute(writePolicy, key, Package, "valueExists", Value.Get(binName), Value.Get(3702));
-		console.Info($"Value exists: {exists != 0}");
+		Console.WriteLine($"Value exists: {exists != 0}");
 	}
 }

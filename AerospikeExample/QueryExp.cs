@@ -34,7 +34,7 @@ public sealed class QueryExp : SyncExample
 
 	private void RunNumericPredicate()
 	{
-		console.Info("Query Predicate: (bin2 > 126 && bin2 <= 140) || (bin2 = 360)");
+		Console.WriteLine("Query Predicate: (bin2 > 126 && bin2 <= 140) || (bin2 = 360)");
 
 		Statement stmt = new()
 		{
@@ -58,7 +58,7 @@ public sealed class QueryExp : SyncExample
 
 	private void RunTimePredicate()
 	{
-		console.Info("Query Predicate: Record updated in 2020");
+		Console.WriteLine("Query Predicate: Record updated in 2020");
 
 		DateTime beginTime = new(2020, 1, 1);
 		DateTime endTime = new(2021, 1, 1);
@@ -83,7 +83,7 @@ public sealed class QueryExp : SyncExample
 
 	private void RunRegexPredicate()
 	{
-		console.Info("Query Predicate: bin3 contains string with 'prefix' and 'suffix'");
+		Console.WriteLine("Query Predicate: bin3 contains string with 'prefix' and 'suffix'");
 
 		Statement stmt = new()
 		{
@@ -107,7 +107,7 @@ public sealed class QueryExp : SyncExample
 
 		while (rs.Next())
 		{
-			console.Info($"Record: {rs.Record}");
+			Console.WriteLine($"Record: {rs.Record}");
 		}
 	}
 }
