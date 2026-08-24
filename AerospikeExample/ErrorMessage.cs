@@ -36,7 +36,7 @@ public sealed class ErrorMessage : SyncExample
 		};
 
 		client.Put(errorPolicy, intKey, new Bin(BinName, 1));
-		console.Info("Write succeeded, running error detail examples.");
+		Console.WriteLine("Write succeeded, running error detail examples.");
 
 		AppendToIntegerBin(errorPolicy, intKey);
 		DeleteGenerationMismatch(intKey);
@@ -44,7 +44,7 @@ public sealed class ErrorMessage : SyncExample
 		HllAddOnIntegerBin(errorPolicy, intKey);
 		HllRefreshCountMissingBin(errorPolicy);
 
-		console.Info("Error message example completed successfully.");
+		Console.WriteLine("Error message example completed successfully.");
 	}
 
 	private void AppendToIntegerBin(WritePolicy errorPolicy, Key key)
@@ -57,7 +57,7 @@ public sealed class ErrorMessage : SyncExample
 		catch (AerospikeException ae)
 		{
 			AssertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, SubCode.NONE, "cannot append");
-			console.Info("Append to integer bin failed as expected: {0}: {1}", ae.Result, ae.BaseMessage);
+			Console.WriteLine("Append to integer bin failed as expected: {0}: {1}", ae.Result, ae.BaseMessage);
 		}
 	}
 
@@ -78,7 +78,7 @@ public sealed class ErrorMessage : SyncExample
 		catch (AerospikeException ae)
 		{
 			AssertErrorDetails(ae, ResultCode.GENERATION_ERROR, SubCode.NONE, "generation");
-			console.Info("Generation mismatch delete failed as expected: {0}: {1}", ae.Result, ae.BaseMessage);
+			Console.WriteLine("Generation mismatch delete failed as expected: {0}: {1}", ae.Result, ae.BaseMessage);
 		}
 	}
 
@@ -95,7 +95,7 @@ public sealed class ErrorMessage : SyncExample
 		catch (AerospikeException ae)
 		{
 			AssertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, SubCode.NONE, "cannot increment");
-			console.Info("Increment string bin failed as expected: {0}: {1}", ae.Result, ae.BaseMessage);
+			Console.WriteLine("Increment string bin failed as expected: {0}: {1}", ae.Result, ae.BaseMessage);
 		}
 	}
 
@@ -111,7 +111,7 @@ public sealed class ErrorMessage : SyncExample
 		catch (AerospikeException ae)
 		{
 			AssertErrorDetails(ae, ResultCode.BIN_TYPE_ERROR, SubCode.NONE, "bin is not hll type");
-			console.Info("HLL add on integer bin failed as expected: {0}: {1}", ae.Result, ae.BaseMessage);
+			Console.WriteLine("HLL add on integer bin failed as expected: {0}: {1}", ae.Result, ae.BaseMessage);
 		}
 	}
 
@@ -132,7 +132,7 @@ public sealed class ErrorMessage : SyncExample
 				ResultCode.BIN_NOT_FOUND,
 				SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP,
 				"subcode=" + SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP);
-			console.Info("HLL refresh count on missing bin failed as expected: {0}: {1}", ae.Result, ae.BaseMessage);
+			Console.WriteLine("HLL refresh count on missing bin failed as expected: {0}: {1}", ae.Result, ae.BaseMessage);
 		}
 	}
 
