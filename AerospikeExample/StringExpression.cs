@@ -90,6 +90,11 @@ public sealed class StringExpression : SyncExample
 		record = Eval(key, StringExp.IsNumeric(StringNumericType.INT, Exp.StringBin(BinName)));
 		console.Info($"isNumeric(\"3.14\", INT) = {record.GetBool(ResultBinName)}");
 
+		// FLOAT requires a decimal point followed by a digit.
+		Put(key, "12345");
+		record = Eval(key, StringExp.IsNumeric(StringNumericType.FLOAT, Exp.StringBin(BinName)));
+		console.Info($"isNumeric(\"12345\", FLOAT) = {record.GetBool(ResultBinName)}");
+
 		Put(key, "HELLO");
 		record = Eval(key, StringExp.IsUpper(Exp.StringBin(BinName)));
 		console.Info($"isUpper(\"HELLO\") = {record.GetBool(ResultBinName)}");

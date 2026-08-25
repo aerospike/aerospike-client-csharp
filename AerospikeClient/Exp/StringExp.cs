@@ -41,7 +41,9 @@ namespace Aerospike.Client
 	/// <para>
 	/// Index orientation is left-to-right with codepoint addressing. Negative indexes
 	/// count from the end of the string (<code>Exp.Val(-1)</code> = last codepoint). Out-of-bounds
-	/// indexes are clamped to the valid range; no error is returned.
+	/// indexes are clamped for Substr, Snip, CharAt, and Insert. Overwrite also resolves
+	/// negative indexes from the end, but returns an error when the resolved index falls
+	/// outside <c>[0, len-1]</c> instead of clamping.
 	/// </para>
 	/// <para>
 	/// Unlike <see cref="StringOperation"/>, these builders
@@ -254,8 +256,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create expression that parses <see cref="Exp"/> src as an int64. The expression returns
-		/// an error if the source cannot be parsed as an integer.
+		/// Create expression that parses <see cref="Exp"/> src as an int64. Leading whitespace is
+		/// rejected. The expression returns an error if the source cannot be parsed as an integer.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -271,8 +273,11 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create expression that parses <see cref="Exp"/> src as a 64-bit float. The expression
-		/// returns an error if the source cannot be parsed as a double.
+		/// Create expression that parses <see cref="Exp"/> src as a 64-bit float. Accepts decimal and
+		/// exponent forms and case-insensitive <c>inf</c>/<c>nan</c>, but rejects leading whitespace,
+		/// hex literals, a decimal point with no trailing digit, and parenthesized nan payloads.
+		/// The expression returns an error if parsing fails. <see cref="IsNumeric(Exp)"/> is not a
+		/// reliable pre-check for this conversion.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -308,6 +313,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src contains a valid integer or
 		/// float literal. Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// This is not a reliable pre-check for <see cref="ToDouble(Exp)"/> or
+		/// <see cref="ToInteger(Exp)"/> — values such as <c>"1e5"</c> and <c>"inf"</c> may parse
+		/// as doubles while returning false here.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -323,8 +331,10 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create expression that tests whether <see cref="Exp"/> src parses as a number of the
-		/// requested <see cref="StringNumericType"/>. Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// Create expression that tests whether <see cref="Exp"/> src matches the requested
+		/// <see cref="StringNumericType"/> spelling. This is not equivalent to parsing as that
+		/// type. In particular, <see cref="StringNumericType.FLOAT"/> requires a decimal point
+		/// followed by a digit, so <c>"5"</c> is false under FLOAT even though it parses as a double.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -515,9 +525,9 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that overwrites codepoints in <see cref="Exp"/> src starting at codepoint
-		/// <see cref="Exp"/> index with <see cref="Exp"/> value, returning the resulting string. The result may
-		/// grow beyond the original length when <see cref="Exp"/> value extends past the end. Does not
-		/// modify the underlying bin.
+		/// <see cref="Exp"/> index with <see cref="Exp"/> value, returning the resulting string. Negative
+		/// indexes count from the end. The result may grow beyond the original length when
+		/// <see cref="Exp"/> value extends past the end. Does not modify the underlying bin.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -603,6 +613,25 @@ namespace Aerospike.Client
 		public static Exp Prepend(StringPolicy policy, Exp value, Exp src)
 		{
 			byte[] bytes = PackUtil.Pack(StringOperation.PREPEND, value, (int)policy.flags);
+			return AddModify(src, bytes);
+		}
+
+		/// <summary>
+		/// Create expression that removes all codepoints from <paramref name="start"/> through
+		/// the end of <paramref name="src"/> and returns the resulting string.
+		/// </summary>
+		/// <remarks>
+		/// The wire form omits policy flags because the next positional argument would be
+		/// interpreted as the end index. The <paramref name="policy"/> is retained for API
+		/// consistency but its flags cannot be represented by this overload.
+		/// </remarks>
+		/// <param name="policy">string policy; flags are not encoded by this overload</param>
+		/// <param name="start">first codepoint to remove (inclusive)</param>
+		/// <param name="src">source string expression</param>
+		/// <returns>string-typed expression yielding the modified string</returns>
+		public static Exp Snip(StringPolicy policy, Exp start, Exp src)
+		{
+			byte[] bytes = PackUtil.Pack(StringOperation.SNIP, start);
 			return AddModify(src, bytes);
 		}
 
@@ -910,7 +939,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that returns the string representation of <see cref="Exp"/> src, where
-		/// <see cref="Exp"/> src may be any expression yielding an integer, float, string, or blob
+		/// <see cref="Exp"/> src may be any expression yielding an integer, float, string, boolean, or blob
 		/// value. Returns an error for any other source type.
 		/// </summary>
 		/// <example>
@@ -919,7 +948,7 @@ namespace Aerospike.Client
 		/// Exp s = StringExp.ToString(Exp.IntBin("n"));
 		/// </code>
 		/// </example>
-		/// <param name="src">source expression (integer, float, string, or blob)</param>
+		/// <param name="src">source expression (integer, float, string, boolean, or blob)</param>
 		/// <returns>string-typed expression yielding the string representation</returns>
 		public static Exp ToString(Exp src)
 		{

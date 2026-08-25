@@ -210,6 +210,18 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void AppendRejectsInvalidBin()
+		{
+			AssertInvalidEncoding(StringOperation.Append(policy, bin, "x"));
+		}
+
+		[TestMethod]
+		public void PrependRejectsInvalidBin()
+		{
+			AssertInvalidEncoding(StringOperation.Prepend(policy, bin, "x"));
+		}
+
+		[TestMethod]
 		public void SnipRejectsInvalidBin()
 		{
 			AssertInvalidEncoding(StringOperation.Snip(policy, bin, 0, 1));

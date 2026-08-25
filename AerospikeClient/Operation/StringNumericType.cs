@@ -32,7 +32,9 @@ namespace Aerospike.Client
 		INT = 1,
 
 		/// <summary>
-		/// Match only floating-point numbers.
+		/// Match only floating-point numbers. This is stricter than parsing as a float:
+		/// the string must contain a decimal point followed by a digit. For example,
+		/// <c>"5"</c> is false under <see cref="FLOAT"/>, but true under <see cref="ANY"/>.
 		/// </summary>
 		FLOAT = 2
 	}

@@ -95,6 +95,11 @@ public sealed class OperateString : SyncExample
 		record = client.Operate(writePolicy, key, StringOperation.IsNumeric(BinName, StringNumericType.INT));
 		console.Info($"isNumeric(\"3.14\", INT) = {record.GetBool(BinName)}");
 
+		// FLOAT requires a decimal point followed by a digit.
+		Put(key, "12345");
+		record = client.Operate(writePolicy, key, StringOperation.IsNumeric(BinName, StringNumericType.FLOAT));
+		console.Info($"isNumeric(\"12345\", FLOAT) = {record.GetBool(BinName)}");
+
 		Put(key, "HELLO");
 		record = client.Operate(writePolicy, key, StringOperation.IsUpper(BinName));
 		console.Info($"isUpper(\"HELLO\") = {record.GetBool(BinName)}");

@@ -687,7 +687,12 @@ namespace Aerospike.Client
 		/// Append bin string values to existing record bin values.
 		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
-		/// This call only works for string values. 
+		/// <para>
+		/// This legacy operation performs raw byte concatenation and is not Unicode-aware.
+		/// Use <see cref="StringOperation.Append"/> for string bins. For blob bins, use
+		/// <see cref="BitOperation.Insert"/> at a byte offset equal to the blob's current size.
+		/// There is no end-of-blob sentinel, so appending requires knowing the current size.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -717,7 +722,11 @@ namespace Aerospike.Client
 		/// Prepend bin string values to existing record bin values.
 		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
-		/// This call works only for string values. 
+		/// <para>
+		/// This legacy operation performs raw byte concatenation and is not Unicode-aware.
+		/// Use <see cref="StringOperation.Prepend"/> for string bins. For blob bins, use
+		/// <see cref="BitOperation.Insert"/> at byte offset 0.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>

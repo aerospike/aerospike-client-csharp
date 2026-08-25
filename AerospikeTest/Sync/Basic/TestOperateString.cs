@@ -347,6 +347,24 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void IsNumericFloatRequiresFractionalDigit()
+		{
+			Put("3.14");
+			Assert.IsTrue(Operate(StringOperation.IsNumeric(bin, StringNumericType.FLOAT)).GetBool(bin));
+
+			Put("5");
+			Assert.IsFalse(Operate(StringOperation.IsNumeric(bin, StringNumericType.FLOAT)).GetBool(bin));
+			Assert.IsTrue(Operate(StringOperation.IsNumeric(bin, StringNumericType.ANY)).GetBool(bin));
+
+			Put("5.");
+			Assert.IsFalse(Operate(StringOperation.IsNumeric(bin, StringNumericType.FLOAT)).GetBool(bin));
+
+			Put("1e5");
+			Assert.IsFalse(Operate(StringOperation.IsNumeric(bin, StringNumericType.FLOAT)).GetBool(bin));
+			Assert.IsFalse(Operate(StringOperation.IsNumeric(bin, StringNumericType.ANY)).GetBool(bin));
+		}
+
+		[TestMethod]
 		public void ToIntegerParsesDigitsAsLong()
 		{
 			Put("12345");
@@ -360,6 +378,68 @@ namespace Aerospike.Test
 			Put("3.14");
 			Record r = Operate(StringOperation.ToDouble(bin));
 			Assert.AreEqual(3.14, r.GetDouble(bin), 0.001);
+		}
+
+		[TestMethod]
+		public void ToIntegerRejectsLeadingWhitespace()
+		{
+			Put(" 123");
+			try
+			{
+				Operate(StringOperation.ToInteger(bin));
+				Assert.Inconclusive("Leading-whitespace rejection requires SERVER-1449 on the server.");
+			}
+			catch (AerospikeException ae)
+			{
+				Assert.AreEqual(ResultCode.OP_NOT_APPLICABLE, ae.Result);
+			}
+		}
+
+		[TestMethod]
+		public void ToDoubleRejectsLeadingWhitespaceAndHex()
+		{
+			Put(" 3.14");
+			try
+			{
+				Operate(StringOperation.ToDouble(bin));
+				Assert.Inconclusive("Leading-whitespace rejection requires SERVER-1449 on the server.");
+			}
+			catch (AerospikeException ae)
+			{
+				Assert.AreEqual(ResultCode.OP_NOT_APPLICABLE, ae.Result);
+			}
+
+			Put("0x10");
+			try
+			{
+				Operate(StringOperation.ToDouble(bin));
+				Assert.Inconclusive("Hex-literal rejection requires SERVER-1449 on the server.");
+			}
+			catch (AerospikeException ae)
+			{
+				Assert.AreEqual(ResultCode.OP_NOT_APPLICABLE, ae.Result);
+			}
+
+			Put("5.");
+			try
+			{
+				Operate(StringOperation.ToDouble(bin));
+				Assert.Inconclusive("Trailing-decimal rejection requires SERVER-1449 on the server.");
+			}
+			catch (AerospikeException ae)
+			{
+				Assert.AreEqual(ResultCode.OP_NOT_APPLICABLE, ae.Result);
+			}
+		}
+
+		[TestMethod]
+		public void ToDoubleAcceptsExponentWhileIsNumericRejects()
+		{
+			// SERVER-1449: toDouble keeps exponent/inf/nan parsing; isNumeric does not.
+			Put("1e5");
+			Assert.IsFalse(Operate(StringOperation.IsNumeric(bin)).GetBool(bin));
+			Record r = Operate(StringOperation.ToDouble(bin));
+			Assert.AreEqual(100000.0, r.GetDouble(bin), 0.001);
 		}
 
 		[TestMethod]
@@ -522,6 +602,32 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void OverwriteWithNegativeIndexWrapsFromEnd()
+		{
+			// SERVER-1409: negative indexes resolve from the end, same as insert/substr.
+			Put("hello world");
+			try
+			{
+				Operate(StringOperation.Overwrite(policy, bin, -5, "earth"));
+			}
+			catch (AerospikeException ae) when (ae.Result == ResultCode.PARAMETER_ERROR)
+			{
+				Assert.Inconclusive("Negative overwrite indexes require SERVER-1409 on the server.");
+			}
+
+			Assert.AreEqual("hello earth", StringValue());
+		}
+
+		[TestMethod]
+		public void OverwriteWithOutOfBoundsIndexRaisesParameter()
+		{
+			// Overwrite does not clamp; resolved indexes outside [0, len-1] fail.
+			Put("hello");
+			AssertParamError(StringOperation.Overwrite(policy, bin, 100, "x"));
+			AssertParamError(StringOperation.Overwrite(policy, bin, -100, "x"));
+		}
+
+		[TestMethod]
 		public void SnipRemovesCharacterRange()
 		{
 			Put("hello beautiful world");
@@ -542,6 +648,14 @@ namespace Aerospike.Test
 		{
 			Put("hello world");
 			Operate(StringOperation.Snip(policy, bin, 5, 11));
+			Assert.AreEqual("hello", StringValue());
+		}
+
+		[TestMethod]
+		public void SnipStartOnlyRemovesThroughEnd()
+		{
+			Put("hello world");
+			Operate(StringOperation.Snip(policy, bin, 5));
 			Assert.AreEqual("hello", StringValue());
 		}
 
@@ -905,8 +1019,9 @@ namespace Aerospike.Test
 		// CTX navigation — string nested in list/map bins
 		//
 		// Exercises the §2.3.1 CTX-wrapper wire envelope: the op-data is
-		// wrapped in a 3-element context-eval array (sub-op 0xFF) when CTX
-		// is non-empty. The server dispatches these through
+		// wrapped in a 3-element CONTEXT_EVAL array (0xFF sentinel) whose
+		// third element is a nested [inner_op, ...args] list when CTX is
+		// non-empty (SERVER-1483). The server dispatches these through
 		// as_bin_string_modify_ctx_tr / its read-side twin, which is a
 		// separate code path from the top-level-bin variant exercised above.
 		//=================================================================
@@ -932,6 +1047,20 @@ namespace Aerospike.Test
 
 			Record r = Operate(StringOperation.Strlen(bin, CTX.ListIndex(2)));
 			Assert.AreEqual(11L, r.GetLong(bin));
+		}
+
+		[TestMethod]
+		public void CtxOnNonStringLeafRaisesIncompatibleType()
+		{
+			// list = ["alpha", 42]; strlen at index 1 targets a non-string leaf.
+			List<Value> list = [Value.Get("alpha"), Value.Get(42)];
+			PutList(list);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(() =>
+				Operate(StringOperation.Strlen(bin, CTX.ListIndex(1))));
+			Assert.IsTrue(
+				ae.Result == ResultCode.OP_NOT_APPLICABLE || ae.Result == ResultCode.BIN_TYPE_ERROR,
+				$"Unexpected result code: {ae.Result}");
 		}
 
 		[TestMethod]
@@ -1030,6 +1159,20 @@ namespace Aerospike.Test
 			var after = client.Get(null, key).GetMap(bin);
 			Assert.AreEqual("hello world", after["a"]);
 			Assert.AreEqual("foo", after["b"]);
+		}
+
+		[TestMethod]
+		public void TrimOnStringNestedInListCarriesPolicyFlags()
+		{
+			// list = ["alpha", "  beta  ", "gamma"]; trim at index 1 -> "beta"
+			// Exercises CTX + modify op with optional trailing policy flags.
+			List<Value> list = [Value.Get("alpha"), Value.Get("  beta  "), Value.Get("gamma")];
+			PutList(list);
+
+			Operate(StringOperation.Trim(policy, bin, CTX.ListIndex(1)));
+
+			IList after = client.Get(null, key).GetList(bin);
+			CollectionAssert.AreEqual(new List<object> { "alpha", "beta", "gamma" }, after);
 		}
 
 		//=================================================================
@@ -1238,8 +1381,7 @@ namespace Aerospike.Test
 		// These exercise the server's prepare-phase validation
 		// (particle_string.c: find occurrence != 0, empty/negative pad
 		// arguments, repeat count >= 0, regex_replace pattern compile).
-		// All should surface as PARAMETER_ERROR; an invalid regex surfaces
-		// as OP_NOT_APPLICABLE per the server's ICU integration.
+		// All should surface as PARAMETER_ERROR.
 		//=================================================================
 
 		private static void AssertParamError(Operation op)

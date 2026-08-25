@@ -21,8 +21,10 @@ namespace Aerospike.Client
 	/// command for inspecting and modifying string bins.
 	/// <para>
 	/// Index orientation is left-to-right with codepoint addressing. Negative indexes
-	/// count from the end of the string (-1 = last codepoint). Out-of-bounds
-	/// indexes are clamped to the valid range; no error is returned.
+	/// count from the end of the string (-1 = last codepoint). Out-of-bounds indexes
+	/// are clamped for Substr, Snip, CharAt, and Insert. Overwrite also resolves
+	/// negative indexes from the end, but returns <c>PARAMETER_ERROR</c> when the
+	/// resolved index falls outside <c>[0, len-1]</c> instead of clamping.
 	/// </para>
 	/// String operations require server version 8.1.3 or later. A non-empty <see cref="CTX"/>
 	/// argument navigates into a string nested inside a list or map bin; with no CTX
@@ -293,7 +295,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create string ToInteger operation that parses the string as an <see cref="int"/> and returns the parsed value.
-		/// Returns <see cref="AerospikeException"/> if the bin cannot be parsed as an integer.
+		/// Leading whitespace is rejected. Returns <see cref="ResultCode.OP_NOT_APPLICABLE"/> if the bin
+		/// cannot be parsed as an integer.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -313,7 +316,11 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create string ToDouble operation that parses the string as a <see cref="double"/> and returns the parsed value.
-		/// Returns <see cref="AerospikeException"/> if the bin cannot be parsed as a double.
+		/// Accepts decimal and exponent forms and case-insensitive <c>inf</c>/<c>nan</c>, but rejects leading
+		/// whitespace, hex literals, a decimal point with no trailing digit (for example <c>"5."</c>), and
+		/// parenthesized nan payloads. Returns <see cref="ResultCode.OP_NOT_APPLICABLE"/> if parsing fails.
+		/// <see cref="IsNumeric(string, CTX[])"/> is not a reliable pre-check: values such as <c>"1e5"</c>
+		/// and <c>"inf"</c> parse here but are false under every <see cref="StringNumericType"/> filter.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -354,6 +361,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string IsNumeric operation that returns <see cref="bool"/> true if the bin
 		/// contains a valid integer or float, <see cref="bool"/> false otherwise.
+		/// This is not a reliable pre-check for <see cref="ToDouble(string, CTX[])"/> or
+		/// <see cref="ToInteger(string, CTX[])"/> — values such as <c>"1e5"</c> and <c>"inf"</c>
+		/// may parse as doubles while returning false here.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -372,8 +382,11 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create string IsNumeric operation that filters by <see cref="StringNumericType"/> and returns <see cref="bool"/> true if the bin
-		/// contains a valid integer or float, <see cref="bool"/> false otherwise.
+		/// Create string IsNumeric operation that tests whether the bin matches the requested
+		/// <see cref="StringNumericType"/> spelling and returns a boolean result.
+		/// This is not equivalent to parsing as that type. In particular,
+		/// <see cref="StringNumericType.FLOAT"/> requires a decimal point followed by a digit,
+		/// so <c>"5"</c> is false under FLOAT even though it parses as a double.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -583,8 +596,10 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create string Overwrite operation that overwrites codepoints starting at
-		/// codepoint <see cref="int"/> index with <see cref="string"/> value. The result may grow beyond the
-		/// original length when <see cref="string"/> value extends past the end.
+		/// codepoint <see cref="int"/> index with <see cref="string"/> value. Negative indexes count
+		/// from the end. The result may grow beyond the original length when <see cref="string"/> value
+		/// extends past the end. A resolved index outside <c>[0, len-1]</c> returns
+		/// <c>PARAMETER_ERROR</c> rather than clamping.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -699,6 +714,26 @@ namespace Aerospike.Client
 		public static Operation Prepend(StringPolicy policy, string binName, string value, params CTX[] ctx)
 		{
 			byte[] bytes = PackStringOp(PREPEND, Value.Get(value), (int)policy.flags, ctx);
+			return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
+		}
+
+		/// <summary>
+		/// Create string Snip operation that removes all codepoints from
+		/// <paramref name="start"/> through the end of the string.
+		/// </summary>
+		/// <remarks>
+		/// The wire form omits policy flags because the next positional argument would be
+		/// interpreted as the end index. The <paramref name="policy"/> is retained for API
+		/// consistency but its flags cannot be represented by this overload.
+		/// </remarks>
+		/// <param name="policy">string policy; flags are not encoded by this overload</param>
+		/// <param name="binName">name of the string bin</param>
+		/// <param name="start">first codepoint to remove (inclusive)</param>
+		/// <param name="ctx">optional path into a string nested inside a list or map</param>
+		/// <returns>modify operation</returns>
+		public static Operation Snip(StringPolicy policy, string binName, int start, params CTX[] ctx)
+		{
+			byte[] bytes = PackStringOp(SNIP, start, ctx);
 			return new Operation(Operation.Type.STRING_MODIFY, binName, new Value.BytesValue(bytes, ParticleType.STRING));
 		}
 
@@ -1016,13 +1051,14 @@ namespace Aerospike.Client
 		//-----------------------------------------------------------------
 
 		/// <summary>
-		/// Create ToString operation that converts an integer, float, string, or
-		/// blob bin to its string representation. Returns <c>AEROSPIKE_ERR_INCOMPATIBLE_TYPE</c> for any other bin type.
+		/// Create ToString operation that converts an integer, float, string, boolean, or
+		/// blob bin to its string representation. Returns <c>AEROSPIKE_ERR_INCOMPATIBLE_TYPE</c>
+		/// for any other bin type.
 		/// <para>
 		/// Unlike the other builders in this class, <see cref="ToString"/> does not accept a
 		/// <see cref="CTX"/>. The other string operations are sent as <see cref="Operation.Type.STRING_READ"/> /
 		/// <see cref="Operation.Type.STRING_MODIFY"/> wire ops whose msgpack payload carries the sub-op code,
-		/// arguments, and (when <see cref="CTX"/> is non-empty) a <c>[0xFF, ctx_list, inner_op]</c> wrapper that the server's <see cref="CTX"/>-aware dispatcher unwraps to descend into a list
+		/// arguments, and (when <see cref="CTX"/> is non-empty) a <c>[0xFF, ctx_list, [inner_op, ...args]]</c> wrapper that the server's <see cref="CTX"/>-aware dispatcher unwraps to descend into a list
 		/// or map. <see cref="ToString"/> is a separate top-level wire op
 		/// (<see cref="Operation.Type.TO_STRING"/>) that carries no payload at all — the bin is
 		/// referenced solely by the operation header — and the server-side handler for it
@@ -1065,51 +1101,29 @@ namespace Aerospike.Client
 		}
 
 		//-----------------------------------------------------------------
-		// Flat-CTX wire packer (string-op specific).
+		// CTX wire packer (SERVER-1483 nested inner-op envelope).
 		//
-		// When CTX is empty: emits [SUBOP, args...] — identical to Pack.pack.
-		// When CTX is non-empty: emits the FLAT envelope
-		//     [0xFF, [ctx_id_1, ctx_value_1, ...], SUBOP, args...]
-		// where SUBOP and its args are flattened into the outer array — there
-		// is no nested array around them. This matches particle_string.c's
-		// string_state_init (line ~735), which reads the sentinel, skips the
-		// ctx flat-list with msgpack_sz_vec, then reads the inner op as a
-		// direct uint64 (no msgpack_get_list_ele_count_vec call). The CDT
-		// module (cdt.c:3671) does call list_ele_count for the inner op and
-		// therefore requires a nested layout — the shared Pack.init helper
-		// emits that nested form, which is why these string-op overloads exist
-		// as a separate path.
+		// When CTX is empty: emits [SUBOP, args...].
+		// When CTX is non-empty: emits the CONTEXT_EVAL envelope
+		//     [0xFF, [ctx_id_1, ctx_value_1, ...], [SUBOP, args...]]
+		// matching PackUtil.Init and the CDT CONTEXT_EVAL layout.
 		//-----------------------------------------------------------------
 
-		private static void WriteOuterHeader(Packer p, int innerCount, CTX[] ctx)
+		private static void BeginStringOpPack(Packer p, int innerCount, CTX[] ctx)
 		{
 			bool hasCtx = ctx != null && ctx.Length > 0;
-			int outerSize = hasCtx ? (2 + innerCount) : innerCount;
-			p.PackArrayBegin(outerSize);
 			if (hasCtx)
 			{
-				p.PackNumber(0xFF);
-				p.PackArrayBegin(ctx.Length * 2);
-				foreach (CTX c in ctx)
-				{
-					p.PackNumber(c.id);
-					if (c.value != null)
-					{
-						c.value.Pack(p);
-					}
-					else
-					{
-						p.PackByteArray(c.exp.Bytes, 0, c.exp.Bytes.Length);
-					}
-				}
+				PackUtil.Init(p, ctx);
 			}
+			p.PackArrayBegin(innerCount);
 		}
 
 		// [SUBOP]
 		private static byte[] PackStringOp(int subop, CTX[] ctx)
 		{
 			Packer p = new Packer();
-			WriteOuterHeader(p, 1, ctx);
+			BeginStringOpPack(p, 1, ctx);
 			p.PackNumber(subop);
 			return p.ToByteArray();
 		}
@@ -1118,7 +1132,7 @@ namespace Aerospike.Client
 		private static byte[] PackStringOp(int subop, int v1, CTX[] ctx)
 		{
 			Packer p = new Packer();
-			WriteOuterHeader(p, 2, ctx);
+			BeginStringOpPack(p, 2, ctx);
 			p.PackNumber(subop);
 			p.PackNumber(v1);
 			return p.ToByteArray();
@@ -1128,7 +1142,7 @@ namespace Aerospike.Client
 		private static byte[] PackStringOp(int subop, int v1, int v2, CTX[] ctx)
 		{
 			Packer p = new Packer();
-			WriteOuterHeader(p, 3, ctx);
+			BeginStringOpPack(p, 3, ctx);
 			p.PackNumber(subop);
 			p.PackNumber(v1);
 			p.PackNumber(v2);
@@ -1139,7 +1153,7 @@ namespace Aerospike.Client
 		private static byte[] PackStringOp(int subop, int v1, int v2, int v3, CTX[] ctx)
 		{
 			Packer p = new Packer();
-			WriteOuterHeader(p, 4, ctx);
+			BeginStringOpPack(p, 4, ctx);
 			p.PackNumber(subop);
 			p.PackNumber(v1);
 			p.PackNumber(v2);
@@ -1151,7 +1165,7 @@ namespace Aerospike.Client
 		private static byte[] PackStringOp(int subop, Value v1, CTX[] ctx)
 		{
 			Packer p = new Packer();
-			WriteOuterHeader(p, 2, ctx);
+			BeginStringOpPack(p, 2, ctx);
 			p.PackNumber(subop);
 			v1.Pack(p);
 			return p.ToByteArray();
@@ -1161,7 +1175,7 @@ namespace Aerospike.Client
 		private static byte[] PackStringOp(int subop, Value v1, int v2, CTX[] ctx)
 		{
 			Packer p = new Packer();
-			WriteOuterHeader(p, 3, ctx);
+			BeginStringOpPack(p, 3, ctx);
 			p.PackNumber(subop);
 			v1.Pack(p);
 			p.PackNumber(v2);
@@ -1172,7 +1186,7 @@ namespace Aerospike.Client
 		private static byte[] PackStringOp(int subop, int v1, Value v2, int v3, CTX[] ctx)
 		{
 			Packer p = new Packer();
-			WriteOuterHeader(p, 4, ctx);
+			BeginStringOpPack(p, 4, ctx);
 			p.PackNumber(subop);
 			p.PackNumber(v1);
 			v2.Pack(p);
@@ -1184,7 +1198,7 @@ namespace Aerospike.Client
 		private static byte[] PackStringOp(int subop, List<Value> list, int v2, CTX[] ctx)
 		{
 			Packer p = new Packer();
-			WriteOuterHeader(p, 3, ctx);
+			BeginStringOpPack(p, 3, ctx);
 			p.PackNumber(subop);
 			p.PackList(list);
 			p.PackNumber(v2);
@@ -1195,7 +1209,7 @@ namespace Aerospike.Client
 		private static byte[] PackStringOp(int subop, List<Value> list, int v2, int v3, CTX[] ctx)
 		{
 			Packer p = new Packer();
-			WriteOuterHeader(p, 4, ctx);
+			BeginStringOpPack(p, 4, ctx);
 			p.PackNumber(subop);
 			p.PackList(list);
 			p.PackNumber(v2);

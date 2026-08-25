@@ -55,8 +55,12 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create string append database operation.
+		/// This legacy operation performs raw byte concatenation and is not Unicode-aware.
+		/// Use <see cref="StringOperation.Append"/> for string bins. For blob bins, use
+		/// <see cref="BitOperation.Insert"/> at a byte offset equal to the blob's current size.
+		/// There is no end-of-blob sentinel, so appending requires knowing the current size.
 		/// </summary>
-		[Obsolete("Use StringOperation.Append instead")]
+		[Obsolete("Use StringOperation.Append for strings or BitOperation.Insert for blobs instead")]
 		public static Operation Append(Bin bin)
 		{
 			return new Operation(Type.APPEND, bin.name, bin.value);
@@ -64,8 +68,11 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create string prepend database operation.
+		/// This legacy operation performs raw byte concatenation and is not Unicode-aware.
+		/// Use <see cref="StringOperation.Prepend"/> for string bins. For blob bins, use
+		/// <see cref="BitOperation.Insert"/> at byte offset 0.
 		/// </summary>
-		[Obsolete("Use StringOperation.Prepend instead")]
+		[Obsolete("Use StringOperation.Prepend for strings or BitOperation.Insert for blobs instead")]
 		public static Operation Prepend(Bin bin)
 		{
 			return new Operation(Type.PREPEND, bin.name, bin.value);

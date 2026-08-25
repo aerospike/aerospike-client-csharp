@@ -29,6 +29,9 @@ namespace Aerospike.Test
 	/// <item><description>read without it should observe the masked value;</description></item>
 	/// <item><description>modify without <c>write-masked</c> should fail with <see cref="ResultCode.ROLE_VIOLATION"/>.</description></item>
 	/// </list>
+	/// The admin user in <c>.runsettings</c> needs <c>masking-admin</c> (to install rules),
+	/// <c>user-admin</c> (to create test users), and <c>write-masked</c> (for the admin
+	/// modify scenario). Data masking requires Enterprise Edition 8.1.1+; string ops require 8.1.3+.
 	/// </remarks>
 	[TestClass]
 	public class TestStringMasking : TestSync
@@ -54,10 +57,20 @@ namespace Aerospike.Test
 		public static void SetupUsersAndRule(TestContext testContext)
 		{
 			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "string operations");
+			if (!SuiteHelpers.enterprise)
+			{
+				Assert.Inconclusive("Data masking requires Enterprise Edition");
+			}
+
 			if (SuiteHelpers.user == null || string.IsNullOrEmpty(SuiteHelpers.user)
 				|| SuiteHelpers.password == null || string.IsNullOrEmpty(SuiteHelpers.password))
 			{
 				Assert.Inconclusive("Skipping: admin credentials not provided");
+			}
+
+			if (SuiteHelpers.singleBin)
+			{
+				Assert.Inconclusive("Data masking tests require a multi-bin namespace");
 			}
 
 			// Probe the cluster for security; bail out cleanly if it isn't enabled.
@@ -68,10 +81,13 @@ namespace Aerospike.Test
 			catch (AerospikeException e)
 			{
 				if (e.Result == ResultCode.SECURITY_NOT_ENABLED
-					|| e.Result == ResultCode.SECURITY_NOT_SUPPORTED
-					|| e.Result == ResultCode.NOT_AUTHENTICATED)
+					|| e.Result == ResultCode.SECURITY_NOT_SUPPORTED)
 				{
 					Assert.Inconclusive("Skipping: security not enabled on cluster");
+				}
+				if (e.Result == ResultCode.NOT_AUTHENTICATED)
+				{
+					Assert.Inconclusive("Skipping: admin credentials rejected by cluster");
 				}
 				throw;
 			}
@@ -306,27 +322,29 @@ namespace Aerospike.Test
 			const string constBin = "secret";
 			const string constValue = "HIDDEN";
 			const string real = "real secret data";
-			Key key = new Key(SuiteHelpers.ns, SuiteHelpers.set, "stringmask-const");
+			Key constKey = new(SuiteHelpers.ns, SuiteHelpers.set, "stringmask-const");
 
+			RemoveMaskRule(constBin);
 			ApplyMaskRule(constBin, "constant", "value=" + constValue);
 			try
 			{
-				client.Delete(null, key);
-				client.Put(null, key, new Bin(constBin, real));
+				client.Delete(null, constKey);
+				client.Put(null, constKey, new Bin(constBin, real));
 
-				Record priv = privClient.Operate(null, key, StringOperation.Strlen(constBin));
-				Record unp = unprivClient.Operate(null, key, StringOperation.Strlen(constBin));
+				Record priv = privClient.Operate(null, constKey, StringOperation.Strlen(constBin));
+				Record unp = unprivClient.Operate(null, constKey, StringOperation.Strlen(constBin));
 				Assert.AreEqual(real.Length, priv.GetLong(constBin));
-				Assert.AreEqual(constValue.Length, unp.GetLong(constBin));
+				Assert.AreEqual(constValue.Length, unp.GetLong(constBin),
+					"Unprivileged strlen should run against the masked constant value.");
 
-				Record privSub = privClient.Operate(null, key, StringOperation.Substr(constBin, 0, 4));
-				Record unpSub = unprivClient.Operate(null, key, StringOperation.Substr(constBin, 0, 4));
+				Record privSub = privClient.Operate(null, constKey, StringOperation.Substr(constBin, 0, 4));
+				Record unpSub = unprivClient.Operate(null, constKey, StringOperation.Substr(constBin, 0, 4));
 				Assert.AreEqual("real", privSub.GetString(constBin));
 				Assert.AreEqual("HIDD", unpSub.GetString(constBin));
 			}
 			finally
 			{
-				client.Delete(null, key);
+				client.Delete(null, constKey);
 				RemoveMaskRule(constBin);
 			}
 		}
@@ -393,7 +411,7 @@ namespace Aerospike.Test
 
 		// Apply a masking rule via info command.
 		// Format: masking:namespace=NS;set=SET;bin=BIN;type=string;function=FN[;extra]
-		private static void ApplyMaskRule(String bin, String function, String extra)
+		private static void ApplyMaskRule(string bin, string function, string extra)
 		{
 			string cmd = "masking:namespace=" + SuiteHelpers.ns
 				+ ";set=" + SuiteHelpers.set

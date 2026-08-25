@@ -176,6 +176,15 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void ToDoubleAcceptsExponentWhileIsNumericRejects()
+		{
+			Put("1e5");
+			Assert.IsFalse(Eval(StringExp.IsNumeric(Exp.StringBin(bin))).GetBool(var));
+			Record r = Eval(StringExp.ToDouble(Exp.StringBin(bin)));
+			Assert.AreEqual(100000.0, r.GetDouble(var), 0.001);
+		}
+
+		[TestMethod]
 		public void ByteLengthReturnsUtf8Bytes()
 		{
 			Put("hello");
@@ -222,13 +231,29 @@ namespace Aerospike.Test
 			Assert.IsTrue(Eval(StringExp.IsNumeric(Exp.StringBin(bin))).GetBool(var));
 			// INT-only: still passes for pure-digit string.
 			Assert.IsTrue(Eval(StringExp.IsNumeric(StringNumericType.INT, Exp.StringBin(bin))).GetBool(var));
-			//Assert.IsFalse(Eval(StringExp.IsNumeric(StringNumericType.FLOAT, Exp.StringBin(bin))).GetBool(var));
 			Put("3.14");
 			// INT-only: fails for a float-shaped string.
 			Assert.IsFalse(Eval(StringExp.IsNumeric(StringNumericType.INT, Exp.StringBin(bin))).GetBool(var));
-			Assert.IsTrue(Eval(StringExp.IsNumeric(StringNumericType.FLOAT, Exp.StringBin(bin))).GetBool(var));
 			Put("hello");
 			Assert.IsFalse(Eval(StringExp.IsNumeric(Exp.StringBin(bin))).GetBool(var));
+		}
+
+		[TestMethod]
+		public void IsNumericFloatRequiresFractionalDigit()
+		{
+			Put("3.14");
+			Assert.IsTrue(Eval(StringExp.IsNumeric(StringNumericType.FLOAT, Exp.StringBin(bin))).GetBool(var));
+
+			Put("5");
+			Assert.IsFalse(Eval(StringExp.IsNumeric(StringNumericType.FLOAT, Exp.StringBin(bin))).GetBool(var));
+			Assert.IsTrue(Eval(StringExp.IsNumeric(StringNumericType.ANY, Exp.StringBin(bin))).GetBool(var));
+
+			Put("5.");
+			Assert.IsFalse(Eval(StringExp.IsNumeric(StringNumericType.FLOAT, Exp.StringBin(bin))).GetBool(var));
+
+			Put("1e5");
+			Assert.IsFalse(Eval(StringExp.IsNumeric(StringNumericType.FLOAT, Exp.StringBin(bin))).GetBool(var));
+			Assert.IsFalse(Eval(StringExp.IsNumeric(StringNumericType.ANY, Exp.StringBin(bin))).GetBool(var));
 		}
 
 		[TestMethod]
@@ -317,6 +342,37 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void OverwriteWithNegativeIndexWrapsFromEnd()
+		{
+			Put("hello world");
+			try
+			{
+				Record r = Eval(StringExp.Overwrite(
+					policy, Exp.Val(-5), Exp.Val("earth"), Exp.StringBin(bin)));
+				Assert.AreEqual("hello earth", r.GetString(var));
+			}
+			catch (AerospikeException ae) when (ae.Result == ResultCode.PARAMETER_ERROR)
+			{
+				Assert.Inconclusive("Negative overwrite indexes require SERVER-1409 on the server.");
+			}
+		}
+
+		[TestMethod]
+		public void OverwriteWithOutOfBoundsIndexRaisesParameter()
+		{
+			Put("hello");
+			try
+			{
+				Eval(StringExp.Overwrite(policy, Exp.Val(100), Exp.Val("x"), Exp.StringBin(bin)));
+				Assert.Fail("Expected PARAMETER_ERROR for out-of-bounds overwrite index.");
+			}
+			catch (AerospikeException ae)
+			{
+				Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+			}
+		}
+
+		[TestMethod]
 		public void ConcatAppendsListOfValues()
 		{
 			Put("hello");
@@ -362,13 +418,17 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void SnipRemovesRange()
 		{
-			// Note: only the two-arg form is exercised. The server's snip op table
-			// (particle_string.c:443) requires (start, end[, flags]); the 1-arg client
-			// form [SNIP, start, flags] is silently misparsed — the trailing flags slot
-			// is read as `end`, producing a no-op when flags==DEFAULT==0.
 			Put("hello beautiful world");
 			Record r = Eval(StringExp.Snip(policy, Exp.Val(5), Exp.Val(15), Exp.StringBin(bin)));
 			Assert.AreEqual("hello world", r.GetString(var));
+		}
+
+		[TestMethod]
+		public void SnipStartOnlyRemovesThroughEnd()
+		{
+			Put("hello world");
+			Record r = Eval(StringExp.Snip(policy, Exp.Val(5), Exp.StringBin(bin)));
+			Assert.AreEqual("hello", r.GetString(var));
 		}
 
 		[TestMethod]
@@ -544,6 +604,21 @@ namespace Aerospike.Test
 			// Non-matching filter -> filtered out, get returns null.
 			p.filterExp = Exp.Build(StringExp.StartsWith(
 				Exp.Val("world"), Exp.StringBin(bin)));
+			Assert.IsNull(client.Get(p, key));
+		}
+
+		[TestMethod]
+		public void IsNumericFilterGatesGet()
+		{
+			Put("12345");
+			Policy p = new()
+			{
+				filterExp = Exp.Build(StringExp.IsNumeric(Exp.StringBin(bin)))
+			};
+			Assert.AreEqual("12345", client.Get(p, key).GetString(bin));
+
+			p.filterExp = Exp.Build(StringExp.IsNumeric(
+				StringNumericType.FLOAT, Exp.StringBin(bin)));
 			Assert.IsNull(client.Get(p, key));
 		}
 
