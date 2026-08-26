@@ -36,6 +36,10 @@ internal static class ExampleRegistry
 		Sync<Connect>(),
 		Sync<ServerInfo>(),
 		Sync<PutGet>(ValidateAndCleanup<PutGet>(ExampleStateValidation.PutGet, "putgetkey")),
+		Sync<CreateOnly>(ValidateAndCleanup<CreateOnly>(
+			ExampleStateValidation.CreateOnly,
+			"create-merge",
+			"create-only")),
 		Sync<Exists>(ValidateAndCleanup<Exists>(ExampleStateValidation.Exists, "existskey")),
 		Sync<Delete>(Fixture<Delete>(
 			setup: ExampleStateValidation.SetupDelete,
@@ -56,9 +60,17 @@ internal static class ExampleRegistry
 			setup: ExampleStateValidation.SetupBatchOperate,
 			validate: ExampleStateValidation.BatchOperate,
 			cleanup: (client, args) => ExampleFixtureSupport.DeleteRange(client, args, "bkey", 1, 8))),
+		Sync<ExpressionOperations>(ValidateAndCleanup<ExpressionOperations>(
+			ExampleStateValidation.ExpressionOperations,
+			"expression-operations")),
 		Sync<Generation>(ValidateAndCleanup<Generation>(ExampleStateValidation.Generation, "genkey")),
 		Sync<Expire>(ValidateAndCleanup<Expire>(ExampleStateValidation.Expire, "expirekey")),
 		Sync<Touch>(ValidateAndCleanup<Touch>(ExampleStateValidation.Touch, "touchkey")),
+		Sync<ErrorMessage>(ValidateAndCleanup<ErrorMessage>(
+			ExampleStateValidation.ErrorMessage,
+			"error-message-key",
+			"error-message-key-2",
+			"error-message-key-3")),
 		Sync<Transaction>(Cleanup<Transaction>(1, 2, 3)),
 		Sync<Operate>(Fixture<Operate>(
 			setup: ExampleStateValidation.SetupOperate,
@@ -113,6 +125,18 @@ internal static class ExampleRegistry
 		Sync<QueryRegionFilter>(QueryCleanup<QueryRegionFilter>("filterindexloc", "filterkeyloc", 0, 20, setup: QueryExampleFixtures.SetupQueryRegionFilter, validate: ExampleStateValidation.QueryRegionFilter)),
 		Sync<QueryFilter>(QueryCleanup<QueryFilter>("profileindex", "profilekey", 1, 3, setup: QueryExampleFixtures.SetupQueryFilter, validate: ExampleStateValidation.QueryFilter)),
 		Sync<QueryExp>(QueryCleanupIntegerRange<QueryExp>("predidx", 1, 50, setup: QueryExampleFixtures.SetupQueryExp, validate: ExampleStateValidation.QueryExp)),
+		Sync<DocumentSindex>(Fixture<DocumentSindex>(
+			setup: ExampleStateValidation.SetupDocumentSindex,
+			validate: ExampleStateValidation.ValidateDocumentSindex,
+			cleanup: ExampleStateValidation.CleanupDocumentSindex)),
+		Sync<SecondaryIndex>(Fixture<SecondaryIndex>(
+			setup: ExampleStateValidation.SetupSecondaryIndex,
+			validate: ExampleStateValidation.ValidateSecondaryIndex,
+			cleanup: ExampleStateValidation.CleanupSecondaryIndex)),
+		Sync<QueryPrimary>(Fixture<QueryPrimary>(
+			setup: ExampleStateValidation.SetupQueryPrimary,
+			validate: ExampleStateValidation.ValidateQueryPrimary,
+			cleanup: ExampleStateValidation.CleanupQueryPrimary)),
 		Sync<QueryPage>(Fixture<QueryPage>(
 			setup: ExampleStateValidation.SetupQueryPage,
 			validate: ExampleStateValidation.QueryPage,

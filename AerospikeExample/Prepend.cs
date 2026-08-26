@@ -29,11 +29,11 @@ public sealed class Prepend : SyncExample
 		string binName = "prependbin";
 
 		Bin initial = new(binName, "World");
-		console.Info($"Initial prepend will create record. Initial value is {initial.value}.");
+		Console.WriteLine($"Initial prepend will create record. Initial value is {initial.value}.");
 		client.Prepend(writePolicy, key, initial);
 
 		Bin prefix = new(binName, "Hello ");
-		console.Info($"Prepend \"{prefix.value}\" to existing record.");
+		Console.WriteLine($"Prepend \"{prefix.value}\" to existing record.");
 		client.Prepend(writePolicy, key, prefix);
 	}
 }

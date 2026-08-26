@@ -28,7 +28,7 @@ public sealed class QueryList : SyncExample
 	{
 		const string binName = "listbin";
 
-		console.Info("Query list bins");
+		Console.WriteLine("Query list bins");
 
 		Statement stmt = new()
 		{
@@ -47,11 +47,11 @@ public sealed class QueryList : SyncExample
 			count++;
 			IList list = rs.Record.GetList(binName);
 
-			console.Info($"Record {count}");
+			Console.WriteLine($"Record {count}");
 
 			foreach (object item in list)
 			{
-				console.Info(item.ToString());
+				Console.WriteLine(item.ToString());
 			}
 		}
 	}

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -44,5 +44,6 @@ namespace Aerospike.Client
 		public const int QUERY_BINLIST = 40;
 		public const int BATCH_INDEX = 41;
 		public const int FILTER_EXP = 43;
+		public const int ERROR_MESSAGE = 45;
 	}
 }

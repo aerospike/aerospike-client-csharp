@@ -45,6 +45,13 @@ internal static class ExampleStateValidation
 		}
 	}
 
+	public static void CreateOnly(IAerospikeClient client, Arguments args)
+	{
+		ExampleFixtureSupport.AssertBin(client, args, "create-merge", "name", "Grace");
+		ExampleFixtureSupport.AssertBin(client, args, "create-merge", "language", "C#");
+		ExampleFixtureSupport.AssertBin(client, args, "create-only", "status", "new");
+	}
+
 	public static void Add(IAerospikeClient client, Arguments args)
 	{
 		ExampleFixtureSupport.AssertBin(client, args, "addkey", "addbin", 45L);
@@ -58,6 +65,19 @@ internal static class ExampleStateValidation
 	public static void Prepend(IAerospikeClient client, Arguments args)
 	{
 		ExampleFixtureSupport.AssertBin(client, args, "prependkey", "prependbin", "Hello World");
+	}
+
+	public static void ErrorMessage(IAerospikeClient client, Arguments args)
+	{
+		ExampleFixtureSupport.AssertBin(client, args, "error-message-key", "error-message-bin", 1L);
+		ExampleFixtureSupport.AssertBin(client, args, "error-message-key-2", "error-message-bin", "hello");
+		ExampleFixtureSupport.AssertBin(client, args, "error-message-key-3", "other-bin", 1L);
+
+		Record record = client.Get(args.policy, ExampleFixtureSupport.Key(args, "error-message-key-3"), "no-hll-bin");
+		if (record?.GetValue("no-hll-bin") != null)
+		{
+			throw new Exception("ErrorMessage verification failed: HLL refresh count should not create no-hll-bin.");
+		}
 	}
 
 	public static void SetupDelete(IAerospikeClient client, Arguments args)
@@ -186,6 +206,14 @@ internal static class ExampleStateValidation
 
 		ExampleFixtureSupport.AssertBin(client, args, "bkey1", "bin4", 100L);
 		ExampleFixtureSupport.AssertBin(client, args, "bkey4", "bin1", 1018L);
+	}
+
+	public static void ExpressionOperations(IAerospikeClient client, Arguments args)
+	{
+		// The final write leaves score negative, and the skipped EVAL_NO_FAIL write
+		// leaves the bonus bin at the value the qualifying score produced.
+		ExampleFixtureSupport.AssertBin(client, args, "expression-operations", "score", -1L);
+		ExampleFixtureSupport.AssertBin(client, args, "expression-operations", "bonus", 15L);
 	}
 
 	public static void Expire(IAerospikeClient client, Arguments args)
@@ -437,6 +465,160 @@ internal static class ExampleStateValidation
 		ExampleFixtureSupport.AssertBinExists(client, args, 1, "idxbin");
 	}
 
+	public static void SetupDocumentSindex(IAerospikeClient client, Arguments args)
+	{
+		CleanupDocumentSindex(client, args);
+	}
+
+	public static void ValidateDocumentSindex(IAerospikeClient client, Arguments args)
+	{
+		ValidateDocumentTransaction(client, args, "1111", "Davis", "A1234", 1L);
+		ValidateDocumentTransaction(client, args, "2222", "Johnson", "B2345", 2L);
+		ValidateDocumentTransaction(client, args, "3333", "Johnson", "C3456", 2L);
+		ValidateDocumentTransaction(client, args, "4444", "Lee", "D4567", 3L);
+
+		// The example leaves both indexes in place, so the queries it demonstrates
+		// can be replayed here to prove they return the expected records.
+		ExampleFixtureSupport.AssertQueryCount(
+			client,
+			args,
+			DocumentSindex.SetName,
+			Filter.Equal(DocumentSindex.NameBin, "Johnson"),
+			2,
+			"dedicated-bin");
+
+		ExampleFixtureSupport.AssertQueryCount(
+			client,
+			args,
+			DocumentSindex.SetName,
+			Filter.Contains(DocumentSindex.TransactionBin, IndexCollectionType.MAPVALUES, "Johnson"),
+			2,
+			"MAPVALUES");
+	}
+
+	public static void CleanupDocumentSindex(IAerospikeClient client, Arguments args)
+	{
+		Policy policy = new() { socketTimeout = 60000 };
+		DropIndexAndWaitQuietly(client, args, DocumentSindex.SetName, DocumentSindex.NameIndex, policy);
+		DropIndexAndWaitQuietly(client, args, DocumentSindex.SetName, DocumentSindex.TransactionIndex, policy);
+		ExampleFixtureSupport.DeleteKeys(
+			client,
+			args,
+			["1111", "2222", "3333", "4444"],
+			DocumentSindex.SetName);
+	}
+
+	private static void ValidateDocumentTransaction(
+		IAerospikeClient client,
+		Arguments args,
+		string transactionId,
+		string name,
+		string itemId,
+		long count)
+	{
+		ExampleFixtureSupport.AssertBin(
+			client,
+			args,
+			transactionId,
+			DocumentSindex.NameBin,
+			name,
+			DocumentSindex.SetName);
+		AssertMapValue(client, args, transactionId, DocumentSindex.TransactionBin, "txn_id", transactionId, DocumentSindex.SetName);
+		AssertMapValue(client, args, transactionId, DocumentSindex.TransactionBin, "name", name, DocumentSindex.SetName);
+		AssertMapValue(client, args, transactionId, DocumentSindex.TransactionBin, "item_id", itemId, DocumentSindex.SetName);
+		AssertMapValue(client, args, transactionId, DocumentSindex.TransactionBin, "count", count, DocumentSindex.SetName);
+	}
+
+	public static void SetupSecondaryIndex(IAerospikeClient client, Arguments args)
+	{
+		CleanupSecondaryIndex(client, args);
+
+		for (int i = 1; i <= 3; i++)
+		{
+			ExampleFixtureSupport.PutBinsInSet(
+				client,
+				args,
+				SecondaryIndex.SetName,
+				"sindex-" + i,
+				new Bin(SecondaryIndex.BinName, 20210100 + i));
+		}
+	}
+
+	public static void ValidateSecondaryIndex(IAerospikeClient client, Arguments args)
+	{
+		// The example drops the index it created, so only the seed data remains.
+		ExampleFixtureSupport.AssertBin(
+			client,
+			args,
+			"sindex-1",
+			SecondaryIndex.BinName,
+			20210101L,
+			SecondaryIndex.SetName);
+	}
+
+	public static void CleanupSecondaryIndex(IAerospikeClient client, Arguments args)
+	{
+		Policy policy = new() { socketTimeout = 60000 };
+		DropIndexAndWaitQuietly(client, args, SecondaryIndex.SetName, SecondaryIndex.IndexName, policy);
+		ExampleFixtureSupport.DeleteKeys(
+			client,
+			args,
+			["sindex-1", "sindex-2", "sindex-3"],
+			SecondaryIndex.SetName);
+	}
+
+	public static void SetupQueryPrimary(IAerospikeClient client, Arguments args)
+	{
+		CleanupQueryPrimary(client, args);
+
+		for (int i = 1; i <= 3; i++)
+		{
+			ExampleFixtureSupport.PutBinsInSet(
+				client,
+				args,
+				QueryPrimary.SetName,
+				"primary-" + i,
+				new Bin("value", i));
+		}
+	}
+
+	public static void ValidateQueryPrimary(IAerospikeClient client, Arguments args)
+	{
+		ExampleFixtureSupport.AssertBin(
+			client,
+			args,
+			"primary-1",
+			"value",
+			1L,
+			QueryPrimary.SetName);
+	}
+
+	public static void CleanupQueryPrimary(IAerospikeClient client, Arguments args)
+	{
+		ExampleFixtureSupport.DeleteKeys(
+			client,
+			args,
+			["primary-1", "primary-2", "primary-3"],
+			QueryPrimary.SetName);
+	}
+
+	private static void DropIndexAndWaitQuietly(
+		IAerospikeClient client,
+		Arguments args,
+		string setName,
+		string indexName,
+		Policy policy)
+	{
+		try
+		{
+			client.DropIndex(policy, args.ns, setName, indexName).Wait();
+		}
+		catch (AerospikeException ae) when (ae.Result == ResultCode.INDEX_NOTFOUND)
+		{
+			// Index may not exist; cleanup remains idempotent.
+		}
+	}
+
 	public static void QueryPage(IAerospikeClient client, Arguments args)
 	{
 		ExampleFixtureSupport.AssertBin(client, args, 1, "bin", 1, "pq");
@@ -579,9 +761,10 @@ internal static class ExampleStateValidation
 		object userKey,
 		string binName,
 		object mapKey,
-		object expected)
+		object expected,
+		string setName = null)
 	{
-		AssertMapValue(client, args, userKey, binName, [mapKey], expected);
+		AssertMapValue(client, args, userKey, binName, [mapKey], expected, setName);
 	}
 
 	private static void AssertMapValue(
@@ -590,9 +773,10 @@ internal static class ExampleStateValidation
 		object userKey,
 		string binName,
 		IEnumerable<object> path,
-		object expected)
+		object expected,
+		string setName = null)
 	{
-		Record record = client.Get(args.policy, ExampleFixtureSupport.Key(args, userKey), binName);
+		Record record = client.Get(args.policy, ExampleFixtureSupport.Key(args, userKey, setName), binName);
 		object current = record?.GetValue(binName);
 
 		foreach (object key in path)

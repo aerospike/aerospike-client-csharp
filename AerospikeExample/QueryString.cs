@@ -29,7 +29,7 @@ public sealed class QueryString : SyncExample
 		const string binName = "querybin";
 		const string filterValue = "queryvalue3";
 
-		console.Info($"Query for: ns={ns} set={set} index={indexName} bin={binName} filter={filterValue}");
+		Console.WriteLine($"Query for: ns={ns} set={set} index={indexName} bin={binName} filter={filterValue}");
 
 		Statement stmt = new()
 		{
@@ -46,7 +46,7 @@ public sealed class QueryString : SyncExample
 			Key key = rs.Key;
 			string result = (string)rs.Record.GetValue(binName);
 
-			console.Info(
+			Console.WriteLine(
 				$"Record found: namespace={key.ns} set={key.setName} " +
 				$"digest={ByteUtil.BytesToHexString(key.digest)} bin={binName} value={result}");
 		}

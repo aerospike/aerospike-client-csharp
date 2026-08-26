@@ -29,6 +29,16 @@ namespace Aerospike.Client
 		public bool hasWrite;
 		public bool sendKey;
 
+		/// <summary>
+		/// Error-detail verbosity folded into info4 bits 5-6 (see
+		/// <see cref="Command.INFO4_ERROR_VERBOSITY_SHIFT"/> and
+		/// <see cref="Command.INFO4_ERROR_VERBOSITY_MASK"/>). This value is batch-wide,
+		/// taken from the parent <see cref="BatchPolicy"/>, and OR'd into each row's info4
+		/// by the batch read/write encoders. The Set methods never modify it, so it survives
+		/// per-row reuse of this instance.
+		/// </summary>
+		public int errorDetailBits;
+
 		public BatchAttr()
 		{
 		}

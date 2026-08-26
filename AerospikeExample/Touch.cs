@@ -28,31 +28,31 @@ public sealed class Touch : SyncExample
 		Key key = new(ns, set, "touchkey");
 		Bin bin = new("touchbin", "touchvalue");
 
-		console.Info("Create record with 2 second expiration.");
+		Console.WriteLine("Create record with 2 second expiration.");
 		WritePolicy initialPolicy = new(writePolicy)
 		{
 			expiration = 2
 		};
 		client.Put(initialPolicy, key, bin);
 
-		console.Info("Touch same record with 5 second expiration.");
+		Console.WriteLine("Touch same record with 5 second expiration.");
 		WritePolicy touchPolicy = new(writePolicy)
 		{
 			expiration = 5
 		};
 		Record touched = client.Operate(touchPolicy, key, Operation.Touch(), Operation.GetHeader());
-		console.Info($"Header: generation={touched?.generation} expiration={touched?.expiration}");
+		Console.WriteLine($"Header: generation={touched?.generation} expiration={touched?.expiration}");
 
-		console.Info("Sleep 3 seconds.");
+		Console.WriteLine("Sleep 3 seconds.");
 		Thread.Sleep(TimeSpan.FromSeconds(3));
 
 		Record record = client.Get(policy, key, bin.name);
-		console.Info($"Record after 3 seconds: {record}");
+		Console.WriteLine($"Record after 3 seconds: {record}");
 
-		console.Info("Sleep 4 seconds.");
+		Console.WriteLine("Sleep 4 seconds.");
 		Thread.Sleep(TimeSpan.FromSeconds(4));
 
 		record = client.Get(policy, key, bin.name);
-		console.Info($"Record after expiration: {record}");
+		Console.WriteLine($"Record after expiration: {record}");
 	}
 }

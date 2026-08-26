@@ -22,7 +22,7 @@ namespace Aerospike.Test
 	public class TestQueryPage : TestSync
 	{
 		private const string keyPrefix = "pagekey";
-		private static readonly string binName = Suite.GetBinName("name");
+		private static readonly string binName = "name";
 		private static readonly string indexName = "pqidx";
 
 		[ClassInitialize()]

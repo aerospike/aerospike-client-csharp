@@ -96,6 +96,8 @@ namespace Aerospike.Client
 		/// <para>
 		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
+		/// By default, supplied bins are merged into an existing record. Use
+		/// <see cref="RecordExistsAction.CREATE_ONLY"/> to require a new record.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -112,6 +114,8 @@ namespace Aerospike.Client
 		/// <para>
 		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
+		/// By default, supplied bins are merged into an existing record. Use
+		/// <see cref="RecordExistsAction.CREATE_ONLY"/> to require a new record.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -762,7 +766,9 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously read/write multiple records for specified batch keys in one batch call.
-		/// Create listener, call asynchronous delete and return task monitor.
+		/// Return a task whose result is true only when every batch sub-command succeeds.
+		/// Key-specific failures are stored in each <see cref="BatchRecord.resultCode"/>;
+		/// scheduling, command, or node failures can fault the task.
 		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
@@ -814,7 +820,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Asynchronously perform read/write operations on multiple keys.
-		/// Create listener, call asynchronous delete and return task monitor.
+		/// Return a task containing per-key results. Inspect <see cref="BatchResults.status"/>,
+		/// <see cref="BatchRecord.resultCode"/>, and <see cref="BatchRecord.inDoubt"/>.
 		/// <para>Requires server version 6.0+</para>
 		/// </summary>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>

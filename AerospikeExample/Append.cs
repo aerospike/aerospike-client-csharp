@@ -29,11 +29,11 @@ public sealed class Append : SyncExample
 		string binName = "appendbin";
 
 		Bin initial = new(binName, "Hello");
-		console.Info($"Initial append will create record. Initial value is {initial.value}.");
+		Console.WriteLine($"Initial append will create record. Initial value is {initial.value}.");
 		client.Append(writePolicy, key, initial);
 
 		Bin suffix = new(binName, " World");
-		console.Info($"Append \"{suffix.value}\" to existing record.");
+		Console.WriteLine($"Append \"{suffix.value}\" to existing record.");
 		client.Append(writePolicy, key, suffix);
 	}
 }

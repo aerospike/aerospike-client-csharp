@@ -23,10 +23,10 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "tqoindex";
 		private const string keyPrefix = "tqokey";
-		private static readonly string binName1 = Suite.GetBinName("tqobin1");
-		private static readonly string binName2 = Suite.GetBinName("tqobin2");
-		private static readonly string binName3 = Suite.GetBinName("tqobin3");
-		private static readonly string mapBin = Suite.GetBinName("tqomapbin");
+		private static readonly string binName1 = "tqobin1";
+		private static readonly string binName2 = "tqobin2";
+		private static readonly string binName3 = "tqobin3";
+		private static readonly string mapBin = "tqomapbin";
 		private const int size = 20;
 
 		[ClassInitialize()]

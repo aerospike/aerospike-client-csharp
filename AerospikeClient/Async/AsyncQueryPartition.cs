@@ -74,7 +74,7 @@ namespace Aerospike.Client
 
 			if (resultCode != 0)
 			{
-				throw new AerospikeException(resultCode);
+				throw CreateException(resultCode);
 			}
 
 			Record record = ParseRecord();

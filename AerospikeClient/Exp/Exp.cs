@@ -381,8 +381,9 @@ namespace Aerospike.Client
 		/// record meta data is cached in memory.
 		/// </summary>
 		/// <para>
-		/// This expression should only be used for server versions less than 7.0. Use
-		/// <see cref="DeviceSize()"/> for server version 7.0+.
+		/// This expression should only be used for server versions less than 7.0.
+		/// <see cref="RecordSize()"/> is the equivalent on server version 7.0+, and this
+		/// expression is deprecated as of server version 8.1.
 		/// </para>
 		/// <example>
 		/// <code>
@@ -1252,14 +1253,15 @@ namespace Aerospike.Client
 		//--------------------------------------------------
 
 		/// <summary>
-		/// Conditionally select an expression from a variable number of expression pairs
-		/// followed by default expression action. Requires server version 5.6.0+.
+		/// Conditionally select an expression from a variable number of condition/action pairs
+		/// followed by a required default action. Conditions are evaluated in order and only
+		/// the action for the first true condition is evaluated. Requires server version 5.6.0+.
 		/// </summary>
 		/// <example>
 		/// <code>
 		/// // Args Format: bool exp1, action exp1, bool exp2, action exp2, ..., action-default
 		/// // Apply operator based on type.
-		/// Exp.cond(
+		/// Exp.Cond(
 		///   Exp.EQ(Exp.IntBin("type"), Exp.Val(0)), Exp.Add(Exp.IntBin("val1"), Exp.IntBin("val2")),
 		///   Exp.EQ(Exp.IntBin("type"), Exp.Val(1)), Exp.Sub(Exp.IntBin("val1"), Exp.IntBin("val2")),
 		///   Exp.EQ(Exp.IntBin("type"), Exp.Val(2)), Exp.Mul(Exp.IntBin("val1"), Exp.IntBin("val2")),
@@ -1272,7 +1274,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Define variables and expressions in scope.
+		/// Define variables and expressions in scope. Definitions must precede the final scoped
+		/// expression, and each variable is referenced by the same case-sensitive name.
 		/// Requires server version 5.6.0+.
 		/// </summary>
 		/// <example>
@@ -1294,8 +1297,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Assign variable to a <see cref="Aerospike.Client.Exp.Let(Exp[])"/> 
-		/// expression that can be accessed later.
+		/// Assign a named variable inside a <see cref="Aerospike.Client.Exp.Let(Exp[])"/>
+		/// expression. The definition must appear before expressions that reference it.
 		/// Requires server version 5.6.0+.
 		/// </summary>
 		/// <example>
@@ -1314,7 +1317,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Retrieve expression value from a variable.
+		/// Retrieve a previously defined expression value from a variable in the enclosing
+		/// <see cref="Aerospike.Client.Exp.Let(Exp[])"/> scope.
 		/// Requires server version 5.6.0+.
 		/// </summary>
 		/// <example>
@@ -1535,6 +1539,9 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create unknown value. Used to intentionally fail an expression.
+		/// Unknown is distinct from nil. Expression operations return
+		/// <see cref="ResultCode.OP_NOT_APPLICABLE"/> unless the corresponding
+		/// EVAL_NO_FAIL flag is set.
 		/// The failure can be ignored with <see cref="Aerospike.Client.ExpWriteFlags.EVAL_NO_FAIL"/>
 		/// or <see cref="Aerospike.Client.ExpReadFlags.EVAL_NO_FAIL"/>
 		/// Requires server version 5.6.0+.
@@ -1546,7 +1553,7 @@ namespace Aerospike.Client
 		/// Exp.Let(
 		///   Exp.Def("v", Exp.Sub(Exp.FloatBin("balance"), Exp.Val(100.0))),
 		///   Exp.Cond(
-		///     Exp.GE(Exp.var("v"), Exp.Val(0.0)), Exp.Var("v"),
+		///     Exp.GE(Exp.Var("v"), Exp.Val(0.0)), Exp.Var("v"),
 		///     Exp.Unknown()));
 		/// </code>
 		/// </example>

@@ -24,7 +24,7 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "aggindex";
 		private const string keyPrefix = "aggkey";
-		private static readonly string binName = Suite.GetBinName("aggbin");
+		private static readonly string binName = "aggbin";
 		private const int size = 10;
 
 		[ClassInitialize()]

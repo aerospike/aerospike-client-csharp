@@ -500,19 +500,23 @@ namespace Aerospike.Client
 		/// <see cref="BatchRecord"/> can be <see cref="BatchRead"/>, <see cref="BatchWrite"/>, <see cref="BatchDelete"/> or
 		/// <see cref="BatchUDF"/>.
 		/// </para>
+		/// Key-specific failures are stored in each record's <see cref="BatchRecord.resultCode"/>
+		/// and cause a false return value. Command or node failures can throw an exception.
 		/// <para>
 		/// Requires server version 6.0+
 		/// </para>
 		/// </summary>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="records">list of unique record identifiers and read/write operations</param>
-		/// <returns>true if all batch sub-commands succeeded</returns>
+		/// <returns>true only if every batch sub-command succeeded</returns>
 		/// <exception cref="AerospikeException">if command fails</exception>
 		bool Operate(BatchPolicy policy, List<BatchRecord> records);
 
 		/// <summary>
 		/// Perform read/write operations on multiple keys. If a key is not found, the corresponding result
 		/// <see cref="BatchRecord.resultCode"/> will be <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// Inspect <see cref="BatchResults.status"/> and every returned record because key-specific
+		/// failures do not necessarily abort other keys.
 		/// <para>
 		/// Requires server version 6.0+
 		/// </para>
@@ -887,6 +891,9 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// IndexTask instance.
+		/// The supplied policy's <see cref="Policy.socketTimeout"/> is used for the create
+		/// info command, each task polling command, and the task wait deadline. A null
+		/// policy uses the socket timeout supplied by the client's default write policy.
 		/// Requires server version 8.1.2+.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
@@ -907,6 +914,9 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// IndexTask instance.
+		/// The supplied policy's <see cref="Policy.socketTimeout"/> is used for the create
+		/// info command, each task polling command, and the task wait deadline. A null
+		/// policy uses the socket timeout supplied by the client's default write policy.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
@@ -930,6 +940,9 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// IndexTask instance.
+		/// The supplied policy's <see cref="Policy.socketTimeout"/> is used for the create
+		/// info command, each task polling command, and the task wait deadline. A null
+		/// policy uses the socket timeout supplied by the client's default write policy.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
@@ -957,6 +970,9 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// IndexTask instance.
+		/// The supplied policy's <see cref="Policy.socketTimeout"/> is used for the create
+		/// info command, each task polling command, and the task wait deadline. A null
+		/// policy uses the socket timeout supplied by the client's default write policy.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="ns">namespace - equivalent to database name</param>

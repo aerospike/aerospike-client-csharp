@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -67,7 +67,7 @@ namespace Aerospike.Client
 		/// <example>
 		/// <code>
 		/// Policy p = new Policy();
-		/// p.filterExp = Exp.build(Exp.EQ(Exp.IntBin("a"), Exp.Val(11)));
+		/// p.filterExp = Exp.Build(Exp.EQ(Exp.IntBin("a"), Exp.Val(11)));
 		/// </code>
 		/// </example>
 		public Expression filterExp;
@@ -271,6 +271,22 @@ namespace Aerospike.Client
 		public bool failOnFilteredOut;
 
 		/// <summary>
+		/// Request server error detail fields in responses.
+		/// <list type="bullet">
+		/// <item><description>0 - disabled (no error details).</description></item>
+		/// <item><description>1 - subcode only.</description></item>
+		/// <item><description>2 - subcode + message.</description></item>
+		/// <item><description>3 - subcode, message, and (on expression failure paths) a
+		///     structured expression trace, surfaced on
+		///     <see cref="Aerospike.Client.AerospikeException.ExpTrace"/>.</description></item>
+		/// </list>
+		/// <para>
+		/// Default: 0
+		/// </para>
+		/// </summary>
+		public int errorDetailVerbosity;
+
+		/// <summary>
 		/// Alternate record parser.
 		/// <para>
 		/// Default: Use standard record parser.
@@ -297,6 +313,7 @@ namespace Aerospike.Client
 			this.sendKey = other.sendKey;
 			this.compress = other.compress;
 			this.failOnFilteredOut = other.failOnFilteredOut;
+			this.errorDetailVerbosity = other.errorDetailVerbosity;
 			this.recordParser = other.recordParser;
 		}
 
@@ -356,6 +373,10 @@ namespace Aerospike.Client
 			if (read.max_retries.HasValue)
 			{
 				this.maxRetries = read.max_retries.Value;
+			}
+			if (read.error_detail_verbosity.HasValue)
+			{
+				this.errorDetailVerbosity = read.error_detail_verbosity.Value;
 			}
 		}
 

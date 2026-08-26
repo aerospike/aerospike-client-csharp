@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,6 +17,7 @@
 using System.Collections.ObjectModel;
 using System.Text;
 using static Aerospike.Client.CommitError;
+using static Aerospike.Client.SubCode;
 
 namespace Aerospike.Client
 {
@@ -28,13 +29,23 @@ namespace Aerospike.Client
 		protected Node node;
 		protected Policy policy;
 		protected int resultCode = ResultCode.CLIENT_ERROR;
+		protected int subCode = NONE;
+		protected ExpressionTrace expTrace = null;
 		protected int iteration = -1;
 		protected bool inDoubt;
 
 		public AerospikeException(int resultCode, string message, Exception inner = null)
-			: base(message, inner)
+			: base(message ?? string.Empty, inner)
 		{
 			this.resultCode = resultCode;
+		}
+
+		public AerospikeException(int resultCode, string message, int subCode, ExpressionTrace expTrace, Exception inner = null)
+			: base(message ?? string.Empty, inner)
+		{
+			this.resultCode = resultCode;
+			this.subCode = subCode;
+			this.expTrace = expTrace;
 		}
 
 		public AerospikeException(int resultCode, Exception e)
@@ -44,7 +55,7 @@ namespace Aerospike.Client
 		}
 
 		public AerospikeException(int resultCode, string message)
-			: base(message)
+			: base(message ?? string.Empty)
 		{
 			this.resultCode = resultCode;
 		}
@@ -88,6 +99,8 @@ namespace Aerospike.Client
 
 				sb.Append("Error ");
 				sb.Append(resultCode);
+				sb.Append(',');
+				sb.Append(subCode);
 
 				if (iteration >= 0)
 				{
@@ -191,6 +204,25 @@ namespace Aerospike.Client
 				return resultCode;
 			}
 		}
+
+		/// <summary>
+		/// Server-supplied error subcode, or <see cref="Aerospike.Client.SubCode.NONE"/>
+		/// when the server did not return one.
+		/// </summary>
+		public int SubCode => subCode;
+
+		/// <summary>
+		/// Get the server-supplied expression trace, or <c>null</c> when absent.
+		/// </summary>
+		/// <remarks>
+		/// Populated only at error-detail verbosity 3 (see
+		/// <see cref="Policy.errorDetailVerbosity"/>) when an expression fails to build,
+		/// evaluate, or match. Build failures carry <see cref="ResultCode.PARAMETER_ERROR"/>;
+		/// evaluation traces can additionally describe fault, false, and absent outcomes.
+		/// Returns <c>null</c> when the server did not attach a trace. See
+		/// <see cref="ExpressionTrace"/>.
+		/// </remarks>
+		public ExpressionTrace ExpTrace => expTrace;
 
 		/// <summary>
 		/// Number of attempts before failing.

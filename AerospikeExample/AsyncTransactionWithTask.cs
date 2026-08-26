@@ -35,7 +35,7 @@ public sealed class AsyncTransactionWithTask : AsyncExample
 	{
 		using Txn txn = new();
 		CancellationToken token = CancellationToken.None;
-		console.Info($"Begin txn: {txn.Id}");
+		Console.WriteLine($"Begin txn: {txn.Id}");
 
 		WritePolicy wp = new(client.WritePolicyDefault)
 		{
@@ -44,15 +44,15 @@ public sealed class AsyncTransactionWithTask : AsyncExample
 
 		try
 		{
-			console.Info("Run put with task");
+			Console.WriteLine("Run put with task");
 			Key key1 = new(ns, set, 1);
 			await client.Put(wp, token, key1, new Bin("a", "val1"));
 
-			console.Info("Run another put");
+			Console.WriteLine("Run another put");
 			Key key2 = new(ns, set, 2);
 			await client.Put(wp, token, key2, new Bin("b", "val2"));
 
-			console.Info("Run get");
+			Console.WriteLine("Run get");
 			Policy p = new(policy)
 			{
 				Txn = txn
@@ -60,7 +60,7 @@ public sealed class AsyncTransactionWithTask : AsyncExample
 			Key key3 = new(ns, set, 3);
 			Record rec = await client.Get(p, token, key3);
 
-			console.Info("Run delete");
+			Console.WriteLine("Run delete");
 			WritePolicy dp = new(writePolicy)
 			{
 				Txn = txn,
@@ -69,13 +69,13 @@ public sealed class AsyncTransactionWithTask : AsyncExample
 			await client.Delete(dp, token, key3);
 
 			await client.Commit(txn, token);
-			console.Info($"Txn committed: {txn.Id}");
+			Console.WriteLine($"Txn committed: {txn.Id}");
 		}
 		catch (Exception e)
 		{
-			console.Error($"Txn {txn.Id} failed: {e.Message}");
+			Console.Error.WriteLine($"Txn {txn.Id} failed: {e.Message}");
 			await client.Abort(txn, token);
-			console.Error($"Txn aborted: {txn.Id}");
+			Console.Error.WriteLine($"Txn aborted: {txn.Id}");
 		}
 	}
 }
