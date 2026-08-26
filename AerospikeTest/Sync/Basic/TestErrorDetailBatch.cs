@@ -48,7 +48,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(ResultCode.OP_NOT_APPLICABLE, errorRow.resultCode);
 			Assert.AreEqual(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, errorRow.subCode);
 			Assert.IsNotNull(errorRow.serverMessage);
-			StringAssert.Contains(errorRow.serverMessage, "subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS);
+			Assert.IsFalse(errorRow.serverMessage.Contains("subcode="), "Subcode must not appear in serverMessage: " + errorRow.serverMessage);
 
 			Assert.AreEqual(ResultCode.OK, successRow.resultCode);
 			Assert.IsNull(successRow.serverMessage);
@@ -71,7 +71,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(ResultCode.OP_NOT_APPLICABLE, errorRow.resultCode);
 			Assert.AreEqual(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, errorRow.subCode);
 			Assert.IsNotNull(errorRow.serverMessage);
-			StringAssert.Contains(errorRow.serverMessage, "subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS);
+			Assert.IsFalse(errorRow.serverMessage.Contains("subcode="), "Subcode must not appear in serverMessage: " + errorRow.serverMessage);
 		}
 
 		[TestMethod]

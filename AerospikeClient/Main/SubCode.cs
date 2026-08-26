@@ -306,6 +306,15 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int OPNOT_STRING_UTF8_INVALID = 11;
 
+		// 12 is reserved server-side for a regex-limit subcode still in review.
+
+		/// <summary>
+		/// String is not valid base64 — a length that is not a multiple of 4, a character
+		/// outside the alphabet, or misplaced <c>'='</c> padding.
+		/// Value: 13
+		/// </summary>
+		public const int OPNOT_STRING_B64_INVALID = 13;
+
 		//-------------------------------------------------------
 		// ResultCode.FILTERED_OUT (27) [AS_ERR_FILTERED_OUT] carries NO subcode:
 		// the server emits AS_SUB_NONE plus a contextual "filtered out ..." message.

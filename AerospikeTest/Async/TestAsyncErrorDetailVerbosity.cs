@@ -352,7 +352,10 @@ namespace Aerospike.Test
 
 		/// <summary>
 		/// Assert the server-supplied (resultCode, subcode) pair reached the
-		/// async exception, including the first-class numeric subcode.
+		/// async exception. The numeric subcode is exposed on
+		/// <see cref="AerospikeException.SubCode"/> and in the
+		/// <see cref="AerospikeException.Message"/> header as
+		/// "Error &lt;resultCode&gt;,&lt;subCode&gt;".
 		/// </summary>
 		/// <param name="ae">The AerospikeException to check.</param>
 		/// <param name="expectedResultCode">The expected result code.</param>
@@ -362,16 +365,16 @@ namespace Aerospike.Test
 			Assert.IsNotNull(ae);
 			Assert.AreEqual(expectedResultCode, ae.Result);
 			Assert.AreEqual(expectedSubcode, ae.SubCode);
+			Assert.IsNotNull(ae.BaseMessage, "Expected server error message, got null. ae=" + ae);
 
-			string msg = ae.BaseMessage;
-			Assert.IsNotNull(msg, "Expected server error message, got null. ae=" + ae);
-			Assert.IsTrue(msg.Contains("subcode=" + expectedSubcode));
+			string prefix = "Error " + expectedResultCode + "," + expectedSubcode;
+			Assert.IsTrue(ae.Message.StartsWith(prefix), "Expected message to start with \"" + prefix + "\": " + ae.Message);
 		}
 
 		/// <summary>
 		/// Assert that the server surfaced a contextual message but NO subcode
 		/// (AS_SUB_NONE): AerospikeException.SubCode is SubCode.NONE
-		/// and the "(subcode=...)" suffix must never appear.
+		/// and Message renders the sub-code slot as 0.
 		/// </summary>
 		/// <param name="ae">The AerospikeException to check.</param>
 		/// <param name="expectedResultCode">The expected result code.</param>
@@ -385,7 +388,9 @@ namespace Aerospike.Test
 			string msg = ae.BaseMessage;
 			Assert.IsNotNull(msg, "Expected server error message, got null. ae=" + ae);
 			Assert.IsTrue(msg.Contains(expectedSubstring));
-			Assert.IsFalse(msg.Contains("subcode="));
+
+			string prefix = "Error " + expectedResultCode + "," + SubCode.NONE;
+			Assert.IsTrue(ae.Message.StartsWith(prefix), "Expected no-subcode prefix \"" + prefix + "\" in: " + ae.Message);
 		}
 	}
 }

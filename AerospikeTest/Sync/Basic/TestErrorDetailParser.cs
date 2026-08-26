@@ -58,7 +58,7 @@ namespace Aerospike.Test
 				Pair(IntKey(2), FixStr("cannot append"))
 			);
 
-			Assert.AreEqual("cannot append (subcode=99)", ParseErrorField(detail));
+			AssertParsed(detail, "cannot append", 99);
 		}
 
 		[TestMethod]
@@ -66,7 +66,7 @@ namespace Aerospike.Test
 		{
 			byte[] detail = FixMap(Pair(IntKey(1), FixInt(42)));
 
-			Assert.AreEqual("error subcode=42", ParseErrorField(detail));
+			AssertParsed(detail, null, 42);
 		}
 
 		[TestMethod]
@@ -85,7 +85,7 @@ namespace Aerospike.Test
 				Pair(IntKey(1), FixInt(7))
 			);
 
-			Assert.AreEqual("swap (subcode=7)", ParseErrorField(detail));
+			AssertParsed(detail, "swap", 7);
 		}
 
 		[TestMethod]
@@ -107,7 +107,7 @@ namespace Aerospike.Test
 				payload.Add(0xC0);
 			}
 
-			Assert.AreEqual("boom (subcode=7)", ParseErrorField(payload.ToArray()));
+			AssertParsed(payload.ToArray(), "boom", 7);
 		}
 
 		[TestMethod]
@@ -118,7 +118,7 @@ namespace Aerospike.Test
 			payload.AddRange(Pair(IntKey(1), FixInt(9)));
 			payload.AddRange(Pair(IntKey(2), FixStr("m32")));
 
-			Assert.AreEqual("m32 (subcode=9)", ParseErrorField(payload.ToArray()));
+			AssertParsed(payload.ToArray(), "m32", 9);
 		}
 
 		[TestMethod]
@@ -129,7 +129,7 @@ namespace Aerospike.Test
 				Pair(IntKey(2), FixStr("u8"))
 			);
 
-			Assert.AreEqual("u8 (subcode=200)", ParseErrorField(detail));
+			AssertParsed(detail, "u8", 200);
 		}
 
 		[TestMethod]
@@ -140,7 +140,7 @@ namespace Aerospike.Test
 				Pair(IntKey(2), FixStr("hi"))
 			);
 
-			Assert.AreEqual("hi (subcode=1100)", ParseErrorField(detail));
+			AssertParsed(detail, "hi", 1100);
 		}
 
 		[TestMethod]
@@ -151,7 +151,7 @@ namespace Aerospike.Test
 				Pair(IntKey(2), FixStr("x"))
 			);
 
-			Assert.AreEqual("x (subcode=70000)", ParseErrorField(detail));
+			AssertParsed(detail, "x", 70000);
 		}
 
 		[TestMethod]
@@ -166,7 +166,7 @@ namespace Aerospike.Test
 				Pair(IntKey(2), FixStr("u64"))
 			);
 
-			Assert.AreEqual("u64 (subcode=" + value + ")", ParseErrorField(detail));
+			AssertParsed(detail, "u64", unchecked((int)value));
 		}
 
 		[TestMethod]
@@ -177,7 +177,7 @@ namespace Aerospike.Test
 				Pair(IntKey(2), Str8("string8"))
 			);
 
-			Assert.AreEqual("string8 (subcode=3)", ParseErrorField(detail));
+			AssertParsed(detail, "string8", 3);
 		}
 
 		[TestMethod]
@@ -188,7 +188,7 @@ namespace Aerospike.Test
 				Pair(IntKey(2), Str16("string16"))
 			);
 
-			Assert.AreEqual("string16 (subcode=4)", ParseErrorField(detail));
+			AssertParsed(detail, "string16", 4);
 		}
 
 		[TestMethod]
@@ -200,7 +200,7 @@ namespace Aerospike.Test
 				Pair(IntKey(2), Str32(message))
 			);
 
-			Assert.AreEqual(message + " (subcode=5)", ParseErrorField(detail));
+			AssertParsed(detail, message, 5);
 		}
 
 		[TestMethod]
@@ -231,7 +231,7 @@ namespace Aerospike.Test
 				Pair(IntKey(2), FixStr("z"))
 			);
 
-			Assert.AreEqual("z (subcode=7)", ParseErrorField(detail));
+			AssertParsed(detail, "z", 7);
 		}
 
 		[TestMethod]
@@ -246,7 +246,7 @@ namespace Aerospike.Test
 				(FieldType.ERROR_MESSAGE, detail)
 			);
 
-			Assert.AreEqual("ok (subcode=1)", ParseFields(fields, 2));
+			AssertParsedFields(fields, 2, "ok", 1);
 		}
 
 		[TestMethod]
@@ -514,7 +514,8 @@ namespace Aerospike.Test
 
 			ErrorDetail command = ParseDetail(detail);
 
-			Assert.AreEqual("plain (subcode=4)", command.Message);
+			Assert.AreEqual("plain", command.Message);
+			Assert.AreEqual(4, command.SubCode);
 			Assert.IsNull(command.ExpTrace, "No key 3 should yield no expression trace");
 		}
 
@@ -543,6 +544,21 @@ namespace Aerospike.Test
 			byte[] detail = FixMap(Pair(IntKey(3), FixMap()));
 
 			Assert.IsNull(ParseDetail(detail).ExpTrace);
+		}
+
+		private static void AssertParsed(byte[] detail, string expectedMessage, int expectedSubCode)
+		{
+			ErrorDetail parsed = ParseDetail(detail);
+			Assert.AreEqual(expectedMessage, parsed.Message);
+			Assert.AreEqual(expectedSubCode, parsed.SubCode);
+		}
+
+		private static void AssertParsedFields(byte[] fields, int fieldCount, string expectedMessage, int expectedSubCode)
+		{
+			int offset = 0;
+			ErrorDetail parsed = ErrorDetailParser.ParseFields(fields, ref offset, fieldCount);
+			Assert.AreEqual(expectedMessage, parsed.Message);
+			Assert.AreEqual(expectedSubCode, parsed.SubCode);
 		}
 
 		private static string ParseErrorField(byte[] msgpackDetail)
