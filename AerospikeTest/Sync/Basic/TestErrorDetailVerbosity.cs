@@ -87,9 +87,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				Assert.AreEqual(ResultCode.BIN_NOT_FOUND, ae.Result);
-				Assert.AreEqual(SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP, ae.SubCode);
-				Assert.IsTrue(ae.BaseMessage.Contains("subcode=1"));
+				AssertSubcode(ae, ResultCode.BIN_NOT_FOUND, SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP);
 			}
 		}
 
@@ -110,9 +108,7 @@ namespace Aerospike.Test
 			}
 			catch (AerospikeException ae)
 			{
-				Assert.AreEqual(ResultCode.BIN_NOT_FOUND, ae.Result);
-				Assert.AreEqual(SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP, ae.SubCode);
-				Assert.IsTrue(ae.BaseMessage.Contains("subcode=1"));
+				AssertSubcode(ae, ResultCode.BIN_NOT_FOUND, SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP);
 				return;
 			}
 			Assert.Fail("Expected AerospikeException");
@@ -435,21 +431,23 @@ namespace Aerospike.Test
 		/// <summary>
 		/// Assert the server-supplied result code and subcode pair. The numeric
 		/// subcode must be exposed first-class on <see cref="AerospikeException.SubCode"/>
-		/// and still appear in the message for parity with the C client.
+		/// and in the <see cref="AerospikeException.Message"/> header as
+		/// "Error &lt;resultCode&gt;,&lt;subCode&gt;".
 		/// </summary>
 		private static void AssertSubcode(AerospikeException ae, int expectedResultCode, int expectedSubcode)
 		{
 			Assert.AreEqual(expectedResultCode, ae.Result);
 			Assert.AreEqual(expectedSubcode, ae.SubCode);
+			Assert.IsNotNull(ae.BaseMessage, "Expected server error message, got null. ae=" + ae);
 
-			string msg = ae.BaseMessage;
-			Assert.IsNotNull(msg, "Expected server error message, got null. ae=" + ae);
-			Assert.IsTrue(msg.Contains("subcode=" + expectedSubcode));
+			string prefix = "Error " + expectedResultCode + "," + expectedSubcode;
+			Assert.IsTrue(ae.Message.StartsWith(prefix), "Expected message to start with \"" + prefix + "\": " + ae.Message);
 		}
 
 		/// <summary>
 		/// Assert that the server surfaced a contextual message but no subcode
-		/// (<see cref="SubCode.NONE"/>). The "(subcode=...)" suffix must not appear.
+		/// (<see cref="SubCode.NONE"/>). <see cref="AerospikeException.Message"/>
+		/// renders the sub-code slot as 0.
 		/// </summary>
 		private static void AssertSubcodeAbsent(AerospikeException ae, int expectedResultCode, params string[] expectedSubstrings)
 		{
@@ -463,7 +461,9 @@ namespace Aerospike.Test
 			{
 				Assert.IsTrue(msg.Contains(expected), "Expected '" + expected + "' in: " + msg);
 			}
-			Assert.IsFalse(msg.Contains("subcode="), "Expected NO subcode suffix in: " + msg);
+
+			string prefix = "Error " + expectedResultCode + "," + SubCode.NONE;
+			Assert.IsTrue(ae.Message.StartsWith(prefix), "Expected no-subcode prefix \"" + prefix + "\" in: " + ae.Message);
 		}
 
 		private static void AssertBuildTrace(AerospikeException ae, string expectedSubstring)

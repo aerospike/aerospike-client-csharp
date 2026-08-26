@@ -422,7 +422,9 @@ namespace Aerospike.Test
 			AerospikeException ae = ExpectFilteredGet(1, expression, ResultCode.FILTERED_OUT);
 
 			Assert.AreEqual(SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS, ae.SubCode);
-			Assert.IsTrue(ae.BaseMessage.Contains("subcode=" + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS));
+			Assert.IsTrue(ae.Message.StartsWith("Error " + ResultCode.FILTERED_OUT + "," + SubCode.OPNOT_CDT_INDEX_OUT_OF_BOUNDS),
+				"Expected subcode in Message prefix. ae=" + ae);
+			Assert.IsFalse(ae.Message.Contains("out of bounds"), "Tier 1 must surface no message text in: " + ae.Message);
 			Assert.IsNull(ae.ExpTrace, "Tier 1 must surface no trace");
 		}
 

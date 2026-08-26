@@ -130,8 +130,7 @@ public sealed class ErrorMessage : SyncExample
 			AssertErrorDetails(
 				ae,
 				ResultCode.BIN_NOT_FOUND,
-				SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP,
-				"subcode=" + SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP);
+				SubCode.BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP);
 			Console.WriteLine("HLL refresh count on missing bin failed as expected: {0}: {1}", ae.Result, ae.BaseMessage);
 		}
 	}
@@ -149,14 +148,23 @@ public sealed class ErrorMessage : SyncExample
 
 		if (ae.SubCode != expectedSubCode)
 		{
-			throw new Exception($"Expected subcode {expectedSubCode}, got {ae.SubCode}: {ae.BaseMessage}");
+			throw new Exception($"Expected subcode {expectedSubCode}, got {ae.SubCode}: {ae.Message}");
+		}
+
+		// Message renders "Error <resultCode>,<subCode>" ahead of the server text;
+		// BaseMessage is that text verbatim.
+		string msg = ae.Message;
+		string prefix = "Error " + expectedResultCode + "," + expectedSubCode;
+		if (!msg.StartsWith(prefix))
+		{
+			throw new Exception($"Expected error message to start with '{prefix}': {msg}");
 		}
 
 		foreach (string expected in expectedSubstrings)
 		{
-			if (!ae.BaseMessage.Contains(expected))
+			if (!msg.Contains(expected))
 			{
-				throw new Exception($"Expected '{expected}' in error message: {ae.BaseMessage}");
+				throw new Exception($"Expected '{expected}' in error message: {msg}");
 			}
 		}
 	}

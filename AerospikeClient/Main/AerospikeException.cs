@@ -99,6 +99,8 @@ namespace Aerospike.Client
 
 				sb.Append("Error ");
 				sb.Append(resultCode);
+				sb.Append(',');
+				sb.Append(subCode);
 
 				if (iteration >= 0)
 				{

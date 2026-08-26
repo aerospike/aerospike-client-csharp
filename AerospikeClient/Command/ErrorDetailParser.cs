@@ -19,15 +19,15 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Decoded server-supplied extended error detail (field
-	/// <see cref="FieldType.ERROR_MESSAGE"/>): the formatted message, the numeric
-	/// subcode, and (at verbosity 3 on an expression build failure) the structured
+	/// <see cref="FieldType.ERROR_MESSAGE"/>): the server message, the numeric
+	/// subcode, and (at verbosity 3 on an expression failure) the structured
 	/// <see cref="ExpressionTrace"/>.
 	/// </summary>
 	public readonly struct ErrorDetail(string message, int subCode, ExpressionTrace expTrace)
 	{
 		/// <summary>
-		/// Formatted error message (may embed the subcode), or <c>null</c> when the
-		/// server supplied neither a message nor a subcode.
+		/// Server-supplied error message, or <c>null</c> when absent. The subcode is
+		/// returned separately in <see cref="SubCode"/> and is not embedded here.
 		/// </summary>
 		public string Message { get; } = message;
 
@@ -181,22 +181,10 @@ namespace Aerospike.Client
 			// The server only serializes subcodes >= 1 (SubCode.NONE = 0 is never sent),
 			// so a parsed subcode always overrides the SubCode.NONE default.
 			int resolvedSubCode = (subcode >= 0) ? (int)subcode : SubCode.NONE;
-			string formatted;
 
-			if (message != null && subcode >= 0)
-			{
-				formatted = message + " (subcode=" + subcode + ")";
-			}
-			else if (subcode >= 0)
-			{
-				formatted = "error subcode=" + subcode;
-			}
-			else
-			{
-				formatted = message;
-			}
-
-			return new ErrorDetail(formatted, resolvedSubCode, expTrace);
+			// The message is returned verbatim. The subcode travels on its own field and
+			// is rendered by AerospikeException.Message, alongside the result code.
+			return new ErrorDetail(message, resolvedSubCode, expTrace);
 		}
 
 		/// <summary>
