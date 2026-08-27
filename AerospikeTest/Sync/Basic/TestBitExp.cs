@@ -493,6 +493,23 @@ namespace Aerospike.Test
 
 			r = client.Get(policy, key);
 			AssertRecordFound(key, r);
+
+			// invertSize: byteSize counts back from the end, so 0 means "to the end".
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					BitExp.B64Encode(Exp.Val(1), Exp.Val(0), true, Exp.BlobBin(binA)),
+					Exp.Val(Convert.ToBase64String([0x42, 0x03, 0x04, 0x05]))));
+
+			r = client.Get(policy, key);
+			AssertRecordFound(key, r);
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					BitExp.B64Encode(Exp.Val(-1), Exp.Val(1), false, Exp.BlobBin(binA)),
+					Exp.Val(Convert.ToBase64String([0x05]))));
+
+			r = client.Get(policy, key);
+			AssertRecordFound(key, r);
 		}
 	}
 }

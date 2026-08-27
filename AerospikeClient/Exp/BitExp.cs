@@ -447,6 +447,34 @@ namespace Aerospike.Client
 			return AddRead(bin, bytes, Exp.Type.STRING);
 		}
 
+		/// <summary>
+		/// Create expression that returns the base64 text of a byte range of the byte[] bin as a
+		/// string, with <paramref name="byteSize"/> measured from the end of the blob when
+		/// <paramref name="invertSize"/> is true.
+		/// When <paramref name="invertSize"/> is true, <paramref name="byteSize"/> counts back
+		/// from the blob's end rather than forward from <paramref name="byteOffset"/>, so a
+		/// <paramref name="byteSize"/> of 0 means "to the end of the blob". When false this
+		/// behaves exactly as <see cref="B64Encode(Exp, Exp, Exp)"/>.
+		/// A negative <paramref name="byteOffset"/> counts back from the end of the blob.
+		/// Note the span is expressed in bytes, unlike the bit offsets and sizes the other bit
+		/// expressions take.
+		/// </summary>
+		/// <example>
+		/// <code>
+		/// // bytes 1 through end of blob bin "a", base64-encoded
+		/// BitExp.B64Encode(Exp.Val(1), Exp.Val(0), true, Exp.BlobBin("a"))
+		/// </code>
+		/// </example>
+		/// <para>
+		/// Requires server version 8.1.3 or later.
+		/// </para>
+		public static Exp B64Encode(Exp byteOffset, Exp byteSize, bool invertSize, Exp bin)
+		{
+			int subflags = invertSize ? BitOperation.READ_SUBFLAG_INVERT_SIZE : 0;
+			byte[] bytes = PackUtil.Pack(BitOperation.B64_ENCODE, byteOffset, byteSize, subflags);
+			return AddRead(bin, bytes, Exp.Type.STRING);
+		}
+
 		private static byte[] PackMath(int command, BitPolicy policy, Exp bitOffset, Exp bitSize, Exp value, bool signed, BitOverflowAction action)
 		{
 			Packer packer = new Packer();
