@@ -46,9 +46,11 @@ namespace Aerospike.Client
 		UPDATE_ONLY = 2,
 
 		/// <summary>
-		/// Do not raise error if operation cannot be applied to the bin
-		/// (e.g. wrong bin type). The bin is left unchanged and a null
-		/// result is returned for that operation.
+		/// Do not raise an error when an in-op execution failure would otherwise
+		/// abort the modify. The bin keeps its unmodified value and the operation
+		/// result is that source string — not null. Does not suppress wrong-type or
+		/// invalid-UTF-8 errors, and does not suppress flag validation failures such
+		/// as mutually exclusive <see cref="CREATE_ONLY"/> and <see cref="UPDATE_ONLY"/>.
 		/// </summary>
 		NO_FAIL = 4
 	}

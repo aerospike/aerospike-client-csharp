@@ -275,5 +275,52 @@ namespace Aerospike.Test
 			AssertRecordFound(keyB, record);
 			Assert.AreEqual(2, record.GetList(binB).Count);
 		}
+
+		[TestMethod]
+		public void JoinWithoutSeparator()
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+
+			IList<Value> items = [Value.Get("alpha"), Value.Get("beta"), Value.Get("gamma")];
+			client.Put(null, keyA, new Bin(binA, items));
+
+			Expression exp = Exp.Build(ListExp.Join(Exp.ListBin(binA)));
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Read("result", exp, ExpReadFlags.DEFAULT));
+
+			Assert.AreEqual("alphabetagamma", record.GetString("result"));
+		}
+
+		[TestMethod]
+		public void JoinWithSeparator()
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+
+			IList<Value> items = [Value.Get("alpha"), Value.Get("beta"), Value.Get("gamma")];
+			client.Put(null, keyA, new Bin(binA, items));
+
+			Expression exp = Exp.Build(ListExp.Join(Exp.Val(", "), Exp.ListBin(binA)));
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Read("result", exp, ExpReadFlags.DEFAULT));
+
+			Assert.AreEqual("alpha, beta, gamma", record.GetString("result"));
+		}
+
+		[TestMethod]
+		public void JoinOnNestedListViaContext()
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+
+			IList<Value> inner = [Value.Get("x"), Value.Get("y")];
+			IList<Value> outer = [Value.Get("skip"), Value.Get(inner)];
+			client.Put(null, keyA, new Bin(binA, outer));
+
+			Expression exp = Exp.Build(
+				ListExp.Join(Exp.Val("-"), Exp.ListBin(binA), CTX.ListIndex(1)));
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Read("result", exp, ExpReadFlags.DEFAULT));
+
+			Assert.AreEqual("x-y", record.GetString("result"));
+		}
 	}
 }

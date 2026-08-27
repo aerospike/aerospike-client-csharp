@@ -544,6 +544,53 @@ namespace Aerospike.Test
 			Assert.AreEqual((long)StringWriteFlags.UPDATE_ONLY, args[3]);
 		}
 
+		[TestMethod]
+		public void CreateOnlyOnExistingBinRaisesBinExists()
+		{
+			Put("hello");
+			StringPolicy createOnly = new(StringWriteFlags.CREATE_ONLY);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(() =>
+				Eval(StringExp.Append(createOnly, Exp.Val(" world"), Exp.StringBin(bin))));
+			Assert.AreEqual(ResultCode.BIN_EXISTS_ERROR, ae.Result);
+		}
+
+		[TestMethod]
+		public void CreateOnlyWithNoFailOnExistingBinReturnsUnmodifiedSource()
+		{
+			Put("hello");
+			StringPolicy createOnlyNoFail = new(
+				StringWriteFlags.CREATE_ONLY | StringWriteFlags.NO_FAIL);
+
+			Record r = Eval(StringExp.Append(createOnlyNoFail, Exp.Val(" world"), Exp.StringBin(bin)));
+			Assert.AreEqual("hello", r.GetString(var));
+		}
+
+		[TestMethod]
+		public void CreateOnlyWithUpdateOnlyRaisesParameterError()
+		{
+			Put("hello");
+			StringPolicy invalid = new(
+				StringWriteFlags.CREATE_ONLY | StringWriteFlags.UPDATE_ONLY);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(() =>
+				Eval(StringExp.Append(invalid, Exp.Val(" world"), Exp.StringBin(bin))));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+		}
+
+		[TestMethod]
+		public void CreateOnlyPacksPolicyFlags()
+		{
+			StringPolicy createOnly = new(StringWriteFlags.CREATE_ONLY);
+			Expression expression = Exp.Build(StringExp.Append(
+				createOnly, Exp.Val("x"), Exp.StringBin(bin)));
+			List<object> call = (List<object>)new Unpacker(
+				expression.Bytes, 0, expression.Bytes.Length, false).UnpackList();
+			List<object> args = (List<object>)call[3];
+
+			Assert.AreEqual((long)StringWriteFlags.CREATE_ONLY, args[2]);
+		}
+
 		//=================================================================
 		// Type conversion expression
 		//=================================================================

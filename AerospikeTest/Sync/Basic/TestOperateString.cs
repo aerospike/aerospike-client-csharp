@@ -945,6 +945,85 @@ namespace Aerospike.Test
 			Assert.AreEqual("hello world", StringValue());
 		}
 
+		[TestMethod]
+		public void CreateOnlyOnMissingBinCreatesTheBin()
+		{
+			client.Delete(null, key);
+			client.Put(null, key, new Bin("other", "untouched"));
+
+			StringPolicy createOnly = new(StringWriteFlags.CREATE_ONLY);
+			Operate(StringOperation.Append(createOnly, bin, "hi"));
+
+			Record r = client.Get(null, key);
+			Assert.AreEqual("hi", r.GetString(bin));
+			Assert.AreEqual("untouched", r.GetString("other"));
+		}
+
+		[TestMethod]
+		public void CreateOnlyOnExistingBinRaisesBinExists()
+		{
+			Put("hello");
+			StringPolicy createOnly = new(StringWriteFlags.CREATE_ONLY);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(() =>
+				Operate(StringOperation.Append(createOnly, bin, " world")));
+			Assert.AreEqual(ResultCode.BIN_EXISTS_ERROR, ae.Result);
+			Assert.AreEqual("hello", StringValue());
+		}
+
+		[TestMethod]
+		public void CreateOnlyWithNoFailOnExistingBinIsSilentNoOp()
+		{
+			Put("hello");
+			StringPolicy createOnlyNoFail = new(
+				StringWriteFlags.CREATE_ONLY | StringWriteFlags.NO_FAIL);
+
+			Operate(StringOperation.Append(createOnlyNoFail, bin, " world"));
+
+			Assert.AreEqual("hello", StringValue());
+		}
+
+		[TestMethod]
+		public void CreateOnlyWithUpdateOnlyRaisesParameterError()
+		{
+			Put("hello");
+			StringPolicy invalid = new(
+				StringWriteFlags.CREATE_ONLY | StringWriteFlags.UPDATE_ONLY);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(() =>
+				Operate(StringOperation.Append(invalid, bin, " world")));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+			Assert.AreEqual("hello", StringValue());
+		}
+
+		[TestMethod]
+		public void CreateOnlyWithContextRaisesParameterError()
+		{
+			List<Value> list = [Value.Get("alpha"), Value.Get("beta")];
+			client.Delete(null, key);
+			client.Put(null, key, new Bin(bin, list));
+
+			StringPolicy createOnly = new(StringWriteFlags.CREATE_ONLY);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(() =>
+				Operate(StringOperation.Append(createOnly, bin, "!", CTX.ListIndex(1))));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+
+			IList after = client.Get(null, key).GetList(bin);
+			CollectionAssert.AreEqual(new List<object> { "alpha", "beta" }, after);
+		}
+
+		[TestMethod]
+		public void CreateOnlyPacksPolicyFlags()
+		{
+			StringPolicy createOnly = new(StringWriteFlags.CREATE_ONLY);
+			Operation op = StringOperation.Append(createOnly, bin, "x");
+			byte[] bytes = ((Value.BytesValue)op.value).Bytes;
+			List<object> args = (List<object>)new Unpacker(bytes, 0, bytes.Length, false).UnpackList();
+
+			Assert.AreEqual((long)StringWriteFlags.CREATE_ONLY, args[2]);
+		}
+
 		//=================================================================
 		// Multi-op pipelines
 		//=================================================================
