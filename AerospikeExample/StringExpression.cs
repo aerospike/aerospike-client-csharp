@@ -42,90 +42,90 @@ public sealed class StringExpression : SyncExample
 
 		Put(key, "hello world");
 		Record record = Eval(key, StringExp.Strlen(Exp.StringBin(BinName)));
-		console.Info($"strlen(\"hello world\") = {record.GetLong(ResultBinName)}");
+		Console.WriteLine($"strlen(\"hello world\") = {record.GetLong(ResultBinName)}");
 
 		record = Eval(key, StringExp.Substr(Exp.Val(6), Exp.StringBin(BinName)));
-		console.Info($"substr(6) = \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"substr(6) = \"{record.GetString(ResultBinName)}\"");
 
 		record = Eval(key, StringExp.Substr(Exp.Val(0), Exp.Val(5), Exp.StringBin(BinName)));
-		console.Info($"substr(0, 5) = \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"substr(0, 5) = \"{record.GetString(ResultBinName)}\"");
 
 		record = Eval(key, StringExp.CharAt(Exp.Val(6), Exp.StringBin(BinName)));
-		console.Info($"charAt(6) = \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"charAt(6) = \"{record.GetString(ResultBinName)}\"");
 
 		record = Eval(key, StringExp.Find(Exp.Val("world"), Exp.StringBin(BinName)));
-		console.Info($"find(\"world\") = {record.GetLong(ResultBinName)}");
+		Console.WriteLine($"find(\"world\") = {record.GetLong(ResultBinName)}");
 
 		Put(key, "ababab");
 		record = Eval(key, StringExp.Find(Exp.Val("ab"), Exp.Val(2), Exp.StringBin(BinName)));
-		console.Info($"find(\"ab\", occurrence=2) on \"ababab\" = {record.GetLong(ResultBinName)}");
+		Console.WriteLine($"find(\"ab\", occurrence=2) on \"ababab\" = {record.GetLong(ResultBinName)}");
 
 		Put(key, "hello world");
 		record = Eval(key, StringExp.Contains(Exp.Val("hello"), Exp.StringBin(BinName)));
-		console.Info($"contains(\"hello\") = {record.GetBool(ResultBinName)}");
+		Console.WriteLine($"contains(\"hello\") = {record.GetBool(ResultBinName)}");
 
 		record = Eval(key, StringExp.StartsWith(Exp.Val("hello"), Exp.StringBin(BinName)));
-		console.Info($"startsWith(\"hello\") = {record.GetBool(ResultBinName)}");
+		Console.WriteLine($"startsWith(\"hello\") = {record.GetBool(ResultBinName)}");
 
 		record = Eval(key, StringExp.EndsWith(Exp.Val("world"), Exp.StringBin(BinName)));
-		console.Info($"endsWith(\"world\") = {record.GetBool(ResultBinName)}");
+		Console.WriteLine($"endsWith(\"world\") = {record.GetBool(ResultBinName)}");
 
 		Put(key, "12345");
 		record = Eval(key, StringExp.ToInteger(Exp.StringBin(BinName)));
-		console.Info($"toInteger(\"12345\") = {record.GetLong(ResultBinName)}");
+		Console.WriteLine($"toInteger(\"12345\") = {record.GetLong(ResultBinName)}");
 
 		Put(key, "3.14");
 		record = Eval(key, StringExp.ToDouble(Exp.StringBin(BinName)));
-		console.Info($"toDouble(\"3.14\") = {record.GetDouble(ResultBinName)}");
+		Console.WriteLine($"toDouble(\"3.14\") = {record.GetDouble(ResultBinName)}");
 
 		Put(key, "héllo");
 		record = Eval(key, StringExp.ByteLength(Exp.StringBin(BinName)));
-		console.Info($"byteLength(\"héllo\") = {record.GetLong(ResultBinName)} (5 codepoints, 6 UTF-8 bytes)");
+		Console.WriteLine($"byteLength(\"héllo\") = {record.GetLong(ResultBinName)} (5 codepoints, 6 UTF-8 bytes)");
 
 		Put(key, "12345");
 		record = Eval(key, StringExp.IsNumeric(Exp.StringBin(BinName)));
-		console.Info($"isNumeric(\"12345\") = {record.GetBool(ResultBinName)}");
+		Console.WriteLine($"isNumeric(\"12345\") = {record.GetBool(ResultBinName)}");
 
 		Put(key, "3.14");
 		record = Eval(key, StringExp.IsNumeric(StringNumericType.INT, Exp.StringBin(BinName)));
-		console.Info($"isNumeric(\"3.14\", INT) = {record.GetBool(ResultBinName)}");
+		Console.WriteLine($"isNumeric(\"3.14\", INT) = {record.GetBool(ResultBinName)}");
 
 		// FLOAT requires a decimal point followed by a digit.
 		Put(key, "12345");
 		record = Eval(key, StringExp.IsNumeric(StringNumericType.FLOAT, Exp.StringBin(BinName)));
-		console.Info($"isNumeric(\"12345\", FLOAT) = {record.GetBool(ResultBinName)}");
+		Console.WriteLine($"isNumeric(\"12345\", FLOAT) = {record.GetBool(ResultBinName)}");
 
 		Put(key, "HELLO");
 		record = Eval(key, StringExp.IsUpper(Exp.StringBin(BinName)));
-		console.Info($"isUpper(\"HELLO\") = {record.GetBool(ResultBinName)}");
+		Console.WriteLine($"isUpper(\"HELLO\") = {record.GetBool(ResultBinName)}");
 
 		Put(key, "hello");
 		record = Eval(key, StringExp.IsLower(Exp.StringBin(BinName)));
-		console.Info($"isLower(\"hello\") = {record.GetBool(ResultBinName)}");
+		Console.WriteLine($"isLower(\"hello\") = {record.GetBool(ResultBinName)}");
 
 		record = Eval(key, StringExp.ToBlob(Exp.StringBin(BinName)));
-		console.Info($"toBlob(\"hello\") = [{string.Join(", ", (byte[])record.GetValue(ResultBinName))}]");
+		Console.WriteLine($"toBlob(\"hello\") = [{string.Join(", ", (byte[])record.GetValue(ResultBinName))}]");
 
 		Put(key, "abc");
 		record = Eval(key, StringExp.Split(Exp.StringBin(BinName)));
-		console.Info($"split() = {ExampleValueFormatter.Format(record.GetList(ResultBinName))}");
+		Console.WriteLine($"split() = {ExampleValueFormatter.Format(record.GetList(ResultBinName))}");
 
 		Put(key, "one,two,three");
 		record = Eval(key, StringExp.Split(Exp.Val(","), Exp.StringBin(BinName)));
-		console.Info($"split(\",\") = {ExampleValueFormatter.Format(record.GetList(ResultBinName))}");
+		Console.WriteLine($"split(\",\") = {ExampleValueFormatter.Format(record.GetList(ResultBinName))}");
 
 		Put(key, "aGVsbG8=");
 		record = Eval(key, StringExp.B64Decode(Exp.StringBin(BinName)));
-		console.Info($"b64Decode(\"aGVsbG8=\") = \"{Encoding.UTF8.GetString((byte[])record.GetValue(ResultBinName))}\"");
+		Console.WriteLine($"b64Decode(\"aGVsbG8=\") = \"{Encoding.UTF8.GetString((byte[])record.GetValue(ResultBinName))}\"");
 
 		Put(key, "Hello123World");
 		record = Eval(key, StringExp.RegexCompare(Exp.Val("[0-9]+"), Exp.StringBin(BinName)));
-		console.Info($"regexCompare(\"[0-9]+\") = {record.GetBool(ResultBinName)}");
+		Console.WriteLine($"regexCompare(\"[0-9]+\") = {record.GetBool(ResultBinName)}");
 
 		Put(key, "HELLO");
 		record = Eval(key, StringExp.RegexCompare(
 			Exp.Val("hello"), StringRegexFlags.CASE_INSENSITIVE, Exp.StringBin(BinName)));
-		console.Info($"regexCompare(\"hello\", CASE_INSENSITIVE) = {record.GetBool(ResultBinName)}");
+		Console.WriteLine($"regexCompare(\"hello\", CASE_INSENSITIVE) = {record.GetBool(ResultBinName)}");
 	}
 
 	private void RunModifyExpressions()
@@ -136,79 +136,79 @@ public sealed class StringExpression : SyncExample
 		Put(key, "hello world");
 		Record record = Eval(key, StringExp.Insert(
 			stringPolicy, Exp.Val(5), Exp.Val(" beautiful"), Exp.StringBin(BinName)));
-		console.Info($"insert(5, \" beautiful\") -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"insert(5, \" beautiful\") -> \"{record.GetString(ResultBinName)}\"");
 
 		record = Eval(key, StringExp.Overwrite(
 			stringPolicy, Exp.Val(6), Exp.Val("earth"), Exp.StringBin(BinName)));
-		console.Info($"overwrite(6, \"earth\") -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"overwrite(6, \"earth\") -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, "hello");
 		record = Eval(key, StringExp.Concat(
 			stringPolicy,
 			Exp.Val(new List<string> { " ", "big", " world" }),
 			Exp.StringBin(BinName)));
-		console.Info($"concat([\" \", \"big\", \" world\"]) -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"concat([\" \", \"big\", \" world\"]) -> \"{record.GetString(ResultBinName)}\"");
 
 		record = Eval(key, StringExp.Append(stringPolicy, Exp.Val("!"), Exp.StringBin(BinName)));
-		console.Info($"append(\"!\") -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"append(\"!\") -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, "world");
 		record = Eval(key, StringExp.Prepend(stringPolicy, Exp.Val("hello "), Exp.StringBin(BinName)));
-		console.Info($"prepend(\"hello \") -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"prepend(\"hello \") -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, "hello beautiful world");
 		record = Eval(key, StringExp.Snip(stringPolicy, Exp.Val(5), Exp.Val(15), Exp.StringBin(BinName)));
-		console.Info($"snip(5, 15) -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"snip(5, 15) -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, "hello world world");
 		record = Eval(key, StringExp.Replace(
 			stringPolicy, Exp.Val("world"), Exp.Val("earth"), Exp.StringBin(BinName)));
-		console.Info($"replace(\"world\", \"earth\") -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"replace(\"world\", \"earth\") -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, "aabaa");
 		record = Eval(key, StringExp.ReplaceAll(
 			stringPolicy, Exp.Val("a"), Exp.Val("x"), Exp.StringBin(BinName)));
-		console.Info($"replaceAll(\"a\", \"x\") -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"replaceAll(\"a\", \"x\") -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, "hello world");
 		record = Eval(key, StringExp.Upper(stringPolicy, Exp.StringBin(BinName)));
-		console.Info($"upper() -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"upper() -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, "HELLO WORLD");
 		record = Eval(key, StringExp.Lower(stringPolicy, Exp.StringBin(BinName)));
-		console.Info($"lower() -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"lower() -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, "HELLO World");
 		record = Eval(key, StringExp.CaseFold(stringPolicy, Exp.StringBin(BinName)));
-		console.Info($"caseFold() -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"caseFold() -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, "café");
 		record = Eval(key, StringExp.NormalizeNFC(stringPolicy, Exp.StringBin(BinName)));
-		console.Info($"normalizeNFC() -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"normalizeNFC() -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, " hello ");
 		record = Eval(key, StringExp.TrimStart(stringPolicy, Exp.StringBin(BinName)));
-		console.Info($"trimStart() -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"trimStart() -> \"{record.GetString(ResultBinName)}\"");
 
 		record = Eval(key, StringExp.TrimEnd(stringPolicy, Exp.StringBin(BinName)));
-		console.Info($"trimEnd() -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"trimEnd() -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, " hello world ");
 		record = Eval(key, StringExp.Trim(stringPolicy, Exp.StringBin(BinName)));
-		console.Info($"trim() -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"trim() -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, "hello");
 		record = Eval(key, StringExp.PadStart(
 			stringPolicy, Exp.Val(10), Exp.Val("*"), Exp.StringBin(BinName)));
-		console.Info($"padStart(10, \"*\") -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"padStart(10, \"*\") -> \"{record.GetString(ResultBinName)}\"");
 
 		record = Eval(key, StringExp.PadEnd(
 			stringPolicy, Exp.Val(10), Exp.Val("."), Exp.StringBin(BinName)));
-		console.Info($"padEnd(10, \".\") -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"padEnd(10, \".\") -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, "ab");
 		record = Eval(key, StringExp.Repeat(stringPolicy, Exp.Val(3), Exp.StringBin(BinName)));
-		console.Info($"repeat(3) -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"repeat(3) -> \"{record.GetString(ResultBinName)}\"");
 
 		Put(key, "abc123def456");
 		record = Eval(key, StringExp.RegexReplace(
@@ -217,7 +217,7 @@ public sealed class StringExpression : SyncExample
 			Exp.Val("NUM"),
 			StringRegexFlags.GLOBAL,
 			Exp.StringBin(BinName)));
-		console.Info($"regexReplace(\"[0-9]+\", \"NUM\", GLOBAL) -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"regexReplace(\"[0-9]+\", \"NUM\", GLOBAL) -> \"{record.GetString(ResultBinName)}\"");
 	}
 
 	private void RunToString()
@@ -230,7 +230,7 @@ public sealed class StringExpression : SyncExample
 
 		Record record = client.Operate(writePolicy, key,
 			ExpOperation.Read(ResultBinName, Exp.Build(StringExp.ToString(Exp.IntBin(numBin))), ExpReadFlags.DEFAULT));
-		console.Info($"toString(IntBin(\"n\") = 42) -> \"{record.GetString(ResultBinName)}\"");
+		Console.WriteLine($"toString(IntBin(\"n\") = 42) -> \"{record.GetString(ResultBinName)}\"");
 	}
 
 	private void Put(Key key, string value)

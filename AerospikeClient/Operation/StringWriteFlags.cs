@@ -33,6 +33,14 @@ namespace Aerospike.Client
 		DEFAULT = 0,
 
 		/// <summary>
+		/// Create the bin only if it does not already exist. Valid on the eight additive
+		/// create-ops: insert, overwrite, concat, append, prepend, padStart, padEnd, and
+		/// repeat. Mutually exclusive with <see cref="UPDATE_ONLY"/> and invalid with a
+		/// <see cref="CTX"/> path.
+		/// </summary>
+		CREATE_ONLY = 1,
+
+		/// <summary>
 		/// Update existing values only.
 		/// </summary>
 		UPDATE_ONLY = 2,

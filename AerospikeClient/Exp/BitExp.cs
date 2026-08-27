@@ -408,6 +408,45 @@ namespace Aerospike.Client
 			return AddRead(bin, bytes, Exp.Type.INT);
 		}
 
+		/// <summary>
+		/// Create expression that returns the base64 text of the whole byte[] bin as a string.
+		/// </summary>
+		/// <example>
+		/// <code>
+		/// // blob bin "a" base64-encoded
+		/// BitExp.B64Encode(Exp.BlobBin("a"))
+		/// </code>
+		/// </example>
+		/// <para>
+		/// Requires server version 8.1.3 or later.
+		/// </para>
+		public static Exp B64Encode(Exp bin)
+		{
+			byte[] bytes = PackUtil.Pack(BitOperation.B64_ENCODE);
+			return AddRead(bin, bytes, Exp.Type.STRING);
+		}
+
+		/// <summary>
+		/// Create expression that returns the base64 text of a byte range of the byte[] bin as a
+		/// string. A negative <paramref name="byteOffset"/> counts back from the end of the blob.
+		/// Note the span is expressed in bytes, unlike the bit offsets and sizes the other bit
+		/// expressions take.
+		/// </summary>
+		/// <example>
+		/// <code>
+		/// // first 3 bytes of blob bin "a", base64-encoded
+		/// BitExp.B64Encode(Exp.Val(0), Exp.Val(3), Exp.BlobBin("a"))
+		/// </code>
+		/// </example>
+		/// <para>
+		/// Requires server version 8.1.3 or later.
+		/// </para>
+		public static Exp B64Encode(Exp byteOffset, Exp byteSize, Exp bin)
+		{
+			byte[] bytes = PackUtil.Pack(BitOperation.B64_ENCODE, byteOffset, byteSize);
+			return AddRead(bin, bytes, Exp.Type.STRING);
+		}
+
 		private static byte[] PackMath(int command, BitPolicy policy, Exp bitOffset, Exp bitSize, Exp value, bool signed, BitOverflowAction action)
 		{
 			Packer packer = new Packer();

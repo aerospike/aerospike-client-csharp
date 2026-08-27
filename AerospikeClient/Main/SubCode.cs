@@ -106,10 +106,11 @@ namespace Aerospike.Client
 		public const int PARAM_STRING_OP_INVALID = 7;
 
 		/// <summary>
-		/// String context-eval path malformed.
+		/// String context-eval envelope malformed. Server constant
+		/// <c>AS_SUB_PARAM_STRING_CTX_MALFORMED</c>.
 		/// Value: 8
 		/// </summary>
-		public const int PARAM_STRING_CTX_NOT_APPLICABLE = 8;
+		public const int PARAM_STRING_CTX_MALFORMED = 8;
 
 		/// <summary>
 		/// String modify/read index or code-point range out of bounds.
@@ -171,11 +172,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int BIN_NOT_FOUND_HLL_CANNOT_CREATE_WITH_OP = 1;
 
-		/// <summary>
-		/// String modify on a missing bin (non-NO_FAIL path).
-		/// Value: 2
-		/// </summary>
-		public const int BIN_NOT_FOUND_STRING_VALUE_NOT_FOUND = 2;
+		// Server subcode 2 in this family was dropped as unreachable: a string modify on a
+	    // missing bin returns AS_OK with the bin uncreated, never BIN_NOT_FOUND.
 
 		//-------------------------------------------------------
 		// Pairs with ResultCode.BIN_NAME_TOO_LONG (21)  [AS_ERR_BIN_NAME]
@@ -306,7 +304,11 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int OPNOT_STRING_UTF8_INVALID = 11;
 
-		// 12 is reserved server-side for a regex-limit subcode still in review.
+		/// <summary>
+		/// ICU regex resource limit exceeded.
+		/// Value: 12
+		/// </summary>
+		public const int OPNOT_STRING_REGEX_LIMIT_EXCEEDED = 12;
 
 		/// <summary>
 		/// String is not valid base64 — a length that is not a multiple of 4, a character

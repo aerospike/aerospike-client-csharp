@@ -364,11 +364,14 @@ namespace Aerospike.Test
 			try
 			{
 				Eval(StringExp.Overwrite(policy, Exp.Val(100), Exp.Val("x"), Exp.StringBin(bin)));
-				Assert.Fail("Expected PARAMETER_ERROR for out-of-bounds overwrite index.");
+				Assert.Fail("Expected error for out-of-bounds overwrite index.");
 			}
 			catch (AerospikeException ae)
 			{
-				Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+				// exp_read surfaces OP_NOT_APPLICABLE; direct STRING_MODIFY uses PARAMETER_ERROR.
+				Assert.IsTrue(
+					ae.Result == ResultCode.PARAMETER_ERROR || ae.Result == ResultCode.OP_NOT_APPLICABLE,
+					"Unexpected result code: " + ae.Result);
 			}
 		}
 

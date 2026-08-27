@@ -1143,6 +1143,22 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void ModifyOpWithFlagsOnStringNestedInList()
+		{
+			// append takes 1-2 args, so its trailing flags slot is optional. Under CTX
+			// the flags sit in the nested inner array, whose own header declares the
+			// arity — in the flat envelope they were indistinguishable from a 2nd arg.
+			List<Value> list = [Value.Get("alpha"), Value.Get("beta"), Value.Get("gamma")];
+			PutList(list);
+
+			StringPolicy noFail = new(StringWriteFlags.NO_FAIL);
+			Operate(StringOperation.Append(noFail, bin, "!", CTX.ListIndex(1)));
+
+			IList after = client.Get(null, key).GetList(bin);
+			CollectionAssert.AreEqual(new List<object> { "alpha", "beta!", "gamma" }, after);
+		}
+
+		[TestMethod]
 		public void PrependOnStringNestedInMap()
 		{
 			// map = {"a": "world", "b": "foo"}; prepend "hello " at key "a"
@@ -1381,7 +1397,8 @@ namespace Aerospike.Test
 		// These exercise the server's prepare-phase validation
 		// (particle_string.c: find occurrence != 0, empty/negative pad
 		// arguments, repeat count >= 0, regex_replace pattern compile).
-		// All should surface as PARAMETER_ERROR.
+		// Without NO_FAIL, invalid regex patterns surface as PARAMETER_ERROR.
+		// With NO_FAIL, regex_replace returns the unmodified source string.
 		//=================================================================
 
 		private static void AssertParamError(Operation op)
@@ -1424,6 +1441,20 @@ namespace Aerospike.Test
 		{
 			Put("hello");
 			AssertParamError(StringOperation.Repeat(policy, bin, -1));
+		}
+
+		[TestMethod]
+		public void RegexReplaceNoFailSuppressesInvalidPattern()
+		{
+			// regexReplace carries both a regex-flags and a policy-flags argument; the
+			// policy slot is the third and last. NO_FAIL there suppresses the compile
+			// failure the test above asserts, leaving the bin untouched.
+			Put("hello");
+
+			StringPolicy noFail = new(StringWriteFlags.NO_FAIL);
+			Operate(StringOperation.RegexReplace(
+				noFail, bin, "[unclosed", "NUM", StringRegexFlags.DEFAULT));
+			Assert.AreEqual("hello", StringValue());
 		}
 
 		[TestMethod]

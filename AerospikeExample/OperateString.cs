@@ -42,95 +42,95 @@ public sealed class OperateString : SyncExample
 		// strlen: codepoint count.
 		Put(key, "hello world");
 		Record record = client.Operate(writePolicy, key, StringOperation.Strlen(BinName));
-		console.Info($"strlen(\"hello world\") = {record.GetLong(BinName)}");
+		Console.WriteLine($"strlen(\"hello world\") = {record.GetLong(BinName)}");
 
 		// substr(start): codepoint slice to end of string.
 		record = client.Operate(writePolicy, key, StringOperation.Substr(BinName, 6));
-		console.Info($"substr(6) = \"{record.GetString(BinName)}\"");
+		Console.WriteLine($"substr(6) = \"{record.GetString(BinName)}\"");
 
 		// substr(start, end): half-open codepoint range.
 		record = client.Operate(writePolicy, key, StringOperation.Substr(BinName, 0, 5));
-		console.Info($"substr(0, 5) = \"{record.GetString(BinName)}\"");
+		Console.WriteLine($"substr(0, 5) = \"{record.GetString(BinName)}\"");
 
 		// charAt: single-codepoint slice.
 		record = client.Operate(writePolicy, key, StringOperation.CharAt(BinName, 6));
-		console.Info($"charAt(6) = \"{record.GetString(BinName)}\"");
+		Console.WriteLine($"charAt(6) = \"{record.GetString(BinName)}\"");
 
 		// find(needle): index of first match, -1 if absent.
 		record = client.Operate(writePolicy, key, StringOperation.Find(BinName, "world"));
-		console.Info($"find(\"world\") = {record.GetLong(BinName)}");
+		Console.WriteLine($"find(\"world\") = {record.GetLong(BinName)}");
 
 		// find(needle, occurrence): index of nth match.
 		Put(key, "ababab");
 		record = client.Operate(writePolicy, key, StringOperation.Find(BinName, "ab", 2));
-		console.Info($"find(\"ab\", occurrence=2) on \"ababab\" = {record.GetLong(BinName)}");
+		Console.WriteLine($"find(\"ab\", occurrence=2) on \"ababab\" = {record.GetLong(BinName)}");
 
 		Put(key, "hello world");
 		record = client.Operate(writePolicy, key, StringOperation.Contains(BinName, "hello"));
-		console.Info($"contains(\"hello\") = {record.GetBool(BinName)}");
+		Console.WriteLine($"contains(\"hello\") = {record.GetBool(BinName)}");
 
 		record = client.Operate(writePolicy, key, StringOperation.StartsWith(BinName, "hello"));
-		console.Info($"startsWith(\"hello\") = {record.GetBool(BinName)}");
+		Console.WriteLine($"startsWith(\"hello\") = {record.GetBool(BinName)}");
 
 		record = client.Operate(writePolicy, key, StringOperation.EndsWith(BinName, "world"));
-		console.Info($"endsWith(\"world\") = {record.GetBool(BinName)}");
+		Console.WriteLine($"endsWith(\"world\") = {record.GetBool(BinName)}");
 
 		Put(key, "12345");
 		record = client.Operate(writePolicy, key, StringOperation.ToInteger(BinName));
-		console.Info($"toInteger(\"12345\") = {record.GetLong(BinName)}");
+		Console.WriteLine($"toInteger(\"12345\") = {record.GetLong(BinName)}");
 
 		Put(key, "3.14");
 		record = client.Operate(writePolicy, key, StringOperation.ToDouble(BinName));
-		console.Info($"toDouble(\"3.14\") = {record.GetDouble(BinName)}");
+		Console.WriteLine($"toDouble(\"3.14\") = {record.GetDouble(BinName)}");
 
 		Put(key, "héllo");
 		record = client.Operate(writePolicy, key, StringOperation.ByteLength(BinName));
-		console.Info($"byteLength(\"héllo\") = {record.GetLong(BinName)} (5 codepoints, 6 UTF-8 bytes)");
+		Console.WriteLine($"byteLength(\"héllo\") = {record.GetLong(BinName)} (5 codepoints, 6 UTF-8 bytes)");
 
 		Put(key, "12345");
 		record = client.Operate(writePolicy, key, StringOperation.IsNumeric(BinName));
-		console.Info($"isNumeric(\"12345\") = {record.GetBool(BinName)}");
+		Console.WriteLine($"isNumeric(\"12345\") = {record.GetBool(BinName)}");
 
 		Put(key, "3.14");
 		record = client.Operate(writePolicy, key, StringOperation.IsNumeric(BinName, StringNumericType.INT));
-		console.Info($"isNumeric(\"3.14\", INT) = {record.GetBool(BinName)}");
+		Console.WriteLine($"isNumeric(\"3.14\", INT) = {record.GetBool(BinName)}");
 
 		// FLOAT requires a decimal point followed by a digit.
 		Put(key, "12345");
 		record = client.Operate(writePolicy, key, StringOperation.IsNumeric(BinName, StringNumericType.FLOAT));
-		console.Info($"isNumeric(\"12345\", FLOAT) = {record.GetBool(BinName)}");
+		Console.WriteLine($"isNumeric(\"12345\", FLOAT) = {record.GetBool(BinName)}");
 
 		Put(key, "HELLO");
 		record = client.Operate(writePolicy, key, StringOperation.IsUpper(BinName));
-		console.Info($"isUpper(\"HELLO\") = {record.GetBool(BinName)}");
+		Console.WriteLine($"isUpper(\"HELLO\") = {record.GetBool(BinName)}");
 
 		Put(key, "hello");
 		record = client.Operate(writePolicy, key, StringOperation.IsLower(BinName));
-		console.Info($"isLower(\"hello\") = {record.GetBool(BinName)}");
+		Console.WriteLine($"isLower(\"hello\") = {record.GetBool(BinName)}");
 
 		record = client.Operate(writePolicy, key, StringOperation.ToBlob(BinName));
-		console.Info($"toBlob(\"hello\") = [{string.Join(", ", (byte[])record.GetValue(BinName))}]");
+		Console.WriteLine($"toBlob(\"hello\") = [{string.Join(", ", (byte[])record.GetValue(BinName))}]");
 
 		Put(key, "abc");
 		record = client.Operate(writePolicy, key, StringOperation.Split(BinName));
-		console.Info($"split() = {ExampleValueFormatter.Format(record.GetList(BinName))}");
+		Console.WriteLine($"split() = {ExampleValueFormatter.Format(record.GetList(BinName))}");
 
 		Put(key, "one,two,three");
 		record = client.Operate(writePolicy, key, StringOperation.Split(BinName, ","));
-		console.Info($"split(\",\") = {ExampleValueFormatter.Format(record.GetList(BinName))}");
+		Console.WriteLine($"split(\",\") = {ExampleValueFormatter.Format(record.GetList(BinName))}");
 
 		Put(key, "aGVsbG8=");
 		record = client.Operate(writePolicy, key, StringOperation.B64Decode(BinName));
-		console.Info($"b64Decode(\"aGVsbG8=\") = \"{Encoding.UTF8.GetString((byte[])record.GetValue(BinName))}\"");
+		Console.WriteLine($"b64Decode(\"aGVsbG8=\") = \"{Encoding.UTF8.GetString((byte[])record.GetValue(BinName))}\"");
 
 		Put(key, "Hello123World");
 		record = client.Operate(writePolicy, key, StringOperation.RegexCompare(BinName, "[0-9]+"));
-		console.Info($"regexCompare(\"[0-9]+\") = {record.GetBool(BinName)}");
+		Console.WriteLine($"regexCompare(\"[0-9]+\") = {record.GetBool(BinName)}");
 
 		Put(key, "HELLO");
 		record = client.Operate(writePolicy, key,
 			StringOperation.RegexCompare(BinName, "hello", StringRegexFlags.CASE_INSENSITIVE));
-		console.Info($"regexCompare(\"hello\", CASE_INSENSITIVE) = {record.GetBool(BinName)}");
+		Console.WriteLine($"regexCompare(\"hello\", CASE_INSENSITIVE) = {record.GetBool(BinName)}");
 	}
 
 	private void RunModifyOps()
@@ -228,7 +228,7 @@ public sealed class OperateString : SyncExample
 		client.Put(writePolicy, key, new Bin(numBin, 42));
 
 		Record record = client.Operate(writePolicy, key, StringOperation.ToString(numBin));
-		console.Info($"toString(int 42) = \"{record.GetString(numBin)}\"");
+		Console.WriteLine($"toString(int 42) = \"{record.GetString(numBin)}\"");
 	}
 
 	private void Put(Key key, string value)
@@ -241,6 +241,6 @@ public sealed class OperateString : SyncExample
 	{
 		client.Operate(writePolicy, key, modifyOp);
 		string result = client.Get(policy, key).GetString(BinName);
-		console.Info($"{label} -> \"{result}\"");
+		Console.WriteLine($"{label} -> \"{result}\"");
 	}
 }

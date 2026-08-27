@@ -23,16 +23,41 @@ namespace Aerospike.Test
 	/// server-side masking rule.
 	/// </summary>
 	/// <remarks>
+	/// <para>
 	/// Each test exercises one privilege boundary:
+	/// </para>
 	/// <list type="bullet">
 	/// <item><description>read with the <c>read-masked</c> privilege should observe the real value;</description></item>
 	/// <item><description>read without it should observe the masked value;</description></item>
 	/// <item><description>modify without <c>write-masked</c> should fail with <see cref="ResultCode.ROLE_VIOLATION"/>.</description></item>
 	/// </list>
-	/// The admin user in <c>.runsettings</c> needs <c>masking-admin</c> (to install rules),
-	/// <c>user-admin</c> (to create test users), and <c>write-masked</c> (for the admin
-	/// modify scenario). Data masking requires Enterprise Edition 8.1.1+; string ops require 8.1.3+.
+	/// <para>
+	/// The test bootstraps two extra users (one privileged reader, one unprivileged user)
+	/// and connects an additional client per role. The whole class is skipped when
+	/// security is disabled, no admin credentials are supplied, the cluster is not
+	/// Enterprise Edition, or the server is older than 8.1.3 (where masking and string
+	/// ops are jointly supported).
+	/// </para>
+	/// <para>
+	/// <b>Admin user (.runsettings User/Password)</b> must be able to perform every
+	/// cluster action the fixture performs. Assign these roles to the admin user
+	/// (mirrors <c>com.aerospike.test.sync.basic.TestStringMasking</c> in the Java client):
+	/// </para>
+	/// <list type="table">
+	/// <listheader><term>Role</term><description>Required for</description></listheader>
+	/// <item><term><c>user-admin</c></term><description>Create/drop <c>stringops_reader</c> and <c>stringops_user</c></description></item>
+	/// <item><term><c>masking-admin</c></term><description>Install/remove masking rules via info</description></item>
+	/// <item><term><c>read-write</c></term><description>Namespace put/delete/get on test records</description></item>
+	/// <item><term><c>read-masked</c></term><description><see cref="AdminModifyOnMaskedBinSucceeds"/> and <see cref="UnprivilegedCanModifyUnmaskedBin"/> verify masked-bin reads through admin <c>client.Get</c></description></item>
+	/// <item><term><c>write-masked</c></term><description>Fixture seeding, <see cref="WriteMaskedRequired_Trim"/>, and <see cref="AdminModifyOnMaskedBinSucceeds"/> write to masked bins</description></item>
+	/// </list>
+	/// <para>
+	/// Read-masked observation in the privileged-reader tests uses
+	/// <c>stringops_reader</c> (<see cref="Role.ReadWrite"/> + <see cref="Role.ReadMasked"/>),
+	/// not the admin user. The unprivileged user receives <see cref="Role.ReadWrite"/> only.
+	/// </para>
 	/// </remarks>
+	[DoNotParallelize]
 	[TestClass]
 	public class TestStringMasking : TestSync
 	{
@@ -68,11 +93,6 @@ namespace Aerospike.Test
 				Assert.Inconclusive("Skipping: admin credentials not provided");
 			}
 
-			if (SuiteHelpers.singleBin)
-			{
-				Assert.Inconclusive("Data masking tests require a multi-bin namespace");
-			}
-
 			// Probe the cluster for security; bail out cleanly if it isn't enabled.
 			try
 			{
@@ -105,6 +125,8 @@ namespace Aerospike.Test
 			unprivClient = NewClient(UNPRIV_USER);
 
 			ApplyMaskRule(MASKED_BIN, MASK_FUNCTION, null);
+			WaitForMaskingBehavior(key, MASKED_BIN, INITIAL_VALUE, "hello");
+			AssertAdminMaskingPrivileges();
 			enabled = true;
 		}
 
@@ -167,7 +189,7 @@ namespace Aerospike.Test
 		{
 			Record r = unprivClient.Operate(null, key, StringOperation.Substr(MASKED_BIN, 0, 5));
 			// A full-redact rule should never let the underlying characters leak.
-			String value = r.GetString(MASKED_BIN);
+			string value = r.GetString(MASKED_BIN);
 			Assert.AreEqual(5, value.Length);
 			Assert.AreNotEqual("hello", value);
 		}
@@ -324,12 +346,12 @@ namespace Aerospike.Test
 			const string real = "real secret data";
 			Key constKey = new(SuiteHelpers.ns, SuiteHelpers.set, "stringmask-const");
 
-			RemoveMaskRule(constBin);
 			ApplyMaskRule(constBin, "constant", "value=" + constValue);
 			try
 			{
 				client.Delete(null, constKey);
 				client.Put(null, constKey, new Bin(constBin, real));
+				WaitForMaskingBehavior(constKey, constBin, real, "real", "HIDD");
 
 				Record priv = privClient.Operate(null, constKey, StringOperation.Strlen(constBin));
 				Record unp = unprivClient.Operate(null, constKey, StringOperation.Strlen(constBin));
@@ -352,6 +374,38 @@ namespace Aerospike.Test
 		//=================================================================
 		// Helpers
 		//=================================================================
+
+		/// <summary>
+		/// Fail fast when the .runsettings admin user is missing masking privileges
+		/// that the Java client test assumes on its admin <c>client</c>.
+		/// </summary>
+		private static void AssertAdminMaskingPrivileges()
+		{
+			client.Delete(null, key);
+			client.Put(null, key,
+				new Bin(MASKED_BIN, INITIAL_VALUE),
+				new Bin(UNMASKED_BIN, INITIAL_PUBLIC));
+
+			Record read = client.Operate(null, key, StringOperation.Substr(MASKED_BIN, 0, 5));
+			if (!string.Equals("hello", read.GetString(MASKED_BIN), StringComparison.Ordinal))
+			{
+				Assert.Inconclusive(
+					"Admin user '" + SuiteHelpers.user + "' lacks read-masked: masked-bin reads return '"
+					+ read.GetString(MASKED_BIN) + "' instead of the real value. Grant read-masked to the "
+					+ ".runsettings admin user (see TestStringMasking class remarks).");
+			}
+
+			try
+			{
+				client.Operate(null, key, StringOperation.Upper(policy, MASKED_BIN));
+			}
+			catch (AerospikeException e) when (e.Result == ResultCode.ROLE_VIOLATION)
+			{
+				Assert.Inconclusive(
+					"Admin user '" + SuiteHelpers.user + "' lacks write-masked: cannot modify masked bins. "
+					+ "Grant write-masked to the .runsettings admin user (see TestStringMasking class remarks).");
+			}
+		}
 
 		private delegate void OperateCall();
 		private static void AssertRoleViolation(OperateCall call)
@@ -397,7 +451,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		private static void DropUserQuiet(String user)
+		private static void DropUserQuiet(string user)
 		{
 			try
 			{
@@ -439,8 +493,52 @@ namespace Aerospike.Test
 			{
 				Info.Request(null, node, cmd);
 			}
-			// Give the rule time to propagate before exercising it.
-			Thread.Sleep(500);
+		}
+
+		/// <summary>
+		/// Poll until privileged reads observe the real prefix and unprivileged reads do not.
+		/// Masking rules and role grants can lag under full-suite load; a fixed sleep is not enough.
+		/// </summary>
+		private static void WaitForMaskingBehavior(
+			Key recordKey, string bin, string binValue, string realPrefix, string maskedPrefix = null)
+		{
+			const int maxAttempts = 40;
+			const int delayMs = 250;
+			int prefixLen = realPrefix.Length;
+
+			for (int attempt = 0; attempt < maxAttempts; attempt++)
+			{
+				client.Delete(null, recordKey);
+				client.Put(null, recordKey, new Bin(bin, binValue));
+
+				try
+				{
+					Record priv = privClient.Operate(null, recordKey, StringOperation.Substr(bin, 0, prefixLen));
+					Record unp = unprivClient.Operate(null, recordKey, StringOperation.Substr(bin, 0, prefixLen));
+					string privVal = priv.GetString(bin);
+					string unpVal = unp.GetString(bin);
+
+					bool privSeesReal = string.Equals(realPrefix, privVal, StringComparison.Ordinal);
+					bool unpSeesMasked = maskedPrefix != null
+						? string.Equals(maskedPrefix, unpVal, StringComparison.Ordinal)
+						: !string.Equals(realPrefix, unpVal, StringComparison.Ordinal);
+
+					if (privSeesReal && unpSeesMasked)
+					{
+						return;
+					}
+				}
+				catch (AerospikeException)
+				{
+					// User roles or masking may still be propagating.
+				}
+
+				Thread.Sleep(delayMs);
+			}
+
+			Assert.Inconclusive(
+				"Masking rule did not become active on all nodes within "
+				+ (maxAttempts * delayMs / 1000) + "s. Re-run the test or check masking-admin privileges.");
 		}
 
 	}

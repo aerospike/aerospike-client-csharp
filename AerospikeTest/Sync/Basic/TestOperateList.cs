@@ -1227,5 +1227,77 @@ namespace Aerospike.Test
 				}
 			}
 		}
+
+		[TestMethod]
+		public void OperateListJoin()
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkeyjoin");
+			client.Delete(null, key);
+
+			List<Value> items = [Value.Get("alpha"), Value.Get("beta"), Value.Get("gamma")];
+			client.Put(null, key, new Bin(binName, items));
+
+			// Two reads on one bin come back as an ordered list of results.
+			Record record = client.Operate(null, key,
+				ListOperation.Join(binName),
+				ListOperation.Join(binName, ", "));
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			Assert.AreEqual("alphabetagamma", results[0]);
+			Assert.AreEqual("alpha, beta, gamma", results[1]);
+		}
+
+		[TestMethod]
+		public void OperateListJoinEmptyList()
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkeyjoinempty");
+			client.Delete(null, key);
+			client.Put(null, key, new Bin(binName, new List<Value>()));
+
+			Record record = client.Operate(null, key, ListOperation.Join(binName, ","));
+			AssertRecordFound(key, record);
+			Assert.AreEqual("", record.GetString(binName));
+		}
+
+		[TestMethod]
+		public void OperateListJoinNonStringItemFails()
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkeyjoinbad");
+			client.Delete(null, key);
+
+			List<Value> items = [Value.Get("alpha"), Value.Get(7)];
+			client.Put(null, key, new Bin(binName, items));
+
+			// Every item must be a string; the server rejects the whole op otherwise.
+			AerospikeException ae = Assert.Throws<AerospikeException>(() =>
+				client.Operate(null, key, ListOperation.Join(binName)));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+		}
+
+		[TestMethod]
+		public void OperateListJoinNested()
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkeyjoinctx");
+			client.Delete(null, key);
+
+			List<Value> inner = [Value.Get("x"), Value.Get("y")];
+			List<Value> outer = [Value.Get("skip"), Value.Get(inner)];
+			client.Put(null, key, new Bin(binName, outer));
+
+			Record record = client.Operate(null, key,
+				ListOperation.Join(binName, "-", CTX.ListIndex(1)));
+			AssertRecordFound(key, record);
+			Assert.AreEqual("x-y", record.GetString(binName));
+		}
 	}
 }
