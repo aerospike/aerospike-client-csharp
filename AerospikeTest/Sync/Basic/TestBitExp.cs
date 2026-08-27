@@ -38,6 +38,7 @@ namespace Aerospike.Test
 			Lscan(key);
 			Rscan(key);
 			GetInt(key);
+			B64Encode(key);
 		}
 
 		[TestMethod]
@@ -466,6 +467,29 @@ namespace Aerospike.Test
 					BitExp.Get(Exp.Val(24), Exp.Val(8),
 						BitExp.SetInt(BitPolicy.Default, Exp.Val(24), Exp.Val(8), Exp.Val(0x42), Exp.BlobBin(binA))),
 					BitExp.Get(Exp.Val(8), Exp.Val(8), Exp.BlobBin(binA))));
+
+			r = client.Get(policy, key);
+			AssertRecordFound(key, r);
+		}
+
+		private void B64Encode(Key key)
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "bit b64Encode");
+
+			byte[] blob = [0x01, 0x42, 0x03, 0x04, 0x05];
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					BitExp.B64Encode(Exp.BlobBin(binA)),
+					Exp.Val(Convert.ToBase64String(blob))));
+
+			Record r = client.Get(policy, key);
+			AssertRecordFound(key, r);
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					BitExp.B64Encode(Exp.Val(0), Exp.Val(2), Exp.BlobBin(binA)),
+					Exp.Val(Convert.ToBase64String([0x01, 0x42]))));
 
 			r = client.Get(policy, key);
 			AssertRecordFound(key, r);

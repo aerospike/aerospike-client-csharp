@@ -55,7 +55,12 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create string append database operation.
+		/// This legacy operation performs raw byte concatenation and is not Unicode-aware.
+		/// Use <see cref="StringOperation.Append"/> for string bins. For blob bins, use
+		/// <see cref="BitOperation.Insert"/> at a byte offset equal to the blob's current size.
+		/// There is no end-of-blob sentinel, so appending requires knowing the current size.
 		/// </summary>
+		[Obsolete("Use StringOperation.Append for strings or BitOperation.Insert for blobs instead")]
 		public static Operation Append(Bin bin)
 		{
 			return new Operation(Type.APPEND, bin.name, bin.value);
@@ -63,7 +68,11 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create string prepend database operation.
+		/// This legacy operation performs raw byte concatenation and is not Unicode-aware.
+		/// Use <see cref="StringOperation.Prepend"/> for string bins. For blob bins, use
+		/// <see cref="BitOperation.Insert"/> at byte offset 0.
 		/// </summary>
+		[Obsolete("Use StringOperation.Prepend for strings or BitOperation.Insert for blobs instead")]
 		public static Operation Prepend(Bin bin)
 		{
 			return new Operation(Type.PREPEND, bin.name, bin.value);
@@ -122,13 +131,16 @@ namespace Aerospike.Client
 			BIT_MODIFY,
 			DELETE,
 			HLL_READ,
-			HLL_MODIFY
+			HLL_MODIFY,
+			STRING_READ,
+			STRING_MODIFY,
+			TO_STRING
 		}
 
-		private static readonly byte[] ProtocolTypes = new byte[] { 1, 1, 2, 3, 4, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+		private static readonly byte[] ProtocolTypes = [1, 1, 2, 3, 4, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 
-		private static readonly bool[] IsWrites = new bool[]
-		{
+		private static readonly bool[] IsWrites =
+		[
 			false,
 			false,
 			true,
@@ -146,8 +158,11 @@ namespace Aerospike.Client
 			true,
 			true,
 			false,
-			true
-		};
+			true,
+			false,
+			true,
+			false
+		];
 
 		public static byte GetProtocolType(Type type)
 		{

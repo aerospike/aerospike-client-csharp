@@ -194,6 +194,17 @@ namespace Aerospike.Client
 			return packer.ToByteArray();
 		}
 
+		public static byte[] Pack(int command, Value value, int v1, params CTX[] ctx)
+		{
+			Packer packer = new Packer();
+			Init(packer, ctx);
+			packer.PackArrayBegin(3);
+			packer.PackNumber(command);
+			value.Pack(packer);
+			packer.PackNumber(v1);
+			return packer.ToByteArray();
+		}
+
 		public static byte[] Pack(int command, Value value, int v1, int v2, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
@@ -295,6 +306,27 @@ namespace Aerospike.Client
 			packer.PackArrayBegin(2);
 			packer.PackNumber(command);
 			v1.Pack(packer);
+			return packer.ToByteArray();
+		}
+
+		public static byte[] Pack(int command, Exp v1, params CTX[] ctx)
+		{
+			Packer packer = new Packer();
+			Init(packer, ctx);
+			packer.PackArrayBegin(2);
+			packer.PackNumber(command);
+			v1.Pack(packer);
+			return packer.ToByteArray();
+		}
+
+		public static byte[] Pack(int command, Exp v1, int v2, params CTX[] ctx)
+		{
+			Packer packer = new Packer();
+			Init(packer, ctx);
+			packer.PackArrayBegin(3);
+			packer.PackNumber(command);
+			v1.Pack(packer);
+			packer.PackNumber(v2);
 			return packer.ToByteArray();
 		}
 

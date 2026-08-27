@@ -46,8 +46,10 @@ namespace Aerospike.Client
 		internal const int LSCAN = 52;
 		internal const int RSCAN = 53;
 		internal const int GET_INT = 54;
+		internal const int B64_ENCODE = 55;
 
 		internal const int INT_FLAGS_SIGNED = 1;
+		internal const int READ_SUBFLAG_INVERT_SIZE = 1;
 
 		/// <summary>
 		/// Create byte "resize" operation.
@@ -404,6 +406,61 @@ namespace Aerospike.Client
 		public static Operation GetInt(string binName, int bitOffset, int bitSize, bool signed)
 		{
 			byte[] bytes = BitOperation.PackGetInt(bitOffset, bitSize, signed);
+			return new Operation(Operation.Type.BIT_READ, binName, Value.Get(bytes));
+		}
+
+		/// <summary>
+		/// Create bit "b64Encode" operation.
+		/// Server returns the base64 text of the whole byte[] bin as a string.
+		/// Example:
+		/// <ul>
+		/// <li>bin = [0b00000001, 0b01000010, 0b00000011]</li>
+		/// <li>returns "AUID"</li>
+		/// </ul>
+		/// <para>
+		/// This is the encode direction; <see cref="StringOperation.B64Decode(string, CTX[])"/>
+		/// is the decode direction and takes a string bin back to a blob.
+		/// Requires server version 8.1.3 or later.
+		/// </para>
+		/// </summary>
+		public static Operation B64Encode(string binName)
+		{
+			byte[] bytes = PackUtil.Pack(BitOperation.B64_ENCODE);
+			return new Operation(Operation.Type.BIT_READ, binName, Value.Get(bytes));
+		}
+
+		/// <summary>
+		/// Create bit "b64Encode" operation on a byte range.
+		/// Server returns the base64 text of <paramref name="byteSize"/> bytes of the byte[]
+		/// bin starting at <paramref name="byteOffset"/>, as a string. A negative
+		/// <paramref name="byteOffset"/> counts back from the end of the blob. Note the
+		/// span is expressed in bytes, unlike the bit offsets and sizes the other bit read
+		/// operations take.
+		/// <para>
+		/// Requires server version 8.1.3 or later.
+		/// </para>
+		/// </summary>
+		public static Operation B64Encode(string binName, int byteOffset, int byteSize)
+		{
+			byte[] bytes = PackUtil.Pack(BitOperation.B64_ENCODE, byteOffset, byteSize);
+			return new Operation(Operation.Type.BIT_READ, binName, Value.Get(bytes));
+		}
+
+		/// <summary>
+		/// Create bit "b64Encode" operation on a byte range, with <paramref name="byteSize"/>
+		/// measured from the end of the blob.
+		/// When <paramref name="invertSize"/> is true, <paramref name="byteSize"/> counts back
+		/// from the blob's end rather than forward from <paramref name="byteOffset"/>, so a
+		/// <paramref name="byteSize"/> of 0 means "to the end of the blob". When false this
+		/// behaves exactly as <see cref="B64Encode(string, int, int)"/>.
+		/// <para>
+		/// Requires server version 8.1.3 or later.
+		/// </para>
+		/// </summary>
+		public static Operation B64Encode(string binName, int byteOffset, int byteSize, bool invertSize)
+		{
+			int subflags = invertSize ? BitOperation.READ_SUBFLAG_INVERT_SIZE : 0;
+			byte[] bytes = PackUtil.Pack(BitOperation.B64_ENCODE, byteOffset, byteSize, subflags);
 			return new Operation(Operation.Type.BIT_READ, binName, Value.Get(bytes));
 		}
 

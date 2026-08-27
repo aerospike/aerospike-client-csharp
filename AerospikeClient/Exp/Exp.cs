@@ -522,9 +522,14 @@ namespace Aerospike.Client
 		/// Exp.RegexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.StringBin("a"))
 		/// </code>
 		/// </example>
+		/// <para>
+		/// This legacy comparison uses POSIX regex and is not Unicode/DBCS-aware; the string-package
+		/// equivalent uses ICU regex and provides consistent Unicode handling across the string ops.
+		/// </para>
 		/// <param name="regex">regular expression string</param>
 		/// <param name="flags">regular expression bit flags. See <see cref="Aerospike.Client.RegexFlag"/></param>
 		/// <param name="bin">string bin or string value expression</param>
+		[Obsolete("Deprecated as of client 8.5+, use RegexCompare(Exp pattern, StringRegexFlags regexFlags, Exp src) instead")]
 		public static Exp RegexCompare(string regex, uint flags, Exp bin)
 		{
 			return new Regex(bin, regex, flags);
@@ -1577,6 +1582,11 @@ namespace Aerospike.Client
 		// Internal
 		//--------------------------------------------------
 
+		internal static Exp ToStringExp(Exp src)
+		{
+			return new CmdExp(TO_STRING, src);
+		}
+
 		private const int UNKNOWN = 0;
 		private const int CMD_EQ = 1;
 		private const int CMD_NE = 2;
@@ -1629,6 +1639,7 @@ namespace Aerospike.Client
 		private const int KEY = 80;
 		private const int BIN = 81;
 		private const int BIN_TYPE = 82;
+		private const int TO_STRING = 99;
 		private const int RESULT_REMOVE = 100;
 		private const int MAP_KEYS = 101;
 		private const int MAP_VALUES = 102;

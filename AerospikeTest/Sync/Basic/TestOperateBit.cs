@@ -442,5 +442,54 @@ namespace Aerospike.Test
 			long v = (long)record.GetValue(binName);
 			Assert.AreEqual(16899, v);
 		}
+
+		[TestMethod]
+		public void OperateBitB64Encode()
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "bit b64Encode");
+
+			byte[] initial = [0x01, 0x42, 0x03];
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkeyb64");
+
+			client.Delete(null, key);
+			client.Put(null, key, new Bin(binName, initial));
+
+			// The span is in bytes, not bits, unlike every other bit read op. With
+			// invertSize the size counts back from the end, so 0 means "to the end".
+			Record record = client.Operate(null, key,
+				BitOperation.B64Encode(binName),
+				BitOperation.B64Encode(binName, 0, 2),
+				BitOperation.B64Encode(binName, 1, 0, true),
+				BitOperation.B64Encode(binName, -1, 1));
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			Assert.AreEqual(Convert.ToBase64String(initial), results[0]);
+			Assert.AreEqual(Convert.ToBase64String([0x01, 0x42]), results[1]);
+			Assert.AreEqual(Convert.ToBase64String([0x42, 0x03]), results[2]);
+			Assert.AreEqual(Convert.ToBase64String([0x03]), results[3]);
+		}
+
+		[TestMethod]
+		public void OperateBitB64EncodeRoundTripsThroughB64Decode()
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "bit b64Encode");
+
+			byte[] initial = [0xDE, 0xAD, 0xBE, 0xEF];
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkeyb64rt");
+
+			client.Delete(null, key);
+			client.Put(null, key, new Bin(binName, initial));
+
+			// b64Encode is the inverse of StringOperation.B64Decode: encode the blob here,
+			// write the text to a string bin, then decode it back and compare.
+			Record encoded = client.Operate(null, key, BitOperation.B64Encode(binName));
+			string text = encoded.GetString(binName);
+
+			client.Put(null, key, new Bin("b64txt", text));
+			Record decoded = client.Operate(null, key, StringOperation.B64Decode("b64txt"));
+			CollectionAssert.AreEqual(initial, (byte[])decoded.GetValue("b64txt"));
+		}
 	}
 }

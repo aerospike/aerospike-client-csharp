@@ -83,6 +83,8 @@ public sealed class QueryExp : SyncExample
 
 	private void RunRegexPredicate()
 	{
+		RequireMinServerVersion(Node.SERVER_VERSION_8_1_3);
+
 		Console.WriteLine("Query Predicate: bin3 contains string with 'prefix' and 'suffix'");
 
 		Statement stmt = new()
@@ -95,7 +97,10 @@ public sealed class QueryExp : SyncExample
 		QueryPolicy queryPolicy = new(client.QueryPolicyDefault)
 		{
 			filterExp = Exp.Build(
-				Exp.RegexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.StringBin("bin3")))
+				StringExp.RegexCompare(
+					Exp.Val("prefix.*suffix"),
+					StringRegexFlags.CASE_INSENSITIVE | StringRegexFlags.MULTILINE,
+					Exp.StringBin("bin3")))
 		};
 
 		PrintRecords(queryPolicy, stmt);

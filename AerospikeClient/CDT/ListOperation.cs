@@ -77,6 +77,7 @@ namespace Aerospike.Client
 		internal const int GET_BY_VALUE_INTERVAL = 25;
 		internal const int GET_BY_RANK_RANGE = 26;
 		internal const int GET_BY_VALUE_REL_RANK_RANGE = 27;
+		internal const int STRING_LIST_JOIN = 28;
 		internal const int REMOVE_BY_INDEX = 32;
 		internal const int REMOVE_BY_RANK = 34;
 		internal const int REMOVE_BY_VALUE = 35;
@@ -706,6 +707,41 @@ namespace Aerospike.Client
 		public static Operation GetByRankRange(string binName, int rank, int count, ListReturnType returnType, params CTX[] ctx)
 		{
 			byte[] bytes = PackUtil.Pack(ListOperation.GET_BY_RANK_RANGE, (int)returnType, rank, count, ctx);
+			return new Operation(Operation.Type.CDT_READ, binName, Value.Get(bytes));
+		}
+
+		/// <summary>
+		/// Create list join operation.
+		/// Server concatenates the string items of the list bin and returns the result as a
+		/// single string, with no separator between items. Every item must be a string;
+		/// a non-string item returns <c>AEROSPIKE_ERR_PARAMETER</c>. An empty list returns
+		/// an empty string.
+		/// <para>
+		/// This is the inverse of <see cref="StringOperation.Split(string, CTX[])"/>.
+		/// Requires server version 8.1.3 or later.
+		/// </para>
+		/// </summary>
+		public static Operation Join(string binName, params CTX[] ctx)
+		{
+			byte[] bytes = PackUtil.Pack(ListOperation.STRING_LIST_JOIN, ctx);
+			return new Operation(Operation.Type.CDT_READ, binName, Value.Get(bytes));
+		}
+
+		/// <summary>
+		/// Create list join operation with a separator.
+		/// Server concatenates the string items of the list bin, placing
+		/// <paramref name="separator"/> between consecutive items, and returns the result as a
+		/// single string. Every item must be a string; a non-string item returns
+		/// <c>AEROSPIKE_ERR_PARAMETER</c>. An empty list returns an empty string, and a
+		/// single-item list returns that item with no separator applied.
+		/// <para>
+		/// This is the inverse of <see cref="StringOperation.Split(string, string, CTX[])"/>.
+		/// Requires server version 8.1.3 or later.
+		/// </para>
+		/// </summary>
+		public static Operation Join(string binName, string separator, params CTX[] ctx)
+		{
+			byte[] bytes = PackUtil.Pack(ListOperation.STRING_LIST_JOIN, Value.Get(separator), ctx);
 			return new Operation(Operation.Type.CDT_READ, binName, Value.Get(bytes));
 		}
 	}
