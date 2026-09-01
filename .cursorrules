@@ -1,5 +1,10 @@
 # Cursor Rules for Aerospike C# Client
 
+> **Contributor-facing.** Code style and conventions for authors working on this
+> repository. Application developers using the Aerospike C# client should start with
+> the [AI coding agent entry point](README.md#ai-coding-agent-entry-point) in the root
+> README instead.
+
 ## Project Context
 This is the Aerospike C# Client library, a .NET 8.0 solution with multiple projects:
 - **AerospikeClient**: Main client library (net8.0)

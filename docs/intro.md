@@ -2,26 +2,8 @@
 
 The Aerospike C# client library provides a .NET interface to the Aerospike database.
 
-## Prerequisites
-
-* .NET 8+
-* [Optional] Visual Studio 2022+
-
-## Projects
-
-| Project | Description |
-|---------|-------------|
-| **AerospikeClient** | C# client library |
-| **AerospikeTest** | Unit tests |
-| **AerospikeBenchmarks** | Benchmarks command line application |
-| **AerospikeExample** | Examples command line application |
-
-## Quick Start
-
-```bash
-cd AerospikeClient
-dotnet restore
-dotnet build --configuration Release
-```
+For AI coding agents and task-oriented navigation of this repository, read the
+[AI coding agent entry point](../README.md#ai-coding-agent-entry-point) section of the
+root README.
 
 See the [API Reference](../api/) for detailed class and method documentation.
