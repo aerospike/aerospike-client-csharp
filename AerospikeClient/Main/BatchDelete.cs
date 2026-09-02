@@ -20,6 +20,10 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Batch delete operation.
+	/// <para>
+	/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+	/// <see cref="BatchPolicy"/>.
+	/// </para>
 	/// </summary>
 	public sealed class BatchDelete : BatchRecord
 	{

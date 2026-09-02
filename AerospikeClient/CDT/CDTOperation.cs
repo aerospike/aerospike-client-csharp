@@ -90,6 +90,11 @@ namespace Aerospike.Client
 		/// <see cref="CTX.AllChildren()"/>, and <see cref="CTX.AllChildrenWithFilter(Exp)"/>.
 		/// A null or empty path operates on the top-level bin value.
 		/// </para>
+		/// <para>
+		/// To remove elements selected by the path context, use <see cref="Exp.RemoveResult()"/> as
+		/// <paramref name="modifyExp"/>. If the path matches one element, one element is removed;
+		/// if it matches multiple elements, all matches are removed.
+		/// </para>
 		/// </remarks>
 		/// <param name="binName">Bin name.</param>
 		/// <param name="flags">Flags that control modification behavior.</param>
