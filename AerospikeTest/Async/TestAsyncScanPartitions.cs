@@ -1,5 +1,5 @@
-﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+/*
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,11 +19,11 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	[TestClass]
-	public class TestAsyncScan : TestAsync
+	public class TestAsyncScanPartitions : TestAsync
 	{
-		private const string KeyPrefix = "tierA-async-scan-";
-		private const string BinName = "aascanbin";
-		private const int RecordCount = 11;
+		private const string KeyPrefix = "tierA-asp-";
+		private const string BinName = "aspbin";
+		private const int RecordCount = 10;
 
 		[ClassInitialize]
 		public static void SeedRecords(TestContext testContext)
@@ -39,9 +39,10 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void AsyncScan()
+		public void AsyncScanPartitions()
 		{
-			client.ScanAll(null, new RecordSequenceHandler(this), SuiteHelpers.ns, SuiteHelpers.set);
+			client.ScanPartitions(null, new ScanPartitionHandler(this), PartitionFilter.All(),
+				SuiteHelpers.ns, SuiteHelpers.set, BinName);
 			WaitTillComplete();
 		}
 
@@ -64,7 +65,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		private class RecordSequenceHandler(TestAsyncScan parent) : RecordSequenceListener
+		private class ScanPartitionHandler(TestAsyncScanPartitions parent) : RecordSequenceListener
 		{
 			private int count;
 			private int valueSum;
@@ -90,7 +91,7 @@ namespace Aerospike.Test
 					return;
 				}
 
-				parent.AssertEquals(66, valueSum); // 1+2+...+11
+				parent.AssertEquals(55, valueSum); // 1+2+...+10
 				parent.NotifyCompleted();
 			}
 

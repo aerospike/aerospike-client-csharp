@@ -1,5 +1,5 @@
-﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+/*
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,10 +19,10 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	[TestClass]
-	public class TestScan : TestSync
+	public class TestScanPartitions : TestSync
 	{
-		private const string KeyPrefix = "tierA-scan-";
-		private const string BinName = "tasbin";
+		private const string KeyPrefix = "tierA-sp-";
+		private const string BinName = "spbin";
 		private const int RecordCount = 12;
 
 		[ClassInitialize]
@@ -36,47 +36,26 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void ScanParallel()
+		public void ScanPartitionsFindsSeededRecords()
 		{
 			int count = 0;
 			int valueSum = 0;
 
-			client.ScanAll(null, SuiteHelpers.ns, SuiteHelpers.set, (key, record) =>
-			{
-				if (!IsSeededRecord(record))
+			client.ScanPartitions(null, PartitionFilter.All(), SuiteHelpers.ns, SuiteHelpers.set,
+				(key, record) =>
 				{
-					return;
-				}
+					if (!IsSeededRecord(record))
+					{
+						return;
+					}
 
-				count++;
-				valueSum += record.GetInt(BinName);
-			});
+					count++;
+					valueSum += record.GetInt(BinName);
+				},
+				BinName);
 
 			Assert.AreEqual(RecordCount, count);
-			Assert.AreEqual(78, valueSum);
-		}
-
-		[TestMethod]
-		public void ScanSeries()
-		{
-			int totalFound = 0;
-
-			foreach (Node node in client.Nodes)
-			{
-				int nodeCount = 0;
-
-				client.ScanNode(null, node, SuiteHelpers.ns, SuiteHelpers.set, (key, record) =>
-				{
-					if (IsSeededRecord(record))
-					{
-						nodeCount++;
-					}
-				});
-
-				totalFound += nodeCount;
-			}
-
-			Assert.AreEqual(RecordCount, totalFound);
+			Assert.AreEqual(78, valueSum); // 1+2+...+12
 		}
 
 		private static bool IsSeededRecord(Record record)

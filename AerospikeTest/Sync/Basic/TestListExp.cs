@@ -322,5 +322,115 @@ namespace Aerospike.Test
 
 			Assert.AreEqual("x-y", record.GetString("result"));
 		}
+
+		[TestMethod]
+		public void SizeAndGetByIndex()
+		{
+			IList<Value> list = [Value.Get(10), Value.Get(20), Value.Get(30)];
+			client.Put(null, keyA, new Bin(binA, list));
+
+			Expression sizeExp = Exp.Build(ListExp.Size(Exp.ListBin(binA)));
+			Record sizeRecord = client.Operate(null, keyA,
+				ExpOperation.Read("size", sizeExp, ExpReadFlags.DEFAULT));
+			Assert.AreEqual(3L, sizeRecord.GetLong("size"));
+
+			Expression indexExp = Exp.Build(
+				ListExp.GetByIndex(ListReturnType.VALUE, Exp.Type.INT, Exp.Val(1), Exp.ListBin(binA)));
+			Record indexRecord = client.Operate(null, keyA,
+				ExpOperation.Read("item", indexExp, ExpReadFlags.DEFAULT));
+			Assert.AreEqual(20L, indexRecord.GetLong("item"));
+		}
+
+		[TestMethod]
+		public void GetByValueCount()
+		{
+			IList<Value> list = [Value.Get("a"), Value.Get("b"), Value.Get("a"), Value.Get("c")];
+			client.Put(null, keyA, new Bin(binA, list));
+
+			Expression exp = Exp.Build(
+				ListExp.GetByValue(ListReturnType.COUNT, Exp.Val("a"), Exp.ListBin(binA)));
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Read("count", exp, ExpReadFlags.DEFAULT));
+			Assert.AreEqual(2L, record.GetLong("count"));
+		}
+
+		[TestMethod]
+		public void GetByValueRange()
+		{
+			IList<Value> list = [Value.Get(1), Value.Get(5), Value.Get(9), Value.Get(15)];
+			client.Put(null, keyA, new Bin(binA, list));
+
+			Expression exp = Exp.Build(
+				ListExp.GetByValueRange(ListReturnType.COUNT, Exp.Val(5), Exp.Val(10), Exp.ListBin(binA)));
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Read("count", exp, ExpReadFlags.DEFAULT));
+			Assert.AreEqual(2L, record.GetLong("count"));
+		}
+
+		[TestMethod]
+		public void RemoveByValueInvertedFilter()
+		{
+			IList<Value> list = [Value.Get(1), Value.Get(2), Value.Get(2), Value.Get(3)];
+			client.Put(null, keyA, new Bin(binA, list));
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					ListExp.Size(
+						ListExp.RemoveByValue(ListReturnType.INVERTED, Exp.Val(2), Exp.ListBin(binA))),
+					Exp.Val(2)));
+
+			Record record = client.Get(policy, keyA, binA);
+			AssertRecordFound(keyA, record);
+			Assert.AreEqual(4, record.GetList(binA).Count);
+		}
+
+		[TestMethod]
+		public void GetByRankOnOrderedList()
+		{
+			ListPolicy orderedPolicy = new(ListOrder.ORDERED, ListWriteFlags.DEFAULT);
+			client.Operate(null, keyA,
+				ListOperation.Append(orderedPolicy, binA, Value.Get(30)),
+				ListOperation.Append(orderedPolicy, binA, Value.Get(10)),
+				ListOperation.Append(orderedPolicy, binA, Value.Get(20)));
+
+			Expression exp = Exp.Build(
+				ListExp.GetByRank(ListReturnType.VALUE, Exp.Type.INT, Exp.Val(0), Exp.ListBin(binA)));
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Read("min", exp, ExpReadFlags.DEFAULT));
+			Assert.AreEqual(10L, record.GetLong("min"));
+		}
+
+		[TestMethod]
+		public void SortExpression()
+		{
+			IList<Value> list = [Value.Get(30), Value.Get(10), Value.Get(20)];
+			client.Put(null, keyA, new Bin(binA, list));
+
+			Expression exp = Exp.Build(
+				ListExp.GetByIndex(ListReturnType.VALUE, Exp.Type.INT, Exp.Val(0),
+					ListExp.Sort(ListSortFlags.DEFAULT, Exp.ListBin(binA))));
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Read("min", exp, ExpReadFlags.DEFAULT));
+
+			Assert.AreEqual(10L, record.GetLong("min"));
+		}
+
+		[TestMethod]
+		public void NestedListInMapExpression()
+		{
+			Dictionary<string, object> map = new()
+			{
+				["items"] = new List<object> { 100L, 200L, 300L }
+			};
+			client.Put(null, keyA, new Bin(binA, map));
+
+			Expression exp = Exp.Build(
+				ListExp.GetByIndex(ListReturnType.VALUE, Exp.Type.INT, Exp.Val(1),
+					Exp.MapBin(binA), CTX.MapKey(Value.Get("items"))));
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Read("item", exp, ExpReadFlags.DEFAULT));
+
+			Assert.AreEqual(200L, record.GetLong("item"));
+		}
 	}
 }

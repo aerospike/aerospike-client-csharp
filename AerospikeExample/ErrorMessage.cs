@@ -20,7 +20,7 @@ namespace Aerospike.Example;
 
 public sealed class ErrorMessage : SyncExample
 {
-	private const string BinName = "error-message-bin";
+	private const string BinName = "errmsg-bin";
 
 	/// <summary>
 	/// Demonstrate server-supplied extended error details.

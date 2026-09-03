@@ -137,6 +137,40 @@ namespace Aerospike.Test
 			Assert.IsTrue(bytes != new byte[] { 1, 2, 4 });
 		}
 
+		[TestMethod]
+		public void FloatAndDoubleValuesRoundTrip()
+		{
+			Value floatValue = Value.Get(3.5f);
+			Value doubleValue = Value.Get(2.25d);
+
+			Assert.IsInstanceOfType(floatValue, typeof(Value.FloatValue));
+			Assert.IsInstanceOfType(doubleValue, typeof(Value.DoubleValue));
+			Assert.AreEqual(3.5f, (float)floatValue.Object);
+			Assert.AreEqual(2.25d, (double)doubleValue.Object);
+			Assert.AreEqual(floatValue, Value.Get(3.5f));
+			Assert.AreEqual(doubleValue, Value.Get(2.25d));
+		}
+
+		[TestMethod]
+		public void GeoJsonValueRoundTrip()
+		{
+			string json = "{ \"type\": \"Point\", \"coordinates\": [0.0, 0.0] }";
+			Value geo = Value.GetAsGeoJSON(json);
+
+			Assert.IsInstanceOfType(geo, typeof(Value.GeoJSONValue));
+			Assert.AreEqual(json, geo.Object);
+			Assert.AreEqual(geo, Value.GetAsGeoJSON(json));
+		}
+
+		[TestMethod]
+		public void NullAndWildcardValues()
+		{
+			Assert.IsTrue(Value.AsNull.IsNull);
+			Assert.AreEqual(Value.AsNull, Value.Get((string)null));
+			Assert.AreSame(Value.WILDCARD, Value.WILDCARD);
+			Assert.AreSame(Value.INFINITY, Value.INFINITY);
+		}
+
 		private static void AssertValue<TEnum, TValue, TObject>(TEnum enumValue, TObject expected)
 			where TEnum : struct, Enum
 			where TValue : Value

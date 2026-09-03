@@ -1,5 +1,5 @@
-﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+/*
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,35 +19,61 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	[TestClass]
-	public class TestAsyncScan : TestAsync
+	public class TestAsyncQueryPartitions : TestAsync
 	{
-		private const string KeyPrefix = "tierA-async-scan-";
-		private const string BinName = "aascanbin";
-		private const int RecordCount = 11;
+		private const string indexName = "aqpindex";
+		private const string keyPrefix = "aqpkey";
+		private static readonly string binName = "aqpbin";
+		private const int size = 30;
 
 		[ClassInitialize]
-		public static void SeedRecords(TestContext testContext)
+		public static void Prepare(TestContext testContext)
 		{
-			AsyncMonitor monitor = new();
-			for (int i = 1; i <= RecordCount; i++)
+			Policy policy = new()
 			{
-				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, KeyPrefix + i);
-				Bin bin = new(BinName, i);
+				totalTimeout = 0
+			};
+
+			try
+			{
+				IndexTask task = client.CreateIndex(policy, SuiteHelpers.ns, SuiteHelpers.set, indexName, binName, IndexType.INTEGER);
+				task.Wait();
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.INDEX_ALREADY_EXISTS)
+				{
+					throw;
+				}
+			}
+
+			AsyncMonitor monitor = new();
+			for (int i = 1; i <= size; i++)
+			{
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + i);
+				Bin bin = new(binName, i);
 				client.Put(null, new SeedWriteHandler(monitor), key, bin);
 			}
 			monitor.WaitTillComplete();
 		}
 
-		[TestMethod]
-		public void AsyncScan()
+		[ClassCleanup]
+		public static void Destroy()
 		{
-			client.ScanAll(null, new RecordSequenceHandler(this), SuiteHelpers.ns, SuiteHelpers.set);
-			WaitTillComplete();
+			client.DropIndex(null, SuiteHelpers.ns, SuiteHelpers.set, indexName);
 		}
 
-		private static bool IsSeededRecord(Record record)
+		[TestMethod]
+		public void AsyncQueryPartitions()
 		{
-			return record.bins.ContainsKey(BinName);
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
+			stmt.SetBinNames(binName);
+			stmt.SetFilter(Filter.Range(binName, 10, 20));
+
+			client.QueryPartitions(null, new PartitionQueryHandler(this), stmt, PartitionFilter.All());
+			WaitTillComplete();
 		}
 
 		private class SeedWriteHandler(AsyncMonitor monitor) : WriteListener
@@ -64,33 +90,20 @@ namespace Aerospike.Test
 			}
 		}
 
-		private class RecordSequenceHandler(TestAsyncScan parent) : RecordSequenceListener
+		private class PartitionQueryHandler(TestAsyncQueryPartitions parent) : RecordSequenceListener
 		{
 			private int count;
-			private int valueSum;
 
 			public void OnRecord(Key key, Record record)
 			{
-				if (!IsSeededRecord(record))
-				{
-					return;
-				}
-
-				int value = record.GetInt(BinName);
-				parent.AssertBetween(1, RecordCount, value);
+				int value = record.GetInt(binName);
+				parent.AssertBetween(10, 20, value);
 				Interlocked.Increment(ref count);
-				Interlocked.Add(ref valueSum, value);
 			}
 
 			public void OnSuccess()
 			{
-				if (!parent.AssertEquals(RecordCount, count))
-				{
-					parent.NotifyCompleted();
-					return;
-				}
-
-				parent.AssertEquals(66, valueSum); // 1+2+...+11
+				parent.AssertEquals(11, count);
 				parent.NotifyCompleted();
 			}
 

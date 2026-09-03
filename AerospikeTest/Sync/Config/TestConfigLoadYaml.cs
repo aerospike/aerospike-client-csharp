@@ -94,6 +94,40 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void ConfigReloadRemovesDynamicSection()
+		{
+			using ConfigClientScope scope = ConfigClientScope.Create(ConfigTestHelpers.ReloadInitialYaml);
+			AerospikeClient configClient = scope.Client;
+
+			Assert.IsNotNull(ConfigTestHelpers.GetConfigProvider(configClient).ConfigurationData);
+			Assert.AreEqual(10, ConfigTestHelpers.GetMergedReadPolicy(configClient).maxRetries);
+
+			scope.RewriteYaml(ConfigTestHelpers.ReloadRemoveDynamicYaml);
+			ConfigTestHelpers.WaitForConfigurationDataNull(configClient);
+
+			Assert.IsNull(ConfigTestHelpers.GetConfigProvider(configClient).ConfigurationData);
+		}
+
+		[TestMethod]
+		public void ConfigMetricsAutoEnableFromYaml()
+		{
+			using ConfigClientScope scope = ConfigClientScope.Create(ConfigTestHelpers.MetricsEnabledYaml);
+
+			Assert.IsTrue(scope.Client.Cluster.MetricsEnabled);
+		}
+
+		[TestMethod]
+		public void ConfigAsyncStaticMaxConnections()
+		{
+			using ConfigAsyncClientScope scope = ConfigAsyncClientScope.Create(ConfigTestHelpers.AsyncStaticConfigYaml);
+			IConfigProvider provider = ConfigTestHelpers.GetConfigProvider(scope.Client);
+
+			Assert.IsNotNull(provider?.ConfigurationData);
+			Assert.AreEqual(55, provider.ConfigurationData.staticConfig.client.async_max_connections_per_node);
+			Assert.AreEqual(55, ConfigTestHelpers.GetAsyncMaxConnsPerNode(scope.Client));
+		}
+
+		[TestMethod]
 		public void ConfigMissingFile()
 		{
 			string previousConfigUrl = Environment.GetEnvironmentVariable("AEROSPIKE_CLIENT_CONFIG_URL");

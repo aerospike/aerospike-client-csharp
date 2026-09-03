@@ -17,6 +17,7 @@
 using System.Reflection;
 using Aerospike.Client;
 using Aerospike.Client.Config;
+using Microsoft.Extensions.Configuration;
 
 namespace Aerospike.Test
 {
@@ -54,6 +55,7 @@ namespace Aerospike.Test
 		public void RewriteYaml(string yamlContent)
 		{
 			File.WriteAllText(yamlPath, yamlContent);
+			ConfigTestHelpers.TriggerConfigReload(Client);
 		}
 
 		public static ClientPolicy CreateClientPolicy()
@@ -74,6 +76,59 @@ namespace Aerospike.Test
 			}
 
 			return policy;
+		}
+
+		public void Dispose()
+		{
+			Client?.Close();
+
+			if (yamlPath != null && File.Exists(yamlPath))
+			{
+				File.Delete(yamlPath);
+			}
+
+			Environment.SetEnvironmentVariable("AEROSPIKE_CLIENT_CONFIG_URL", previousConfigUrl);
+		}
+	}
+
+	internal sealed class ConfigAsyncClientScope : IDisposable
+	{
+		private readonly string yamlPath;
+		private readonly string previousConfigUrl;
+
+		public AsyncClient Client { get; }
+
+		private ConfigAsyncClientScope(AsyncClient client, string yamlPath, string previousConfigUrl)
+		{
+			Client = client;
+			this.yamlPath = yamlPath;
+			this.previousConfigUrl = previousConfigUrl;
+		}
+
+		public static ConfigAsyncClientScope Create(string yamlContent)
+		{
+			string previousConfigUrl = Environment.GetEnvironmentVariable("AEROSPIKE_CLIENT_CONFIG_URL");
+			string yamlPath = Path.Combine(Path.GetTempPath(), $"as-async-config-{Guid.NewGuid():N}.yaml");
+			File.WriteAllText(yamlPath, yamlContent);
+			Environment.SetEnvironmentVariable("AEROSPIKE_CLIENT_CONFIG_URL", new Uri(yamlPath).AbsoluteUri);
+
+			AsyncClientPolicy policy = new()
+			{
+				clusterName = SuiteHelpers.clusterName,
+				tlsPolicy = SuiteHelpers.tlsPolicy,
+				authMode = SuiteHelpers.authMode,
+				timeout = SuiteHelpers.timeout,
+				useServicesAlternate = SuiteHelpers.useServicesAlternate
+			};
+
+			if (SuiteHelpers.user != null && SuiteHelpers.user.Length > 0)
+			{
+				policy.user = SuiteHelpers.user;
+				policy.password = SuiteHelpers.password;
+			}
+
+			AsyncClient client = new(policy, SuiteHelpers.hosts);
+			return new ConfigAsyncClientScope(client, yamlPath, previousConfigUrl);
 		}
 
 		public void Dispose()
@@ -135,11 +190,43 @@ namespace Aerospike.Test
 				{
 					return;
 				}
+				TriggerConfigReload(client);
 				Util.Sleep(250);
 			}
 
 			int actual = GetMergedReadPolicy(client).maxRetries;
 			Assert.Fail($"Expected read max_retries {expectedMaxRetries}, but was {actual} after {timeoutMs}ms");
+		}
+
+		/// <summary>
+		/// Force the YAML provider and cluster to reload config from disk. File-watch based reload is
+		/// unreliable on some platforms (especially Linux CI), so reload tests call this after rewriting
+		/// the temp config file.
+		/// </summary>
+		public static void TriggerConfigReload(AerospikeClient client)
+		{
+			IConfigProvider provider = GetConfigProvider(client);
+			if (provider is not YamlConfigProvider yamlProvider)
+			{
+				return;
+			}
+
+			Type providerType = typeof(YamlConfigProvider);
+			FieldInfo configRootField = providerType.GetField("configRoot",
+				BindingFlags.Instance | BindingFlags.NonPublic);
+			FieldInfo modifiedField = providerType.GetField("modified",
+				BindingFlags.Instance | BindingFlags.NonPublic);
+
+			IConfigurationRoot configRoot = (IConfigurationRoot)configRootField.GetValue(yamlProvider);
+			configRoot.Reload();
+			modifiedField.SetValue(yamlProvider, true);
+
+			FieldInfo clusterField = typeof(AerospikeClient).GetField("cluster",
+				BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+			Cluster cluster = (Cluster)clusterField.GetValue(client);
+			MethodInfo loadConfiguration = typeof(Cluster).GetMethod("LoadConfiguration",
+				BindingFlags.Instance | BindingFlags.NonPublic);
+			loadConfiguration.Invoke(cluster, null);
 		}
 
 		public const string GoodConfigYaml = """
@@ -228,5 +315,62 @@ namespace Aerospike.Test
 			  read:
 			    max_retries: 33
 			""";
+
+		public const string ReloadRemoveDynamicYaml = """
+			version: 1.0.0
+			static:
+			  client:
+			    config_interval: 250
+			""";
+
+		public const string MetricsEnabledYaml = """
+			version: 1.0.0
+			dynamic:
+			  metrics:
+			    enable: true
+			""";
+
+		public const string AsyncStaticConfigYaml = """
+			version: 1.0.0
+			static:
+			  client:
+			    async_max_connections_per_node: 55
+			dynamic:
+			  client:
+			    app_id: async_static_test
+			""";
+
+		public static AsyncClientPolicy GetAsyncClientPolicy(AsyncClient client)
+		{
+			FieldInfo field = typeof(AsyncClient).GetField("clientPolicy",
+				BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.DeclaredOnly);
+			return (AsyncClientPolicy)field.GetValue(client);
+		}
+
+		public static int GetAsyncMaxConnsPerNode(AsyncClient client)
+		{
+			FieldInfo clusterField = typeof(AerospikeClient).GetField("cluster",
+				BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+			AsyncCluster cluster = (AsyncCluster)clusterField.GetValue(client);
+			FieldInfo maxConnsField = typeof(AsyncCluster).GetField("asyncMaxConnsPerNode",
+				BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+			return (int)maxConnsField.GetValue(cluster);
+		}
+
+		public static void WaitForConfigurationDataNull(AerospikeClient client, int timeoutMs = 15000)
+		{
+			int attempts = timeoutMs / 250;
+			for (int i = 0; i < attempts; i++)
+			{
+				if (GetConfigProvider(client)?.ConfigurationData == null)
+				{
+					return;
+				}
+				TriggerConfigReload(client);
+				Util.Sleep(250);
+			}
+
+			Assert.Fail("Expected configuration data to be cleared after dynamic section removal");
+		}
 	}
 }
