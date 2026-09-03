@@ -11,8 +11,8 @@
 	<Parameter name="ClusterName" value="" />
 	<Parameter name="Namespace" value="test" />
 	<Parameter name="Set" value="test" />
-	<Parameter name="User" value="" />
-	<Parameter name="Password" value="" />
+	<Parameter name="User" value="admin" />
+	<Parameter name="Password" value="admin" />
 	<Parameter name="Timeout" value="25000" />
 	<Parameter name="UseServicesAlternate" value="false" />
 	<Parameter name="TlsEnable" value="false" />

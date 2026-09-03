@@ -77,7 +77,10 @@ jobs:
           - server:
               server-type: aerospike-server
               tls: true
-    name: test-${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.server.tls }}
+          - server:
+              security: true
+            strong-consistency: "1"
+    name: test-${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.server.tls }}${{ matrix.server.security == true && '-sec' || '' }}
     runs-on: ubuntu-latest
     steps:
     - name: Harden the runner (Audit all outbound calls)
@@ -96,24 +99,25 @@ jobs:
         server-container-repo: ${{ matrix.server.server-container-repo }}
         strong-consistency: ${{ matrix.strong-consistency }}
         enable-tls: ${{ matrix.server.tls }}
+        enable-security: ${{ matrix.server.security == true && 'true' || 'false' }}
         features-content: ${{ matrix.server.server-type == 'aerospike-server-enterprise' && secrets.AES_FEATURES_CONF || '' }}
         oidc-provider: gh-aerospike
         oidc-audience: aerospike
-        artifact-suffix: ${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.server.tls }}
+        artifact-suffix: ${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.server.tls }}${{ matrix.server.security == true && '-sec' || '' }}
 
     - name: Publish test results
       if: ${{ !cancelled() }}
       uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
       with:
         files: test-results/**/*.trx
-        check_name: "Nightly - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }})"
+        check_name: "Nightly - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }}${{ matrix.server.security == true && ', SEC' || '' }})"
 
     - name: Publish example run results
       if: ${{ !cancelled() && hashFiles('example-results/**/*.trx') != '' }}
       uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
       with:
         files: example-results/**/*.trx
-        check_name: "Nightly Examples - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }})"
+        check_name: "Nightly Examples - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }}${{ matrix.server.security == true && ', SEC' || '' }})"
 
   merge-coverage:
     needs: test
