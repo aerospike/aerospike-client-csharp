@@ -114,3 +114,75 @@ jobs:
       with:
         files: example-results/**/*.trx
         check_name: "Nightly Examples - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }})"
+
+  merge-coverage:
+    needs: test
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+      with:
+        egress-policy: audit
+
+    - name: Download raw coverage reports
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      continue-on-error: true
+      with:
+        pattern: coverage-raw-${{ github.sha }}-*
+        path: coverage-input
+        merge-multiple: true
+
+    - name: Cache dotnet global tools
+      id: cache-dotnet-tools
+      uses: actions/cache@9fcad95d03062fb8399cdbd79ae6041c7692b6c8 # v4.3.0
+      with:
+        path: ~/.dotnet/tools
+        key: dotnet-tools-${{ runner.os }}-coverage-18.5.2
+
+    - name: Install dotnet-coverage
+      if: steps.cache-dotnet-tools.outputs.cache-hit != 'true'
+      run: dotnet tool install --global dotnet-coverage --version 18.5.2
+
+    - name: Ensure dotnet tools on PATH
+      run: echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+    - name: Merge coverage reports
+      run: |
+        shopt -s globstar nullglob
+        reports=(coverage-input/**/coverage.cobertura.xml)
+        if [ ${#reports[@]} -eq 0 ]; then
+          echo "::error::No raw coverage reports were downloaded."
+          exit 1
+        fi
+        echo "Merging ${#reports[@]} coverage report(s):"
+        printf '  - %s\n' "${reports[@]}"
+        mkdir -p coverage-merged
+        dotnet-coverage merge "${reports[@]}" \
+          -f cobertura \
+          -o coverage-merged/coverage.cobertura.xml
+
+    - name: Generate merged coverage report
+      uses: danielpalme/ReportGenerator-GitHub-Action@a003c8fb9ac008fd0fffd5faa4f7d3ecb52e0675 # v5.5.7
+      with:
+        reports: coverage-merged/coverage.cobertura.xml
+        targetdir: coverage-merged/report
+        reporttypes: HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub
+        assemblyfilters: -AerospikeTest
+
+    - name: Publish merged coverage summary
+      run: |
+        if [ -f coverage-merged/report/SummaryGithub.md ]; then
+          {
+            echo "## Merged Coverage (all nightly matrix configurations)"
+            echo ""
+            cat coverage-merged/report/SummaryGithub.md
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Upload merged coverage report
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: coverage-report-merged-${{ github.sha }}
+        path: coverage-merged/report/
+        retention-days: 90

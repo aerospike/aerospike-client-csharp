@@ -192,6 +192,14 @@ runs:
         path: test-results/
         retention-days: 7
 
+    - name: Upload raw coverage report
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: coverage-raw-${{ github.sha }}${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
+        path: coverage/coverage.cobertura.xml
+        retention-days: 30
+
     - name: Upload coverage report
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
