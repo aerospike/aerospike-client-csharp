@@ -22,5 +22,5 @@
     "server-type": "aerospike-server-enterprise",
     "server-container-repo": "database-docker-virtual/aerospike-server-enterprise",
     "tls": false
-  },
+  }
 ]
