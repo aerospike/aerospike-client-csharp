@@ -111,7 +111,7 @@ runs:
         # roles required by security, masking, and UDF integration tests.
         roles="read-write-udf sys-admin user-admin service-ctrl masking-admin write-masked read-masked"
         for attempt in $(seq 1 30); do
-          if docker exec aerospike-1 asadm -Uadmin -Padmin -e "manage acl grant user admin roles ${roles}"; then
+          if docker exec aerospike-1 asadm -Uadmin -Padmin -e "enable; manage acl grant user admin roles ${roles}"; then
             exit 0
           fi
           sleep 2
