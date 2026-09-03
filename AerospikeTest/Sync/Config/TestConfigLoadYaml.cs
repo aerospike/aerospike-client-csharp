@@ -79,6 +79,21 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void ConfigReloadUpdatesDynamicPolicy()
+		{
+			using ConfigClientScope scope = ConfigClientScope.Create(ConfigTestHelpers.ReloadInitialYaml);
+			AerospikeClient configClient = scope.Client;
+
+			Assert.AreEqual(10, ConfigTestHelpers.GetMergedReadPolicy(configClient).maxRetries);
+			Assert.AreEqual("reload_test", ConfigTestHelpers.GetClientPolicy(configClient).AppId);
+
+			scope.RewriteYaml(ConfigTestHelpers.ReloadUpdatedYaml);
+			ConfigTestHelpers.WaitForReadMaxRetries(configClient, 33);
+
+			Assert.AreEqual("reload_test_updated", ConfigTestHelpers.GetClientPolicy(configClient).AppId);
+		}
+
+		[TestMethod]
 		public void ConfigMissingFile()
 		{
 			string previousConfigUrl = Environment.GetEnvironmentVariable("AEROSPIKE_CLIENT_CONFIG_URL");

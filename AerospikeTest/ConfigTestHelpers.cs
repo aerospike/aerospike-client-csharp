@@ -30,6 +30,8 @@ namespace Aerospike.Test
 
 		public AerospikeClient Client { get; }
 
+		public string YamlPath => yamlPath;
+
 		private ConfigClientScope(AerospikeClient client, string yamlPath, string previousConfigUrl)
 		{
 			Client = client;
@@ -47,6 +49,11 @@ namespace Aerospike.Test
 			ClientPolicy policy = CreateClientPolicy();
 			AerospikeClient client = new(policy, SuiteHelpers.hosts);
 			return new ConfigClientScope(client, yamlPath, previousConfigUrl);
+		}
+
+		public void RewriteYaml(string yamlContent)
+		{
+			File.WriteAllText(yamlPath, yamlContent);
 		}
 
 		public static ClientPolicy CreateClientPolicy()
@@ -119,6 +126,22 @@ namespace Aerospike.Test
 			return (WritePolicy)field.GetValue(client);
 		}
 
+		public static void WaitForReadMaxRetries(AerospikeClient client, int expectedMaxRetries, int timeoutMs = 15000)
+		{
+			int attempts = timeoutMs / 250;
+			for (int i = 0; i < attempts; i++)
+			{
+				if (GetMergedReadPolicy(client).maxRetries == expectedMaxRetries)
+				{
+					return;
+				}
+				Util.Sleep(250);
+			}
+
+			int actual = GetMergedReadPolicy(client).maxRetries;
+			Assert.Fail($"Expected read max_retries {expectedMaxRetries}, but was {actual} after {timeoutMs}ms");
+		}
+
 		public const string GoodConfigYaml = """
 			version: 1.0.0
 			static:
@@ -178,6 +201,32 @@ namespace Aerospike.Test
 			dynamic:
 			  metrics:
 			    enable: false
+			""";
+
+		public const string ReloadInitialYaml = """
+			version: 1.0.0
+			static:
+			  client:
+			    config_interval: 250
+			dynamic:
+			  client:
+			    tend_interval: 250
+			    app_id: reload_test
+			  read:
+			    max_retries: 10
+			""";
+
+		public const string ReloadUpdatedYaml = """
+			version: 1.0.0
+			static:
+			  client:
+			    config_interval: 250
+			dynamic:
+			  client:
+			    tend_interval: 250
+			    app_id: reload_test_updated
+			  read:
+			    max_retries: 33
 			""";
 	}
 }

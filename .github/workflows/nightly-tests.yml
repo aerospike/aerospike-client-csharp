@@ -53,7 +53,7 @@ jobs:
     - name: Build artifacts
       uses: ./.github/actions/build
       with:
-        sgKey: ${{ secrets.SG_KEY }}
+        sign-client: false
 
     - name: Get version from nupkg
       id: get-version

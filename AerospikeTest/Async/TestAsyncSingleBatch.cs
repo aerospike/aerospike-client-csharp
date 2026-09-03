@@ -161,6 +161,56 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
+		[TestMethod]
+		public void AsyncBatchSingleReadGetSequence()
+		{
+			List<BatchRead> records =
+			[
+				new BatchRead(seedKey, [BinName])
+			];
+
+			client.Get(null, new SingleReadGetSequenceHandler(this), records);
+			WaitTillComplete();
+		}
+
+		[TestMethod]
+		public void AsyncBatchSingleOperateGet()
+		{
+			client.Get(null, new SingleOperateGetArrayHandler(this), [seedKey], Operation.Get(BinName));
+			WaitTillComplete();
+		}
+
+		[TestMethod]
+		public void AsyncBatchSingleOperateGetSequence()
+		{
+			client.Get(null, new SingleOperateGetSequenceHandler(this), [seedKey], Operation.Get(BinName));
+			WaitTillComplete();
+		}
+
+		[TestMethod]
+		public void AsyncBatchSingleWriteSequence()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "async-single-batch-write-seq");
+			List<BatchRecord> records =
+			[
+				new BatchWrite(key, [Operation.Put(new Bin(BinName, ValuePrefix + "-write-seq"))])
+			];
+
+			client.Operate(null, new SingleWriteSequenceHandler(this, key), records);
+			WaitTillComplete();
+		}
+
+		[TestMethod]
+		public void AsyncBatchSingleDeleteSequence()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "async-single-batch-delete-seq");
+			client.Put(null, key, new Bin(BinName, ValuePrefix + "-delete-seq"));
+
+			List<BatchRecord> records = [new BatchDelete(key)];
+			client.Operate(null, new SingleDeleteOperateSequenceHandler(this, key), records);
+			WaitTillComplete();
+		}
+
 		private class SeedWriteHandler(AsyncMonitor monitor) : WriteListener
 		{
 			public void OnSuccess(Key key)
@@ -491,6 +541,159 @@ namespace Aerospike.Test
 					return;
 				}
 
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class SingleReadGetSequenceHandler(TestAsyncSingleBatch parent) : BatchSequenceListener
+		{
+			private bool received;
+
+			public void OnRecord(BatchRead record)
+			{
+				if (!parent.AssertRecordFound(record.key, record.record))
+				{
+					return;
+				}
+
+				parent.AssertBinEqual(record.key, record.record, BinName, ValuePrefix);
+				received = true;
+			}
+
+			public void OnSuccess()
+			{
+				if (!parent.AssertTrue(received))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class SingleOperateGetArrayHandler(TestAsyncSingleBatch parent) : RecordArrayListener
+		{
+			public void OnSuccess(Key[] keys, Record[] records)
+			{
+				if (!parent.AssertRecordFound(keys[0], records[0]))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				parent.AssertBinEqual(keys[0], records[0], BinName, ValuePrefix);
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class SingleOperateGetSequenceHandler(TestAsyncSingleBatch parent) : RecordSequenceListener
+		{
+			private bool received;
+
+			public void OnRecord(Key key, Record record)
+			{
+				if (!parent.AssertRecordFound(key, record))
+				{
+					return;
+				}
+
+				parent.AssertBinEqual(key, record, BinName, ValuePrefix);
+				received = true;
+			}
+
+			public void OnSuccess()
+			{
+				if (!parent.AssertTrue(received))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class SingleWriteSequenceHandler(TestAsyncSingleBatch parent, Key key) : BatchRecordSequenceListener
+		{
+			public void OnRecord(BatchRecord record, int index)
+			{
+			}
+
+			public void OnSuccess()
+			{
+				client.Get(null, new VerifyWriteSeqHandler(parent, key), key);
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class VerifyWriteSeqHandler(TestAsyncSingleBatch parent, Key key) : RecordListener
+		{
+			public void OnSuccess(Key readKey, Record record)
+			{
+				parent.AssertBinEqual(key, record, BinName, ValuePrefix + "-write-seq");
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class SingleDeleteOperateSequenceHandler(TestAsyncSingleBatch parent, Key key) : BatchRecordSequenceListener
+		{
+			public void OnRecord(BatchRecord record, int index)
+			{
+			}
+
+			public void OnSuccess()
+			{
+				client.Exists(null, new VerifyDeleteSeqHandler(parent), key);
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class VerifyDeleteSeqHandler(TestAsyncSingleBatch parent) : ExistsListener
+		{
+			public void OnSuccess(Key key, bool exists)
+			{
+				parent.AssertEquals(false, exists);
 				parent.NotifyCompleted();
 			}
 
