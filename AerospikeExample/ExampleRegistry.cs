@@ -68,9 +68,9 @@ internal static class ExampleRegistry
 		Sync<Touch>(ValidateAndCleanup<Touch>(ExampleStateValidation.Touch, "touchkey")),
 		Sync<ErrorMessage>(ValidateAndCleanup<ErrorMessage>(
 			ExampleStateValidation.ErrorMessage,
-			"error-message-key",
-			"error-message-key-2",
-			"error-message-key-3")),
+			"errmsg-bin",
+			"errmsg-bin2",
+			"errmsg-bin3")),
 		Sync<Transaction>(Cleanup<Transaction>(1, 2, 3)),
 		Sync<Operate>(Fixture<Operate>(
 			setup: ExampleStateValidation.SetupOperate,
