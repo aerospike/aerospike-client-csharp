@@ -95,7 +95,11 @@ namespace Aerospike.Test
 				Assert.IsTrue(HasPrivilege(granted, PrivilegeCode.WRITE, SuiteHelpers.ns));
 
 				client.RevokePrivileges(policy, TestRole, writePrivileges);
-				Role revoked = WaitForRole(TestRole, readPrivileges, whitelist);
+				Role revoked = WaitForRole(
+					TestRole,
+					[PrivilegeCode.READ],
+					[PrivilegeCode.WRITE],
+					whitelist);
 				Assert.IsFalse(HasPrivilege(revoked, PrivilegeCode.WRITE, SuiteHelpers.ns));
 
 				List<string> updatedWhitelist = ["127.0.0.1"];
@@ -178,13 +182,15 @@ namespace Aerospike.Test
 			string roleName,
 			IList<Privilege> expectedPrivileges,
 			IList<string> expectedWhitelist,
-			IList<string> absentWhitelist = null)
+			IList<string> absentWhitelist = null,
+			IList<PrivilegeCode> absentPrivileges = null)
 		{
 			for (int attempt = 0; attempt < PropagationMaxAttempts; attempt++)
 			{
 				Role role = QueryRoleIfPresent(roleName);
 				if (role != null
 					&& HasExpectedPrivileges(role, expectedPrivileges)
+					&& HasAbsentPrivileges(role, absentPrivileges)
 					&& HasExpectedWhitelist(role, expectedWhitelist, absentWhitelist))
 				{
 					return role;
@@ -213,17 +219,25 @@ namespace Aerospike.Test
 				expected.Add(new Privilege { code = code, ns = SuiteHelpers.ns });
 			}
 
-			Role role = WaitForRole(roleName, expected, expectedWhitelist);
+			return WaitForRole(roleName, expected, expectedWhitelist, absentPrivileges: absentCodes);
+		}
 
-			if (absentCodes != null)
+		private static bool HasAbsentPrivileges(Role role, IList<PrivilegeCode> absentPrivileges)
+		{
+			if (absentPrivileges == null)
 			{
-				foreach (PrivilegeCode code in absentCodes)
+				return true;
+			}
+
+			foreach (PrivilegeCode code in absentPrivileges)
+			{
+				if (HasPrivilege(role, code, SuiteHelpers.ns))
 				{
-					Assert.IsFalse(HasPrivilege(role, code, SuiteHelpers.ns));
+					return false;
 				}
 			}
 
-			return role;
+			return true;
 		}
 
 		private static bool HasExpectedPrivileges(Role role, IList<Privilege> expectedPrivileges)
