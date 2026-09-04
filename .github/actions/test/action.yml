@@ -211,32 +211,27 @@ runs:
           echo "settings_file=.runsettings-ci" >> "$GITHUB_ENV"
         fi
 
-    - name: Test and examples with coverage
+    - name: Test with coverage
       shell: bash
       run: |
-        mkdir -p test-results example-results coverage
+        mkdir -p test-results coverage
 
         dotnet-coverage collect \
           -f cobertura \
-          -o ./coverage/coverage-tests.cobertura.xml \
+          -o ./coverage/coverage.cobertura.xml \
           -- dotnet exec ./artifacts/publish/AerospikeTest.dll \
             --settings "./${settings_file}" \
             --results-directory ./test-results \
             --report-trx --report-trx-filename results.trx
 
-        dotnet-coverage collect \
-          -f cobertura \
-          -o ./coverage/coverage-examples.cobertura.xml \
-          -- dotnet exec ./artifacts-example/publish/AerospikeExample.dll \
-            --settings "./${settings_file}" \
-            --report-trx ./example-results/results.trx \
-            all
-
-        dotnet-coverage merge \
-          ./coverage/coverage-tests.cobertura.xml \
-          ./coverage/coverage-examples.cobertura.xml \
-          -f cobertura \
-          -o ./coverage/coverage.cobertura.xml
+    - name: Run examples
+      shell: bash
+      run: |
+        mkdir -p example-results
+        dotnet exec ./artifacts-example/publish/AerospikeExample.dll \
+          --settings "./${settings_file}" \
+          --report-trx ./example-results/results.trx \
+          all
 
     - name: Generate coverage report
       if: ${{ !cancelled() }}

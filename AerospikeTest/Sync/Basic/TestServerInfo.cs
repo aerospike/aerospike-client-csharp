@@ -15,6 +15,8 @@
  * the License.
  */
 using Aerospike.Client;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Aerospike.Test
 {
@@ -27,6 +29,46 @@ namespace Aerospike.Test
 			Node node = client.Nodes[0];
 			GetServerConfig(node);
 			GetNamespaceConfig(node);
+		}
+
+		[TestMethod]
+		public void ParseResultCodeRecognizesOkAndErrors()
+		{
+			Assert.AreEqual(ResultCode.OK, Info.ParseResultCode("OK"));
+			Assert.AreEqual(ResultCode.OK, Info.ParseResultCode("ok"));
+			Assert.AreEqual(201, Info.ParseResultCode("ERROR:201:index not found"));
+			Assert.AreEqual(99, Info.ParseResultCode("FAIL:99"));
+
+			try
+			{
+				Info.ParseResultCode("not-a-valid-response");
+				Assert.Fail("Expected AerospikeException for unrecognized info response");
+			}
+			catch (AerospikeException ex)
+			{
+				Assert.AreEqual(ResultCode.CLIENT_ERROR, ex.Result);
+			}
+		}
+
+		[TestMethod]
+		public void NameValueParserReadsPairsAndBase64Values()
+		{
+			Info info = CreateInfoResponse("namespace/test\tfoo=bar;baz=;encoded=dGVzdA==\n");
+			Info.NameValueParser parser = info.GetNameValueParser();
+
+			Assert.IsTrue(parser.Next());
+			Assert.AreEqual("foo", parser.GetName());
+			Assert.AreEqual("bar", parser.GetValue());
+
+			Assert.IsTrue(parser.Next());
+			Assert.AreEqual("baz", parser.GetName());
+			Assert.IsNull(parser.GetValue());
+
+			Assert.IsTrue(parser.Next());
+			Assert.AreEqual("encoded", parser.GetName());
+			Assert.AreEqual("test", parser.GetStringBase64());
+
+			Assert.IsFalse(parser.Next());
 		}
 
 		[TestMethod]
@@ -98,6 +140,15 @@ namespace Aerospike.Test
 			{
 				Assert.IsNotNull(value);
 			}
+		}
+
+		private static Info CreateInfoResponse(string response)
+		{
+			Info info = (Info)RuntimeHelpers.GetUninitializedObject(typeof(Info));
+			info.buffer = Encoding.UTF8.GetBytes(response);
+			info.offset = 0;
+			info.length = info.buffer.Length;
+			return info;
 		}
 	}
 }

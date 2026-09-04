@@ -171,6 +171,86 @@ namespace Aerospike.Test
 			Assert.AreSame(Value.INFINITY, Value.INFINITY);
 		}
 
+		[TestMethod]
+		public void ByteSegmentValueComparesSliceNotWholeArray()
+		{
+			byte[] backing = [1, 2, 3, 4, 5];
+			Value.ByteSegmentValue left = new(backing, 1, 3);
+			Value.ByteSegmentValue right = new(backing, 1, 3);
+			Value.ByteSegmentValue different = new(backing, 2, 3);
+
+			Assert.AreEqual(left, right);
+			Assert.AreNotEqual(left, different);
+			Assert.AreEqual(left.GetHashCode(), right.GetHashCode());
+			Assert.AreEqual("020304", left.ToString());
+			Assert.AreEqual(ParticleType.BLOB, left.Type);
+			Assert.AreEqual(3, left.EstimateSize());
+
+			byte[] buffer = new byte[3];
+			Assert.AreEqual(3, left.Write(buffer, 0));
+			CollectionAssert.AreEqual(new byte[] { 2, 3, 4 }, buffer);
+		}
+
+		[TestMethod]
+		public void ByteSegmentValueRoundTripsThroughValueGet()
+		{
+			byte[] backing = [9, 8, 7, 6];
+			Value value = Value.Get(backing, 1, 2);
+
+			Assert.IsInstanceOfType(value, typeof(Value.ByteSegmentValue));
+			Value.ByteSegmentValue segment = (Value.ByteSegmentValue)value;
+			Assert.AreEqual(1, segment.Offset);
+			Assert.AreEqual(2, segment.Length);
+		}
+
+		[TestMethod]
+		public void ReadOnlyMemoryBytesValueComparesContents()
+		{
+			ReadOnlyMemory<byte> bytes = new byte[] { 10, 20, 30 };
+			Value.ReadOnlyMemoryBytesValue left = new(bytes);
+			Value.ReadOnlyMemoryBytesValue right = new(bytes);
+			Value.ReadOnlyMemoryBytesValue different = new(new byte[] { 10, 20, 31 });
+
+			Assert.AreEqual(left, right);
+			Assert.IsTrue(left.Equals(bytes));
+			Assert.IsFalse(left.Equals(different.Bytes));
+			Assert.AreEqual(left.GetHashCode(), right.GetHashCode());
+			Assert.AreEqual("0A141E", left.ToString());
+			Assert.AreEqual(ParticleType.BLOB, left.Type);
+
+			byte[] buffer = new byte[3];
+			Assert.AreEqual(3, left.Write(buffer, 0));
+			CollectionAssert.AreEqual(bytes.ToArray(), buffer);
+		}
+
+		[TestMethod]
+		public void ReadOnlyMemoryBytesValueRoundTripsThroughValueGet()
+		{
+			ReadOnlyMemory<byte> bytes = new byte[] { 1, 2 };
+			Value value = Value.Get(bytes);
+
+			Assert.IsInstanceOfType(value, typeof(Value.ReadOnlyMemoryBytesValue));
+			CollectionAssert.AreEqual(bytes.ToArray(), ((Value.ReadOnlyMemoryBytesValue)value).Bytes.ToArray());
+		}
+
+		[TestMethod]
+		public void HLLValueComparesBytesAndRejectsKeys()
+		{
+			byte[] bytes = [0x01, 0x02, 0x03];
+			Value.HLLValue left = new(bytes);
+			Value.HLLValue right = new((byte[])bytes.Clone());
+			byte[] different = [0x01, 0x02, 0x04];
+
+			Assert.AreEqual(left, right);
+			Assert.IsTrue(left.Equals(bytes));
+			Assert.IsFalse(left.Equals(different));
+			Assert.AreEqual(left.GetHashCode(), right.GetHashCode());
+			Assert.AreEqual(ParticleType.HLL, left.Type);
+			Assert.AreEqual("010203", left.ToString());
+
+			Test.TestException(() => left.ValidateKeyType(), ResultCode.PARAMETER_ERROR);
+		}
+
 		private static void AssertValue<TEnum, TValue, TObject>(TEnum enumValue, TObject expected)
 			where TEnum : struct, Enum
 			where TValue : Value

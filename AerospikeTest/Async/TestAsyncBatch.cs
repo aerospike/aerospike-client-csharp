@@ -1225,5 +1225,56 @@ namespace Aerospike.Test
 				parent.NotifyCompleted();
 			}
 		}
+
+		[TestMethod]
+		public void AsyncBatchReadPolicyFilterExp()
+		{
+			string keyPrefix = "AsyncBatchReadPolicy";
+			Key matchKey = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + "match");
+			Key skipKey = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + "skip");
+
+			client.Put(null, matchKey, new Bin(BinName, 11));
+			client.Put(null, skipKey, new Bin(BinName, 22));
+
+			BatchPolicy batchPolicy = new()
+			{
+				respondAllKeys = true
+			};
+			BatchReadPolicy rowPolicy = new()
+			{
+				filterExp = Exp.Build(Exp.EQ(Exp.IntBin(BinName), Exp.Val(11)))
+			};
+
+			List<BatchRead> records =
+			[
+				new BatchRead(rowPolicy, matchKey, [BinName]),
+				new BatchRead(rowPolicy, skipKey, [BinName])
+			];
+
+			client.Get(batchPolicy, new BatchReadPolicyFilterHandler(this, matchKey), records);
+			WaitTillComplete();
+		}
+
+		private class BatchReadPolicyFilterHandler(TestAsyncBatch parent, Key matchKey) : BatchListListener
+		{
+			public void OnSuccess(List<BatchRead> records)
+			{
+				BatchRead matched = records[0];
+				BatchRead filtered = records[1];
+
+				parent.AssertEquals(ResultCode.OK, matched.resultCode);
+				parent.AssertBinEqual(matched.key, matched.record, BinName, 11);
+				parent.AssertEquals(ResultCode.FILTERED_OUT, filtered.resultCode);
+				parent.AssertNull(filtered.record);
+				parent.AssertEquals(matchKey, matched.key);
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException ae)
+			{
+				parent.SetError(ae);
+				parent.NotifyCompleted();
+			}
+		}
 	}
 }

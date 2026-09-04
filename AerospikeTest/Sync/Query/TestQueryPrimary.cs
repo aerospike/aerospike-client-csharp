@@ -74,6 +74,35 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void QueryPrimarySetWithAction()
+		{
+			Statement stmt = new()
+			{
+				Namespace = SuiteHelpers.ns,
+				SetName = setName,
+				MaxRecords = 20
+			};
+
+			HashSet<string> keys = new();
+			int valueCount = 0;
+
+			Action<Key, Record> collect = (key, record) =>
+			{
+				keys.Add(key.userKey.ToString());
+				if (record.bins.ContainsKey(valueBin))
+				{
+					valueCount++;
+				}
+			};
+
+			client.Query(null, stmt, collect);
+
+			Assert.AreEqual(4, keys.Count);
+			Assert.AreEqual(3, valueCount, "Expected three seeded integer records plus one payload-only record.");
+			Assert.IsTrue(keys.Contains("primary-large"));
+		}
+
+		[TestMethod]
 		public void QueryPrimaryRecordSizeFilter()
 		{
 			CheckServerVersion(new Version(7, 0), "Record size filter");
