@@ -167,7 +167,106 @@ namespace Aerospike.Test
 			};
 
 			byte[] packed = PackCanonicalMap(map);
-			Assert.IsTrue(packed.Length > 0);
+			int firstOffset = IndexOf(packed, PackListKey(listKey1));
+			int secondOffset = IndexOf(packed, PackListKey(listKey2));
+			Assert.IsTrue(firstOffset >= 0);
+			Assert.IsTrue(secondOffset >= 0);
+			Assert.IsTrue(firstOffset < secondOffset, "Shorter-prefix list keys must sort before longer differing keys.");
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersBooleanAndNilKeys()
+		{
+			Hashtable map = new()
+			{
+				[true] = "true-key",
+				[false] = "false-key",
+				[Value.AsNull] = "nil-key"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int nilOffset = IndexOf(packed, new byte[] { 0xc0 });
+			int falseOffset = IndexOf(packed, new byte[] { 0xc2 });
+			int trueOffset = IndexOf(packed, new byte[] { 0xc3 });
+			Assert.IsTrue(nilOffset >= 0);
+			Assert.IsTrue(falseOffset >= 0);
+			Assert.IsTrue(trueOffset >= 0);
+			Assert.IsTrue(nilOffset < falseOffset);
+			Assert.IsTrue(falseOffset < trueOffset);
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersDoubleKeys()
+		{
+			Hashtable map = new()
+			{
+				[2.5d] = "high",
+				[1.25d] = "low"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int lowOffset = IndexOf(packed, PackDoubleKey(1.25d));
+			int highOffset = IndexOf(packed, PackDoubleKey(2.5d));
+			Assert.IsTrue(lowOffset >= 0);
+			Assert.IsTrue(highOffset >= 0);
+			Assert.IsTrue(lowOffset < highOffset);
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersNestedMapsByEntryCount()
+		{
+			Hashtable innerSmall = new() { ["x"] = 1 };
+			Hashtable innerLarge = new() { ["x"] = 1, ["y"] = 2 };
+			Hashtable scrambled = new()
+			{
+				[innerLarge] = "large",
+				[innerSmall] = "small"
+			};
+			Hashtable ordered = new()
+			{
+				[innerSmall] = "small",
+				[innerLarge] = "large"
+			};
+
+			CollectionAssert.AreEqual(PackCanonicalMap(ordered), PackCanonicalMap(scrambled));
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersListsByLengthThenElements()
+		{
+			ArrayList shortList = [1];
+			ArrayList longList = [1, 2];
+			Hashtable scrambled = new()
+			{
+				[longList] = "long",
+				[shortList] = "short"
+			};
+			Hashtable ordered = new()
+			{
+				[shortList] = "short",
+				[longList] = "long"
+			};
+
+			CollectionAssert.AreEqual(PackCanonicalMap(ordered), PackCanonicalMap(scrambled));
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersBlobKeysLexicographically()
+		{
+			byte[] low = [0x01, 0x02];
+			byte[] high = [0x01, 0x03];
+			Hashtable map = new()
+			{
+				[high] = "high",
+				[low] = "low"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int lowOffset = IndexOf(packed, PackBlobKey(low));
+			int highOffset = IndexOf(packed, PackBlobKey(high));
+			Assert.IsTrue(lowOffset >= 0);
+			Assert.IsTrue(highOffset >= 0);
+			Assert.IsTrue(lowOffset < highOffset);
 		}
 
 		private static byte[] PackCanonicalMap(IDictionary map)
@@ -189,6 +288,27 @@ namespace Aerospike.Test
 		{
 			Packer packer = new();
 			packer.PackParticleString(value);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackListKey(IList list)
+		{
+			Packer packer = new();
+			packer.PackList(list);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackDoubleKey(double value)
+		{
+			Packer packer = new();
+			packer.PackDouble(value);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackBlobKey(byte[] value)
+		{
+			Packer packer = new();
+			packer.PackParticleBytes(value);
 			return packer.ToByteArray();
 		}
 

@@ -251,6 +251,121 @@ namespace Aerospike.Test
 			Test.TestException(() => left.ValidateKeyType(), ResultCode.PARAMETER_ERROR);
 		}
 
+		[TestMethod]
+		public void ScalarNumericValuesWritePackAndConvert()
+		{
+			AssertScalarNumeric(new Value.IntegerValue(42), 42, ParticleType.INTEGER, new byte[] { 0x2a });
+			AssertScalarNumeric(new Value.LongValue(300L), 300L, ParticleType.INTEGER, new byte[] { 0xcd, 0x01, 0x2c });
+			AssertScalarNumeric(new Value.ShortValue(-7), (short)-7, ParticleType.INTEGER, new byte[] { 0xf9 });
+			AssertScalarNumeric(new Value.ByteValue(9), (byte)9, ParticleType.INTEGER, new byte[] { 0x09 });
+			AssertScalarNumeric(new Value.SignedByteValue(-3), (sbyte)-3, ParticleType.INTEGER, new byte[] { 0xfd });
+			AssertScalarNumeric(
+				new Value.UnsignedIntegerValue(4000000000U),
+				4000000000U,
+				ParticleType.INTEGER,
+				new byte[] { 0xce, 0xee, 0x6b, 0x28, 0x00 });
+			AssertScalarNumeric(
+				new Value.UnsignedShortValue(65000),
+				(ushort)65000,
+				ParticleType.INTEGER,
+				new byte[] { 0xcd, 0xfd, 0xe8 });
+		}
+
+		[TestMethod]
+		public void BooleanStringAndBlobValuesRoundTrip()
+		{
+			Value.BooleanValue truthy = new(true);
+			Value.BooleanValue falsy = new(false);
+			byte[] boolBuffer = new byte[1];
+
+			Assert.AreEqual(1, truthy.Write(boolBuffer, 0));
+			Assert.AreEqual(1, boolBuffer[0]);
+			Assert.AreEqual(0, falsy.ToInteger());
+			Assert.AreEqual(1, truthy.ToLong());
+			CollectionAssert.AreEqual(new byte[] { 0xc3 }, PackValue(truthy));
+			CollectionAssert.AreEqual(new byte[] { 0xc2 }, PackValue(falsy));
+			Assert.AreNotEqual(truthy, falsy);
+			Test.TestException(() => truthy.ValidateKeyType(), ResultCode.PARAMETER_ERROR);
+
+			Value.StringValue text = new("hello");
+			byte[] stringBuffer = new byte[8];
+			Assert.AreEqual(5, text.Write(stringBuffer, 0));
+			Packer stringPacker = new();
+			stringPacker.PackParticleString("hello");
+			CollectionAssert.AreEqual(stringPacker.ToByteArray(), PackValue(text));
+			Assert.IsTrue(text.Equals("hello"));
+			Assert.IsFalse(text.Equals("world"));
+
+			byte[] blobBytes = [0x0a, 0x0b];
+			Value.BytesValue blob = new(blobBytes);
+			byte[] blobBuffer = new byte[2];
+			Assert.AreEqual(2, blob.Write(blobBuffer, 0));
+			CollectionAssert.AreEqual(blobBytes, blobBuffer);
+			Assert.AreEqual(blob, Value.Get(blobBytes));
+		}
+
+		[TestMethod]
+		public void NullWildcardAndInfinityValuesPackAndRejectKeys()
+		{
+			Assert.AreSame(Value.AsNull, Value.NullValue.Instance);
+			CollectionAssert.AreEqual(new byte[] { 0xc0 }, PackValue(Value.AsNull));
+			Assert.IsTrue(Value.AsNull.Equals(null));
+			Assert.IsFalse(Value.AsNull.Equals(Value.Get(0)));
+			Test.TestException(() => Value.AsNull.ValidateKeyType(), ResultCode.PARAMETER_ERROR);
+
+			CollectionAssert.AreEqual(new byte[] { 0xd4, 0xff, 0x00 }, PackValue(Value.WILDCARD));
+			Assert.AreEqual("*", Value.WILDCARD.ToString());
+			Assert.AreEqual(Value.WILDCARD, Value.WILDCARD);
+			Test.TestException(() => Value.WILDCARD.ValidateKeyType(), ResultCode.PARAMETER_ERROR);
+
+			CollectionAssert.AreEqual(new byte[] { 0xd4, 0xff, 0x01 }, PackValue(Value.INFINITY));
+			Assert.AreEqual("INF", Value.INFINITY.ToString());
+			Test.TestException(() => Value.INFINITY.ValidateKeyType(), ResultCode.PARAMETER_ERROR);
+		}
+
+		[TestMethod]
+		public void ListAndMapValuesPackAndCompareUnequalContents()
+		{
+			Value.ListValue leftList = new(new ArrayList { 1, 2, 3 });
+			Value.ListValue rightList = new(new ArrayList { 1, 2, 3 });
+			Value.ListValue differentList = new(new ArrayList { 1, 2, 4 });
+
+			Assert.AreEqual(leftList, rightList);
+			Assert.AreNotEqual(leftList, differentList);
+			Assert.IsTrue(PackValue(leftList).Length > 0);
+
+			IDictionary leftMap = new Hashtable { ["one"] = 1, ["two"] = 2 };
+			IDictionary rightMap = new Hashtable { ["one"] = 1, ["two"] = 2 };
+			IDictionary differentMap = new Hashtable { ["one"] = 1, ["two"] = 3 };
+			Value.MapValue mapLeft = new(leftMap);
+			Value.MapValue mapRight = new(rightMap);
+			Value.MapValue mapDifferent = new(differentMap);
+
+			Assert.AreEqual(mapLeft, mapRight);
+			Assert.AreNotEqual(mapLeft, mapDifferent);
+			Assert.IsTrue(PackValue(mapLeft).Length > 0);
+		}
+
+		private static void AssertScalarNumeric<T>(Value value, T expected, ParticleType type, byte[] expectedPack)
+			where T : struct
+		{
+			Assert.AreEqual(type, value.Type);
+			Assert.AreEqual(expected, value.Object);
+			Assert.AreEqual(value, Value.Get(expected));
+			CollectionAssert.AreEqual(expectedPack, PackValue(value));
+
+			byte[] buffer = new byte[8];
+			int written = value.Write(buffer, 0);
+			Assert.IsTrue(written > 0);
+		}
+
+		private static byte[] PackValue(Value value)
+		{
+			Packer packer = new();
+			value.Pack(packer);
+			return packer.ToByteArray();
+		}
+
 		private static void AssertValue<TEnum, TValue, TObject>(TEnum enumValue, TObject expected)
 			where TEnum : struct, Enum
 			where TValue : Value

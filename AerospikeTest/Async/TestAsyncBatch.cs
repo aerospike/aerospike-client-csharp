@@ -1439,6 +1439,95 @@ namespace Aerospike.Test
 			}
 		}
 
+		[TestMethod]
+		public void AsyncBatchOperateMixedReadWrite()
+		{
+			string keyPrefix = "AsyncBatchOperateMixed";
+			WriteRecords(keyPrefix);
+
+			Key readKey = sendKeys[0];
+			Key writeKey = sendKeys[4];
+			Key[] readKeys = [readKey];
+
+			client.Get(null, new BatchOperateMixedReadHandler(this, readKey, writeKey), readKeys, BinName);
+			WaitTillComplete();
+		}
+
+		private class BatchOperateMixedReadHandler(TestAsyncBatch parent, Key readKey, Key writeKey) : RecordArrayListener
+		{
+			public void OnSuccess(Key[] keys, Record[] records)
+			{
+				try
+				{
+					if (!parent.AssertEquals(1, keys.Length)
+						|| !parent.AssertEquals(readKey, keys[0])
+						|| !parent.AssertBinEqual(readKey, records[0], BinName, ValuePrefix + 1))
+					{
+						parent.NotifyCompleted();
+						return;
+					}
+
+					List<BatchRecord> writeRecords =
+					[
+						new BatchWrite(writeKey, [Operation.Put(new Bin(BinName, 999)), Operation.Get(BinName)])
+					];
+					client.Operate(null, new BatchOperateMixedWriteHandler(parent, writeKey), writeRecords);
+				}
+				catch (Exception e)
+				{
+					parent.SetError(e);
+					parent.NotifyCompleted();
+				}
+			}
+
+			public void OnFailure(AerospikeException ae)
+			{
+				parent.SetError(ae);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class BatchOperateMixedWriteHandler(TestAsyncBatch parent, Key writeKey) : BatchOperateListListener
+		{
+			public void OnSuccess(List<BatchRecord> records, bool status)
+			{
+				try
+				{
+					if (!parent.AssertEquals(true, status))
+					{
+						return;
+					}
+
+					BatchWrite write = (BatchWrite)records[0];
+					if (!parent.AssertEquals(ResultCode.OK, write.resultCode))
+					{
+						return;
+					}
+
+					if (!parent.AssertEquals(writeKey, write.key))
+					{
+						return;
+					}
+
+					parent.AssertBatchBinEqual(write, BinName, 999);
+				}
+				catch (Exception e)
+				{
+					parent.SetError(e);
+				}
+				finally
+				{
+					parent.NotifyCompleted();
+				}
+			}
+
+			public void OnFailure(AerospikeException ae)
+			{
+				parent.SetError(ae);
+				parent.NotifyCompleted();
+			}
+		}
+
 		private class BatchReadPolicyFilterHandler(TestAsyncBatch parent, Key matchKey) : BatchListListener
 		{
 			public void OnSuccess(List<BatchRead> records)

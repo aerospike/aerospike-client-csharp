@@ -354,6 +354,34 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void AsyncTxnBatchLargeCommit()
+		{
+			const int keyCount = 32;
+			Key[] keys = new Key[keyCount];
+			Bin bin = new(binName, 1);
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnBatchLarge" + i);
+				keys[i] = key;
+				client.Put(null, key, bin);
+			}
+
+			using Txn txn = new();
+			bin = new(binName, 2);
+
+			var cmds = new IRunner[]
+			{
+				new BatchGetExpect(txn, keys, 1),
+				new BatchOperate(txn, keys, Operation.Put(bin)),
+				new Commit(txn),
+				new BatchGetExpect(null, keys, 2),
+			};
+
+			Execute(cmds);
+		}
+
+		[TestMethod]
 		public void AsyncTxnWriteCommitAbort()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnCommitAbort");
