@@ -107,11 +107,18 @@ runs:
       if: inputs.enable-security == 'true'
       shell: bash
       run: |
+        # asadm is not bundled in the server image; use the public tools image.
         # Mirror aerospike-client-python EE test setup: grant the admin user the
         # roles required by security, masking, and UDF integration tests.
         roles="read-write-udf sys-admin user-admin service-ctrl masking-admin write-masked read-masked"
+        asadm_port=3000
+        if [ "${{ inputs.enable-tls }}" == "true" ]; then
+          asadm_port=4333
+        fi
         for attempt in $(seq 1 30); do
-          if docker exec aerospike-1 asadm -Uadmin -Padmin -e "enable; manage acl grant user admin roles ${roles}"; then
+          if docker run --rm --network host aerospike/aerospike-tools:latest \
+            asadm -h 127.0.0.1 -p "${asadm_port}" -U admin -P admin \
+            -e "enable; manage acl grant user admin roles ${roles}"; then
             exit 0
           fi
           sleep 2
@@ -182,23 +189,31 @@ runs:
       working-directory: artifacts-example
       run: unzip AerospikeExample*.zip
 
-    - name: Prepare TLS runsettings
-      if: inputs.enable-tls == 'true'
+    - name: Prepare runsettings
       shell: bash
       run: |
-        sed -e 's|name="Port" value="3000"|name="Port" value="4333"|' \
-            -e 's|name="TlsEnable" value="false"|name="TlsEnable" value="true"|' \
-            -e 's|name="TlsName" value=""|name="TlsName" value="localhost"|' \
-            .runsettings > .runsettings-tls
+        cp .runsettings .runsettings-ci
+        if [ "${{ inputs.enable-security }}" == "true" ]; then
+          sed -i -E 's/name="User" value="[^"]*"/name="User" value="admin"/' .runsettings-ci
+          sed -i -E 's/name="Password" value="[^"]*"/name="Password" value="admin"/' .runsettings-ci
+        else
+          sed -i -E 's/name="User" value="[^"]*"/name="User" value=""/' .runsettings-ci
+          sed -i -E 's/name="Password" value="[^"]*"/name="Password" value=""/' .runsettings-ci
+        fi
+
+        if [ "${{ inputs.enable-tls }}" == "true" ]; then
+          sed -e 's|name="Port" value="3000"|name="Port" value="4333"|' \
+              -e 's|name="TlsEnable" value="false"|name="TlsEnable" value="true"|' \
+              -e 's|name="TlsName" value=""|name="TlsName" value="localhost"|' \
+              .runsettings-ci > .runsettings-ci-tls
+          echo "settings_file=.runsettings-ci-tls" >> "$GITHUB_ENV"
+        else
+          echo "settings_file=.runsettings-ci" >> "$GITHUB_ENV"
+        fi
 
     - name: Test and examples with coverage
       shell: bash
       run: |
-        settings_file=".runsettings"
-        if [ "${{ inputs.enable-tls }}" == "true" ]; then
-          settings_file=".runsettings-tls"
-        fi
-
         mkdir -p test-results example-results
 
         dotnet-coverage collect \

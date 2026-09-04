@@ -78,6 +78,10 @@ namespace Aerospike.Test
 		{
 			CheckServerVersion(new Version(7, 0), "Record size filter");
 
+			Key largeKey = new(SuiteHelpers.ns, setName, "primary-large");
+			Record seeded = client.Get(null, largeKey, payloadBin);
+			AssertRecordFound(largeKey, seeded);
+
 			QueryPolicy queryPolicy = new()
 			{
 				filterExp = Exp.Build(Exp.GT(Exp.RecordSize(), Exp.Val(1024 * 16)))
@@ -96,11 +100,14 @@ namespace Aerospike.Test
 				while (recordSet.Next())
 				{
 					count++;
-					Assert.AreEqual("primary-large", recordSet.Key.userKey.ToString());
+					Assert.IsNotNull(recordSet.Record, "Expected record payload on query result.");
+					byte[] payload = recordSet.Record.GetValue(payloadBin) as byte[];
+					Assert.IsNotNull(payload, "Expected payload bin on large record.");
+					Assert.IsTrue(payload.Length > 1024 * 16);
 				}
 			}
 
-			Assert.AreEqual(1, count);
+			Assert.AreEqual(1, count, "Expected exactly one record larger than 16 KiB.");
 		}
 	}
 }
