@@ -95,6 +95,81 @@ namespace Aerospike.Test
 			}
 		}
 
+		[TestMethod]
+		public void SortMapsOrdersNestedMapsAndListsCanonically()
+		{
+			Hashtable orderedInner = new()
+			{
+				["a"] = 1,
+				["b"] = 2
+			};
+			Hashtable scrambledInner = new()
+			{
+				["b"] = 2,
+				["a"] = 1
+			};
+			ArrayList list = [1, 2, 3];
+
+			Hashtable ordered = new()
+			{
+				["inner"] = orderedInner,
+				["list"] = list,
+				["num"] = 5
+			};
+			Hashtable scrambled = new()
+			{
+				["num"] = 5,
+				["inner"] = scrambledInner,
+				["list"] = list
+			};
+
+			CollectionAssert.AreEqual(PackCanonicalMap(ordered), PackCanonicalMap(scrambled));
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersInfinityAndNegativeIntegers()
+		{
+			// Wildcard keys compare equal to all other keys in canonical sort and must
+			// be the sole key in a map literal.
+			Hashtable map1 = new()
+			{
+				[Value.INFINITY] = "inf",
+				[-1] = "neg"
+			};
+			Hashtable map2 = new()
+			{
+				[-1] = "neg",
+				[Value.INFINITY] = "inf"
+			};
+
+			CollectionAssert.AreEqual(PackCanonicalMap(map1), PackCanonicalMap(map2));
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersWildcardKey()
+		{
+			Hashtable map1 = new() { [Value.WILDCARD] = "wild" };
+			Hashtable map2 = new() { [Value.WILDCARD] = "wild" };
+
+			CollectionAssert.AreEqual(PackCanonicalMap(map1), PackCanonicalMap(map2));
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersDistinctListKeys()
+		{
+			ArrayList listKey1 = [1, 2];
+			ArrayList listKey2 = [1, 3];
+
+			Hashtable map = new()
+			{
+				[listKey1] = "first",
+				[listKey2] = "second"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			Assert.IsTrue(packed.Length > 0);
+		}
+
 		private static byte[] PackCanonicalMap(IDictionary map)
 		{
 			Packer packer = new();

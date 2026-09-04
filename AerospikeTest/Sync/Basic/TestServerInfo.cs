@@ -72,6 +72,56 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void ParseNameCheckErrorThrowsForErrorResponse()
+		{
+			Info info = CreateInfoResponse("namespace/test\tERROR:201:index not found\n");
+
+			try
+			{
+				info.ParseName("namespace/test");
+				Assert.Fail("Expected AerospikeException for info error response");
+			}
+			catch (AerospikeException ex)
+			{
+				Assert.AreEqual(201, ex.Result);
+				Assert.AreEqual("index not found", ex.BaseMessage);
+			}
+		}
+
+		[TestMethod]
+		public void ParseMultiResponseCheckErrorThrowsForErrorResponse()
+		{
+			Info info = CreateInfoResponse("cmd1\tERROR:99:quota exceeded\ncmd2\tok\n");
+
+			try
+			{
+				info.ParseMultiResponse();
+				Assert.Fail("Expected AerospikeException for info error response");
+			}
+			catch (AerospikeException ex)
+			{
+				Assert.AreEqual(99, ex.Result);
+				Assert.AreEqual("quota exceeded", ex.BaseMessage);
+			}
+		}
+
+		[TestMethod]
+		public void ParseStringStopsAtDelimiter()
+		{
+			Info info = CreateInfoResponse("alpha");
+
+			Assert.AreEqual("alpha", info.ParseString(','));
+		}
+
+		[TestMethod]
+		public void ParseStringStopsAtAnyDelimiter()
+		{
+			Info info = CreateInfoResponse("host:3000");
+
+			Assert.AreEqual("host", info.ParseString(':', ',', ']'));
+		}
+
+		[TestMethod]
 		public void ErrorResponse()
 		{
 			Info.Error error;

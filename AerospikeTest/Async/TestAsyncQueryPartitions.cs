@@ -48,11 +48,12 @@ namespace Aerospike.Test
 			}
 
 			AsyncMonitor monitor = new();
+			SeedWriteHandler handler = new(monitor, size);
 			for (int i = 1; i <= size; i++)
 			{
 				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + i);
 				Bin bin = new(binName, i);
-				client.Put(null, new SeedWriteHandler(monitor), key, bin);
+				client.Put(null, handler, key, bin);
 			}
 			monitor.WaitTillComplete();
 		}
@@ -76,11 +77,16 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
-		private class SeedWriteHandler(AsyncMonitor monitor) : WriteListener
+		private class SeedWriteHandler(AsyncMonitor monitor, int expected) : WriteListener
 		{
+			private int count;
+
 			public void OnSuccess(Key key)
 			{
-				monitor.NotifyCompleted();
+				if (Interlocked.Increment(ref count) == expected)
+				{
+					monitor.NotifyCompleted();
+				}
 			}
 
 			public void OnFailure(AerospikeException e)
@@ -103,7 +109,7 @@ namespace Aerospike.Test
 
 			public void OnSuccess()
 			{
-				parent.AssertEquals(11, count);
+				parent.AssertEquals(11, Volatile.Read(ref count));
 				parent.NotifyCompleted();
 			}
 

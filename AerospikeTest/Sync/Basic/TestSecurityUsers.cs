@@ -239,17 +239,22 @@ namespace Aerospike.Test
 		{
 			ClientPolicy clientPolicy = new()
 			{
+				clusterName = SuiteHelpers.clusterName,
+				tlsPolicy = SuiteHelpers.tlsPolicy,
+				authMode = SuiteHelpers.authMode,
+				timeout = SuiteHelpers.timeout,
+				useServicesAlternate = SuiteHelpers.useServicesAlternate,
 				user = user,
-				password = password,
-				timeout = SuiteHelpers.timeout
+				password = password
 			};
 
-			if (SuiteHelpers.tlsPolicy != null)
+			Host[] hosts = new Host[SuiteHelpers.client.Nodes.Length];
+			for (int i = 0; i < SuiteHelpers.client.Nodes.Length; i++)
 			{
-				clientPolicy.tlsPolicy = SuiteHelpers.tlsPolicy;
+				hosts[i] = SuiteHelpers.client.Nodes[i].Host;
 			}
 
-			return new AerospikeClient(clientPolicy, SuiteHelpers.hosts);
+			return new AerospikeClient(clientPolicy, hosts);
 		}
 	}
 }

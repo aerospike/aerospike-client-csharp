@@ -74,6 +74,38 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void InvalidNodeExceptionDescribesClusterAndPartition()
+		{
+			Partition partition = new("test", Replica.MASTER)
+			{
+				partitionId = 17
+			};
+			AerospikeException.InvalidNode ex = new(2, partition);
+
+			Assert.AreEqual(ResultCode.INVALID_NODE_ERROR, ex.Result);
+			Assert.IsTrue(ex.BaseMessage.Contains("partition"));
+			Assert.IsTrue(ex.BaseMessage.Contains(partition.ToString()));
+		}
+
+		[TestMethod]
+		public void InvalidNodeExceptionUsesCustomMessage()
+		{
+			AerospikeException.InvalidNode ex = new("node lookup failed");
+
+			Assert.AreEqual(ResultCode.INVALID_NODE_ERROR, ex.Result);
+			Assert.AreEqual("node lookup failed", ex.BaseMessage);
+		}
+
+		[TestMethod]
+		public void InvalidNodeExceptionReportsEmptyCluster()
+		{
+			Partition partition = new("test", Replica.MASTER);
+			AerospikeException.InvalidNode ex = new(0, partition);
+
+			Assert.IsTrue(ex.BaseMessage.Contains("Cluster is empty"));
+		}
+
+		[TestMethod]
 		public void InvalidNamespaceExceptionDescribesNamespace()
 		{
 			AerospikeException.InvalidNamespace ex = new("missing-ns", 3);
@@ -98,6 +130,28 @@ namespace Aerospike.Test
 
 			Assert.AreEqual(ResultCode.COMMAND_REJECTED, ex.Result);
 			Assert.IsInstanceOfType(ex, typeof(AerospikeException.Backoff));
+		}
+
+		[TestMethod]
+		public void TimeoutExceptionReportsServerStatistics()
+		{
+			Policy policy = new()
+			{
+				socketTimeout = 250,
+				totalTimeout = 1000,
+				maxRetries = 1
+			};
+			AerospikeException.Timeout ex = new(policy, client: false)
+			{
+				Iteration = 0,
+				Policy = policy
+			};
+
+			Assert.AreEqual(ResultCode.TIMEOUT, ex.Result);
+			Assert.IsFalse(ex.client);
+			Assert.IsTrue(ex.Message.Contains("Server timeout:"));
+			Assert.IsTrue(ex.Message.Contains("socket=250"));
+			Assert.IsTrue(ex.Message.Contains("total=1000"));
 		}
 
 		[TestMethod]

@@ -1255,6 +1255,190 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
+		[TestMethod]
+		public void AsyncBatchReadsEmptyBinName()
+		{
+			string keyPrefix = "AsyncBatchReadsEmpty";
+			WriteRecords(keyPrefix);
+
+			string[] binNames = [];
+			client.Get(null, new BatchReadsEmptyBinNameHandler(this), sendKeys, binNames);
+			WaitTillComplete();
+		}
+
+		private class BatchReadsEmptyBinNameHandler(TestAsyncBatch parent) : RecordArrayListener
+		{
+			public void OnSuccess(Key[] keys, Record[] records)
+			{
+				if (!parent.AssertEquals(Size, records.Length))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				for (int i = 0; i < records.Length; i++)
+				{
+					Record record = records[i];
+					if (i != 5)
+					{
+						if (!parent.AssertBinEqual(keys[i], record, BinName, ValuePrefix + (i + 1)))
+						{
+							parent.NotifyCompleted();
+							return;
+						}
+					}
+					else if (!parent.AssertBinEqual(keys[i], record, BinName, i + 1))
+					{
+						parent.NotifyCompleted();
+						return;
+					}
+				}
+
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException ae)
+			{
+				parent.SetError(ae);
+				parent.NotifyCompleted();
+			}
+		}
+
+		[TestMethod]
+		public void AsyncBatchReadAllBins()
+		{
+			string keyPrefix = "AsyncBatchReadAllBins";
+			WriteRecords(keyPrefix);
+
+			Bin bin = new("bin5", "NewValue");
+			Operation[] ops =
+			[
+				Operation.Put(bin),
+				Operation.Get()
+			];
+
+			client.Operate(null, null, new BatchReadAllBinsHandler(this), sendKeys, ops);
+			WaitTillComplete();
+		}
+
+		private class BatchReadAllBinsHandler(TestAsyncBatch parent) : BatchRecordArrayListener
+		{
+			public void OnSuccess(BatchRecord[] records, bool status)
+			{
+				if (!parent.AssertEquals(true, status))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				for (int i = 0; i < records.Length; i++)
+				{
+					BatchRecord batchRecord = records[i];
+					if (!parent.AssertEquals(ResultCode.OK, batchRecord.resultCode))
+					{
+						parent.NotifyCompleted();
+						return;
+					}
+
+					Record record = batchRecord.record;
+					if (!parent.AssertEquals("NewValue", record.GetString("bin5")))
+					{
+						parent.NotifyCompleted();
+						return;
+					}
+
+					if (record.GetValue(BinName) == null)
+					{
+						parent.SetError(new Exception("Expected original bin to be returned"));
+						parent.NotifyCompleted();
+						return;
+					}
+				}
+
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(BatchRecord[] records, AerospikeException ae)
+			{
+				parent.SetError(ae);
+				parent.NotifyCompleted();
+			}
+		}
+
+		[TestMethod]
+		public void AsyncBatchOperateSendKey()
+		{
+			Key[] keys =
+			[
+				new(SuiteHelpers.ns, SuiteHelpers.set, "asyncSendKey0"),
+				new(SuiteHelpers.ns, SuiteHelpers.set, "asyncSendKey1"),
+				new(SuiteHelpers.ns, SuiteHelpers.set, "asyncSendKey2")
+			];
+
+			BatchWritePolicy batchWritePolicy = new()
+			{
+				sendKey = true
+			};
+			Operation[] ops = [Operation.Put(new Bin("now", DateTime.Now.ToFileTime()))];
+
+			client.Operate(null, batchWritePolicy, new BatchOperateSendKeyHandler(this), keys, ops);
+			WaitTillComplete();
+		}
+
+		private class BatchOperateSendKeyHandler(TestAsyncBatch parent) : BatchRecordArrayListener
+		{
+			public void OnSuccess(BatchRecord[] records, bool status)
+			{
+				if (!parent.AssertEquals(true, status))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				foreach (BatchRecord record in records)
+				{
+					if (!parent.AssertEquals(ResultCode.OK, record.resultCode))
+					{
+						parent.NotifyCompleted();
+						return;
+					}
+				}
+
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(BatchRecord[] records, AerospikeException ae)
+			{
+				parent.SetError(ae);
+				parent.NotifyCompleted();
+			}
+		}
+
+		[TestMethod]
+		public void AsyncBatchDeleteSingleNotFound()
+		{
+			Key[] keys = [new(SuiteHelpers.ns, SuiteHelpers.set, 989299023)];
+
+			client.Delete(null, null, new BatchDeleteSingleNotFoundHandler(this), keys);
+			WaitTillComplete();
+		}
+
+		private class BatchDeleteSingleNotFoundHandler(TestAsyncBatch parent) : BatchRecordArrayListener
+		{
+			public void OnSuccess(BatchRecord[] records, bool status)
+			{
+				parent.AssertEquals(false, status);
+				parent.AssertEquals(ResultCode.KEY_NOT_FOUND_ERROR, records[0].resultCode);
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(BatchRecord[] records, AerospikeException ae)
+			{
+				parent.SetError(ae);
+				parent.NotifyCompleted();
+			}
+		}
+
 		private class BatchReadPolicyFilterHandler(TestAsyncBatch parent, Key matchKey) : BatchListListener
 		{
 			public void OnSuccess(List<BatchRead> records)
