@@ -173,7 +173,7 @@ jobs:
         reports: coverage-merged/coverage.cobertura.xml
         targetdir: coverage-merged/report
         reporttypes: HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub
-        assemblyfilters: -AerospikeTest
+        assemblyfilters: +AerospikeClient
 
     - name: Publish merged coverage summary
       run: |

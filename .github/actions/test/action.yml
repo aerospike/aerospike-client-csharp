@@ -214,21 +214,46 @@ runs:
     - name: Test and examples with coverage
       shell: bash
       run: |
-        mkdir -p test-results example-results
+        mkdir -p test-results example-results coverage
 
         dotnet-coverage collect \
           -f cobertura \
-          -o ./coverage/coverage.cobertura.xml \
-          -- bash -c "
-            dotnet exec ./artifacts/publish/AerospikeTest.dll \
-              --settings ./${settings_file} \
-              --results-directory ./test-results \
-              --report-trx --report-trx-filename results.trx && \
-            dotnet exec ./artifacts-example/publish/AerospikeExample.dll \
-              --settings ./${settings_file} \
-              --report-trx ./example-results/results.trx \
-              all
-          "
+          -o ./coverage/coverage-tests.cobertura.xml \
+          -- dotnet exec ./artifacts/publish/AerospikeTest.dll \
+            --settings "./${settings_file}" \
+            --results-directory ./test-results \
+            --report-trx --report-trx-filename results.trx
+
+        dotnet-coverage collect \
+          -f cobertura \
+          -o ./coverage/coverage-examples.cobertura.xml \
+          -- dotnet exec ./artifacts-example/publish/AerospikeExample.dll \
+            --settings "./${settings_file}" \
+            --report-trx ./example-results/results.trx \
+            all
+
+        dotnet-coverage merge \
+          ./coverage/coverage-tests.cobertura.xml \
+          ./coverage/coverage-examples.cobertura.xml \
+          -f cobertura \
+          -o ./coverage/coverage.cobertura.xml
+
+    - name: Generate coverage report
+      if: ${{ !cancelled() }}
+      uses: danielpalme/ReportGenerator-GitHub-Action@a003c8fb9ac008fd0fffd5faa4f7d3ecb52e0675 # v5.5.7
+      with:
+        reports: coverage/coverage.cobertura.xml
+        targetdir: coverage/report
+        reporttypes: HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub
+        assemblyfilters: +AerospikeClient
+
+    - name: Publish coverage summary
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        if [ -f coverage/report/SummaryGithub.md ]; then
+          cat coverage/report/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
+        fi
 
     - name: Upload test results
       if: ${{ !cancelled() }}
@@ -244,6 +269,14 @@ runs:
       with:
         name: coverage-raw-${{ github.sha }}${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
         path: coverage/coverage.cobertura.xml
+        retention-days: 30
+
+    - name: Upload coverage report
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: coverage-report-${{ github.sha }}${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
+        path: coverage/report/
         retention-days: 30
 
     - name: Upload example run results
