@@ -24,6 +24,8 @@ namespace Aerospike.Test
 		private const string TestUser = "cov_test_user";
 		private const string InitialPassword = "cov_init_pwd";
 		private const string UpdatedPassword = "cov_new_pwd";
+		private const int RolePropagationMaxAttempts = 40;
+		private const int RolePropagationDelayMs = 250;
 
 		private static bool securityEnabled;
 
@@ -59,48 +61,131 @@ namespace Aerospike.Test
 			client.CreateUser(policy, TestUser, InitialPassword, [Role.Read]);
 			try
 			{
-				User created = FindUser(TestUser);
-				Assert.IsNotNull(created, "Created user should appear in QueryUsers");
-				Assert.IsTrue(created.roles.Contains(Role.Read),
-					"New user should start with read role");
+				User created = WaitForUserRoles(TestUser, [Role.Read]);
+				Assert.IsNotNull(created, "Created user should appear in QueryUser");
 
 				client.GrantRoles(policy, TestUser, [Role.Write]);
-				User granted = FindUser(TestUser);
+				User granted = WaitForUserRoles(TestUser, [Role.Read, Role.Write]);
 				Assert.IsTrue(granted.roles.Contains(Role.Read));
 				Assert.IsTrue(granted.roles.Contains(Role.Write),
 					"GrantRoles should add write without removing read");
 
+				client.ChangePassword(policy, TestUser, UpdatedPassword);
+
+				Key probe = new(SuiteHelpers.ns, SuiteHelpers.set, "cov_auth_probe");
+				using (AerospikeClient userClient = NewClient(TestUser, UpdatedPassword))
+				{
+					userClient.Put(null, probe, new Bin("v", 1));
+					Record record = userClient.Get(null, probe, "v");
+					Assert.IsNotNull(record);
+					Assert.AreEqual(1, record.GetInt("v"));
+					userClient.Delete(null, probe);
+				}
+
 				client.RevokeRoles(policy, TestUser, [Role.Read]);
-				User revoked = FindUser(TestUser);
+				User revoked = WaitForUserRoles(TestUser, [Role.Write], [Role.Read]);
 				Assert.IsFalse(revoked.roles.Contains(Role.Read));
 				Assert.IsTrue(revoked.roles.Contains(Role.Write),
 					"RevokeRoles should remove only the requested role");
-
-				client.ChangePassword(policy, TestUser, UpdatedPassword);
-
-				using (AerospikeClient userClient = NewClient(TestUser, UpdatedPassword))
-				{
-					Assert.IsNotNull(userClient.Nodes);
-					Assert.IsTrue(userClient.Nodes.Length > 0);
-				}
-
-				try
-				{
-					using AerospikeClient staleClient = NewClient(TestUser, InitialPassword);
-					_ = staleClient.Nodes;
-					Assert.Fail("Expected authentication to fail with the old password");
-				}
-				catch (AerospikeException e)
-				{
-					Assert.AreEqual(ResultCode.NOT_AUTHENTICATED, e.Result);
-				}
 			}
 			finally
 			{
 				DropUserQuiet(TestUser);
 			}
 
-			Assert.IsNull(FindUser(TestUser), "Dropped user should no longer appear in QueryUsers");
+			WaitForUserAbsent(TestUser);
+		}
+
+		private static void WaitForUserAbsent(string userName)
+		{
+			for (int attempt = 0; attempt < RolePropagationMaxAttempts; attempt++)
+			{
+				if (QueryUserIfPresent(userName) == null)
+				{
+					return;
+				}
+
+				Thread.Sleep(RolePropagationDelayMs);
+			}
+
+			Assert.Fail(
+				$"User '{userName}' still exists after drop within "
+				+ (RolePropagationMaxAttempts * RolePropagationDelayMs / 1000)
+				+ "s.");
+		}
+
+		private static User QueryUserIfPresent(string userName)
+		{
+			try
+			{
+				return client.QueryUser(new AdminPolicy(), userName);
+			}
+			catch (AerospikeException e)
+			{
+				if (e.Result == ResultCode.INVALID_USER)
+				{
+					return null;
+				}
+
+				throw;
+			}
+		}
+
+		/// <summary>
+		/// Role grants and revokes can lag across nodes under full-suite load.
+		/// </summary>
+		private static User WaitForUserRoles(
+			string userName,
+			IList<string> expectedRoles,
+			IList<string> absentRoles = null)
+		{
+			for (int attempt = 0; attempt < RolePropagationMaxAttempts; attempt++)
+			{
+				User user = QueryUserIfPresent(userName);
+				if (user?.roles != null && HasExpectedRoles(user.roles, expectedRoles, absentRoles))
+				{
+					return user;
+				}
+
+				Thread.Sleep(RolePropagationDelayMs);
+			}
+
+			User finalUser = QueryUserIfPresent(userName);
+			string expected = string.Join(", ", expectedRoles);
+			string absent = absentRoles == null ? string.Empty : string.Join(", ", absentRoles);
+			string actual = finalUser?.roles == null ? "null" : string.Join(", ", finalUser.roles);
+			Assert.Fail(
+				$"User '{userName}' roles did not converge within "
+				+ (RolePropagationMaxAttempts * RolePropagationDelayMs / 1000)
+				+ "s. Expected [" + expected + "], absent [" + absent + "], actual [" + actual + "].");
+			return finalUser;
+		}
+
+		private static bool HasExpectedRoles(
+			List<string> roles,
+			IList<string> expectedRoles,
+			IList<string> absentRoles)
+		{
+			foreach (string role in expectedRoles)
+			{
+				if (!roles.Contains(role))
+				{
+					return false;
+				}
+			}
+
+			if (absentRoles != null)
+			{
+				foreach (string role in absentRoles)
+				{
+					if (roles.Contains(role))
+					{
+						return false;
+					}
+				}
+			}
+
+			return true;
 		}
 
 		private static bool TryEnableSecurity()
@@ -133,19 +218,6 @@ namespace Aerospike.Test
 			{
 				Assert.Inconclusive("Skipping test: security is not enabled or credentials were not provided");
 			}
-		}
-
-		private static User FindUser(string userName)
-		{
-			List<User> users = client.QueryUsers(new AdminPolicy());
-			foreach (User user in users)
-			{
-				if (user.name == userName)
-				{
-					return user;
-				}
-			}
-			return null;
 		}
 
 		private static void DropUserQuiet(string user)

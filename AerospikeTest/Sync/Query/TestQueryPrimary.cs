@@ -28,15 +28,20 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void Prepare(TestContext testContext)
 		{
+			WritePolicy policy = new()
+			{
+				sendKey = true
+			};
+
 			for (int i = 1; i <= 3; i++)
 			{
 				Key key = new(SuiteHelpers.ns, setName, "primary-" + i);
-				client.Put(null, key, new Bin(valueBin, i));
+				client.Put(policy, key, new Bin(valueBin, i));
 			}
 
 			byte[] largePayload = new byte[17 * 1024];
 			Array.Fill(largePayload, (byte)'x');
-			client.Put(null, new Key(SuiteHelpers.ns, setName, "primary-large"), new Bin(payloadBin, largePayload));
+			client.Put(policy, new Key(SuiteHelpers.ns, setName, "primary-large"), new Bin(payloadBin, largePayload));
 		}
 
 		[ClassCleanup]
@@ -80,25 +85,37 @@ namespace Aerospike.Test
 			{
 				Namespace = SuiteHelpers.ns,
 				SetName = setName,
-				MaxRecords = 20
+				MaxRecords = 20,
+				BinNames = [valueBin, payloadBin]
 			};
 
 			HashSet<string> keys = new();
 			int valueCount = 0;
+			int payloadCount = 0;
 
 			Action<Key, Record> collect = (key, record) =>
 			{
+				Assert.IsNotNull(key);
+				Assert.IsNotNull(record, "Primary query must return record data when bin names are requested.");
+				Assert.IsNotNull(key.userKey, "Query keys must include userKey when records are written with sendKey.");
 				keys.Add(key.userKey.ToString());
+
 				if (record.bins.ContainsKey(valueBin))
 				{
 					valueCount++;
+				}
+
+				if (record.bins.ContainsKey(payloadBin))
+				{
+					payloadCount++;
 				}
 			};
 
 			client.Query(null, stmt, collect);
 
 			Assert.AreEqual(4, keys.Count);
-			Assert.AreEqual(3, valueCount, "Expected three seeded integer records plus one payload-only record.");
+			Assert.AreEqual(3, valueCount, "Expected three seeded integer records.");
+			Assert.AreEqual(1, payloadCount, "Expected one large payload record.");
 			Assert.IsTrue(keys.Contains("primary-large"));
 		}
 

@@ -200,7 +200,7 @@ namespace Aerospike.Client
 		{
 			StringBuilder sb = new StringBuilder(len * 2);
 
-			for (int i = offset; i < len; i++)
+			for (int i = offset; i < offset + len; i++)
 			{
 				sb.Append(string.Format("{0:x2}", buf[i]));
 			}
