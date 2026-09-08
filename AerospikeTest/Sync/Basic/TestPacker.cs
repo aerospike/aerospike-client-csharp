@@ -269,6 +269,63 @@ namespace Aerospike.Test
 			Assert.IsTrue(lowOffset < highOffset);
 		}
 
+		[TestMethod]
+		public void SortMapsOrdersGeoJsonKeysLexicographically()
+		{
+			string low = "{ \"type\": \"Point\", \"coordinates\": [ -122.1, 37.4 ] }";
+			string high = "{ \"type\": \"Point\", \"coordinates\": [ -122.2, 37.5 ] }";
+			Hashtable map = new()
+			{
+				[Value.GetAsGeoJSON(high)] = "high",
+				[Value.GetAsGeoJSON(low)] = "low"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int lowOffset = IndexOf(packed, PackGeoJsonKey(low));
+			int highOffset = IndexOf(packed, PackGeoJsonKey(high));
+			Assert.IsTrue(lowOffset >= 0);
+			Assert.IsTrue(highOffset >= 0);
+			Assert.IsTrue(lowOffset < highOffset);
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersExtKeysLexicographically()
+		{
+			byte[] low = [0x01, 0x02];
+			byte[] high = [0x01, 0x03];
+			Hashtable map = new()
+			{
+				[Value.GetAsHLL(high)] = "high",
+				[Value.GetAsHLL(low)] = "low"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int lowOffset = IndexOf(packed, PackExtKey(low, ParticleType.HLL));
+			int highOffset = IndexOf(packed, PackExtKey(high, ParticleType.HLL));
+			Assert.IsTrue(lowOffset >= 0);
+			Assert.IsTrue(highOffset >= 0);
+			Assert.IsTrue(lowOffset < highOffset);
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersNestedMapsWithSameEntryCountDifferentKeys()
+		{
+			Hashtable innerA = new() { ["a"] = 1, ["b"] = 2 };
+			Hashtable innerB = new() { ["a"] = 1, ["c"] = 3 };
+			Hashtable map = new()
+			{
+				[innerB] = "b-key",
+				[innerA] = "a-key"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int innerAOffset = IndexOf(packed, PackNestedMapKey(innerA));
+			int innerBOffset = IndexOf(packed, PackNestedMapKey(innerB));
+			Assert.IsTrue(innerAOffset >= 0);
+			Assert.IsTrue(innerBOffset >= 0);
+			Assert.IsTrue(innerAOffset < innerBOffset, "Inner map with lexicographically smaller keys must sort first.");
+		}
+
 		private static byte[] PackCanonicalMap(IDictionary map)
 		{
 			Packer packer = new();
@@ -309,6 +366,28 @@ namespace Aerospike.Test
 		{
 			Packer packer = new();
 			packer.PackParticleBytes(value);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackGeoJsonKey(string value)
+		{
+			Packer packer = new();
+			packer.PackGeoJSON(value);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackExtKey(byte[] value, ParticleType type)
+		{
+			Packer packer = new();
+			packer.PackParticleBytes(value, type);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackNestedMapKey(IDictionary map)
+		{
+			Packer packer = new();
+			packer.SortMaps(true);
+			packer.PackMap(map);
 			return packer.ToByteArray();
 		}
 

@@ -431,6 +431,62 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void TxnBatchLargeCommit()
+		{
+			const int keyCount = 64;
+			Key[] keys = new Key[keyCount];
+			Bin bin = new(binName, 1);
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "txnBatchLarge" + i);
+				keys[i] = key;
+				client.Put(null, key, bin);
+			}
+
+			Record[] recs = client.Get(null, keys);
+			AssertBatchEqual(keys, recs, 1);
+
+			using Txn txn = new(keyCount, keyCount);
+			bin = new(binName, 2);
+
+			BatchPolicy bp = BatchPolicy.WriteDefault();
+			bp.Txn = txn;
+
+			recs = client.Get(bp, keys);
+			AssertBatchEqual(keys, recs, 1);
+
+			BatchResults bresults = client.Operate(bp, null, keys, Operation.Put(bin));
+
+			if (!bresults.status)
+			{
+				StringBuilder sb = new();
+				sb.Append("Batch failed:");
+				sb.Append(System.Environment.NewLine);
+
+				foreach (BatchRecord br in bresults.records)
+				{
+					if (br.resultCode == 0)
+					{
+						sb.Append("Record: " + br.record);
+					}
+					else
+					{
+						sb.Append("ResultCode: " + br.resultCode);
+					}
+					sb.Append(System.Environment.NewLine);
+				}
+
+				throw new AerospikeException(sb.ToString());
+			}
+
+			client.Commit(txn);
+
+			recs = client.Get(null, keys);
+			AssertBatchEqual(keys, recs, 2);
+		}
+
+		[TestMethod]
 		public void TxnBatchAbort()
 		{
 			var keys = new Key[10];
