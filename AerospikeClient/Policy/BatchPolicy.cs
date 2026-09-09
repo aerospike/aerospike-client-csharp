@@ -20,6 +20,14 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Batch parent policy.
+	/// <para>
+	/// Batch commands group keys by cluster node into sub-batches. When a node sub-batch
+	/// contains only one key, the client sends the equivalent single-record command instead
+	/// of the batch wire protocol — for example, <see cref="IAerospikeClient.Get(Policy, Key)"/>
+	/// for batch read, <see cref="IAerospikeClient.Operate(WritePolicy, Key, Operation[])"/>
+	/// for batch operate, or <see cref="IAerospikeClient.Delete(WritePolicy, Key)"/> for batch delete.
+	/// Application-level special-casing for single-key batches is unnecessary.
+	/// </para>
 	/// </summary>
 	public class BatchPolicy : Policy
 	{

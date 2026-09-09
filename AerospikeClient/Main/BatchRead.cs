@@ -19,6 +19,10 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Batch key and read only operations with default policy.
 	/// Used in batch read commands where different bins are needed for each key.
+	/// <para>
+	/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+	/// <see cref="BatchPolicy"/>.
+	/// </para>
 	/// </summary>
 	public sealed class BatchRead : BatchRecord
 	{

@@ -252,6 +252,7 @@ namespace Aerospike.Client
 		/// The policy specifies the command timeout.
 		/// </para>
 		/// </summary>
+		/// <seealso cref="Delete(BatchPolicy, BatchDeletePolicy, CancellationToken, Key[])"/>
 		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
@@ -273,7 +274,12 @@ namespace Aerospike.Client
 		/// Asynchronously delete records for specified keys.
 		/// Create listener, call asynchronous delete and return task monitor.
 		/// <para>Requires server version 6.0+</para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Delete(WritePolicy, CancellationToken, Key)"/>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -380,6 +386,7 @@ namespace Aerospike.Client
 		/// Asynchronously determine if a record key exists.
 		/// Create listener, call asynchronous exists and return task monitor.
 		/// </summary>
+		/// <seealso cref="Exists(BatchPolicy, CancellationToken, Key[])"/>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
@@ -400,7 +407,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously check if multiple record keys exist in one batch call.
 		/// Create listener, call asynchronous array exists and return task monitor.
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Exists(Policy, CancellationToken, Key)"/>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
@@ -437,6 +449,7 @@ namespace Aerospike.Client
 		/// Asynchronously read entire record for specified key.
 		/// Create listener, call asynchronous get and return task monitor.
 		/// </summary>
+		/// <seealso cref="Get(BatchPolicy, CancellationToken, Key[])"/>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
@@ -458,6 +471,7 @@ namespace Aerospike.Client
 		/// Asynchronously read record header and bins for specified key.
 		/// Create listener, call asynchronous get and return task monitor.
 		/// </summary>
+		/// <seealso cref="Get(BatchPolicy, CancellationToken, Key[], string[])"/>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
@@ -509,7 +523,12 @@ namespace Aerospike.Client
 		/// <para>
 		/// Create listener, call asynchronous batch get and return task monitor.
 		/// </para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Get(Policy, CancellationToken, Key)"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
@@ -554,7 +573,12 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Get(Policy, CancellationToken, Key)"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
@@ -595,7 +619,12 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Get(Policy, CancellationToken, Key, string[])"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
@@ -639,7 +668,12 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Operate(WritePolicy, CancellationToken, Key, Operation[])"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
@@ -737,6 +771,8 @@ namespace Aerospike.Client
 		/// performed in same call.
 		/// </para>
 		/// </summary>
+		/// <seealso cref="Operate(BatchPolicy, CancellationToken, List{BatchRecord})"/>
+		/// <seealso cref="Operate(BatchPolicy, BatchWritePolicy, CancellationToken, Key[], Operation[])"/>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
@@ -770,7 +806,12 @@ namespace Aerospike.Client
 		/// Key-specific failures are stored in each <see cref="BatchRecord.resultCode"/>;
 		/// scheduling, command, or node failures can fault the task.
 		/// <para>Requires server version 6.0+</para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Operate(WritePolicy, CancellationToken, Key, Operation[])"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="records">list of unique record identifiers and read/write operations</param>
@@ -823,7 +864,12 @@ namespace Aerospike.Client
 		/// Return a task containing per-key results. Inspect <see cref="BatchResults.status"/>,
 		/// <see cref="BatchRecord.resultCode"/>, and <see cref="BatchRecord.inDoubt"/>.
 		/// <para>Requires server version 6.0+</para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Operate(WritePolicy, CancellationToken, Key, Operation[])"/>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
