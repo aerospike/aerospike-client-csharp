@@ -69,8 +69,8 @@ internal static class ExampleStateValidation
 
 	public static void ErrorMessage(IAerospikeClient client, Arguments args)
 	{
-		ExampleFixtureSupport.AssertBin(client, args, "error-message-key", "error-message-bin", 1L);
-		ExampleFixtureSupport.AssertBin(client, args, "error-message-key-2", "error-message-bin", "hello");
+		ExampleFixtureSupport.AssertBin(client, args, "error-message-key", "errmsg-bin", 1L);
+		ExampleFixtureSupport.AssertBin(client, args, "error-message-key-2", "errmsg-bin", "hello");
 		ExampleFixtureSupport.AssertBin(client, args, "error-message-key-3", "other-bin", 1L);
 
 		Record record = client.Get(args.policy, ExampleFixtureSupport.Key(args, "error-message-key-3"), "no-hll-bin");

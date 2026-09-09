@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -35,7 +35,7 @@ namespace Aerospike.Test
 	/// The test bootstraps two extra users (one privileged reader, one unprivileged user)
 	/// and connects an additional client per role. The whole class is skipped when
 	/// security is disabled, no admin credentials are supplied, the cluster is not
-	/// Enterprise Edition, or the server is older than 8.1.3 (where masking and string
+	/// Enterprise Edition, or the server is older than 8.2.0 (where masking and string
 	/// ops are jointly supported).
 	/// </para>
 	/// <para>
@@ -81,7 +81,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void SetupUsersAndRule(TestContext testContext)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "string operations");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "string operations");
 			if (!SuiteHelpers.enterprise)
 			{
 				Assert.Inconclusive("Data masking requires Enterprise Edition");

@@ -24,11 +24,11 @@ public sealed class OperateString : SyncExample
 	private const string BinName = "text";
 
 	/// <summary>
-	/// Demonstrate string operations. Requires server version 8.1.3 or later.
+	/// Demonstrate string operations. Requires server version 8.2.0 or later.
 	/// </summary>
 	public override void RunExample()
 	{
-		RequireMinServerVersion(Node.SERVER_VERSION_8_1_3);
+		RequireMinServerVersion(Node.SERVER_VERSION_8_2_0);
 
 		RunReadOps();
 		RunModifyOps();

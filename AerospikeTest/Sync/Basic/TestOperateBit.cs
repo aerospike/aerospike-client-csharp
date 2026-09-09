@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -446,7 +446,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitB64Encode()
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "bit b64Encode");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "bit b64Encode");
 
 			byte[] initial = [0x01, 0x42, 0x03];
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkeyb64");
@@ -474,7 +474,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateBitB64EncodeRoundTripsThroughB64Decode()
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "bit b64Encode");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "bit b64Encode");
 
 			byte[] initial = [0xDE, 0xAD, 0xBE, 0xEF];
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "opbkeyb64rt");

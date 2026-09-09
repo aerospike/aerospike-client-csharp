@@ -53,7 +53,7 @@ namespace Aerospike.Client
 		/// record, populated when the batch opted into
 		/// <see cref="Policy.errorDetailVerbosity"/> greater than zero and the server attached
 		/// an extended error detail. <c>null</c> otherwise.
-		/// Requires server version 8.1.3+.
+		/// Requires server version 8.2.0+.
 		/// </summary>
 		public string serverMessage;
 

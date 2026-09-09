@@ -25,11 +25,11 @@ public sealed class StringExpression : SyncExample
 	private const string ResultBinName = "result";
 
 	/// <summary>
-	/// Demonstrate string expression builders. Requires server version 8.1.3 or later.
+	/// Demonstrate string expression builders. Requires server version 8.2.0 or later.
 	/// </summary>
 	public override void RunExample()
 	{
-		RequireMinServerVersion(Node.SERVER_VERSION_8_1_3);
+		RequireMinServerVersion(Node.SERVER_VERSION_8_2_0);
 
 		RunReadExpressions();
 		RunModifyExpressions();

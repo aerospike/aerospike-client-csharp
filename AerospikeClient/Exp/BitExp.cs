@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -418,7 +418,7 @@ namespace Aerospike.Client
 		/// </code>
 		/// </example>
 		/// <para>
-		/// Requires server version 8.1.3 or later.
+		/// Requires server version 8.2.0 or later.
 		/// </para>
 		public static Exp B64Encode(Exp bin)
 		{
@@ -439,7 +439,7 @@ namespace Aerospike.Client
 		/// </code>
 		/// </example>
 		/// <para>
-		/// Requires server version 8.1.3 or later.
+		/// Requires server version 8.2.0 or later.
 		/// </para>
 		public static Exp B64Encode(Exp byteOffset, Exp byteSize, Exp bin)
 		{
@@ -466,7 +466,7 @@ namespace Aerospike.Client
 		/// </code>
 		/// </example>
 		/// <para>
-		/// Requires server version 8.1.3 or later.
+		/// Requires server version 8.2.0 or later.
 		/// </para>
 		public static Exp B64Encode(Exp byteOffset, Exp byteSize, bool invertSize, Exp bin)
 		{

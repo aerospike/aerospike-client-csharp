@@ -23,8 +23,8 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// Integer index.
-		/// For use with server versions 8.1.3+.
-		/// For server versions prior to 8.1.3, use NUMERIC.
+		/// For use with server versions 8.2.0+.
+		/// For server versions prior to 8.2.0, use NUMERIC.
 		/// </summary>
 		INTEGER,
 
@@ -45,8 +45,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Number index.
-		/// For use with server versions prior to 8.1.3.
-		/// For server versions 8.1.3+, use INTEGER.
+		/// For use with server versions prior to 8.2.0.
+		/// For server versions 8.2.0+, use INTEGER.
 		/// </summary>
 		NUMERIC
 	}

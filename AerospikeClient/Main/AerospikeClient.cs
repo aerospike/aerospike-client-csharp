@@ -2857,11 +2857,11 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				if (indexType == IndexType.NUMERIC && node.serverVersion >= Node.SERVER_VERSION_8_1_3)
+				if (indexType == IndexType.NUMERIC && node.serverVersion >= Node.SERVER_VERSION_8_2_0)
 				{
 					indexType = IndexType.INTEGER;
 				}
-				else if (indexType == IndexType.INTEGER && node.serverVersion < Node.SERVER_VERSION_8_1_3)
+				else if (indexType == IndexType.INTEGER && node.serverVersion < Node.SERVER_VERSION_8_2_0)
 				{
 					indexType = IndexType.NUMERIC;
 				}

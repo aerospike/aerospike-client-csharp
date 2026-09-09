@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -27,7 +27,7 @@ namespace Aerospike.Test
 	/// (e.g. "uppercase mutates the bin", "find returns the first match index").
 	/// </para>
 	/// <para>
-	/// String operations require server version 8.1.3+; the tests are skipped
+	/// String operations require server version 8.2.0+; the tests are skipped
 	/// on older clusters via the test assumptions.
 	/// </para>
 	/// </summary>
@@ -37,11 +37,13 @@ namespace Aerospike.Test
 		private const string bin = "sbin";
 		private static readonly Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "stringop-key");
 		private static readonly StringPolicy policy = StringPolicy.Default;
+		// Ceiling the server puts on a modify op's estimated result size.
+		private const int ResultSizeCap = 8 * 1024 * 1024;
 
 		[ClassInitialize]
 		public static void ServerVersionCheck(TestContext testContext)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "string operations");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "string operations");
 		}
 
 		//-----------------------------------------------------------------
@@ -180,29 +182,79 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void FindAndContainsRequireMatchingNormalizationForm()
+		public void FindAndContainsMatchAcrossNormalizationForms()
 		{
-			// "café" can be stored as NFC (U+00E9, 1 codepoint, 2 UTF-8 bytes) or NFD
-			// (U+0065 U+0301, 2 codepoints, 3 UTF-8 bytes). They render identically but
-			// are distinct byte sequences. The server's find / contains uses ICU binary
-			// string search — NFC and NFD are NOT considered equal. Callers who need
-			// normalization-insensitive search must normalizeNFC the bin (and the needle)
-			// first. This test anchors the contract so a future change to ICU comparison
-			// mode does not silently flip the behavior.
-			string NFC = "caf\u00E9";       // "café" composed
-			string NFD = "cafe\u0301";      // "café" decomposed
+			// Spec §2.4: find and contains treat precomposed and decomposed forms as equal
+			// via get_canon_search (SERVER-1565).
+			string NFC = "caf\u00E9";       // "café" composed (5 UTF-8 bytes)
+			string NFD = "cafe\u0301";      // "café" decomposed (6 UTF-8 bytes)
 
 			Put(NFC);
-			// NFC haystack vs NFC needle — match.
+			// Both NFC — binary fast path.
 			Record r = Operate(StringOperation.Find(bin, NFC));
 			Assert.AreEqual(0L, r.GetLong(bin));
 			r = Operate(StringOperation.Contains(bin, NFC));
 			Assert.IsTrue(r.GetBool(bin));
-			// NFC haystack vs NFD needle — no match (byte sequences differ).
+			// Forms differ — canonical ICU path; NFD needle is byte-longer than NFC haystack.
 			r = Operate(StringOperation.Find(bin, NFD));
-			Assert.AreEqual(-1L, r.GetLong(bin));
+			Assert.AreEqual(0L, r.GetLong(bin));
 			r = Operate(StringOperation.Contains(bin, NFD));
-			Assert.IsFalse(r.GetBool(bin));
+			Assert.IsTrue(r.GetBool(bin));
+		}
+
+		[TestMethod]
+		public void FindRejectsLongerNonEquivalentNeedle()
+		{
+			// Control from SERVER-1565 EE tests: a needle that is longer only because it is
+			// genuinely not a substring must still miss after the byte-length guard removal.
+			Put("ab");
+			Assert.AreEqual(-1L, Operate(StringOperation.Find(bin, "abc")).GetLong(bin));
+			Assert.IsFalse(Operate(StringOperation.Contains(bin, "abc")).GetBool(bin));
+		}
+
+		[TestMethod]
+		public void ReplaceMatchesAcrossNormalizationForms()
+		{
+			// replace / replace_all share get_canon_search with find / contains (SERVER-1577).
+			string NFC = "caf\u00E9";
+			string NFD = "cafe\u0301";
+
+			Put(NFC);
+			Operate(StringOperation.Replace(policy, bin, NFD, "tea"));
+			Assert.AreEqual("tea", StringValue());
+
+			Put(NFD);
+			Operate(StringOperation.Replace(policy, bin, NFC, "tea"));
+			Assert.AreEqual("tea", StringValue());
+
+			Put("aa" + NFC + "aa");
+			Operate(StringOperation.ReplaceAll(policy, bin, NFD, "x"));
+			Assert.AreEqual("aaxaa", StringValue());
+		}
+
+		[TestMethod]
+		public void ReplaceWithNeedleLongerThanBinIsNoOp()
+		{
+			// SERVER-1577: replace must not PARAMETER_ERROR when the needle is longer than
+			// the bin on a miss — same as find (-1) / startsWith (false).
+			Put("ab");
+			Operate(StringOperation.Replace(policy, bin, "abc", "x"));
+			Assert.AreEqual("ab", StringValue());
+		}
+
+		[TestMethod]
+		public void StartsWithAndEndsWithMatchAcrossNormalizationForms()
+		{
+			// startsWith / endsWith also route through get_canon_search — matching is
+			// canonical, not byte-exact.
+			string NFC = "caf\u00E9";
+			string NFD = "cafe\u0301";
+
+			Put("prefix" + NFC + "suffix");
+			Record r = Operate(StringOperation.StartsWith(bin, "prefix" + NFD));
+			Assert.IsTrue(r.GetBool(bin));
+			r = Operate(StringOperation.EndsWith(bin, NFD + "suffix"));
+			Assert.IsTrue(r.GetBool(bin));
 		}
 
 		[TestMethod]
@@ -660,6 +712,31 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void SnipFromNegativeStartCountsFromEnd()
+		{
+			Put("hello world");
+			Operate(StringOperation.Snip(policy, bin, -5));
+			Assert.AreEqual("hello ", StringValue());
+		}
+
+		[TestMethod]
+		public void SnipFromPacksStartWithoutFlagsElement()
+		{
+			Operation op = StringOperation.Snip(policy, bin, 5);
+			byte[] bytes = ((Value.BytesValue)op.value).Bytes;
+			List<object> args = (List<object>)new Unpacker(bytes, 0, bytes.Length, false).UnpackList();
+
+			Assert.HasCount(2, args);
+			Assert.AreEqual(53L, args[0]);
+			Assert.AreEqual(5L, args[1]);
+
+			Operation range = StringOperation.Snip(policy, bin, 5, 11);
+			byte[] rangeBytes = ((Value.BytesValue)range.value).Bytes;
+			List<object> rangeArgs = (List<object>)new Unpacker(rangeBytes, 0, rangeBytes.Length, false).UnpackList();
+			CollectionAssert.AreEqual(new List<object> { 53L, 5L, 11L, 0L }, rangeArgs);
+		}
+
+		[TestMethod]
 		public void ReplaceTouchesOnlyFirstOccurrence()
 		{
 			Put("hello world world");
@@ -1024,6 +1101,54 @@ namespace Aerospike.Test
 			Assert.AreEqual((long)StringWriteFlags.CREATE_ONLY, args[2]);
 		}
 
+		[TestMethod]
+		public void UpdateOnlyOnMissingBinDoesNotCreateIt()
+		{
+			client.Delete(null, key);
+			client.Put(null, key, new Bin("other", "untouched"));
+
+			StringPolicy updateOnly = new(StringWriteFlags.UPDATE_ONLY);
+			Operate(StringOperation.Append(updateOnly, bin, "hello"));
+
+			Record r = client.Get(null, key);
+			Assert.IsNull(r.GetValue(bin));
+			Assert.AreEqual("untouched", r.GetString("other"));
+		}
+
+		[TestMethod]
+		public void UpdateOnlyAppliesToNonCreateModifyOp()
+		{
+			Put("hello");
+
+			Operate(StringOperation.Upper(new(StringWriteFlags.UPDATE_ONLY), bin));
+
+			Assert.AreEqual("HELLO", StringValue());
+		}
+
+		[TestMethod]
+		public void CreateOnlyOnNonCreateModifyOpRaisesParameterError()
+		{
+			Put("hello");
+
+			AssertParamError(StringOperation.Upper(new(StringWriteFlags.CREATE_ONLY), bin));
+			Assert.AreEqual("hello", StringValue());
+		}
+
+		[TestMethod]
+		public void CreateOnlyWithContextAndNoFailRaisesParameterError()
+		{
+			List<Value> list = [Value.Get("alpha"), Value.Get("beta")];
+			client.Delete(null, key);
+			client.Put(null, key, new Bin(bin, list));
+
+			StringPolicy createNoFail = new(
+				StringWriteFlags.CREATE_ONLY | StringWriteFlags.NO_FAIL);
+			AssertParamError(StringOperation.Append(createNoFail, bin, "!", CTX.ListIndex(1)));
+
+			IList after = client.Get(null, key).GetList(bin);
+			CollectionAssert.AreEqual(new List<object> { "alpha", "beta" }, after);
+		}
+
 		//=================================================================
 		// Multi-op pipelines
 		//=================================================================
@@ -1386,7 +1511,7 @@ namespace Aerospike.Test
 			Assert.AreEqual("untouched", r.GetString("other"));
 		}
 
-		// All eight additive ops create a missing bin from empty in server 8.1.3
+		// All eight additive ops create a missing bin from empty in server 8.2.0
 		// (string ops + SERVER-97 PR 1452, which adds overwrite/repeat/padStart/
 		// padEnd to the create-op set). Transform/subtractive ops still no-op.
 		// append is covered above in the append section.
@@ -1542,9 +1667,61 @@ namespace Aerospike.Test
 			Put("hello");
 			// Unclosed character class — PCRE2 compile fails inside the op.
 			// Server returns PARAMETER_ERROR (the server doc table lists this row as
-			// "OP_NOT_APPLICABLE / error"; observed behavior on 8.1.3 is PARAMETER).
+			// "OP_NOT_APPLICABLE / error"; observed behavior on 8.2.0 is PARAMETER).
 			AssertParamError(StringOperation.RegexReplace(
 				policy, bin, "[unclosed", "NUM", StringRegexFlags.DEFAULT));
+		}
+
+		//=================================================================
+		// Result-size cap
+		//
+		// Modify ops bound their estimated result at prepare time
+		// (particle_string.c string_modify_set_estimated_size). Exceeding the
+		// bound is PARAMETER_ERROR and nothing is written, so it is reported
+		// independently of RECORD_TOO_BIG — which the same ops raise for a
+		// result that clears the cap but outgrows the namespace record limit.
+		//=================================================================
+
+		private void AssertResultSizeCapViolation(Operation op)
+		{
+			AerospikeException ae = Assert.Throws<AerospikeException>(() => Operate(op));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+			Assert.AreNotEqual(ResultCode.RECORD_TOO_BIG, ae.Result);
+		}
+
+		[TestMethod]
+		public void RepeatPastResultSizeCapRaisesParameterError()
+		{
+			Put("hello");
+			// Estimated as old_size * count.
+			AssertResultSizeCapViolation(StringOperation.Repeat(policy, bin, ResultSizeCap));
+		}
+
+		[TestMethod]
+		public void PadStartPastResultSizeCapRaisesParameterError()
+		{
+			Put("hello");
+			// Estimated as targetLength * 4 — worst-case UTF-8 expansion.
+			AssertResultSizeCapViolation(
+				StringOperation.PadStart(policy, bin, ResultSizeCap / 4 + 1, "*"));
+		}
+
+		[TestMethod]
+		public void PadEndPastResultSizeCapRaisesParameterError()
+		{
+			Put("hello");
+			AssertResultSizeCapViolation(
+				StringOperation.PadEnd(policy, bin, ResultSizeCap / 4 + 1, "*"));
+		}
+
+		[TestMethod]
+		public void ConcatPastResultSizeCapRaisesParameterError()
+		{
+			Put("hello");
+			// Estimated as old_size + argument size, so only the argument can carry
+			// the result past the cap.
+			AssertResultSizeCapViolation(
+				StringOperation.Concat(policy, bin, new string('x', ResultSizeCap)));
 		}
 	}
 }

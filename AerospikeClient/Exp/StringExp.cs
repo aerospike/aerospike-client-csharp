@@ -54,7 +54,7 @@ namespace Aerospike.Client
 	/// the leaf, then pass the resulting <see cref="Exp"/> as <see cref="Exp"/> src.
 	/// </para>
 	/// <para>
-	/// String expressions require server version 8.1.3 or later.
+	/// String expressions require server version 8.2.0 or later.
 	/// </para>
 	/// </summary>
 	/// <example>
@@ -163,6 +163,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that returns the codepoint index of the first occurrence of
 		/// <see cref="Exp"/> needle in <see cref="Exp"/> src, or <code>Exp.Val(-1)</code> if not found.
+		/// Matching is Unicode canonical, not byte-exact: precomposed and decomposed forms of the
+		/// same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -183,6 +185,8 @@ namespace Aerospike.Client
 		/// Create expression that returns the codepoint index of the <see cref="Exp"/> occurrence-th
 		/// match of <see cref="Exp"/> needle (<code>Exp.Val(1)</code> = first, <code>Exp.Val(-1)</code> = last), or <code>Exp.Val(-1)</code>
 		/// if not found.
+		/// Matching is Unicode canonical, not byte-exact: precomposed and decomposed forms of the
+		/// same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -203,6 +207,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src contains <see cref="Exp"/> needle as a
 		/// substring. Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// Matching is Unicode canonical, not byte-exact: precomposed and decomposed forms of the
+		/// same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -222,6 +228,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src begins with <see cref="Exp"/> prefix.
 		/// Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// Matching is Unicode canonical, not byte-exact: precomposed and decomposed forms of the
+		/// same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -240,6 +248,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create expression that tests whether <see cref="Exp"/> src ends with <see cref="Exp"/> suffix.
 		/// Returns <c>true</c> on match, <c>false</c> otherwise.
+		/// Matching is Unicode canonical, not byte-exact: precomposed and decomposed forms of the
+		/// same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -257,7 +267,9 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that parses <see cref="Exp"/> src as an int64. Leading whitespace is
-		/// rejected. The expression returns an error if the source cannot be parsed as an integer.
+		/// rejected. Fails with <see cref="ResultCode.OP_NOT_APPLICABLE"/> and subcode
+		/// <see cref="SubCode.OPNOT_STRING_CONVERSION_FAILED"/> if the source cannot be parsed as
+		/// an integer.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -276,8 +288,9 @@ namespace Aerospike.Client
 		/// Create expression that parses <see cref="Exp"/> src as a 64-bit float. Accepts decimal and
 		/// exponent forms and case-insensitive <c>inf</c>/<c>nan</c>, but rejects leading whitespace,
 		/// hex literals, a decimal point with no trailing digit, and parenthesized nan payloads.
-		/// The expression returns an error if parsing fails. <see cref="IsNumeric(Exp)"/> is not a
-		/// reliable pre-check for this conversion.
+		/// Fails with <see cref="ResultCode.OP_NOT_APPLICABLE"/> and subcode
+		/// <see cref="SubCode.OPNOT_STRING_CONVERSION_FAILED"/> if parsing fails.
+		/// <see cref="IsNumeric(Exp)"/> is not a reliable pre-check for this conversion.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -440,6 +453,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that base64-decodes <see cref="Exp"/> src and returns the decoded bytes as a blob.
+		/// Fails with <see cref="ResultCode.OP_NOT_APPLICABLE"/> and subcode
+		/// <see cref="SubCode.OPNOT_STRING_B64_INVALID"/> if the source does not hold valid base64.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -512,7 +527,9 @@ namespace Aerospike.Client
 		///     Exp.Val(5), Exp.Val(" beautiful"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="index">codepoint index at which to insert (negative counts from end)</param>
 		/// <param name="value">text to insert</param>
 		/// <param name="src">source string expression</param>
@@ -536,7 +553,9 @@ namespace Aerospike.Client
 		///     Exp.Val(6), Exp.Val("earth"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="index">codepoint index at which to start overwriting</param>
 		/// <param name="value">text to write</param>
 		/// <param name="src">source string expression</param>
@@ -560,7 +579,9 @@ namespace Aerospike.Client
 		///     Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="values">expression yielding a list of strings to append</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the modified string</returns>
@@ -583,7 +604,9 @@ namespace Aerospike.Client
 		/// Exp out = StringExp.Append(StringPolicy.Default, Exp.Val("!"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="value">expression yielding the string to append to the end</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the modified string</returns>
@@ -606,7 +629,9 @@ namespace Aerospike.Client
 		/// Exp out = StringExp.Prepend(StringPolicy.Default, Exp.Val("hello "), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="value">expression yielding the string to prepend to the start</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the modified string</returns>
@@ -647,7 +672,9 @@ namespace Aerospike.Client
 		///     Exp.Val(5), Exp.Val(15), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="start">first codepoint to remove (inclusive)</param>
 		/// <param name="end">one past the last codepoint to remove (exclusive)</param>
 		/// <param name="src">source string expression</param>
@@ -662,6 +689,8 @@ namespace Aerospike.Client
 		/// Create expression that replaces the first occurrence of <see cref="Exp"/> needle in
 		/// <see cref="Exp"/> src with <see cref="Exp"/> replacement and returns the resulting string. Does not
 		/// modify the underlying bin.
+		/// Needle matching is Unicode canonical, not byte-exact: precomposed and decomposed forms
+		/// of the same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -670,7 +699,9 @@ namespace Aerospike.Client
 		///     Exp.Val("world"), Exp.Val("earth"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="needle">substring to find</param>
 		/// <param name="replacement">text to substitute (may be empty to delete the match)</param>
 		/// <param name="src">source string expression</param>
@@ -685,6 +716,8 @@ namespace Aerospike.Client
 		/// Create expression that replaces every occurrence of <see cref="Exp"/> needle in
 		/// <see cref="Exp"/> src with <see cref="Exp"/> replacement and returns the resulting string. Does not
 		/// modify the underlying bin.
+		/// Needle matching is Unicode canonical, not byte-exact: precomposed and decomposed forms
+		/// of the same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -693,7 +726,9 @@ namespace Aerospike.Client
 		///     Exp.Val("a"), Exp.Val("x"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="needle">substring to find</param>
 		/// <param name="replacement">text to substitute (may be empty to delete each match)</param>
 		/// <param name="src">source string expression</param>
@@ -713,7 +748,9 @@ namespace Aerospike.Client
 		/// Exp out = StringExp.Upper(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the uppercased string</returns>
 		public static Exp Upper(StringPolicy policy, Exp src)
@@ -731,7 +768,9 @@ namespace Aerospike.Client
 		/// Exp out = StringExp.Lower(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the lowercased string</returns>
 		public static Exp Lower(StringPolicy policy, Exp src)
@@ -750,7 +789,9 @@ namespace Aerospike.Client
 		/// Exp out = StringExp.CaseFold(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the case-folded string</returns>
 		public static Exp CaseFold(StringPolicy policy, Exp src)
@@ -768,7 +809,9 @@ namespace Aerospike.Client
 		/// Exp out = StringExp.NormalizeNFC(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the NFC-normalized string</returns>
 		public static Exp NormalizeNFC(StringPolicy policy, Exp src)
@@ -787,7 +830,9 @@ namespace Aerospike.Client
 		/// Exp out = StringExp.TrimStart(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the left-trimmed string</returns>
 		public static Exp TrimStart(StringPolicy policy, Exp src)
@@ -806,7 +851,9 @@ namespace Aerospike.Client
 		/// Exp out = StringExp.TrimEnd(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the right-trimmed string</returns>
 		public static Exp TrimEnd(StringPolicy policy, Exp src)
@@ -825,7 +872,9 @@ namespace Aerospike.Client
 		/// Exp out = StringExp.Trim(StringPolicy.Default, Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the trimmed string</returns>
 		public static Exp Trim(StringPolicy policy, Exp src)
@@ -846,7 +895,9 @@ namespace Aerospike.Client
 		///     Exp.Val(10), Exp.Val("*"), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="targetLength">codepoint length to pad up to</param>
 		/// <param name="padString">text used to fill (repeated as needed)</param>
 		/// <param name="src">source string expression</param>
@@ -869,7 +920,9 @@ namespace Aerospike.Client
 		///     Exp.Val(10), Exp.Val("."), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="targetLength">codepoint length to pad up to</param>
 		/// <param name="padString">text used to fill (repeated as needed)</param>
 		/// <param name="src">source string expression</param>
@@ -891,7 +944,9 @@ namespace Aerospike.Client
 		///     Exp.Val(3), Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="count">number of repetitions (must be non-negative)</param>
 		/// <param name="src">source string expression</param>
 		/// <returns>string-typed expression yielding the repeated string</returns>
@@ -915,7 +970,9 @@ namespace Aerospike.Client
 		///     Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">string policy</param>
+		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
+		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
+		/// predicates and do not carry over to a source expression</param>
 		/// <param name="pattern">ICU-syntax regex pattern (must be valid UTF-8)</param>
 		/// <param name="replacement">replacement text (must be valid UTF-8)</param>
 		/// <param name="regexFlags">bitwise-OR of <see cref="StringRegexFlags"/> constants</param>
@@ -939,8 +996,10 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create expression that returns the string representation of <see cref="Exp"/> src, where
-		/// <see cref="Exp"/> src may be any expression yielding an integer, float, string, boolean, or blob
-		/// value. Returns an error for any other source type.
+		/// <see cref="Exp"/> src may be any expression yielding an integer, float, boolean, string, or blob
+		/// value. Returns <c>AEROSPIKE_ERR_INCOMPATIBLE_TYPE</c> for any other source type. A blob
+		/// source whose bytes are not valid UTF-8 fails with <see cref="ResultCode.OP_NOT_APPLICABLE"/>
+		/// and subcode <see cref="SubCode.OPNOT_STRING_UTF8_INVALID"/>.
 		/// </summary>
 		/// <example>
 		/// <code>

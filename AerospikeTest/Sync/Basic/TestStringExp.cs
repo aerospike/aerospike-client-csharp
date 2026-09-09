@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -24,7 +24,7 @@ namespace Aerospike.Test
 	/// <see cref="Expression"/> that wraps a <see cref="StringExp"/> call, evaluates it via
 	/// <see cref="ExpOperation.read"/> into a virtual bin, and asserts the result.
 	/// <para>
-	/// String expressions require server version 8.1.3+; the tests are skipped
+	/// String expressions require server version 8.2.0+; the tests are skipped
 	/// on older clusters via <see cref="Assume"/>.
 	/// </para>
 	/// <para>
@@ -41,11 +41,13 @@ namespace Aerospike.Test
 		private static readonly string var = "v";
 		private static readonly Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "stringexp-key");
 		private static readonly StringPolicy policy = StringPolicy.Default;
+		// Ceiling the server puts on a modify op's estimated result size.
+		private const int ResultSizeCap = 8 * 1024 * 1024;
 
 		[ClassInitialize]
 		public static void ServerVersionCheck(TestContext testContext)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "string operations");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "string operations");
 		}
 
 		//-----------------------------------------------------------------
@@ -157,6 +159,65 @@ namespace Aerospike.Test
 			Assert.IsTrue(r1.GetBool(var));
 			Record r2 = Eval(StringExp.EndsWith(Exp.Val("Hello"), Exp.StringBin(bin)));
 			Assert.IsFalse(r2.GetBool(var));
+		}
+
+		[TestMethod]
+		public void FindAndContainsMatchAcrossNormalizationForms()
+		{
+			string NFC = "caf\u00E9";
+			string NFD = "cafe\u0301";
+
+			Put(NFC);
+			Assert.AreEqual(0L, Eval(StringExp.Find(Exp.Val(NFC), Exp.StringBin(bin))).GetLong(var));
+			Assert.IsTrue(Eval(StringExp.Contains(Exp.Val(NFC), Exp.StringBin(bin))).GetBool(var));
+			Assert.AreEqual(0L, Eval(StringExp.Find(Exp.Val(NFD), Exp.StringBin(bin))).GetLong(var));
+			Assert.IsTrue(Eval(StringExp.Contains(Exp.Val(NFD), Exp.StringBin(bin))).GetBool(var));
+		}
+
+		[TestMethod]
+		public void FindRejectsLongerNonEquivalentNeedle()
+		{
+			Put("ab");
+			Assert.AreEqual(-1L, Eval(StringExp.Find(Exp.Val("abc"), Exp.StringBin(bin))).GetLong(var));
+			Assert.IsFalse(Eval(StringExp.Contains(Exp.Val("abc"), Exp.StringBin(bin))).GetBool(var));
+		}
+
+		[TestMethod]
+		public void ReplaceMatchesAcrossNormalizationForms()
+		{
+			string NFC = "caf\u00E9";
+			string NFD = "cafe\u0301";
+
+			Put(NFC);
+			Assert.AreEqual("tea",
+				Eval(StringExp.Replace(policy, Exp.Val(NFD), Exp.Val("tea"), Exp.StringBin(bin))).GetString(var));
+
+			Put(NFD);
+			Assert.AreEqual("tea",
+				Eval(StringExp.Replace(policy, Exp.Val(NFC), Exp.Val("tea"), Exp.StringBin(bin))).GetString(var));
+
+			Put("aa" + NFC + "aa");
+			Assert.AreEqual("aaxaa",
+				Eval(StringExp.ReplaceAll(policy, Exp.Val(NFD), Exp.Val("x"), Exp.StringBin(bin))).GetString(var));
+		}
+
+		[TestMethod]
+		public void ReplaceWithNeedleLongerThanBinIsNoOp()
+		{
+			Put("ab");
+			Assert.AreEqual("ab",
+				Eval(StringExp.Replace(policy, Exp.Val("abc"), Exp.Val("x"), Exp.StringBin(bin))).GetString(var));
+		}
+
+		[TestMethod]
+		public void StartsWithAndEndsWithMatchAcrossNormalizationForms()
+		{
+			string NFC = "caf\u00E9";
+			string NFD = "cafe\u0301";
+
+			Put(NFC);
+			Assert.IsTrue(Eval(StringExp.StartsWith(Exp.Val(NFD), Exp.StringBin(bin))).GetBool(var));
+			Assert.IsTrue(Eval(StringExp.EndsWith(Exp.Val(NFD), Exp.StringBin(bin))).GetBool(var));
 		}
 
 		[TestMethod]
@@ -435,6 +496,14 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void SnipFromNegativeStartCountsFromEnd()
+		{
+			Put("hello world");
+			Record r = Eval(StringExp.Snip(policy, Exp.Val(-5), Exp.StringBin(bin)));
+			Assert.AreEqual("hello ", r.GetString(var));
+		}
+
+		[TestMethod]
 		public void ReplaceTouchesOnlyFirstMatch()
 		{
 			Put("hello world world");
@@ -598,6 +667,60 @@ namespace Aerospike.Test
 		}
 
 		//=================================================================
+		// Wire packaging (no server I/O)
+		//=================================================================
+
+		[TestMethod]
+		public void StringOperationStrlenIsStringRead()
+		{
+			Operation op = StringOperation.Strlen("msg");
+			Assert.AreEqual(Operation.Type.STRING_READ, op.type);
+			Assert.AreEqual("msg", op.binName);
+		}
+
+		[TestMethod]
+		public void StringOperationSubstrOverloadShapes()
+		{
+			Operation suffix = StringOperation.Substr("msg", 2);
+			Operation slice = StringOperation.Substr("msg", 1, 4);
+			Assert.AreEqual(Operation.Type.STRING_READ, suffix.type);
+			Assert.AreEqual(Operation.Type.STRING_READ, slice.type);
+		}
+
+		[TestMethod]
+		public void StringExpStrlenCompilesToExpressionBytes()
+		{
+			Expression compiled = Exp.Build(StringExp.Strlen(Exp.StringBin("s")));
+			Assert.IsTrue(compiled.Bytes.Length > 0);
+		}
+
+		[TestMethod]
+		public void StringExpFindCompiles()
+		{
+			Expression compiled = Exp.Build(StringExp.Find(Exp.Val("x"), Exp.StringBin("s")));
+			Assert.IsTrue(compiled.Bytes.Length > 0);
+		}
+
+		[TestMethod]
+		public void SnipFromPacksStartWithoutFlagsElement()
+		{
+			CollectionAssert.AreEqual(
+				new List<object> { 53L, 5L },
+				SnipCallArgs(StringExp.Snip(policy, Exp.Val(5), Exp.StringBin(bin))));
+
+			CollectionAssert.AreEqual(
+				new List<object> { 53L, 5L, 15L, 0L },
+				SnipCallArgs(StringExp.Snip(policy, Exp.Val(5), Exp.Val(15), Exp.StringBin(bin))));
+		}
+
+		private static List<object> SnipCallArgs(Exp e)
+		{
+			byte[] bytes = Exp.Build(e).Bytes;
+			List<object> call = (List<object>)new Unpacker(bytes, 0, bytes.Length, false).UnpackList();
+			return (List<object>)call[3];
+		}
+
+		//=================================================================
 		// Type conversion expression
 		//=================================================================
 
@@ -676,6 +799,54 @@ namespace Aerospike.Test
 			p.filterExp = Exp.Build(StringExp.IsNumeric(
 				StringNumericType.FLOAT, Exp.StringBin(bin)));
 			Assert.IsNull(client.Get(p, key));
+		}
+
+		//=================================================================
+		// Result-size cap — expression path
+		//=================================================================
+
+		private void AssertExpResultSizeCapViolation(Exp e)
+		{
+			AerospikeException ae = Assert.Throws<AerospikeException>(() => Eval(e));
+			// Exp evaluation surfaces cap violations as PARAMETER_ERROR on some builds and
+			// OP_NOT_APPLICABLE on others; both are distinct from RECORD_TOO_BIG.
+			Assert.IsTrue(
+				ae.Result == ResultCode.PARAMETER_ERROR || ae.Result == ResultCode.OP_NOT_APPLICABLE,
+				"Unexpected result code: " + ae.Result);
+			Assert.AreNotEqual(ResultCode.RECORD_TOO_BIG, ae.Result);
+		}
+
+		[TestMethod]
+		public void RepeatPastResultSizeCapRaisesParameterError()
+		{
+			Put("hello");
+			AssertExpResultSizeCapViolation(
+				StringExp.Repeat(policy, Exp.Val(ResultSizeCap), Exp.StringBin(bin)));
+		}
+
+		[TestMethod]
+		public void PadStartPastResultSizeCapRaisesParameterError()
+		{
+			Put("hello");
+			AssertExpResultSizeCapViolation(
+				StringExp.PadStart(policy, Exp.Val(ResultSizeCap / 4 + 1), Exp.Val("*"), Exp.StringBin(bin)));
+		}
+
+		[TestMethod]
+		public void PadEndPastResultSizeCapRaisesParameterError()
+		{
+			Put("hello");
+			AssertExpResultSizeCapViolation(
+				StringExp.PadEnd(policy, Exp.Val(ResultSizeCap / 4 + 1), Exp.Val("*"), Exp.StringBin(bin)));
+		}
+
+		[TestMethod]
+		public void ConcatPastResultSizeCapRaisesParameterError()
+		{
+			Put("hello");
+			Exp values = Exp.Val(new List<string> { new string('x', ResultSizeCap) });
+			AssertExpResultSizeCapViolation(
+				StringExp.Concat(policy, values, Exp.StringBin(bin)));
 		}
 
 		//=================================================================
