@@ -45,7 +45,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void Setup(TestContext testContext)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "extended errors");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "extended errors");
 
 			stdKey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "eed-std-key");
 			scratchKey = new Key(SuiteHelpers.ns, SuiteHelpers.set, "eed-scratch-key");
@@ -398,14 +398,22 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void TestFilterFaultUnorderedMapCompareTrace()
+		public void TestFilterUnorderedMapCompareFalseTrace()
 		{
+			// SERVER-813: unordered maps compare by content; um1 != um2 so EQ is false.
 			Expression expression = Exp.Build(Exp.EQ(Exp.MapBin(BIN_MAP1), Exp.MapBin(BIN_MAP2)));
 			AerospikeException ae = ExpectFilteredGet(3, expression, ResultCode.FILTERED_OUT);
 
 			Assert.AreEqual(SubCode.NONE, ae.SubCode);
-			AssertMessageContainsAny(ae, "ordering not defined", "cannot compare an unordered map");
-			AssertEvalTrace(ae, "eq", 1, ["eq"]);
+			AssertMessageContains(ae, "filtered out");
+
+			ExpressionTrace trace = ae.ExpTrace;
+			Assert.IsNotNull(trace);
+			Assert.AreEqual(ExpressionTrace.PHASE_EVAL, trace.Phase);
+			Assert.AreEqual(ExpressionTrace.OUTCOME_FALSE, trace.Outcome);
+			Assert.AreEqual("eq", trace.Op);
+			Assert.AreEqual(1, trace.Depth);
+			CollectionAssert.AreEqual(new[] { "eq" }, trace.Path);
 		}
 
 		[TestMethod]

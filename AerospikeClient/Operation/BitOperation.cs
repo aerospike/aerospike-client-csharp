@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -420,7 +420,7 @@ namespace Aerospike.Client
 		/// <para>
 		/// This is the encode direction; <see cref="StringOperation.B64Decode(string, CTX[])"/>
 		/// is the decode direction and takes a string bin back to a blob.
-		/// Requires server version 8.1.3 or later.
+		/// Requires server version 8.2.0 or later.
 		/// </para>
 		/// </summary>
 		public static Operation B64Encode(string binName)
@@ -437,7 +437,7 @@ namespace Aerospike.Client
 		/// span is expressed in bytes, unlike the bit offsets and sizes the other bit read
 		/// operations take.
 		/// <para>
-		/// Requires server version 8.1.3 or later.
+		/// Requires server version 8.2.0 or later.
 		/// </para>
 		/// </summary>
 		public static Operation B64Encode(string binName, int byteOffset, int byteSize)
@@ -454,7 +454,7 @@ namespace Aerospike.Client
 		/// <paramref name="byteSize"/> of 0 means "to the end of the blob". When false this
 		/// behaves exactly as <see cref="B64Encode(string, int, int)"/>.
 		/// <para>
-		/// Requires server version 8.1.3 or later.
+		/// Requires server version 8.2.0 or later.
 		/// </para>
 		/// </summary>
 		public static Operation B64Encode(string binName, int byteOffset, int byteSize, bool invertSize)

@@ -26,7 +26,7 @@ namespace Aerospike.Client
 	/// negative indexes from the end, but returns <c>PARAMETER_ERROR</c> when the
 	/// resolved index falls outside <c>[0, len-1]</c> instead of clamping.
 	/// </para>
-	/// String operations require server version 8.1.3 or later. A non-empty <see cref="CTX"/>
+	/// String operations require server version 8.2.0 or later. A non-empty <see cref="CTX"/>
 	/// argument navigates into a string nested inside a list or map bin; with no CTX
 	/// the operation targets the bin itself. The CTX-navigated leaf must already be an
 	/// Aerospike string — operations on non-string leaves return
@@ -192,6 +192,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string <see cref="Operation"/> that returns the codepoint index of the first
 		/// occurrence of <see cref="string"/> needle, or <see cref="int"/> -1 if not found.
+		/// Matching is Unicode canonical, not byte-exact: precomposed and decomposed forms of the
+		/// same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -213,6 +215,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string Find operation. Returns the codepoint index of the first
 		/// occurrence of needle, or -1 if not found.
+		/// Matching is Unicode canonical, not byte-exact: precomposed and decomposed forms of the
+		/// same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -235,6 +239,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string Contains operation that returns <see cref="bool"/> true if the bin contains
 		/// <see cref="string"/> needle as a substring, <see cref="bool"/> false otherwise.
+		/// Matching is Unicode canonical, not byte-exact: precomposed and decomposed forms of the
+		/// same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -256,6 +262,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string StartsWith operation that returns <see cref="bool"/> true if the bin begins
 		/// with <see cref="string"/> prefix, <see cref="bool"/> false otherwise.
+		/// Matching is Unicode canonical, not byte-exact: precomposed and decomposed forms of the
+		/// same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -276,6 +284,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string EndsWith operation that returns <see cref="bool"/> true if the bin ends
 		/// with <see cref="string"/> suffix, <see cref="bool"/> false otherwise.
+		/// Matching is Unicode canonical, not byte-exact: precomposed and decomposed forms of the
+		/// same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -295,8 +305,9 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create string ToInteger operation that parses the string as an <see cref="int"/> and returns the parsed value.
-		/// Leading whitespace is rejected. Returns <see cref="ResultCode.OP_NOT_APPLICABLE"/> if the bin
-		/// cannot be parsed as an integer.
+		/// Leading whitespace is rejected. Fails with <see cref="ResultCode.OP_NOT_APPLICABLE"/> and
+		/// subcode <see cref="SubCode.OPNOT_STRING_CONVERSION_FAILED"/> if the bin cannot be parsed
+		/// as an integer.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -318,7 +329,8 @@ namespace Aerospike.Client
 		/// Create string ToDouble operation that parses the string as a <see cref="double"/> and returns the parsed value.
 		/// Accepts decimal and exponent forms and case-insensitive <c>inf</c>/<c>nan</c>, but rejects leading
 		/// whitespace, hex literals, a decimal point with no trailing digit (for example <c>"5."</c>), and
-		/// parenthesized nan payloads. Returns <see cref="ResultCode.OP_NOT_APPLICABLE"/> if parsing fails.
+		/// parenthesized nan payloads. Fails with <see cref="ResultCode.OP_NOT_APPLICABLE"/> and subcode
+		/// <see cref="SubCode.OPNOT_STRING_CONVERSION_FAILED"/> if parsing fails.
 		/// <see cref="IsNumeric(string, CTX[])"/> is not a reliable pre-check: values such as <c>"1e5"</c>
 		/// and <c>"inf"</c> parse here but are false under every <see cref="StringNumericType"/> filter.
 		/// </summary>
@@ -505,7 +517,9 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create string B64Decode operation that treats the bin as base64-encoded text
-		/// and returns the decoded bytes as a blob.
+		/// and returns the decoded bytes as a blob. Fails with
+		/// <see cref="ResultCode.OP_NOT_APPLICABLE"/> and subcode
+		/// <see cref="SubCode.OPNOT_STRING_B64_INVALID"/> if the bin does not hold valid base64.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -582,7 +596,8 @@ namespace Aerospike.Client
 		///     StringOperation.Insert(StringPolicy.Default, "text", 5, " beautiful"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.CREATE_ONLY"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values all apply to this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="index">codepoint index at which to insert (negative counts from end)</param>
 		/// <param name="value">text to insert</param>
@@ -608,7 +623,8 @@ namespace Aerospike.Client
 		///     StringOperation.Overwrite(StringPolicy.Default, "text", 6, "earth"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.CREATE_ONLY"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values all apply to this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="index">codepoint index at which to start overwriting</param>
 		/// <param name="value">text to write</param>
@@ -630,7 +646,8 @@ namespace Aerospike.Client
 		///     StringOperation.Concat(StringPolicy.Default, "text", "!"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.CREATE_ONLY"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values all apply to this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="value">text to append</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
@@ -653,7 +670,8 @@ namespace Aerospike.Client
 		///     new List&lt;string&gt; { " ", "big", " world" }));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.CREATE_ONLY"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values all apply to this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="values">ordered list of strings to append</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
@@ -680,7 +698,8 @@ namespace Aerospike.Client
 		///     StringOperation.Append(StringPolicy.Default, "text", "!"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.CREATE_ONLY"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values all apply to this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="value">text to append to the end of the string</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
@@ -706,7 +725,8 @@ namespace Aerospike.Client
 		///     StringOperation.Prepend(StringPolicy.Default, "text", "hello "));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.CREATE_ONLY"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values all apply to this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="value">text to prepend to the start of the string</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
@@ -747,7 +767,9 @@ namespace Aerospike.Client
 		///     StringOperation.Snip(StringPolicy.Default, "text", 5, 15));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values apply to this op. <see cref="StringWriteFlags.CREATE_ONLY"/> is rejected
+		/// by the server on this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="start">first codepoint to remove (inclusive)</param>
 		/// <param name="end">one past the last codepoint to remove (exclusive)</param>
@@ -762,6 +784,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string Replace operation that replaces the first occurrence of
 		/// <see cref="string"/> needle with <see cref="string"/> replacement.
+		/// Needle matching is Unicode canonical, not byte-exact: precomposed and decomposed forms
+		/// of the same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -770,7 +794,9 @@ namespace Aerospike.Client
 		///     StringOperation.Replace(StringPolicy.Default, "text", "world", "earth"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values apply to this op. <see cref="StringWriteFlags.CREATE_ONLY"/> is rejected
+		/// by the server on this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="needle">substring to find</param>
 		/// <param name="replacement">text to substitute (may be empty to delete the match)</param>
@@ -786,6 +812,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create string ReplaceAll operation that replaces every occurrence of
 		/// <see cref="string"/> needle with <see cref="string"/> replacement.
+		/// Needle matching is Unicode canonical, not byte-exact: precomposed and decomposed forms
+		/// of the same text compare equal.
 		/// </summary>
 		/// <example>
 		/// <code>
@@ -794,7 +822,9 @@ namespace Aerospike.Client
 		///     StringOperation.ReplaceAll(StringPolicy.Default, "text", "a", "x"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values apply to this op. <see cref="StringWriteFlags.CREATE_ONLY"/> is rejected
+		/// by the server on this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="needle">substring to find</param>
 		/// <param name="replacement">text to substitute (may be empty to delete each match)</param>
@@ -816,7 +846,9 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.Upper(StringPolicy.Default, "text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values apply to this op. <see cref="StringWriteFlags.CREATE_ONLY"/> is rejected
+		/// by the server on this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>modify operation</returns>
@@ -835,7 +867,9 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.Lower(StringPolicy.Default, "text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values apply to this op. <see cref="StringWriteFlags.CREATE_ONLY"/> is rejected
+		/// by the server on this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>modify operation</returns>
@@ -855,7 +889,9 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.CaseFold(StringPolicy.Default, "text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values apply to this op. <see cref="StringWriteFlags.CREATE_ONLY"/> is rejected
+		/// by the server on this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>modify operation</returns>
@@ -875,7 +911,9 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.NormalizeNFC(StringPolicy.Default, "text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values apply to this op. <see cref="StringWriteFlags.CREATE_ONLY"/> is rejected
+		/// by the server on this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>modify operation</returns>
@@ -895,7 +933,9 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.TrimStart(StringPolicy.Default, "text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values apply to this op. <see cref="StringWriteFlags.CREATE_ONLY"/> is rejected
+		/// by the server on this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>modify operation</returns>
@@ -915,7 +955,9 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.TrimEnd(StringPolicy.Default, "text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values apply to this op. <see cref="StringWriteFlags.CREATE_ONLY"/> is rejected
+		/// by the server on this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>modify operation</returns>
@@ -935,7 +977,9 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.Trim(StringPolicy.Default, "text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values apply to this op. <see cref="StringWriteFlags.CREATE_ONLY"/> is rejected
+		/// by the server on this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
 		/// <returns>modify operation</returns>
@@ -956,7 +1000,8 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.PadStart(StringPolicy.Default, "text", 10, "*"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.CREATE_ONLY"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values all apply to this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="targetLength">codepoint length to pad up to</param>
 		/// <param name="padString">text used to fill (repeated as needed)</param>
@@ -979,7 +1024,8 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.PadEnd(StringPolicy.Default, "text", 10, "."));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.CREATE_ONLY"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values all apply to this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="targetLength">codepoint length to pad up to</param>
 		/// <param name="padString">text used to fill (repeated as needed)</param>
@@ -1001,7 +1047,8 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.Repeat(StringPolicy.Default, "text", 3));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling NO_FAIL semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.CREATE_ONLY"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values all apply to this op</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="count">number of repetitions (must be non-negative)</param>
 		/// <param name="ctx">optional path into a string nested inside a list or map</param>
@@ -1024,7 +1071,10 @@ namespace Aerospike.Client
 		/// client.Operate(null, key, StringOperation.RegexReplace(StringPolicy.Default, "text", "[0-9]+", "NUM", StringRegexFlags.GLOBAL));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy controlling create/update and no-fail semantics</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values apply to this op. <see cref="StringWriteFlags.CREATE_ONLY"/> is rejected
+		/// by the server on this op. <see cref="StringWriteFlags.NO_FAIL"/> here also suppresses a
+		/// regex-compile failure</param>
 		/// <param name="binName">name of the string bin</param>
 		/// <param name="pattern">ICU-syntax regex pattern (must be valid UTF-8)</param>
 		/// <param name="replacement">replacement text (must be valid UTF-8)</param>
@@ -1051,9 +1101,11 @@ namespace Aerospike.Client
 		//-----------------------------------------------------------------
 
 		/// <summary>
-		/// Create ToString operation that converts an integer, float, string, boolean, or
-		/// blob bin to its string representation. Returns <c>AEROSPIKE_ERR_INCOMPATIBLE_TYPE</c>
-		/// for any other bin type.
+		/// Create ToString operation that converts an integer, float, boolean,
+		/// string, or blob bin to its string representation. Returns <c>AEROSPIKE_ERR_INCOMPATIBLE_TYPE</c>
+		/// for any other bin type. A blob bin whose bytes are not valid UTF-8 fails with
+		/// <see cref="ResultCode.OP_NOT_APPLICABLE"/> and subcode
+		/// <see cref="SubCode.OPNOT_STRING_UTF8_INVALID"/>.
 		/// <para>
 		/// Unlike the other builders in this class, <see cref="ToString"/> does not accept a
 		/// <see cref="CTX"/>. The other string operations are sent as <see cref="Operation.Type.STRING_READ"/> /
