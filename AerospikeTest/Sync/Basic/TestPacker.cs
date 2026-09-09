@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client;
+using System.Collections;
 
 namespace Aerospike.Test
 {
@@ -29,6 +30,435 @@ namespace Aerospike.Test
 			AssertPacked(sbyte.MinValue, 0xd0, 0x80);
 			AssertPacked(-129L, 0xd1, 0xff, 0x7f);
 			AssertPacked(short.MinValue, 0xd1, 0x80, 0x00);
+		}
+
+		[TestMethod]
+		public void SortMapsProducesCanonicalKeyOrder()
+		{
+			Hashtable scrambled = new()
+			{
+				["z"] = 3,
+				["a"] = 1,
+				["m"] = 2
+			};
+			Hashtable ordered = new()
+			{
+				["a"] = 1,
+				["m"] = 2,
+				["z"] = 3
+			};
+
+			byte[] scrambledPacked = PackCanonicalMap(scrambled);
+			byte[] orderedPacked = PackCanonicalMap(ordered);
+
+			CollectionAssert.AreEqual(orderedPacked, scrambledPacked);
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersMixedTypesByCanonicalRules()
+		{
+			Hashtable map = new()
+			{
+				[10] = "int-key",
+				[-5] = "neg-key",
+				["text"] = "string-key"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+
+			Assert.IsTrue(packed.Length > 0);
+			// Negative integers sort before non-negative integers, which sort before strings.
+			int negOffset = IndexOf(packed, PackNumberBytes(-5));
+			int intOffset = IndexOf(packed, PackNumberBytes(10));
+			int stringOffset = IndexOf(packed, PackParticleStringBytes("text"));
+			Assert.IsTrue(negOffset >= 0);
+			Assert.IsTrue(intOffset >= 0);
+			Assert.IsTrue(stringOffset >= 0);
+			Assert.IsTrue(negOffset < intOffset);
+			Assert.IsTrue(intOffset < stringOffset);
+		}
+
+		[TestMethod]
+		public void SortMapsRejectsDuplicatePackedKeys()
+		{
+			DuplicatePackedKeyMap map = new();
+
+			try
+			{
+				PackCanonicalMap(map);
+				Assert.Fail("Expected AerospikeException for duplicate packed keys");
+			}
+			catch (AerospikeException ex)
+			{
+				Assert.AreEqual(ResultCode.PARAMETER_ERROR, ex.Result);
+				Assert.IsTrue(ex.Message.Contains("duplicate msgpack keys"));
+			}
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersNestedMapsAndListsCanonically()
+		{
+			Hashtable orderedInner = new()
+			{
+				["a"] = 1,
+				["b"] = 2
+			};
+			Hashtable scrambledInner = new()
+			{
+				["b"] = 2,
+				["a"] = 1
+			};
+			ArrayList list = [1, 2, 3];
+
+			Hashtable ordered = new()
+			{
+				["inner"] = orderedInner,
+				["list"] = list,
+				["num"] = 5
+			};
+			Hashtable scrambled = new()
+			{
+				["num"] = 5,
+				["inner"] = scrambledInner,
+				["list"] = list
+			};
+
+			CollectionAssert.AreEqual(PackCanonicalMap(ordered), PackCanonicalMap(scrambled));
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersInfinityAndNegativeIntegers()
+		{
+			// Negative integers sort before infinity keys regardless of insertion order.
+			Hashtable map1 = new()
+			{
+				[Value.INFINITY] = "inf",
+				[-1] = "neg"
+			};
+			Hashtable map2 = new()
+			{
+				[-1] = "neg",
+				[Value.INFINITY] = "inf"
+			};
+
+			CollectionAssert.AreEqual(PackCanonicalMap(map1), PackCanonicalMap(map2));
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersWildcardKey()
+		{
+			Hashtable map1 = new() { [Value.WILDCARD] = "wild" };
+			Hashtable map2 = new() { [Value.WILDCARD] = "wild" };
+
+			CollectionAssert.AreEqual(PackCanonicalMap(map1), PackCanonicalMap(map2));
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersDistinctListKeys()
+		{
+			ArrayList listKey1 = [1, 2];
+			ArrayList listKey2 = [1, 3];
+
+			Hashtable map = new()
+			{
+				[listKey1] = "first",
+				[listKey2] = "second"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int firstOffset = IndexOf(packed, PackListKey(listKey1));
+			int secondOffset = IndexOf(packed, PackListKey(listKey2));
+			Assert.IsTrue(firstOffset >= 0);
+			Assert.IsTrue(secondOffset >= 0);
+			Assert.IsTrue(firstOffset < secondOffset, "Shorter-prefix list keys must sort before longer differing keys.");
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersBooleanAndNilKeys()
+		{
+			Hashtable map = new()
+			{
+				[true] = "true-key",
+				[false] = "false-key",
+				[Value.AsNull] = "nil-key"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int nilOffset = IndexOf(packed, new byte[] { 0xc0 });
+			int falseOffset = IndexOf(packed, new byte[] { 0xc2 });
+			int trueOffset = IndexOf(packed, new byte[] { 0xc3 });
+			Assert.IsTrue(nilOffset >= 0);
+			Assert.IsTrue(falseOffset >= 0);
+			Assert.IsTrue(trueOffset >= 0);
+			Assert.IsTrue(nilOffset < falseOffset);
+			Assert.IsTrue(falseOffset < trueOffset);
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersDoubleKeys()
+		{
+			Hashtable map = new()
+			{
+				[2.5d] = "high",
+				[1.25d] = "low"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int lowOffset = IndexOf(packed, PackDoubleKey(1.25d));
+			int highOffset = IndexOf(packed, PackDoubleKey(2.5d));
+			Assert.IsTrue(lowOffset >= 0);
+			Assert.IsTrue(highOffset >= 0);
+			Assert.IsTrue(lowOffset < highOffset);
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersNestedMapsByEntryCount()
+		{
+			Hashtable innerSmall = new() { ["x"] = 1 };
+			Hashtable innerLarge = new() { ["x"] = 1, ["y"] = 2 };
+			Hashtable scrambled = new()
+			{
+				[innerLarge] = "large",
+				[innerSmall] = "small"
+			};
+			Hashtable ordered = new()
+			{
+				[innerSmall] = "small",
+				[innerLarge] = "large"
+			};
+
+			CollectionAssert.AreEqual(PackCanonicalMap(ordered), PackCanonicalMap(scrambled));
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersListsByLengthThenElements()
+		{
+			ArrayList shortList = [1];
+			ArrayList longList = [1, 2];
+			Hashtable scrambled = new()
+			{
+				[longList] = "long",
+				[shortList] = "short"
+			};
+			Hashtable ordered = new()
+			{
+				[shortList] = "short",
+				[longList] = "long"
+			};
+
+			CollectionAssert.AreEqual(PackCanonicalMap(ordered), PackCanonicalMap(scrambled));
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersBlobKeysLexicographically()
+		{
+			byte[] low = [0x01, 0x02];
+			byte[] high = [0x01, 0x03];
+			Hashtable map = new()
+			{
+				[high] = "high",
+				[low] = "low"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int lowOffset = IndexOf(packed, PackBlobKey(low));
+			int highOffset = IndexOf(packed, PackBlobKey(high));
+			Assert.IsTrue(lowOffset >= 0);
+			Assert.IsTrue(highOffset >= 0);
+			Assert.IsTrue(lowOffset < highOffset);
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersGeoJsonKeysLexicographically()
+		{
+			string low = "{ \"type\": \"Point\", \"coordinates\": [ -122.1, 37.4 ] }";
+			string high = "{ \"type\": \"Point\", \"coordinates\": [ -122.2, 37.5 ] }";
+			Hashtable map = new()
+			{
+				[Value.GetAsGeoJSON(high)] = "high",
+				[Value.GetAsGeoJSON(low)] = "low"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int lowOffset = IndexOf(packed, PackGeoJsonKey(low));
+			int highOffset = IndexOf(packed, PackGeoJsonKey(high));
+			Assert.IsTrue(lowOffset >= 0);
+			Assert.IsTrue(highOffset >= 0);
+			Assert.IsTrue(lowOffset < highOffset);
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersExtKeysLexicographically()
+		{
+			byte[] low = [0x01, 0x02];
+			byte[] high = [0x01, 0x03];
+			Hashtable map = new()
+			{
+				[Value.GetAsHLL(high)] = "high",
+				[Value.GetAsHLL(low)] = "low"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int lowOffset = IndexOf(packed, PackExtKey(low, ParticleType.HLL));
+			int highOffset = IndexOf(packed, PackExtKey(high, ParticleType.HLL));
+			Assert.IsTrue(lowOffset >= 0);
+			Assert.IsTrue(highOffset >= 0);
+			Assert.IsTrue(lowOffset < highOffset);
+		}
+
+		[TestMethod]
+		public void SortMapsOrdersNestedMapsWithSameEntryCountDifferentKeys()
+		{
+			Hashtable innerA = new() { ["a"] = 1, ["b"] = 2 };
+			Hashtable innerB = new() { ["a"] = 1, ["c"] = 3 };
+			Hashtable map = new()
+			{
+				[innerB] = "b-key",
+				[innerA] = "a-key"
+			};
+
+			byte[] packed = PackCanonicalMap(map);
+			int innerAOffset = IndexOf(packed, PackNestedMapKey(innerA));
+			int innerBOffset = IndexOf(packed, PackNestedMapKey(innerB));
+			Assert.IsTrue(innerAOffset >= 0);
+			Assert.IsTrue(innerBOffset >= 0);
+			Assert.IsTrue(innerAOffset < innerBOffset, "Inner map with lexicographically smaller keys must sort first.");
+		}
+
+		private static byte[] PackCanonicalMap(IDictionary map)
+		{
+			Packer packer = new();
+			packer.SortMaps(true);
+			packer.PackMap(map);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackNumberBytes(long value)
+		{
+			Packer packer = new();
+			packer.PackNumber(value);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackParticleStringBytes(string value)
+		{
+			Packer packer = new();
+			packer.PackParticleString(value);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackListKey(IList list)
+		{
+			Packer packer = new();
+			packer.PackList(list);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackDoubleKey(double value)
+		{
+			Packer packer = new();
+			packer.PackDouble(value);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackBlobKey(byte[] value)
+		{
+			Packer packer = new();
+			packer.PackParticleBytes(value);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackGeoJsonKey(string value)
+		{
+			Packer packer = new();
+			packer.PackGeoJSON(value);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackExtKey(byte[] value, ParticleType type)
+		{
+			Packer packer = new();
+			packer.PackParticleBytes(value, type);
+			return packer.ToByteArray();
+		}
+
+		private static byte[] PackNestedMapKey(IDictionary map)
+		{
+			Packer packer = new();
+			packer.SortMaps(true);
+			packer.PackMap(map);
+			return packer.ToByteArray();
+		}
+
+		private static int IndexOf(byte[] haystack, byte[] needle)
+		{
+			for (int i = 0; i <= haystack.Length - needle.Length; i++)
+			{
+				bool match = true;
+				for (int j = 0; j < needle.Length; j++)
+				{
+					if (haystack[i + j] != needle[j])
+					{
+						match = false;
+						break;
+					}
+				}
+
+				if (match)
+				{
+					return i;
+				}
+			}
+			return -1;
+		}
+
+		private sealed class DuplicatePackedKeyMap : IDictionary
+		{
+			public int Count => 2;
+			public bool IsFixedSize => true;
+			public bool IsReadOnly => true;
+			public bool IsSynchronized => false;
+			public object SyncRoot => this;
+
+			public ICollection Keys => throw new NotSupportedException();
+			public ICollection Values => throw new NotSupportedException();
+
+			public object this[object key]
+			{
+				get => throw new NotSupportedException();
+				set => throw new NotSupportedException();
+			}
+
+			public void Add(object key, object value) => throw new NotSupportedException();
+			public void Clear() => throw new NotSupportedException();
+			public bool Contains(object key) => throw new NotSupportedException();
+			public void CopyTo(Array array, int index) => throw new NotSupportedException();
+			public IDictionaryEnumerator GetEnumerator() => new DuplicateEnumerator();
+			public void Remove(object key) => throw new NotSupportedException();
+			IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+			private sealed class DuplicateEnumerator : IDictionaryEnumerator
+			{
+				private int index = -1;
+
+				public object Current => Entry;
+				public DictionaryEntry Entry => index switch
+				{
+					0 => new DictionaryEntry((short)1, "first"),
+					1 => new DictionaryEntry((int)1, "second"),
+					_ => throw new InvalidOperationException()
+				};
+				public object Key => Entry.Key;
+				public object Value => Entry.Value;
+
+				public bool MoveNext()
+				{
+					index++;
+					return index < 2;
+				}
+
+				public void Reset() => index = -1;
+			}
 		}
 
 		private static void AssertPacked(long value, params byte[] expected)

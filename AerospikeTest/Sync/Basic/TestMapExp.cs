@@ -182,5 +182,128 @@ namespace Aerospike.Test
 			Assert.AreEqual((long)2, m["b"]);
 			Assert.AreEqual((long)2, m["c"]);
 		}
+
+		[TestMethod]
+		public void SizeAndGetByKey()
+		{
+			var map = new Dictionary<string, long>
+			{
+				["alpha"] = 1L,
+				["beta"] = 2L,
+				["gamma"] = 3L
+			};
+
+			client.Operate(null, key,
+				MapOperation.PutItems(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT), bin, map));
+
+			Expression sizeExp = Exp.Build(MapExp.Size(Exp.MapBin(bin)));
+			Record sizeRecord = client.Operate(null, key,
+				ExpOperation.Read("size", sizeExp, ExpReadFlags.DEFAULT));
+			Assert.AreEqual(3L, sizeRecord.GetLong("size"));
+
+			Expression keyExp = Exp.Build(
+				MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.INT, Exp.Val("beta"), Exp.MapBin(bin)));
+			Record keyRecord = client.Operate(null, key,
+				ExpOperation.Read("value", keyExp, ExpReadFlags.DEFAULT));
+			Assert.AreEqual(2L, keyRecord.GetLong("value"));
+		}
+
+		[TestMethod]
+		public void GetByValueCount()
+		{
+			var map = new Dictionary<string, long>
+			{
+				["a"] = 10L,
+				["b"] = 20L,
+				["c"] = 10L
+			};
+
+			client.Put(null, key, new Bin(bin, map));
+
+			Expression exp = Exp.Build(
+				MapExp.GetByValue(MapReturnType.COUNT, Exp.Val(10L), Exp.MapBin(bin)));
+			Record record = client.Operate(null, key,
+				ExpOperation.Read("count", exp, ExpReadFlags.DEFAULT));
+			Assert.AreEqual(2L, record.GetLong("count"));
+		}
+
+		[TestMethod]
+		public void GetByKeyRange()
+		{
+			var map = new SortedDictionary<string, long>
+			{
+				["a"] = 1L,
+				["b"] = 2L,
+				["c"] = 3L,
+				["d"] = 4L
+			};
+
+			client.Operate(null, key,
+				MapOperation.PutItems(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT), bin, map));
+
+			Expression exp = Exp.Build(
+				MapExp.GetByKeyRange(MapReturnType.COUNT, Exp.Val("b"), Exp.Val("d"), Exp.MapBin(bin)));
+			Record record = client.Operate(null, key,
+				ExpOperation.Read("count", exp, ExpReadFlags.DEFAULT));
+			Assert.AreEqual(2L, record.GetLong("count"));
+		}
+
+		[TestMethod]
+		public void IncrementExpression()
+		{
+			var map = new Dictionary<string, long> { ["counter"] = 5L };
+			client.Put(null, key, new Bin(bin, map));
+
+			MapPolicy mapPolicy = new(MapOrder.UNORDERED, MapWriteFlags.DEFAULT);
+			Expression exp = Exp.Build(
+				MapExp.Increment(mapPolicy, Exp.Val("counter"), Exp.Val(3L), Exp.MapBin(bin)));
+			Record record = client.Operate(null, key,
+				ExpOperation.Read("result", exp, ExpReadFlags.DEFAULT));
+			var resultMap = record.GetMap("result");
+			Assert.AreEqual(8L, Convert.ToInt64(resultMap["counter"]));
+		}
+
+		[TestMethod]
+		public void RemoveByKeyExpression()
+		{
+			var map = new Dictionary<string, long>
+			{
+				["keep"] = 1L,
+				["drop"] = 2L
+			};
+			client.Put(null, key, new Bin(bin, map));
+
+			policy.filterExp = Exp.Build(
+				Exp.EQ(
+					MapExp.Size(MapExp.RemoveByKey(Exp.Val("drop"), Exp.MapBin(bin))),
+					Exp.Val(1)));
+
+			Record record = client.Get(policy, key, bin);
+			AssertRecordFound(key, record);
+			Assert.AreEqual(2, record.GetMap(bin).Count);
+		}
+
+		[TestMethod]
+		public void NestedMapInListExpression()
+		{
+			IList<Value> list =
+			[
+				Value.Get("skip"),
+				Value.Get(new Dictionary<string, object>
+				{
+					["alpha"] = 1L,
+					["beta"] = 2L
+				})
+			];
+			client.Put(null, key, new Bin(bin, list));
+
+			Expression exp = Exp.Build(
+				MapExp.GetByKey(MapReturnType.VALUE, Exp.Type.INT, Exp.Val("beta"),
+					Exp.ListBin(bin), CTX.ListIndex(1)));
+			Record record = client.Operate(null, key,
+				ExpOperation.Read("value", exp, ExpReadFlags.DEFAULT));
+
+			Assert.AreEqual(2L, record.GetLong("value"));
+		}
 	}
 }

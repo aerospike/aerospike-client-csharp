@@ -354,6 +354,60 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void AsyncTxnBatchLargeCommit()
+		{
+			const int keyCount = 64;
+			Key[] keys = new Key[keyCount];
+			Bin bin = new(binName, 1);
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnBatchLarge" + i);
+				keys[i] = key;
+				client.Put(null, key, bin);
+			}
+
+			using Txn txn = new(keyCount, keyCount);
+			bin = new(binName, 2);
+
+			var cmds = new IRunner[]
+			{
+				new BatchGetExpect(txn, keys, 1),
+				new BatchOperate(txn, keys, Operation.Put(bin)),
+				new Commit(txn),
+				new BatchGetExpect(null, keys, 2),
+			};
+
+			Execute(cmds);
+		}
+
+		[TestMethod]
+		public void AsyncTxnBatchMultiKeyVerify()
+		{
+			const int keyCount = 64;
+			Key[] keys = new Key[keyCount];
+			Bin bin = new(binName, 1);
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnMultiVerify" + i);
+				keys[i] = key;
+				client.Put(null, key, bin);
+			}
+
+			using Txn txn = new(keyCount, keyCount);
+
+			var cmds = new IRunner[]
+			{
+				new BatchGetExpect(txn, keys, 1),
+				new Commit(txn),
+				new BatchGetExpect(null, keys, 1),
+			};
+
+			Execute(cmds);
+		}
+
+		[TestMethod]
 		public void AsyncTxnWriteCommitAbort()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "asyncTxnCommitAbort");
@@ -432,8 +486,7 @@ namespace Aerospike.Test
 			{
 				new Put(txn, key, "val1"),
 				new Commit(txn),
-				new Sleep(1000),
-				new Put(txn, key, "val1", ResultCode.MRT_EXPIRED),
+				new Put(txn, key, "val1", ResultCode.TXN_ALREADY_COMMITTED),
 			};
 
 			Execute(cmds);
@@ -679,13 +732,27 @@ namespace Aerospike.Test
 
 			public void Run(TestAsyncTxn parent, IListener listener)
 			{
-				WritePolicy wp = null;
-				if (txn != null)
+				try
 				{
-					wp = client.WritePolicyDefault.Clone();
-					wp.Txn = txn;
+					WritePolicy wp = null;
+					if (txn != null)
+					{
+						wp = client.WritePolicyDefault.Clone();
+						wp.Txn = txn;
+					}
+					client.Put(wp, new PutHandler(listener, expectedResult), key, bins);
 				}
-				client.Put(wp, new PutHandler(listener, expectedResult), key, bins);
+				catch (Exception e)
+				{
+					if (expectedResult != 0)
+					{
+						parent.OnError(e, expectedResult);
+					}
+					else
+					{
+						parent.OnError(e);
+					}
+				}
 			}
 
 			private class PutHandler(TestAsyncTxn.IListener listener, int expectedResult) : WriteListener
@@ -1018,7 +1085,7 @@ namespace Aerospike.Test
 			public void Run(TestAsyncTxn parent, IListener listener)
 			{
 				Util.Sleep(sleepMillis);
-				parent.NotifyCompleted();
+				listener.OnSuccess();
 			}
 		}
 

@@ -30,6 +30,93 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
+		[TestMethod]
+		public void AsyncTouchExistingRecord()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "async-touch-existing");
+			Bin bin = new("touchbin", "touch-value");
+
+			client.Put(null, new PutThenTouchHandler(this, key), key, bin);
+			WaitTillComplete();
+		}
+
+		private class PutThenTouchHandler(TestAsyncTouch parent, Key key) : WriteListener
+		{
+			public void OnSuccess(Key writeKey)
+			{
+				client.GetHeader(null, new HeaderBeforeTouchHandler(parent, key), key);
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class HeaderBeforeTouchHandler(TestAsyncTouch parent, Key key) : RecordListener
+		{
+			private int generation;
+
+			public void OnSuccess(Key readKey, Record record)
+			{
+				if (!parent.AssertRecordFound(key, record))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				generation = record.generation;
+				client.Touch(null, new TouchExistingHandler(parent, key, generation), key);
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class TouchExistingHandler(TestAsyncTouch parent, Key key, int generationBefore) : WriteListener
+		{
+			public void OnSuccess(Key writeKey)
+			{
+				client.GetHeader(null, new HeaderAfterTouchHandler(parent, key, generationBefore), key);
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class HeaderAfterTouchHandler(TestAsyncTouch parent, Key key, int generationBefore) : RecordListener
+		{
+			public void OnSuccess(Key readKey, Record record)
+			{
+				if (!parent.AssertRecordFound(key, record))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				if (!parent.AssertTrue(record.generation > generationBefore))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
 		private class TouchListener(TestAsyncTouch parent) : ExistsListener
 		{
 			public void OnSuccess(Key key, bool exists)

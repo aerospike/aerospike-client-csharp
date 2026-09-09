@@ -113,6 +113,50 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
+		[TestMethod]
+		public void AsyncOperateReadOnly()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "aopreadkey");
+			Bin bin = new(binName, "read-only");
+			client.Put(null, new SeedWriteHandler(this, key, bin), key, bin);
+			WaitTillComplete();
+		}
+
+		private class SeedWriteHandler(TestAsyncOperate parent, Key key, Bin bin) : WriteListener
+		{
+			public void OnSuccess(Key putKey)
+			{
+				client.Operate(null, new ReadOnlyOperateHandler(parent, key, bin.name), key, Operation.Get(bin.name));
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class ReadOnlyOperateHandler(TestAsyncOperate parent, Key key, string binName) : RecordListener
+		{
+			public void OnSuccess(Key recordKey, Record record)
+			{
+				if (parent.AssertRecordFound(key, record) && parent.AssertBinEqual(key, record, binName, "read-only"))
+				{
+					parent.NotifyCompleted();
+				}
+				else
+				{
+					parent.NotifyCompleted();
+				}
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
 		static void DeleteHandlerMapSuccess(Key key, TestAsyncOperate parent)
 		{
 			Dictionary<Value, Value> map = new()

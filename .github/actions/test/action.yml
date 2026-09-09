@@ -33,6 +33,10 @@ inputs:
     required: false
     default: "false"
     description: Enable TLS for server and test connections (`true` or `false`)
+  enable-security:
+    required: false
+    default: "false"
+    description: Enable server security/RBAC (`true` or `false`)
   artifact-suffix:
     required: false
     default: ""
@@ -60,8 +64,16 @@ runs:
           echo "enable-sc=false" >> "$GITHUB_OUTPUT"
         fi
 
-        # Select config based on TLS and SC flags
-        if [ "${{ inputs.enable-tls }}" == "true" ] && [ "${{ inputs.strong-consistency }}" == "1" ]; then
+        # Select config based on security, TLS, and SC flags
+        if [ "${{ inputs.enable-security }}" == "true" ] && [ "${{ inputs.enable-tls }}" == "true" ] && [ "${{ inputs.strong-consistency }}" == "1" ]; then
+          echo "config-file=.github/workflows/docker-setup/aerospike-security-tls-sc.conf" >> "$GITHUB_OUTPUT"
+        elif [ "${{ inputs.enable-security }}" == "true" ] && [ "${{ inputs.enable-tls }}" == "true" ]; then
+          echo "config-file=.github/workflows/docker-setup/aerospike-security-tls.conf" >> "$GITHUB_OUTPUT"
+        elif [ "${{ inputs.enable-security }}" == "true" ] && [ "${{ inputs.strong-consistency }}" == "1" ]; then
+          echo "config-file=.github/workflows/docker-setup/aerospike-security-sc.conf" >> "$GITHUB_OUTPUT"
+        elif [ "${{ inputs.enable-security }}" == "true" ]; then
+          echo "config-file=.github/workflows/docker-setup/aerospike-security.conf" >> "$GITHUB_OUTPUT"
+        elif [ "${{ inputs.enable-tls }}" == "true" ] && [ "${{ inputs.strong-consistency }}" == "1" ]; then
           echo "config-file=.github/workflows/docker-setup/aerospike-tls-sc.conf" >> "$GITHUB_OUTPUT"
         elif [ "${{ inputs.enable-tls }}" == "true" ]; then
           echo "config-file=.github/workflows/docker-setup/aerospike-tls.conf" >> "$GITHUB_OUTPUT"
@@ -91,6 +103,29 @@ runs:
         sudo cp "${{ steps.setup-server.outputs.tls-cert-dir }}/ca.crt" /usr/local/share/ca-certificates/aerospike-ca.crt
         sudo update-ca-certificates
 
+    - name: Grant admin roles for security-enabled server
+      if: inputs.enable-security == 'true'
+      shell: bash
+      run: |
+        # asadm is not bundled in the server image; use the public tools image.
+        # Mirror aerospike-client-python EE test setup: grant the admin user the
+        # roles required by security, masking, and UDF integration tests.
+        roles="read-write-udf sys-admin user-admin service-ctrl masking-admin write-masked read-masked"
+        asadm_port=3000
+        if [ "${{ inputs.enable-tls }}" == "true" ]; then
+          asadm_port=4333
+        fi
+        for attempt in $(seq 1 30); do
+          if docker run --rm --network host aerospike/aerospike-tools:latest \
+            asadm -h 127.0.0.1 -p "${asadm_port}" -U admin -P admin \
+            -e "enable; manage acl grant user admin roles ${roles}"; then
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "::error::Failed to grant admin roles after security was enabled."
+        exit 1
+
     - name: Write test configuration summary
       shell: bash
       run: |
@@ -103,6 +138,7 @@ runs:
           echo "| Server type | \`${{ inputs.server-type }}\` |"
           echo "| Strong consistency | ${{ inputs.strong-consistency == '1' && '**Enabled**' || 'Disabled' }} |"
           echo "| TLS | ${{ inputs.enable-tls == 'true' && '**Enabled**' || 'Disabled' }} |"
+          echo "| Security | ${{ inputs.enable-security == 'true' && '**Enabled**' || 'Disabled' }} |"
           echo "| Config file | \`${{ steps.resolve.outputs.config-file }}\` |"
           echo ""
         } >> $GITHUB_STEP_SUMMARY
@@ -137,35 +173,65 @@ runs:
         name: AerospikeTest-${{ github.run_id }}
         path: artifacts
 
+    - name: Download example artifacts
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      with:
+        name: AerospikeExample-${{ github.run_number }}
+        path: artifacts-example
+
     - name: Unzip tests
       shell: bash
       working-directory: artifacts
       run: unzip AerospikeTest*.zip
 
-    - name: Prepare TLS runsettings
-      if: inputs.enable-tls == 'true'
+    - name: Unzip examples
+      shell: bash
+      working-directory: artifacts-example
+      run: unzip AerospikeExample*.zip
+
+    - name: Prepare runsettings
       shell: bash
       run: |
-        sed -e 's|name="Port" value="3000"|name="Port" value="4333"|' \
-            -e 's|name="TlsEnable" value="false"|name="TlsEnable" value="true"|' \
-            -e 's|name="TlsName" value=""|name="TlsName" value="localhost"|' \
-            .runsettings > .runsettings-tls
+        cp .runsettings .runsettings-ci
+        if [ "${{ inputs.enable-security }}" == "true" ]; then
+          sed -i -E 's/name="User" value="[^"]*"/name="User" value="admin"/' .runsettings-ci
+          sed -i -E 's/name="Password" value="[^"]*"/name="Password" value="admin"/' .runsettings-ci
+        else
+          sed -i -E 's/name="User" value="[^"]*"/name="User" value=""/' .runsettings-ci
+          sed -i -E 's/name="Password" value="[^"]*"/name="Password" value=""/' .runsettings-ci
+        fi
+
+        if [ "${{ inputs.enable-tls }}" == "true" ]; then
+          sed -e 's|name="Port" value="3000"|name="Port" value="4333"|' \
+              -e 's|name="TlsEnable" value="false"|name="TlsEnable" value="true"|' \
+              -e 's|name="TlsName" value=""|name="TlsName" value="localhost"|' \
+              .runsettings-ci > .runsettings-ci-tls
+          echo "settings_file=.runsettings-ci-tls" >> "$GITHUB_ENV"
+        else
+          echo "settings_file=.runsettings-ci" >> "$GITHUB_ENV"
+        fi
 
     - name: Test with coverage
       shell: bash
       run: |
-        settings_file=".runsettings"
-        if [ "${{ inputs.enable-tls }}" == "true" ]; then
-          settings_file=".runsettings-tls"
-        fi
+        mkdir -p test-results coverage
 
         dotnet-coverage collect \
           -f cobertura \
           -o ./coverage/coverage.cobertura.xml \
-          "dotnet exec ./artifacts/publish/AerospikeTest.dll \
-            --settings ./${settings_file} \
+          -- dotnet exec ./artifacts/publish/AerospikeTest.dll \
+            --settings "./${settings_file}" \
             --results-directory ./test-results \
-            --report-trx --report-trx-filename results.trx"
+            --report-trx --report-trx-filename results.trx
+
+    - name: Run examples
+      shell: bash
+      run: |
+        mkdir -p example-results
+        dotnet exec ./artifacts-example/publish/AerospikeExample.dll \
+          --settings "./${settings_file}" \
+          --report-trx ./example-results/results.trx \
+          all
 
     - name: Generate coverage report
       if: ${{ !cancelled() }}
@@ -174,7 +240,7 @@ runs:
         reports: coverage/coverage.cobertura.xml
         targetdir: coverage/report
         reporttypes: HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub
-        assemblyfilters: -AerospikeTest
+        assemblyfilters: +AerospikeClient
 
     - name: Publish coverage summary
       if: ${{ !cancelled() }}
@@ -192,6 +258,14 @@ runs:
         path: test-results/
         retention-days: 7
 
+    - name: Upload raw coverage report
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: coverage-raw-${{ github.sha }}${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
+        path: coverage/coverage.cobertura.xml
+        retention-days: 30
+
     - name: Upload coverage report
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -199,31 +273,6 @@ runs:
         name: coverage-report-${{ github.sha }}${{ inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '' }}
         path: coverage/report/
         retention-days: 30
-
-    - name: Download example artifacts
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-      with:
-        name: AerospikeExample-${{ github.run_number }}
-        path: artifacts-example
-
-    - name: Unzip examples
-      shell: bash
-      working-directory: artifacts-example
-      run: unzip AerospikeExample*.zip
-
-    - name: Run examples
-      shell: bash
-      run: |
-        settings_file=".runsettings"
-        if [ "${{ inputs.enable-tls }}" == "true" ]; then
-          settings_file=".runsettings-tls"
-        fi
-
-        mkdir -p example-results
-        dotnet exec ./artifacts-example/publish/AerospikeExample.dll \
-          --settings ./${settings_file} \
-          --report-trx ./example-results/results.trx \
-          all
 
     - name: Upload example run results
       if: ${{ !cancelled() }}

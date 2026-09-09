@@ -68,6 +68,50 @@ namespace Aerospike.Test
 			WaitTillComplete();
 		}
 
+		[TestMethod]
+		public void AsyncQueryIndexedWithSequenceListener()
+		{
+			const int begin = 501;
+			const int end = 505;
+			IndexedWriteHandler handler = new(this, begin, end);
+
+			for (int i = begin; i <= end; i++)
+			{
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, keyPrefix + "idx" + i);
+				Bin bin = new(binName, i);
+				client.Put(null, handler, key, bin);
+			}
+			WaitTillComplete();
+		}
+
+		private class IndexedWriteHandler(TestAsyncQuery parent, int begin, int end) : WriteListener
+		{
+			internal int count;
+			private readonly int expected = end - begin + 1;
+
+			public void OnSuccess(Key key)
+			{
+				int rows = Interlocked.Increment(ref count);
+
+				if (rows == expected)
+				{
+					Statement stmt = new();
+					stmt.SetNamespace(SuiteHelpers.ns);
+					stmt.SetSetName(SuiteHelpers.set);
+					stmt.SetBinNames(binName);
+					stmt.SetFilter(Filter.Range(binName, begin, end));
+
+					client.Query(null, new IndexedQueryHandler(parent, begin, end), stmt);
+				}
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
 		private class WriteHandler(TestAsyncQuery parent) : WriteListener
 		{
 			internal int count;
@@ -112,6 +156,31 @@ namespace Aerospike.Test
 			public void OnSuccess()
 			{
 				parent.AssertEquals(9, count);
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class IndexedQueryHandler(TestAsyncQuery parent, int begin, int end) : RecordSequenceListener
+		{
+			private int count;
+			private readonly int expected = end - begin + 1;
+
+			public void OnRecord(Key key, Record record)
+			{
+				int result = record.GetInt(binName);
+				parent.AssertBetween(begin, end, result);
+				Interlocked.Increment(ref count);
+			}
+
+			public void OnSuccess()
+			{
+				parent.AssertEquals(expected, count);
 				parent.NotifyCompleted();
 			}
 

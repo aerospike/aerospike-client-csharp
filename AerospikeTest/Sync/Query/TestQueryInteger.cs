@@ -90,5 +90,61 @@ namespace Aerospike.Test
 				rs.Close();
 			}
 		}
+
+		[TestMethod]
+		public void QueryIntegerWithAction()
+		{
+			int begin = 14;
+			int end = 18;
+
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
+			stmt.SetBinNames(binName);
+			stmt.SetFilter(Filter.Range(binName, begin, end));
+
+			int count = 0;
+
+			Action<Key, Record> action = (key, record) =>
+			{
+				Assert.IsNotNull(key);
+				Assert.IsNotNull(record);
+				int value = record.GetInt(binName);
+				Assert.IsTrue(value >= begin && value <= end, "Indexed query record must fall within filter range.");
+				count++;
+			};
+
+			client.Query(null, stmt, action);
+
+			Assert.AreEqual(5, count);
+		}
+
+		[TestMethod]
+		public void QueryIntegerWithListener()
+		{
+			int begin = 20;
+			int end = 24;
+
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
+			stmt.SetBinNames(binName);
+			stmt.SetFilter(Filter.Range(binName, begin, end));
+
+			int count = 0;
+
+			QueryListener listener = (key, record) =>
+			{
+				Assert.IsNotNull(key);
+				Assert.IsNotNull(record);
+				int value = record.GetInt(binName);
+				Assert.IsTrue(value >= begin && value <= end);
+				count++;
+			};
+
+			client.Query(null, stmt, listener);
+
+			Assert.AreEqual(5, count);
+		}
 	}
 }
