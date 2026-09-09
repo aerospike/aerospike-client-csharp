@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -19,7 +19,7 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	/// <summary>
-	/// Negative tests for the server's bin-UTF-8 entry gate 8.1.3.
+	/// Negative tests for the server's bin-UTF-8 entry gate 8.2.0.
     /// </summary>
 	/// <para>
 	/// Every read and modify op in {@link StringOperation} must reject a string
@@ -52,7 +52,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void ServerVersionCheck(TestContext testContext)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "string operations");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "string operations");
 		}
 
 		[TestInitialize]
@@ -129,7 +129,7 @@ namespace Aerospike.Test
 		}
 
 		// byte_length, to_blob, b64_decode, trim*, repeat, concat are listed in the
-		// 8.1.3 client report as "unaffected" by UTF-8, but per the doc's §3 and
+		// 8.2.0 client report as "unaffected" by UTF-8, but per the doc's §3 and
 		// §11 they hit the same bin gate as strlen and must also reject.
 		[TestMethod]
 		public void ByteLengthRejectsInvalidBin()

@@ -20,6 +20,7 @@ namespace Aerospike.Example;
 
 public sealed class ErrorMessage : SyncExample
 {
+	// Bin names must be <= 14 bytes (AS_BIN_NAME_MAX_LEN).
 	private const string BinName = "errmsg-bin";
 
 	/// <summary>
@@ -27,7 +28,7 @@ public sealed class ErrorMessage : SyncExample
 	/// </summary>
 	public override void RunExample()
 	{
-		RequireMinServerVersion(Node.SERVER_VERSION_8_1_3);
+		RequireMinServerVersion(Node.SERVER_VERSION_8_2_0);
 
 		Key intKey = new(ns, set, "error-message-key");
 		WritePolicy errorPolicy = new(writePolicy)

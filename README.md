@@ -97,12 +97,16 @@ signature is stale. Report it rather than following it.
 ### Known traps
 
 * **Do not hand-roll batch fan-out.** Batch commands already switch to the
-  single-record path when a node's sub-batch has size 1. Use the batch APIs on
+  single-record path when a node's sub-batch has size 1. Application-level
+  special-casing for single-key batches is redundant — use the batch APIs on
   `IAerospikeClient`, not a loop.
 * **Do not loop single-record calls where a batch counterpart exists.** `Get`,
   `Delete`, `Operate`, and `Exists` all have batch forms taking `Key[]` or
   `List<BatchRecord>`.
-* **`ModifyByPath` can remove matching elements.** It is not read-only.
+* **`ModifyByPath` can remove matching elements.** Pass `Exp.RemoveResult()` as
+  the modification expression to delete elements matched by the path context.
+  If the path matches one element, one element is removed; if it matches
+  multiple elements, all matches are removed.
 
 ### Verifying generated code
 

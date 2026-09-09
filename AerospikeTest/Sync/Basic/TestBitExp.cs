@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -474,7 +474,7 @@ namespace Aerospike.Test
 
 		private void B64Encode(Key key)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "bit b64Encode");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "bit b64Encode");
 
 			byte[] blob = [0x01, 0x42, 0x03, 0x04, 0x05];
 

@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -1231,7 +1231,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListJoin()
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "list join");
 
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkeyjoin");
 			client.Delete(null, key);
@@ -1254,7 +1254,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListJoinEmptyList()
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "list join");
 
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkeyjoinempty");
 			client.Delete(null, key);
@@ -1268,7 +1268,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListJoinNonStringItemFails()
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "list join");
 
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkeyjoinbad");
 			client.Delete(null, key);
@@ -1285,7 +1285,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void OperateListJoinNested()
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "list join");
 
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkeyjoinctx");
 			client.Delete(null, key);

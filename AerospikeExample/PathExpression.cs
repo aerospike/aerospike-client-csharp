@@ -90,7 +90,7 @@ public sealed class PathExpression : SyncExample
 	/// </summary>
 	private void RunSelectByMapKeyRegex()
 	{
-		RequireMinServerVersion(Node.SERVER_VERSION_8_1_3);
+		RequireMinServerVersion(Node.SERVER_VERSION_8_2_0);
 
 		Key key = new(ns, set, "pathexp_regex");
 

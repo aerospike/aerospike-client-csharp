@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2020 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -718,7 +718,7 @@ namespace Aerospike.Client
 		/// an empty string.
 		/// <para>
 		/// This is the inverse of <see cref="StringOperation.Split(string, CTX[])"/>.
-		/// Requires server version 8.1.3 or later.
+		/// Requires server version 8.2.0 or later.
 		/// </para>
 		/// </summary>
 		public static Operation Join(string binName, params CTX[] ctx)
@@ -736,7 +736,7 @@ namespace Aerospike.Client
 		/// single-item list returns that item with no separator applied.
 		/// <para>
 		/// This is the inverse of <see cref="StringOperation.Split(string, string, CTX[])"/>.
-		/// Requires server version 8.1.3 or later.
+		/// Requires server version 8.2.0 or later.
 		/// </para>
 		/// </summary>
 		public static Operation Join(string binName, string separator, params CTX[] ctx)

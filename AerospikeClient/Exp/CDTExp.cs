@@ -89,6 +89,11 @@ namespace Aerospike.Client
 		/// The context path may use methods such as <see cref="CTX.MapKey(Value)"/>,
 		/// <see cref="CTX.AllChildren()"/>, and <see cref="CTX.AllChildrenWithFilter(Exp)"/>.
 		/// </para>
+		/// <para>
+		/// To remove elements selected by the path context, use <see cref="Exp.RemoveResult()"/> as
+		/// <paramref name="modifyExp"/>. If the path matches one element, one element is removed;
+		/// if it matches multiple elements, all matches are removed.
+		/// </para>
 		/// </remarks>
 		/// <param name="returnType">Expected result type.</param>
 		/// <param name="modifyFlag">Flags that control modification behavior.</param>

@@ -21,7 +21,7 @@ namespace Aerospike.Client
 	/// </summary>
 	/// <example>
 	/// <code>
-	/// StringWriteFlags flags = StringWriteFlags.NO_FAIL;
+	/// StringWriteFlags flags = StringWriteFlags.CREATE_ONLY | StringWriteFlags.NO_FAIL;
 	/// </code>
 	/// </example>
 	[Flags]
@@ -33,24 +33,43 @@ namespace Aerospike.Client
 		DEFAULT = 0,
 
 		/// <summary>
-		/// Create the bin only if it does not already exist. Valid on the eight additive
-		/// create-ops: insert, overwrite, concat, append, prepend, padStart, padEnd, and
-		/// repeat. Mutually exclusive with <see cref="UPDATE_ONLY"/> and invalid with a
-		/// <see cref="CTX"/> path.
+		/// Apply the operation only if the bin does not already exist. Against a live bin
+		/// the server returns <see cref="ResultCode.BIN_EXISTS_ERROR"/>.
+		/// <para>
+		/// Valid only on the eight additive create-ops: insert, overwrite, concat, append,
+		/// prepend, padStart, padEnd, and repeat. On any other string modify op the server
+		/// rejects it with <see cref="ResultCode.PARAMETER_ERROR"/> via that op's flag mask.
+		/// </para>
+		/// <para>
+		/// <see cref="CREATE_ONLY"/> combined with <see cref="UPDATE_ONLY"/> is
+		/// <see cref="ResultCode.PARAMETER_ERROR"/>, and <see cref="CREATE_ONLY"/> on a
+		/// <see cref="CTX"/> (nested) path is <see cref="ResultCode.PARAMETER_ERROR"/>. None of
+		/// those three rejections is suppressible by <see cref="NO_FAIL"/>: the server raises
+		/// them while parsing the operation's arguments, upstream of every NO_FAIL test.
+		/// </para>
 		/// </summary>
 		CREATE_ONLY = 1,
 
 		/// <summary>
-		/// Update existing values only.
+		/// Apply the operation only to an existing bin, disabling bin creation. On a missing
+		/// bin the operation is a silent no-op and the bin is not created. Valid on all string
+		/// modify ops.
+		/// <para>
+		/// Mutually exclusive with <see cref="CREATE_ONLY"/>; combining the two is
+		/// <see cref="ResultCode.PARAMETER_ERROR"/>.
+		/// </para>
 		/// </summary>
 		UPDATE_ONLY = 2,
 
 		/// <summary>
-		/// Do not raise an error when an in-op execution failure would otherwise
-		/// abort the modify. The bin keeps its unmodified value and the operation
-		/// result is that source string — not null. Does not suppress wrong-type or
-		/// invalid-UTF-8 errors, and does not suppress flag validation failures such
-		/// as mutually exclusive <see cref="CREATE_ONLY"/> and <see cref="UPDATE_ONLY"/>.
+		/// Do not raise an error when the modify itself cannot be applied. The operation
+		/// becomes a silent success and the bin is left at its unmodified prior value.
+		/// <para>
+		/// <see cref="NO_FAIL"/> does not suppress every failure. A wrong bin type
+		/// (<see cref="ResultCode.BIN_TYPE_ERROR"/>) and invalid UTF-8 in the bin
+		/// (<see cref="ResultCode.INVALID_ENCODING"/>) surface regardless of the flag, as do
+		/// the argument-parsing rejections listed on <see cref="CREATE_ONLY"/>.
+		/// </para>
 		/// </summary>
 		NO_FAIL = 4
 	}

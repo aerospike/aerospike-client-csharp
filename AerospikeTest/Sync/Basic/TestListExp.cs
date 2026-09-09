@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright 2012-2021 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
@@ -279,7 +279,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void JoinWithoutSeparator()
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "list join");
 
 			IList<Value> items = [Value.Get("alpha"), Value.Get("beta"), Value.Get("gamma")];
 			client.Put(null, keyA, new Bin(binA, items));
@@ -294,7 +294,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void JoinWithSeparator()
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "list join");
 
 			IList<Value> items = [Value.Get("alpha"), Value.Get("beta"), Value.Get("gamma")];
 			client.Put(null, keyA, new Bin(binA, items));
@@ -309,7 +309,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void JoinOnNestedListViaContext()
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_1_3, "list join");
+			CheckServerVersion(Node.SERVER_VERSION_8_2_0, "list join");
 
 			IList<Value> inner = [Value.Get("x"), Value.Get("y")];
 			IList<Value> outer = [Value.Get("skip"), Value.Get(inner)];
