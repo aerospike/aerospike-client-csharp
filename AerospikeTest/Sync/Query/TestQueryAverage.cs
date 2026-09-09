@@ -106,5 +106,30 @@ namespace Aerospike.Test
 				rs.Close();
 			}
 		}
+
+		[TestMethod]
+		public void QueryAverageWithAction()
+		{
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
+			stmt.SetFilter(Filter.Range(binName, 0, 1000));
+			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.average_example.lua", "average_example", "average");
+
+			double? average = null;
+
+			client.QueryAggregate(null, stmt, obj =>
+			{
+				if (obj is IDictionary map)
+				{
+					long sum = (long)map["sum"];
+					long count = (long)map["count"];
+					average = (double)sum / count;
+				}
+			});
+
+			Assert.IsNotNull(average);
+			Assert.AreEqual(5.5, average.Value, 0.00000001);
+		}
 	}
 }

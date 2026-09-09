@@ -69,7 +69,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void AsyncQueryIndexedWithAction()
+		public void AsyncQueryIndexedWithSequenceListener()
 		{
 			const int begin = 501;
 			const int end = 505;
@@ -181,65 +181,6 @@ namespace Aerospike.Test
 			public void OnSuccess()
 			{
 				parent.AssertEquals(expected, count);
-				parent.NotifyCompleted();
-			}
-
-			public void OnFailure(AerospikeException e)
-			{
-				parent.SetError(e);
-				parent.NotifyCompleted();
-			}
-		}
-
-		private class LegacyQueryHandler(TestAsyncQuery parent) : WriteListener
-		{
-			internal int count;
-
-			public void OnSuccess(Key key)
-			{
-				int rows = Interlocked.Increment(ref count);
-
-				if (rows == size)
-				{
-					int begin = 10;
-					int end = 14;
-
-					Statement stmt = new();
-					stmt.SetNamespace(SuiteHelpers.ns);
-					stmt.SetSetName(SuiteHelpers.set);
-					stmt.SetBinNames(binName);
-					stmt.SetFilter(Filter.Range(binName, begin, end));
-
-					QueryPolicy policy = new()
-					{
-						failOnClusterChange = true
-					};
-
-					client.Query(policy, new LegacyRecordSequenceHandler(parent), stmt);
-				}
-			}
-
-			public void OnFailure(AerospikeException e)
-			{
-				parent.SetError(e);
-				parent.NotifyCompleted();
-			}
-		}
-
-		private class LegacyRecordSequenceHandler(TestAsyncQuery parent) : RecordSequenceListener
-		{
-			private int count;
-
-			public void OnRecord(Key key, Record record)
-			{
-				int result = record.GetInt("asqbin");
-				parent.AssertBetween(10, 14, result);
-				Interlocked.Increment(ref count);
-			}
-
-			public void OnSuccess()
-			{
-				parent.AssertEquals(5, count);
 				parent.NotifyCompleted();
 			}
 

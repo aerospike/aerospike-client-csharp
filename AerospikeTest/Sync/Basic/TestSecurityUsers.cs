@@ -96,6 +96,55 @@ namespace Aerospike.Test
 			WaitForUserAbsent(TestUser);
 		}
 
+		[TestMethod]
+		public void QueryUsersIncludesCreatedUser()
+		{
+			RequireSecurity();
+
+			AdminPolicy policy = new();
+			client.CreateUser(policy, TestUser, InitialPassword, [Role.Read]);
+			try
+			{
+				User user = WaitForUserInQueryUsers(TestUser, [Role.Read]);
+				Assert.IsNotNull(user);
+				Assert.IsTrue(user.ToString().Contains(TestUser));
+			}
+			finally
+			{
+				DropUserQuiet(TestUser);
+			}
+		}
+
+		private static User WaitForUserInQueryUsers(string userName, IList<string> expectedRoles)
+		{
+			AdminPolicy policy = new();
+
+			for (int attempt = 0; attempt < RolePropagationMaxAttempts; attempt++)
+			{
+				List<User> users = client.QueryUsers(policy);
+				Assert.IsNotNull(users);
+
+				foreach (User user in users)
+				{
+					if (user.name == userName
+						&& user.roles != null
+						&& HasExpectedRoles(user.roles, expectedRoles, null))
+					{
+						return user;
+					}
+				}
+
+				Thread.Sleep(RolePropagationDelayMs);
+			}
+
+			Assert.Fail(
+				$"User '{userName}' with roles [{string.Join(", ", expectedRoles)}] "
+				+ "did not appear in QueryUsers within "
+				+ (RolePropagationMaxAttempts * RolePropagationDelayMs / 1000)
+				+ "s.");
+			return null;
+		}
+
 		private static void WaitForUserAbsent(string userName)
 		{
 			for (int attempt = 0; attempt < RolePropagationMaxAttempts; attempt++)

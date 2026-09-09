@@ -486,8 +486,7 @@ namespace Aerospike.Test
 			{
 				new Put(txn, key, "val1"),
 				new Commit(txn),
-				new Sleep(1000),
-				new Put(txn, key, "val1", ResultCode.MRT_EXPIRED),
+				new Put(txn, key, "val1", ResultCode.TXN_ALREADY_COMMITTED),
 			};
 
 			Execute(cmds);
@@ -733,13 +732,27 @@ namespace Aerospike.Test
 
 			public void Run(TestAsyncTxn parent, IListener listener)
 			{
-				WritePolicy wp = null;
-				if (txn != null)
+				try
 				{
-					wp = client.WritePolicyDefault.Clone();
-					wp.Txn = txn;
+					WritePolicy wp = null;
+					if (txn != null)
+					{
+						wp = client.WritePolicyDefault.Clone();
+						wp.Txn = txn;
+					}
+					client.Put(wp, new PutHandler(listener, expectedResult), key, bins);
 				}
-				client.Put(wp, new PutHandler(listener, expectedResult), key, bins);
+				catch (Exception e)
+				{
+					if (expectedResult != 0)
+					{
+						parent.OnError(e, expectedResult);
+					}
+					else
+					{
+						parent.OnError(e);
+					}
+				}
 			}
 
 			private class PutHandler(TestAsyncTxn.IListener listener, int expectedResult) : WriteListener
@@ -1072,7 +1085,7 @@ namespace Aerospike.Test
 			public void Run(TestAsyncTxn parent, IListener listener)
 			{
 				Util.Sleep(sleepMillis);
-				parent.NotifyCompleted();
+				listener.OnSuccess();
 			}
 		}
 

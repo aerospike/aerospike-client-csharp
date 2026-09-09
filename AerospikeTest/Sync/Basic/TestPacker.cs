@@ -129,8 +129,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void SortMapsOrdersInfinityAndNegativeIntegers()
 		{
-			// Wildcard keys compare equal to all other keys in canonical sort and must
-			// be the sole key in a map literal.
+			// Negative integers sort before infinity keys regardless of insertion order.
 			Hashtable map1 = new()
 			{
 				[Value.INFINITY] = "inf",

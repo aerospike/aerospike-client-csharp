@@ -346,6 +346,45 @@ namespace Aerospike.Test
 			Assert.IsTrue(PackValue(mapLeft).Length > 0);
 		}
 
+		[TestMethod]
+		public void FloatDoubleUnsignedLongAndBlobValuesPackAndCompare()
+		{
+			Packer floatPacker = new();
+			floatPacker.PackFloat(3.5f);
+			CollectionAssert.AreEqual(floatPacker.ToByteArray(), PackValue(Value.Get(3.5f)));
+
+			Value.UnsignedLongValue ulongValue = new(9223372036854775813UL);
+			Assert.AreEqual(9223372036854775813UL, ulongValue.Object);
+			Assert.AreEqual(ulongValue, Value.Get(9223372036854775813UL));
+			Assert.IsTrue(PackValue(ulongValue).Length > 0);
+
+			byte[] blobBytes = [0x0a, 0x0b, 0x0c];
+			Value.BlobValue blob = new(blobBytes);
+			CollectionAssert.AreEqual(blobBytes, (byte[])blob.Object);
+			Assert.IsTrue(PackValue(blob).Length > 0);
+			blob.EstimateSize();
+			Assert.IsTrue(blob.Equals(blobBytes));
+			Assert.IsFalse(blob.Equals(new byte[] { 0x0a, 0x0b, 0x0d }));
+			Test.TestException(() => blob.ValidateKeyType(), ResultCode.PARAMETER_ERROR);
+		}
+
+		[TestMethod]
+		public void ValueArrayComparesElementsAndGeoJsonPacks()
+		{
+			Value.ValueArray left = new(new Value[] { Value.Get("a"), Value.Get(1) });
+			Value.ValueArray right = new(new Value[] { Value.Get("a"), Value.Get(1) });
+			Value.ValueArray different = new(new Value[] { Value.Get("a"), Value.Get(2) });
+
+			Assert.AreEqual(left, right);
+			Assert.AreNotEqual(left, different);
+			Assert.IsTrue(PackValue(left).Length > 0);
+
+			Value.GeoJSONValue geo = new("{ \"type\": \"Point\", \"coordinates\": [1.0, 2.0] }");
+			Packer geoPacker = new();
+			geoPacker.PackGeoJSON("{ \"type\": \"Point\", \"coordinates\": [1.0, 2.0] }");
+			CollectionAssert.AreEqual(geoPacker.ToByteArray(), PackValue(geo));
+		}
+
 		private static void AssertScalarNumeric<T>(Value value, T expected, ParticleType type, byte[] expectedPack)
 			where T : struct
 		{

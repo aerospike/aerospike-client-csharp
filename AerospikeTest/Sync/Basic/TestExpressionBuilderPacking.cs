@@ -97,6 +97,13 @@ namespace Aerospike.Test
 			AssertExpBytes(MapExp.Put(mapPolicy, mapKey, value, mapBin, mapCtx));
 		}
 
+		[TestMethod]
+		public void ExpValPacksUnsignedIntegerAndFloat()
+		{
+			AssertExpBytes(Exp.Val(9223372036854775813UL));
+			AssertExpBytes(Exp.Val(3.5d));
+		}
+
 		private static void AssertExpBytes(Exp exp)
 		{
 			byte[] bytes = Exp.Build(exp).Bytes;

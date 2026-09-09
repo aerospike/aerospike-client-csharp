@@ -76,6 +76,17 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void BatchSingleGetWithOperations()
+		{
+			Key[] keys = [seedKey];
+
+			Record[] records = client.Get(null, keys, Operation.Get(BinName));
+
+			Assert.AreEqual(1, records.Length);
+			AssertBinEqual(seedKey, records[0], BinName, BinValue);
+		}
+
+		[TestMethod]
 		public void BatchSingleUDF()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "batch-single-udf");
