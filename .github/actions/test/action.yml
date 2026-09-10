@@ -85,7 +85,7 @@ runs:
 
     - name: Setup Aerospike Server
       id: setup-server
-      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@8ec712eafbec26c8db8d1183688a5fd806560a95  #v3.5.0
+      uses: aerospike/shared-workflows/.github/actions/setup-aerospike-server@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
       with:
         server-tag: ${{ steps.resolve.outputs.server-tag }}
         server-container-repo: ${{ steps.resolve.outputs.server-container-repo }}
@@ -95,6 +95,7 @@ runs:
         features-content: ${{ inputs.features-content }}
         enable-strong-consistency: ${{ steps.resolve.outputs.enable-sc }}
         enable-tls: ${{ inputs.enable-tls }}
+        enable-security: ${{ inputs.enable-security }}
 
     - name: Trust TLS CA certificate
       if: inputs.enable-tls == 'true'

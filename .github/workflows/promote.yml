@@ -37,7 +37,7 @@ jobs:
     - name: Setup JFrog CLI
       uses: step-security/setup-jfrog-cli@3054b554c0fb4915b3d58847fb7730c593dbb934 # v5.0.0
       env:
-        JF_URL: https://aerospike.jfrog.io
+        JF_URL: https://artifact.aerospike.io
         JF_PROJECT: database
       with:
         oidc-provider-name: gh-aerospike
@@ -132,7 +132,7 @@ jobs:
         echo "Adjacency check passed."
 
     - name: Promote release bundle
-      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@8ec712eafbec26c8db8d1183688a5fd806560a95 # v3.5.0
+      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
       with:
         bundle-name: aerospike-client-csharp
         version: ${{ inputs.version }}
