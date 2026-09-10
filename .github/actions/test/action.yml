@@ -112,13 +112,11 @@ runs:
         # Mirror aerospike-client-python EE test setup: grant the admin user the
         # roles required by security, masking, and UDF integration tests.
         roles="read-write-udf sys-admin user-admin service-ctrl masking-admin write-masked read-masked"
-        asadm_port=3000
-        if [ "${{ inputs.enable-tls }}" == "true" ]; then
-          asadm_port=4333
-        fi
+        # Always use the plain service port for asadm. Port 4333 is TLS-only and this
+        # docker invocation does not pass TLS client settings (shared-workflows does the same).
         for attempt in $(seq 1 30); do
           if docker run --rm --network host aerospike/aerospike-tools:latest \
-            asadm -h 127.0.0.1 -p "${asadm_port}" -U admin -P admin \
+            asadm -h 127.0.0.1 -p 3000 -U admin -P admin \
             -e "enable; manage acl grant user admin roles ${roles}"; then
             exit 0
           fi
