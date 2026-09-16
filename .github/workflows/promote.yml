@@ -132,7 +132,7 @@ jobs:
         echo "Adjacency check passed."
 
     - name: Promote release bundle
-      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
+      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@b4b1e9dc89314a2d542f9d6fe0ee150ad06f9860 # v5.0.0
       with:
         bundle-name: aerospike-client-csharp
         version: ${{ inputs.version }}
