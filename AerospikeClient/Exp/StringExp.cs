@@ -970,9 +970,10 @@ namespace Aerospike.Client
 		///     Exp.StringBin("text"));
 		/// </code>
 		/// </example>
-		/// <param name="policy">write policy; only the <see cref="StringWriteFlags.NO_FAIL"/> flag is
-		/// meaningful here. <see cref="StringWriteFlags.CREATE_ONLY"/> and <see cref="StringWriteFlags.UPDATE_ONLY"/> are bin-existence
-		/// predicates and do not carry over to a source expression</param>
+		/// <param name="policy">write policy; the <see cref="StringWriteFlags.DEFAULT"/>, <see cref="StringWriteFlags.UPDATE_ONLY"/> and <see cref="StringWriteFlags.NO_FAIL"/>
+		/// <see cref="StringWriteFlags"/> values apply to this op. <see cref="StringWriteFlags.CREATE_ONLY"/> is rejected
+		/// by the server on this op. <see cref="StringWriteFlags.NO_FAIL"/> here also suppresses a
+		/// regex-compile failure</param>
 		/// <param name="pattern">ICU-syntax regex pattern (must be valid UTF-8)</param>
 		/// <param name="replacement">replacement text (must be valid UTF-8)</param>
 		/// <param name="regexFlags">bitwise-OR of <see cref="StringRegexFlags"/> constants</param>

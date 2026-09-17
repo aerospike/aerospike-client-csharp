@@ -41,6 +41,9 @@ namespace Aerospike.Test
 		private static readonly string var = "v";
 		private static readonly Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "stringexp-key");
 		private static readonly StringPolicy policy = StringPolicy.Default;
+		private static readonly StringPolicy createOnlyPolicy = new(StringWriteFlags.CREATE_ONLY);
+		private static readonly StringPolicy updateOnlyPolicy = new(StringWriteFlags.UPDATE_ONLY);
+		private static readonly StringPolicy noFailPolicy = new(StringWriteFlags.NO_FAIL);
 		// Ceiling the server puts on a modify op's estimated result size.
 		private const int ResultSizeCap = 8 * 1024 * 1024;
 
@@ -70,6 +73,42 @@ namespace Aerospike.Test
 		{
 			return client.Operate(null, key,
 				ExpOperation.Read(var, Exp.Build(e), ExpReadFlags.DEFAULT));
+		}
+
+		/// <summary>
+		/// Evaluate at error-detail verbosity 2. The expression runtime collapses every
+		/// sub-op failure into one generic fault, so <see cref="ResultCode.OP_NOT_APPLICABLE"/>
+		/// is all the result code ever says on this path; the sub-code and staged message
+		/// identify the actual rejection.
+		/// </summary>
+		private static Record EvalDetailed(Exp e)
+		{
+			WritePolicy writePolicy = new()
+			{
+				errorDetailVerbosity = 2
+			};
+			return client.Operate(writePolicy, key,
+				ExpOperation.Read(var, Exp.Build(e), ExpReadFlags.DEFAULT));
+		}
+
+		/// <summary>
+		/// Assert an expression evaluation fault at error-detail verbosity 2.
+		/// The expression runtime reports <see cref="ResultCode.OP_NOT_APPLICABLE"/>; subcodes
+		/// are scoped to their parent status on the wire, so PARAM_* subcodes from the
+		/// equivalent operate path are not re-emitted here — assert the staged server message.
+		/// </summary>
+		private static AerospikeException AssertEvalFails(Exp e, string message)
+		{
+			AerospikeException ae = Assert.Throws<AerospikeException>(() => EvalDetailed(e));
+			Assert.AreEqual(ResultCode.OP_NOT_APPLICABLE, ae.Result);
+			Assert.AreEqual(SubCode.NONE, ae.SubCode);
+			Assert.AreEqual(message, ae.BaseMessage);
+			return ae;
+		}
+
+		private static void AssertStringParamError(Exp e, string message)
+		{
+			AssertEvalFails(e, message);
 		}
 
 		//=================================================================
@@ -594,71 +633,140 @@ namespace Aerospike.Test
 			Assert.AreEqual("abcNUMdefNUM", r2.GetString(var));
 		}
 
-		[TestMethod]
-		public void RegexReplacePacksPolicyFlags()
-		{
-			StringPolicy updateOnly = new(StringWriteFlags.UPDATE_ONLY);
-			Expression expression = Exp.Build(StringExp.RegexReplace(
-				updateOnly,
-				Exp.Val("[0-9]+"),
-				Exp.Val("NUM"),
-				StringRegexFlags.GLOBAL,
-				Exp.StringBin(bin)));
-			List<object> call = (List<object>)new Unpacker(
-				expression.Bytes, 0, expression.Bytes.Length, false).UnpackList();
-			List<object> args = (List<object>)call[3];
-
-			Assert.HasCount(4, args);
-			Assert.AreEqual((long)StringRegexFlags.GLOBAL, args[2]);
-			Assert.AreEqual((long)StringWriteFlags.UPDATE_ONLY, args[3]);
-		}
+		//=================================================================
+		// Write flags on the expression path
+		//
+		// as_bin_string_modify_exp funnels into the same string_modify() as the
+		// operate path, so the StringWriteFlags behave the same — the "bin" they
+		// test is the value the source expression produced.
+		//=================================================================
 
 		[TestMethod]
-		public void CreateOnlyOnExistingBinRaisesBinExists()
+		public void UpdateOnlyAppliesToLiveSource()
 		{
 			Put("hello");
-			StringPolicy createOnly = new(StringWriteFlags.CREATE_ONLY);
-
-			AerospikeException ae = Assert.Throws<AerospikeException>(() =>
-				Eval(StringExp.Append(createOnly, Exp.Val(" world"), Exp.StringBin(bin))));
-			// Operate path returns BIN_EXISTS; exp_read surfaces OP_NOT_APPLICABLE.
-			Assert.IsTrue(
-				ae.Result == ResultCode.BIN_EXISTS_ERROR || ae.Result == ResultCode.OP_NOT_APPLICABLE,
-				"Unexpected result code: " + ae.Result);
+			Record r = Eval(StringExp.Append(updateOnlyPolicy, Exp.Val(" world"), Exp.StringBin(bin)));
+			Assert.AreEqual("hello world", r.GetString(var));
 		}
 
 		[TestMethod]
-		public void CreateOnlyWithNoFailOnExistingBinReturnsUnmodifiedSource()
+		public void UpdateOnlyAppliesToNonCreateModifyOp()
+		{
+			Put("hello");
+			Record r = Eval(StringExp.Upper(updateOnlyPolicy, Exp.StringBin(bin)));
+			Assert.AreEqual("HELLO", r.GetString(var));
+		}
+
+		[TestMethod]
+		public void CreateOnlyOnLiveSourceIsRejected()
+		{
+			Put("hello");
+			AssertEvalFails(
+				StringExp.Append(createOnlyPolicy, Exp.Val("!"), Exp.StringBin(bin)),
+				"string_append: value exists but CREATE_ONLY flag is set");
+		}
+
+		[TestMethod]
+		public void CreateOnlyWithNoFailOnLiveSourceYieldsUnmodifiedSource()
 		{
 			Put("hello");
 			StringPolicy createOnlyNoFail = new(
 				StringWriteFlags.CREATE_ONLY | StringWriteFlags.NO_FAIL);
 
-			Record r = Eval(StringExp.Append(createOnlyNoFail, Exp.Val(" world"), Exp.StringBin(bin)));
+			Record r = Eval(StringExp.Append(createOnlyNoFail, Exp.Val("!"), Exp.StringBin(bin)));
 			Assert.AreEqual("hello", r.GetString(var));
 		}
 
 		[TestMethod]
-		public void CreateOnlyWithUpdateOnlyRaisesParameterError()
+		public void CreateOnlyOnNonCreateModifyOpRaisesParamError()
 		{
 			Put("hello");
-			StringPolicy invalid = new(
-				StringWriteFlags.CREATE_ONLY | StringWriteFlags.UPDATE_ONLY);
+			AssertStringParamError(
+				StringExp.Upper(createOnlyPolicy, Exp.StringBin(bin)),
+				"string_upper: flags 0x1 not valid for this op");
+		}
 
-			AerospikeException ae = Assert.Throws<AerospikeException>(() =>
-				Eval(StringExp.Append(invalid, Exp.Val(" world"), Exp.StringBin(bin))));
-			// Operate path returns PARAMETER_ERROR; exp_read surfaces OP_NOT_APPLICABLE.
-			Assert.IsTrue(
-				ae.Result == ResultCode.PARAMETER_ERROR || ae.Result == ResultCode.OP_NOT_APPLICABLE,
-				"Unexpected result code: " + ae.Result);
+		[TestMethod]
+		public void CreateOnlyWithUpdateOnlyRaisesParamError()
+		{
+			Put("hello");
+			const string message = "string_append: CREATE_ONLY and UPDATE_ONLY flags are mutually exclusive";
+
+			StringPolicy both = new(StringWriteFlags.CREATE_ONLY | StringWriteFlags.UPDATE_ONLY);
+			AssertStringParamError(StringExp.Append(both, Exp.Val("!"), Exp.StringBin(bin)), message);
+
+			StringPolicy bothNoFail = new(
+				StringWriteFlags.CREATE_ONLY | StringWriteFlags.UPDATE_ONLY | StringWriteFlags.NO_FAIL);
+			AssertStringParamError(StringExp.Append(bothNoFail, Exp.Val("!"), Exp.StringBin(bin)), message);
+		}
+
+		[TestMethod]
+		public void NoFailSuppressesPrepareFailure()
+		{
+			Put("hello");
+			AssertStringParamError(
+				StringExp.PadStart(policy, Exp.Val(10), Exp.Val(""), Exp.StringBin(bin)),
+				"string_pad_start: target length 10 must be non-negative and pad string must not be empty");
+
+			Record r = Eval(StringExp.PadStart(
+				noFailPolicy, Exp.Val(10), Exp.Val(""), Exp.StringBin(bin)));
+			Assert.AreEqual("hello", r.GetString(var));
+		}
+
+		[TestMethod]
+		public void RegexReplaceWithInvalidPatternIsRejected()
+		{
+			Put("hello");
+			AssertEvalFails(
+				StringExp.RegexReplace(policy, Exp.Val("("), Exp.Val("X"),
+					StringRegexFlags.DEFAULT, Exp.StringBin(bin)),
+				"string_regex_replace: regex pattern is invalid or could not be compiled");
+		}
+
+		[TestMethod]
+		public void RegexReplaceNoFailSuppressesInvalidPattern()
+		{
+			Put("hello");
+			Record r = Eval(StringExp.RegexReplace(
+				noFailPolicy, Exp.Val("("), Exp.Val("X"),
+				StringRegexFlags.DEFAULT, Exp.StringBin(bin)));
+			Assert.AreEqual("hello", r.GetString(var));
+		}
+
+		[TestMethod]
+		public void RegexReplacePacksRegexFlagsAheadOfPolicyFlags()
+		{
+			// DOTALL and NO_FAIL are both 1 << 2, and MULTILINE and UPDATE_ONLY are
+			// both 1 << 1, so the two arguments are only told apart by behaviour.
+			Put("a\nb");
+			Record r = Eval(StringExp.RegexReplace(
+				updateOnlyPolicy, Exp.Val("a.b"), Exp.Val("X"),
+				StringRegexFlags.DOTALL, Exp.StringBin(bin)));
+			Assert.AreEqual("X", r.GetString(var));
+		}
+
+		[TestMethod]
+		public void RegexReplacePacksFourElementsWithPolicyLast()
+		{
+			Expression expression = Exp.Build(StringExp.RegexReplace(
+				noFailPolicy, Exp.Val("[0-9]+"), Exp.Val("NUM"),
+				StringRegexFlags.GLOBAL, Exp.StringBin(bin)));
+			List<object> call = (List<object>)new Unpacker(
+				expression.Bytes, 0, expression.Bytes.Length, false).UnpackList();
+			List<object> args = (List<object>)call[3];
+
+			Assert.HasCount(4, args);
+			Assert.AreEqual(66L, args[0]);
+			CollectionAssert.AreEqual(new List<object> { "[0-9]+", "NUM" }, (List<object>)((List<object>)args[1])[1]);
+			Assert.AreEqual((long)StringRegexFlags.GLOBAL, args[2]);
+			Assert.AreEqual((long)StringWriteFlags.NO_FAIL, args[3]);
 		}
 
 		[TestMethod]
 		public void CreateOnlyPacksPolicyFlags()
 		{
-			StringPolicy createOnly = new(StringWriteFlags.CREATE_ONLY);
 			Expression expression = Exp.Build(StringExp.Append(
-				createOnly, Exp.Val("x"), Exp.StringBin(bin)));
+				createOnlyPolicy, Exp.Val("x"), Exp.StringBin(bin)));
 			List<object> call = (List<object>)new Unpacker(
 				expression.Bytes, 0, expression.Bytes.Length, false).UnpackList();
 			List<object> args = (List<object>)call[3];
