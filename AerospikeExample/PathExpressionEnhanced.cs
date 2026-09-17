@@ -61,7 +61,7 @@ public sealed class PathExpressionEnhanced : SyncExample
 		Record record = client.Operate(writePolicy, key,
 			CDTOperation.SelectByPath(MapBinName, SelectFlag.VALUE, ctx));
 
-		console.Info($"SelectByPath MapKeysIn [Charlie, John]: {record.GetList(MapBinName)}");
+		Console.WriteLine($"SelectByPath MapKeysIn [Charlie, John]: {record.GetList(MapBinName)}");
 	}
 
 	/// <summary>
@@ -84,13 +84,13 @@ public sealed class PathExpressionEnhanced : SyncExample
 		client.Operate(null, key,
 			MapOperation.PutItems(MapPolicy.Default, binName, map));
 
-		console.Info("Mixed-key map stored (string sku, long 1001, blob region key).");
+		Console.WriteLine("Mixed-key map stored (string sku, long 1001, blob region key).");
 
 		CTX ctx = CTX.MapKeysIn(Value.Get("sku"), Value.Get(1001L), Value.Get(regionKey));
 		Record record = client.Operate(null, key,
 			CDTOperation.SelectByPath(binName, SelectFlag.VALUE, ctx));
 
-		console.Info("selectByPath mapKeysIn(Value...) [sku, 1001, region]: " + record.GetList(binName));
+		Console.WriteLine("selectByPath mapKeysIn(Value...) [sku, 1001, region]: " + record.GetList(binName));
 	}
 
 	/// <summary>
@@ -117,7 +117,7 @@ public sealed class PathExpressionEnhanced : SyncExample
 		Record record = client.Operate(writePolicy, key,
 			CDTOperation.SelectByPath(MapBinName, SelectFlag.MAP_KEY_VALUE, keyCtx, filter));
 
-		console.Info($"SelectByPath MapKeysIn [Charlie, Jim, John] AND value > 70: {record.GetValue(MapBinName)}");
+		Console.WriteLine($"SelectByPath MapKeysIn [Charlie, Jim, John] AND value > 70: {record.GetValue(MapBinName)}");
 	}
 
 	/// <summary>
@@ -135,7 +135,7 @@ public sealed class PathExpressionEnhanced : SyncExample
 				Exp.Val(new List<string> { "red", "blue", "green" })));
 
 		Record record = client.Operate(null, key, ExpOperation.Read("inList", includesBlue, ExpReadFlags.DEFAULT));
-		console.Info($"inList [red, blue, green] contains 'blue': {record.GetBool("inList")}");
+		Console.WriteLine($"inList [red, blue, green] contains 'blue': {record.GetBool("inList")}");
 
 		Expression excludesBlue = Exp.Build(
 			Exp.InList(
@@ -143,7 +143,7 @@ public sealed class PathExpressionEnhanced : SyncExample
 				Exp.Val(new List<string> { "red", "yellow", "green" })));
 
 		Record recordNot = client.Operate(null, key, ExpOperation.Read("notInList", excludesBlue, ExpReadFlags.DEFAULT));
-		console.Info($"inList [red, yellow, green] contains 'blue': {recordNot.GetBool("notInList")}");
+		Console.WriteLine($"inList [red, yellow, green] contains 'blue': {recordNot.GetBool("notInList")}");
 	}
 
 	/// <summary>
@@ -166,7 +166,7 @@ public sealed class PathExpressionEnhanced : SyncExample
 		Record record = client.Operate(null, key, ExpOperation.Read("keys", exp, ExpReadFlags.DEFAULT));
 
 		List<object> keys = (List<object>)record.GetList("keys");
-		console.Info($"Exp.MapKeysIn: {Util.ListToString(keys)}");
+		Console.WriteLine($"Exp.MapKeysIn: {Util.ListToString(keys)}");
 	}
 
 	/// <summary>
@@ -190,6 +190,6 @@ public sealed class PathExpressionEnhanced : SyncExample
 		Record record = client.Operate(null, key, ExpOperation.Read("values", exp, ExpReadFlags.DEFAULT));
 
 		List<object> values = (List<object>)record.GetList("values");
-		console.Info($"Exp.MapValuesIn: {Util.ListToString(values)}");
+		Console.WriteLine($"Exp.MapValuesIn: {Util.ListToString(values)}");
 	}
 }

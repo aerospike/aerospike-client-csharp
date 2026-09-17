@@ -27,9 +27,10 @@ namespace Aerospike.Client
 		public readonly string name;
 
 		/// <summary>
-		/// TLS certificate name used for secure connections.
-		/// The certificate must exist in your Trusted Root Certification repository.
-		/// See: <see href="https://technet.microsoft.com/en-us/library/cc754841%28v=ws.11%29.aspx#BKMK_adddomain">Trusted Root Certification</see>
+		/// TLS server name used for certificate validation and the TLS handshake.
+		/// This is normally the DNS name in the server certificate, and can differ from
+		/// <see cref="name"/> when connecting by IP address or through a load balancer.
+		/// The issuing certificate authority must be trusted by the operating system.
 		/// </summary>
 		public readonly string tlsName;
 

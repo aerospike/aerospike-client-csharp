@@ -28,6 +28,7 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// Allowable TLS protocols that the client can use for secure connections.
+		/// Prefer TLS 1.2 or later. The selected protocols must also be enabled by the server.
 		/// Multiple protocols can be specified.  Example:
 		/// <code>
 		/// TlsPolicy policy = new TlsPolicy();
@@ -45,13 +46,16 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Client certificates to pass to server when server requires mutual authentication.
+		/// Certificates used for mutual TLS or <see cref="AuthMode.PKI"/> must include an
+		/// accessible private key.
 		/// <para>Default: null (Client authenticates server, but server does not authenticate client)</para>
 		/// </summary>
 		public X509CertificateCollection clientCertificates;
 
 		/// <summary>
 		/// Use TLS connections only for login authentication.  All other communication with
-		/// the server will be done with non-TLS connections. 
+		/// the server will be done with non-TLS connections. Do not enable this option when
+		/// all traffic must remain encrypted.
 		/// <para>Default: false (Use TLS connections for all communication with server)</para>
 		/// </summary>
 		public bool forLoginOnly;

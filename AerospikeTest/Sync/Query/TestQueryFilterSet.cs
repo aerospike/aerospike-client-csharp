@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -35,7 +35,10 @@ namespace Aerospike.Test
 			// Write records in set p1.
 			for (int i = 1; i <= 5; i++)
 			{
-				policy.expiration = i * 60;
+				if (SuiteHelpers.hasTtl)
+				{
+					policy.expiration = i * 60;
+				}
 
 				Key key = new(SuiteHelpers.ns, set1, i);
 				client.Put(policy, key, new Bin(binA, i));
@@ -220,6 +223,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryVoidTime()
 		{
+			Suite.RequireTtlSupport();
+
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(set1);
@@ -256,6 +261,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void QueryTTL()
 		{
+			Suite.RequireTtlSupport();
+
 			Statement stmt = new();
 			stmt.SetNamespace(SuiteHelpers.ns);
 			stmt.SetSetName(set1);

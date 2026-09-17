@@ -34,10 +34,10 @@ public sealed class Delete : SyncExample
 		Key key = new(ns, set, "deletekey");
 
 		bool existed = client.Delete(writePolicy, key);
-		console.Info($"Delete: namespace={key.ns} set={key.setName} key={key.userKey} existed={existed}");
+		Console.WriteLine($"Delete: namespace={key.ns} set={key.setName} key={key.userKey} existed={existed}");
 
 		existed = client.Delete(writePolicy, key);
-		console.Info($"Delete non-existent: existed={existed}");
+		Console.WriteLine($"Delete non-existent: existed={existed}");
 	}
 
 	/// <summary>
@@ -56,6 +56,6 @@ public sealed class Delete : SyncExample
 		};
 
 		bool existed = client.Delete(durablePolicy, key);
-		console.Info($"Durable delete: namespace={key.ns} set={key.setName} key={key.userKey} existed={existed}");
+		Console.WriteLine($"Durable delete: namespace={key.ns} set={key.setName} key={key.userKey} existed={existed}");
 	}
 }

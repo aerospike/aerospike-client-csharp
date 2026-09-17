@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeAdmin", "AerospikeAdmin\AerospikeAdmin.csproj", "{86B2791C-FDDD-40B6-B675-B372DC4B8C87}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeClient", "AerospikeClient\AerospikeClient.csproj", "{A1AA3444-EAED-4394-BCCA-96EA0E0A88D1}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AerospikeBenchmarks", "AerospikeBenchmarks\AerospikeBenchmarks.csproj", "{09C0B19A-41DD-4B47-A015-B7DFCA0072D3}"
@@ -44,34 +42,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Coverage|Any CPU.ActiveCfg = Release|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Coverage|Any CPU.Build.0 = Release|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Coverage|x64.ActiveCfg = Coverage|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Coverage|x64.Build.0 = Coverage|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Coverage|x86.ActiveCfg = Coverage|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Coverage|x86.Build.0 = Coverage|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Debug_Unix|Any CPU.ActiveCfg = Debug_Unix|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Debug_Unix|x64.ActiveCfg = Debug_Unix|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Debug_Unix|x64.Build.0 = Debug_Unix|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Debug_Unix|x86.ActiveCfg = Debug_Unix|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Debug_Unix|x86.Build.0 = Debug_Unix|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Debug|x64.Build.0 = Debug|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Debug|x86.Build.0 = Debug|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Release_Unix|Any CPU.ActiveCfg = Release_Unix|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Release_Unix|x64.ActiveCfg = Release_Unix|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Release_Unix|x64.Build.0 = Release_Unix|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Release_Unix|x86.ActiveCfg = Release_Unix|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Release_Unix|x86.Build.0 = Release_Unix|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Release|Any CPU.Build.0 = Release|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Release|x64.ActiveCfg = Release|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Release|x64.Build.0 = Release|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Release|x86.ActiveCfg = Release|Any CPU
-		{86B2791C-FDDD-40B6-B675-B372DC4B8C87}.Release|x86.Build.0 = Release|Any CPU
 		{A1AA3444-EAED-4394-BCCA-96EA0E0A88D1}.Coverage|Any CPU.ActiveCfg = Release|Any CPU
 		{A1AA3444-EAED-4394-BCCA-96EA0E0A88D1}.Coverage|Any CPU.Build.0 = Release|Any CPU
 		{A1AA3444-EAED-4394-BCCA-96EA0E0A88D1}.Coverage|x64.ActiveCfg = Coverage|Any CPU

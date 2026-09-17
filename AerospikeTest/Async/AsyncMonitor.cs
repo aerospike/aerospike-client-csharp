@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -18,6 +18,7 @@ namespace Aerospike.Test
 {
 	public sealed class AsyncMonitor
 	{
+		private const int WaitTimeoutMilliseconds = 120000;
 		private String error;
 		private bool completed;
 
@@ -26,7 +27,7 @@ namespace Aerospike.Test
 			Exception cause = e;
 			while (cause.InnerException != null)
 			{
-				cause = e.InnerException;
+				cause = cause.InnerException;
 			}
 			this.error = e.Message + Environment.NewLine + cause.StackTrace;
 		}
@@ -42,7 +43,10 @@ namespace Aerospike.Test
 			{
 				while (!completed)
 				{
-					Monitor.Wait(this);
+					if (!Monitor.Wait(this, WaitTimeoutMilliseconds))
+					{
+						Assert.Fail("Async test did not complete within " + WaitTimeoutMilliseconds + "ms");
+					}
 				}
 			}
 

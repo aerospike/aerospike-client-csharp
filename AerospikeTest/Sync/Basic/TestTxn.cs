@@ -431,6 +431,62 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void TxnBatchLargeCommit()
+		{
+			const int keyCount = 64;
+			Key[] keys = new Key[keyCount];
+			Bin bin = new(binName, 1);
+
+			for (int i = 0; i < keys.Length; i++)
+			{
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "txnBatchLarge" + i);
+				keys[i] = key;
+				client.Put(null, key, bin);
+			}
+
+			Record[] recs = client.Get(null, keys);
+			AssertBatchEqual(keys, recs, 1);
+
+			using Txn txn = new(keyCount, keyCount);
+			bin = new(binName, 2);
+
+			BatchPolicy bp = BatchPolicy.WriteDefault();
+			bp.Txn = txn;
+
+			recs = client.Get(bp, keys);
+			AssertBatchEqual(keys, recs, 1);
+
+			BatchResults bresults = client.Operate(bp, null, keys, Operation.Put(bin));
+
+			if (!bresults.status)
+			{
+				StringBuilder sb = new();
+				sb.Append("Batch failed:");
+				sb.Append(System.Environment.NewLine);
+
+				foreach (BatchRecord br in bresults.records)
+				{
+					if (br.resultCode == 0)
+					{
+						sb.Append("Record: " + br.record);
+					}
+					else
+					{
+						sb.Append("ResultCode: " + br.resultCode);
+					}
+					sb.Append(System.Environment.NewLine);
+				}
+
+				throw new AerospikeException(sb.ToString());
+			}
+
+			client.Commit(txn);
+
+			recs = client.Get(null, keys);
+			AssertBatchEqual(keys, recs, 2);
+		}
+
+		[TestMethod]
 		public void TxnBatchAbort()
 		{
 			var keys = new Key[10];
@@ -710,6 +766,39 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void TxnAbortAfterCommitFailure()
+		{
+			using Txn txn = new();
+			SimulateCommitFailure(txn, true);
+			Assert.AreEqual(Txn.TxnState.COMMIT_FAILED, txn.State);
+
+			try
+			{
+				client.Abort(txn);
+				throw new AerospikeException("Unexpected success");
+			}
+			catch (AerospikeException ae)
+			{
+				if (ae.Result != ResultCode.TXN_FAILED)
+				{
+					throw;
+				}
+			}
+		}
+
+		[TestMethod]
+		public void TxnAbortAfterCleanCommitFailure()
+		{
+			using Txn txn = new();
+			SetTxnState(txn, Txn.TxnState.VERIFIED);
+			SimulateCommitFailure(txn, false);
+			Assert.AreEqual(Txn.TxnState.VERIFIED, txn.State);
+
+			AbortStatus.AbortStatusType status = client.Abort(txn);
+			Assert.AreEqual(AbortStatus.AbortStatusType.OK, status);
+		}
+
+		[TestMethod]
 		public void TxnInvalidNamespace()
 		{
 			Key key = new("invalid", SuiteHelpers.set, "mrtkey");
@@ -857,6 +946,21 @@ namespace Aerospike.Test
 			};
 			Record r = client.Get(p, key0);
 			Assert.IsNull(r);
+		}
+
+		private static void SimulateCommitFailure(Txn txn, bool inDoubt)
+		{
+			MethodInfo markCommitFailed = typeof(Txn).GetMethod("MarkCommitFailed", BindingFlags.Instance | BindingFlags.NonPublic);
+
+			markCommitFailed.Invoke(txn, new object[] { inDoubt });
+		}
+
+		private static void SetTxnState(Txn txn, Txn.TxnState state)
+		{
+			PropertyInfo stateProperty = typeof(Txn).GetProperty("State");
+			MethodInfo stateSetter = stateProperty.GetSetMethod(true);
+
+			stateSetter.Invoke(txn, new object[] { state });
 		}
 
 		private static void AssertBatchEqual(Key[] keys, Record[] recs, int expected)

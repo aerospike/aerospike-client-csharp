@@ -25,7 +25,7 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "avgindex";
 		private const string keyPrefix = "avgkey";
-		private static readonly string binName = Suite.GetBinName("l2");
+		private static readonly string binName = "l2";
 		private const int size = 10;
 
 		[ClassInitialize()]
@@ -105,6 +105,31 @@ namespace Aerospike.Test
 			{
 				rs.Close();
 			}
+		}
+
+		[TestMethod]
+		public void QueryAverageWithAction()
+		{
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SuiteHelpers.set);
+			stmt.SetFilter(Filter.Range(binName, 0, 1000));
+			stmt.SetAggregateFunction(Assembly.GetExecutingAssembly(), "Aerospike.Test.LuaResources.average_example.lua", "average_example", "average");
+
+			double? average = null;
+
+			client.QueryAggregate(null, stmt, obj =>
+			{
+				if (obj is IDictionary map)
+				{
+					long sum = (long)map["sum"];
+					long count = (long)map["count"];
+					average = (double)sum / count;
+				}
+			});
+
+			Assert.IsNotNull(average);
+			Assert.AreEqual(5.5, average.Value, 0.00000001);
 		}
 	}
 }

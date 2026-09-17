@@ -15,69 +15,73 @@
  * the License.
  */
 using Aerospike.Client;
-using System.Collections.Concurrent;
 
 namespace Aerospike.Test
 {
 	[TestClass]
 	public class TestScan : TestSync
 	{
-		private readonly ConcurrentDictionary<string, Metrics> setMap = new();
+		private const string KeyPrefix = "tierA-scan-";
+		private const string BinName = "tasbin";
+		private const int RecordCount = 12;
+
+		[ClassInitialize]
+		public static void SeedRecords(TestContext testContext)
+		{
+			for (int i = 1; i <= RecordCount; i++)
+			{
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, KeyPrefix + i);
+				client.Put(null, key, new Bin(BinName, i));
+			}
+		}
 
 		[TestMethod]
 		public void ScanParallel()
 		{
-			ScanPolicy policy = new();
+			int count = 0;
+			int valueSum = 0;
 
-			client.ScanAll(policy, SuiteHelpers.ns, SuiteHelpers.set, ScanCallback);
+			client.ScanAll(null, SuiteHelpers.ns, SuiteHelpers.set, (key, record) =>
+			{
+				if (!IsSeededRecord(record))
+				{
+					return;
+				}
+
+				count++;
+				valueSum += record.GetInt(BinName);
+			});
+
+			Assert.AreEqual(RecordCount, count);
+			Assert.AreEqual(78, valueSum);
 		}
 
 		[TestMethod]
 		public void ScanSeries()
 		{
-			Node[] nodes = client.Nodes;
+			int totalFound = 0;
 
-			foreach (Node node in nodes)
+			foreach (Node node in client.Nodes)
 			{
-				client.ScanNode(null, node, SuiteHelpers.ns, SuiteHelpers.set, ScanCallback);
+				int nodeCount = 0;
 
-				foreach (KeyValuePair<string, Metrics> entry in setMap)
+				client.ScanNode(null, node, SuiteHelpers.ns, SuiteHelpers.set, (key, record) =>
 				{
-					entry.Value.count = 0;
-				}
+					if (IsSeededRecord(record))
+					{
+						nodeCount++;
+					}
+				});
+
+				totalFound += nodeCount;
 			}
 
+			Assert.AreEqual(RecordCount, totalFound);
 		}
 
-		public void ScanCallback(Key key, Record record)
+		private static bool IsSeededRecord(Record record)
 		{
-			if (setMap.TryGetValue(key.setName, out Metrics metrics))
-			{
-				Interlocked.Increment(ref metrics.count);
-				return;
-			}
-
-			// Set not found.  Must lock to create metrics entry.
-			lock (setMap)
-			{
-				// Retry lookup under lock.
-				if (setMap.TryGetValue(key.setName, out metrics))
-				{
-					Interlocked.Increment(ref metrics.count);
-					return;
-				}
-
-				metrics = new Metrics
-				{
-					count = 1
-				};
-				setMap[key.setName] = metrics;
-			}
-		}
-
-		public class Metrics
-		{
-			public long count = 0;
+			return record.bins.ContainsKey(BinName);
 		}
 	}
 }

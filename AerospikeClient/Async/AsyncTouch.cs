@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -70,7 +70,7 @@ namespace Aerospike.Client
 			{
 				if (existsListener == null)
 				{
-					throw new AerospikeException(resultCode);
+					throw CreateException(resultCode);
 				}
 				return true;
 			}
@@ -79,12 +79,12 @@ namespace Aerospike.Client
 			{
 				if (policy.failOnFilteredOut)
 				{
-					throw new AerospikeException(resultCode);
+					throw CreateException(resultCode);
 				}
 				return true;
 			}
 
-			throw new AerospikeException(resultCode);
+			throw CreateException(resultCode);
 		}
 
 		protected internal override void OnSuccess()

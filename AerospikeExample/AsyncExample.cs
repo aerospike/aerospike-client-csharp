@@ -25,7 +25,7 @@ public abstract class AsyncExample : Example
 	/// <summary>
 	/// Connect and run one or more asynchronous client examples, sharing a single client connection.
 	/// </summary>
-	public static List<ExampleResultInfo> RunExamples(Console console, Arguments args)
+	public static List<ExampleResultInfo> RunExamples(Arguments args)
 	{
 		AsyncClientPolicy policy = new()
 		{
@@ -35,6 +35,8 @@ public abstract class AsyncExample : Example
 			tlsPolicy = args.tlsPolicy,
 			authMode = args.authMode,
 			asyncMaxCommands = args.commandMax,
+			asyncMaxCommandAction = MaxCommandAction.DELAY,
+			asyncMaxCommandsInQueue = 1000,
 			useServicesAlternate = args.useServicesAlternate,
 			failIfNotConnected = true
 		};
@@ -50,22 +52,21 @@ public abstract class AsyncExample : Example
 
 		foreach (string exampleName in args.asyncExamples)
 		{
-			results.Add(RunExample(exampleName, client, args, console));
+			results.Add(RunExample(exampleName, client, args));
 		}
 
 		return results;
 	}
 
-	private static ExampleResultInfo RunExample(string exampleName, AsyncClient client, Arguments args, Console console)
+	private static ExampleResultInfo RunExample(string exampleName, AsyncClient client, Arguments args)
 	{
 		if (!ExampleRegistry.TryGetAsync(exampleName, out ExampleDefinition definition))
 		{
-			console.Error($"Invalid async example: {exampleName}");
+			Console.Error.WriteLine($"Invalid async example: {exampleName}");
 			return new ExampleResultInfo(exampleName, ExampleResult.Failed, "example class not found");
 		}
 
 		AsyncExample example = (AsyncExample)Activator.CreateInstance(definition.Type);
-		example.SetConsole(console);
 
 		try
 		{
@@ -73,7 +74,7 @@ public abstract class AsyncExample : Example
 		}
 		catch (Exception ex)
 		{
-			console.Error($"{exampleName} FAILED: {ex.Message}");
+			Console.Error.WriteLine($"{exampleName} FAILED: {ex.Message}");
 			return new ExampleResultInfo(exampleName, ExampleResult.Failed, ex.Message);
 		}
 	}

@@ -31,7 +31,7 @@ public sealed class AsyncScanPage : AsyncExample
 	{
 		completed.Reset();
 
-		console.Info("Scan page async");
+		Console.WriteLine("Scan page async");
 
 		ScanPolicy scanPolicy = new()
 		{
@@ -53,13 +53,13 @@ public sealed class AsyncScanPage : AsyncExample
 
 		public void OnSuccess()
 		{
-			parent.console.Info($"Records returned: {recordCount}");
+			Console.WriteLine($"Records returned: {recordCount}");
 			parent.NotifyComplete();
 		}
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Scan failed: {Util.GetErrorMessage(e)}");
+			Console.Error.WriteLine($"Scan failed: {Util.GetErrorMessage(e)}");
 			parent.NotifyComplete();
 		}
 	}

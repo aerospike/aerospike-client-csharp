@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,11 +21,13 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestExpire : TestSync
 	{
-		private static readonly string binName = Suite.GetBinName("expirebin");
+		private static readonly string binName = "expirebin";
 
 		[TestMethod]
 		public void Expire()
 		{
+			Suite.RequireTtlSupport();
+
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "expirekey1");
 			Bin bin = new(binName, "expirevalue");
 
@@ -74,6 +76,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ResetReadTtl()
 		{
+			Suite.RequireTtlSupport();
+
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "expirekey3");
 			Bin bin = new(binName, "expirevalue");
 

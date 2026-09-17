@@ -36,7 +36,7 @@ public sealed class QueryRegionFilter : SyncExample
 			] }
 			""";
 
-		console.Info($"QueryRegion: {region}");
+		Console.WriteLine($"QueryRegion: {region}");
 
 		Statement stmt = new()
 		{
@@ -50,7 +50,7 @@ public sealed class QueryRegionFilter : SyncExample
 
 		while (rs.Next())
 		{
-			console.Info($"Record found: {rs.Object}");
+			Console.WriteLine($"Record found: {rs.Object}");
 		}
 	}
 }

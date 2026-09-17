@@ -28,7 +28,7 @@ public sealed class AsyncScan : AsyncExample
 	/// </summary>
 	public override void RunExample()
 	{
-		console.Info($"Asynchronous scan: namespace={ns} set={set}");
+		Console.WriteLine($"Asynchronous scan: namespace={ns} set={set}");
 
 		recordCount = 0;
 		completed.Reset();
@@ -51,22 +51,22 @@ public sealed class AsyncScan : AsyncExample
 
 			if (count % 10000 == 0)
 			{
-				parent.console.Info($"Records {count}");
+				Console.WriteLine($"Records {count}");
 			}
 		}
 
 		public void OnSuccess()
 		{
 			double seconds = (DateTime.Now - begin).TotalSeconds;
-			parent.console.Info($"Total records returned: {parent.recordCount}");
-			parent.console.Info($"Elapsed time: {seconds} seconds");
-			parent.console.Info($"Records/second: {Math.Round(parent.recordCount / seconds)}");
+			Console.WriteLine($"Total records returned: {parent.recordCount}");
+			Console.WriteLine($"Elapsed time: {seconds} seconds");
+			Console.WriteLine($"Records/second: {Math.Round(parent.recordCount / seconds)}");
 			parent.NotifyComplete();
 		}
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Scan failed: {Util.GetErrorMessage(e)}");
+			Console.Error.WriteLine($"Scan failed: {Util.GetErrorMessage(e)}");
 			parent.NotifyComplete();
 		}
 	}

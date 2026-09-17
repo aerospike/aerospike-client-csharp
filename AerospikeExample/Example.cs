@@ -36,8 +36,6 @@ public sealed record ExampleResultInfo(string Name, ExampleResult Result, string
 
 public abstract class Example
 {
-	protected internal Console console;
-
 	/// <summary>
 	/// Connection and policy configuration injected by the harness.
 	/// </summary>
@@ -49,26 +47,21 @@ public abstract class Example
 	protected WritePolicy writePolicy => args.writePolicy;
 	protected BatchPolicy batchPolicy => args.batchPolicy;
 
-	internal void SetConsole(Console console)
-	{
-		this.console = console;
-	}
-
 	public abstract void RunExample(Arguments args);
 
 	protected ExampleResultInfo RunWithResult(Action run)
 	{
 		string name = GetType().Name;
-		int errorCount = console.ErrorCount;
+		int errorCount = ExampleOutput.ErrorCount;
 		Stopwatch stopwatch = Stopwatch.StartNew();
 
 		try
 		{
-			console.Info($"{name} Begin");
+			Console.WriteLine($"{name} Begin");
 			run();
-			console.Info($"{name} End");
+			Console.WriteLine($"{name} End");
 
-			if (console.ErrorCount > errorCount)
+			if (ExampleOutput.ErrorCount > errorCount)
 			{
 				return new ExampleResultInfo(name, ExampleResult.Failed, "example logged one or more errors", stopwatch.Elapsed);
 			}
@@ -77,12 +70,12 @@ public abstract class Example
 		}
 		catch (ExampleSkipException ex)
 		{
-			console.Warn($"{name} SKIPPED: {ex.Message}");
+			Console.WriteLine($"{name} SKIPPED: {ex.Message}");
 			return new ExampleResultInfo(name, ExampleResult.Skipped, ex.Message, stopwatch.Elapsed);
 		}
 		catch (Exception ex)
 		{
-			console.Error($"{name} FAILED: {ex.Message}");
+			Console.Error.WriteLine($"{name} FAILED: {ex.Message}");
 			return new ExampleResultInfo(name, ExampleResult.Failed, ex.Message, stopwatch.Elapsed);
 		}
 	}

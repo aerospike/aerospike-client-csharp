@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -201,6 +201,7 @@ namespace Aerospike.Client
 					break;
 
 				case Txn.TxnState.VERIFIED:
+				case Txn.TxnState.COMMIT_FAILED:
 					atr.Commit(listener);
 					break;
 
@@ -250,6 +251,9 @@ namespace Aerospike.Client
 				case Txn.TxnState.VERIFIED:
 					atr.Abort(listener);
 					break;
+
+				case Txn.TxnState.COMMIT_FAILED:
+					throw new AerospikeException(ResultCode.TXN_FAILED, "Transaction commit failed. Abort is not allowed.");
 
 				case Txn.TxnState.COMMITTED:
 					throw new AerospikeException(ResultCode.TXN_ALREADY_COMMITTED, "Transaction already committed");
@@ -323,7 +327,10 @@ namespace Aerospike.Client
 		/// <para>
 		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
-		/// This call only works for string values. 
+		/// This legacy operation performs raw byte concatenation and is not Unicode-aware.
+		/// Use <see cref="StringOperation.Append"/> for string bins. For blob bins, use
+		/// <see cref="BitOperation.Insert"/> at a byte offset equal to the blob's current size.
+		/// There is no end-of-blob sentinel, so appending requires knowing the current size.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -345,7 +352,10 @@ namespace Aerospike.Client
 		/// <para>
 		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
-		/// This call only works for string values. 
+		/// This legacy operation performs raw byte concatenation and is not Unicode-aware.
+		/// Use <see cref="StringOperation.Append"/> for string bins. For blob bins, use
+		/// <see cref="BitOperation.Insert"/> at a byte offset equal to the blob's current size.
+		/// There is no end-of-blob sentinel, so appending requires knowing the current size.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -374,7 +384,9 @@ namespace Aerospike.Client
 		/// <para>
 		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
-		/// This call works only for string values. 
+		/// This legacy operation performs raw byte concatenation and is not Unicode-aware.
+		/// Use <see cref="StringOperation.Prepend"/> for string bins. For blob bins, use
+		/// <see cref="BitOperation.Insert"/> at byte offset 0.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -396,7 +408,9 @@ namespace Aerospike.Client
 		/// <para>
 		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
-		/// This call works only for string values. 
+		/// This legacy operation performs raw byte concatenation and is not Unicode-aware.
+		/// Use <see cref="StringOperation.Prepend"/> for string bins. For blob bins, use
+		/// <see cref="BitOperation.Insert"/> at byte offset 0.
 		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
@@ -480,6 +494,7 @@ namespace Aerospike.Client
 		/// Asynchronously delete record for specified key.
 		/// Create listener, call asynchronous delete and return task monitor.
 		/// </summary>
+		/// <seealso cref="Delete(BatchPolicy, BatchDeletePolicy, CancellationToken, Key[])"/>
 		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
@@ -519,7 +534,12 @@ namespace Aerospike.Client
 		/// Asynchronously delete records for specified keys.
 		/// Create listener, call asynchronous delete and return task monitor.
 		/// <para>Requires server version 6.0+</para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Delete(WritePolicy, CancellationToken, Key)"/>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -561,7 +581,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
+				batchPolicy = BatchPolicy.MergeWrite(batchPolicy, configProvider);
 			}
 
 			if (deletePolicy == null)
@@ -574,7 +594,7 @@ namespace Aerospike.Client
 			}
 
 			BatchAttr attr = new BatchAttr();
-			attr.SetDelete(deletePolicy);
+			attr.SetDelete(batchPolicy, deletePolicy);
 
 			BatchRecord[] records = new BatchRecord[keys.Length];
 
@@ -637,7 +657,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
+				batchPolicy = BatchPolicy.MergeWrite(batchPolicy, configProvider);
 			}
 
 			if (deletePolicy == null)
@@ -650,7 +670,7 @@ namespace Aerospike.Client
 			}
 
 			BatchAttr attr = new BatchAttr();
-			attr.SetDelete(deletePolicy);
+			attr.SetDelete(batchPolicy, deletePolicy);
 
 			bool[] sent = new bool[keys.Length];
 			AsyncBatchRecordSequenceExecutor executor = new(cluster, listener, sent);
@@ -774,6 +794,7 @@ namespace Aerospike.Client
 		/// Asynchronously determine if a record key exists.
 		/// Create listener, call asynchronous exists and return task monitor.
 		/// </summary>
+		/// <seealso cref="Exists(BatchPolicy, CancellationToken, Key[])"/>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
@@ -814,7 +835,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Asynchronously check if multiple record keys exist in one batch call.
 		/// Create listener, call asynchronous array exists and return task monitor.
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Exists(Policy, CancellationToken, Key)"/>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
@@ -849,7 +875,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(keys);
@@ -901,7 +927,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(keys);
@@ -937,6 +963,7 @@ namespace Aerospike.Client
 		/// Asynchronously read entire record for specified key.
 		/// Create listener, call asynchronous get and return task monitor.
 		/// </summary>
+		/// <seealso cref="Get(BatchPolicy, CancellationToken, Key[])"/>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
@@ -978,6 +1005,7 @@ namespace Aerospike.Client
 		/// Asynchronously read record header and bins for specified key.
 		/// Create listener, call asynchronous get and return task monitor.
 		/// </summary>
+		/// <seealso cref="Get(BatchPolicy, CancellationToken, Key[], string[])"/>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
@@ -1069,7 +1097,12 @@ namespace Aerospike.Client
 		/// <para>
 		/// Create listener, call asynchronous batch get and return task monitor.
 		/// </para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Get(Policy, CancellationToken, Key)"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="records">list of unique record identifiers and the bins to retrieve.</param>
@@ -1109,7 +1142,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(records);
@@ -1163,7 +1196,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(records);
@@ -1197,7 +1230,12 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Get(Policy, CancellationToken, Key)"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
@@ -1235,7 +1273,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(keys);
@@ -1291,7 +1329,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(keys);
@@ -1326,7 +1364,12 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Get(Policy, CancellationToken, Key, string[])"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
@@ -1366,7 +1409,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(keys);
@@ -1425,7 +1468,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(keys);
@@ -1463,7 +1506,12 @@ namespace Aerospike.Client
 		/// <para>
 		/// If a key is not found, the record will be null.
 		/// </para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Operate(WritePolicy, CancellationToken, Key, Operation[])"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="keys">array of unique record identifiers</param>
@@ -1504,7 +1552,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(keys);
@@ -1561,7 +1609,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(keys);
@@ -1633,7 +1681,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(keys);
@@ -1689,7 +1737,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			policy.Txn?.PrepareRead(keys);
@@ -1735,6 +1783,8 @@ namespace Aerospike.Client
 		/// performed in same call.
 		/// </para>
 		/// </summary>
+		/// <seealso cref="Operate(BatchPolicy, CancellationToken, List{BatchRecord})"/>
+		/// <seealso cref="Operate(BatchPolicy, BatchWritePolicy, CancellationToken, Key[], Operation[])"/>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="key">unique record identifier</param>
@@ -1792,7 +1842,12 @@ namespace Aerospike.Client
 		/// Asynchronously read/write multiple records for specified batch keys in one batch call.
 		/// Create listener, call asynchronous delete and return task monitor.
 		/// <para>Requires server version 6.0+</para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Operate(WritePolicy, CancellationToken, Key, Operation[])"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
 		/// <param name="records">list of unique record identifiers and read/write operations</param>
@@ -1831,13 +1886,26 @@ namespace Aerospike.Client
 				return;
 			}
 
+			bool hasWrite = false;
+
+			foreach (BatchRecord record in records)
+			{
+				if (record.hasWrite)
+				{
+					hasWrite = true;
+					break;
+				}
+			}
+
 			if (policy == null)
 			{
-				policy = mergedBatchPolicyDefault;
+				policy = hasWrite ? mergedBatchParentPolicyWriteDefault : mergedBatchPolicyDefault;
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = hasWrite ?
+					BatchPolicy.MergeWrite(policy, configProvider) :
+					BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			AsyncBatchOperateListExecutor executor = new(cluster, listener, records);
@@ -1875,13 +1943,12 @@ namespace Aerospike.Client
 								else if (configProvider != null)
 								{
 									bwp = new BatchWritePolicy(bw.policy, configProvider);
-									policy.GraftBatchWriteConfig(configProvider);
 								}
 								else
 								{
 									bwp = bw.policy;
 								}
-								attr.SetWrite(bwp);
+								attr.SetWrite(policy, bwp);
 								attr.AdjustWrite(bw.ops);
 								attr.SetOpSize(bw.ops);
 								commands[count++] = new AsyncBatchSingleWrite(
@@ -1905,7 +1972,7 @@ namespace Aerospike.Client
 								{
 									bup = bu.policy;
 								}
-								attr.SetUDF(bup);
+								attr.SetUDF(policy, bup);
 								commands[count++] = new AsyncBatchSingleUDF(
 									executor, cluster, policy, attr, bu, bn.node);
 								break;
@@ -1927,7 +1994,7 @@ namespace Aerospike.Client
 								{
 									bdp = bd.policy;
 								}
-								attr.SetDelete(bdp);
+								attr.SetDelete(policy, bdp);
 								commands[count++] = new AsyncBatchSingleDelete(
 									executor, cluster, policy, attr, record, bn.node);
 								break;
@@ -1975,13 +2042,26 @@ namespace Aerospike.Client
 				return;
 			}
 
+			bool hasWrite = false;
+
+			foreach (BatchRecord record in records)
+			{
+				if (record.hasWrite)
+				{
+					hasWrite = true;
+					break;
+				}
+			}
+
 			if (policy == null)
 			{
-				policy = mergedBatchPolicyDefault;
+				policy = hasWrite ? mergedBatchParentPolicyWriteDefault : mergedBatchPolicyDefault;
 			}
 			else if (configProvider != null)
 			{
-				policy = new BatchPolicy(policy, configProvider);
+				policy = hasWrite ?
+					BatchPolicy.MergeWrite(policy, configProvider) :
+					BatchPolicy.MergeRead(policy, configProvider);
 			}
 
 			AsyncBatchOperateSequenceExecutor executor = new(cluster, listener);
@@ -2020,13 +2100,12 @@ namespace Aerospike.Client
 								else if (configProvider != null)
 								{
 									bwp = new BatchWritePolicy(bw.policy, configProvider);
-									policy.GraftBatchWriteConfig(configProvider);
 								}
 								else
 								{
 									bwp = bw.policy;
 								}
-								attr.SetWrite(bwp);
+								attr.SetWrite(policy, bwp);
 								attr.AdjustWrite(bw.ops);
 								attr.SetOpSize(bw.ops);
 								commands[count++] = new AsyncBatchSingleWriteSequence(
@@ -2050,7 +2129,7 @@ namespace Aerospike.Client
 								{
 									bup = bu.policy;
 								}
-								attr.SetUDF(bup);
+								attr.SetUDF(policy, bup);
 								commands[count++] = new AsyncBatchSingleUDFSequence(
 									executor, cluster, policy, attr, bu, bn.node, listener, i);
 								break;
@@ -2072,7 +2151,7 @@ namespace Aerospike.Client
 								{
 									bdp = bd.policy;
 								}
-								attr.SetDelete(bdp);
+								attr.SetDelete(policy, bdp);
 								commands[count++] = new AsyncBatchSingleDeleteSequence(
 									executor, cluster, policy, attr, bd, bn.node, listener, i);
 								break;
@@ -2096,7 +2175,12 @@ namespace Aerospike.Client
 		/// Asynchronously perform read/write operations on multiple keys.
 		/// Create listener, call asynchronous delete and return task monitor.
 		/// <para>Requires server version 6.0+</para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Operate(WritePolicy, CancellationToken, Key, Operation[])"/>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="token">cancellation token</param>
@@ -2142,14 +2226,19 @@ namespace Aerospike.Client
 				return;
 			}
 
+			bool hasWrite = HasWrite(ops);
+
 			if (batchPolicy == null)
 			{
-				batchPolicy = mergedBatchParentPolicyWriteDefault;
+				batchPolicy = hasWrite ? mergedBatchParentPolicyWriteDefault : mergedBatchPolicyDefault;
 			}
 			else if (configProvider != null)
 			{
-				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
+				batchPolicy = hasWrite ?
+					BatchPolicy.MergeWrite(batchPolicy, configProvider) :
+					BatchPolicy.MergeRead(batchPolicy, configProvider);
 			}
+
 			if (writePolicy == null)
 			{
 				writePolicy = mergedBatchWritePolicyDefault;
@@ -2160,10 +2249,6 @@ namespace Aerospike.Client
 			}
 
 			BatchAttr attr = new(batchPolicy, writePolicy, ops);
-			if (attr.hasWrite && configProvider != null)
-			{
-				batchPolicy.GraftBatchWriteConfig(configProvider);
-			}
 
 			BatchRecord[] records = new BatchRecord[keys.Length];
 
@@ -2238,13 +2323,18 @@ namespace Aerospike.Client
 				return;
 			}
 
+			bool hasWrite = HasWrite(ops);
+
 			if (batchPolicy == null)
 			{
-				batchPolicy = mergedBatchParentPolicyWriteDefault;
+				batchPolicy = hasWrite ?
+					mergedBatchParentPolicyWriteDefault : mergedBatchPolicyDefault;
 			}
 			else if (configProvider != null)
 			{
-				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
+				batchPolicy = hasWrite ?
+					BatchPolicy.MergeWrite(batchPolicy, configProvider) :
+					BatchPolicy.MergeRead(batchPolicy, configProvider);
 			}
 			if (writePolicy == null)
 			{
@@ -2256,10 +2346,6 @@ namespace Aerospike.Client
 			}
 
 			BatchAttr attr = new(batchPolicy, writePolicy, ops);
-			if (attr.hasWrite && configProvider != null)
-			{
-				batchPolicy.GraftBatchWriteConfig(configProvider);
-			}
 
 			bool[] sent = new bool[keys.Length];
 			AsyncBatchRecordSequenceExecutor executor = new(cluster, listener, sent);
@@ -2476,7 +2562,7 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
+				batchPolicy = BatchPolicy.MergeWrite(batchPolicy, configProvider);
 			}
 
 			if (udfPolicy == null)
@@ -2491,7 +2577,7 @@ namespace Aerospike.Client
 			byte[] argBytes = Packer.Pack(functionArgs);
 
 			BatchAttr attr = new BatchAttr();
-			attr.SetUDF(udfPolicy);
+			attr.SetUDF(batchPolicy, udfPolicy);
 
 			BatchRecord[] records = new BatchRecord[keys.Length];
 
@@ -2564,8 +2650,9 @@ namespace Aerospike.Client
 			}
 			else if (configProvider != null)
 			{
-				batchPolicy = new BatchPolicy(batchPolicy, configProvider);
+				batchPolicy = BatchPolicy.MergeWrite(batchPolicy, configProvider);
 			}
+
 			if (udfPolicy == null)
 			{
 				udfPolicy = mergedBatchUDFPolicyDefault;
@@ -2575,11 +2662,10 @@ namespace Aerospike.Client
 				udfPolicy = new BatchUDFPolicy(udfPolicy, configProvider);
 			}
 
-			byte[] argBytes = Packer.Pack(functionArgs);
-
 			BatchAttr attr = new();
-			attr.SetUDF(udfPolicy);
+			attr.SetUDF(batchPolicy, udfPolicy);
 
+			byte[] argBytes = Packer.Pack(functionArgs);
 			bool[] sent = new bool[keys.Length];
 			AsyncBatchRecordSequenceExecutor executor = new(cluster, listener, sent);
 			List<BatchNode> batchNodes = BatchNode.GenerateList(

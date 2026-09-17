@@ -1,5 +1,11 @@
 # Runnable Documentation Examples
 
+> **Contributor-facing.** This file documents the example harness contract and snippet
+> markers for authors working on this repository. Application developers using the
+> Aerospike C# client should start with the
+> [AI coding agent entry point](../README.md#ai-coding-agent-entry-point) in the root
+> README instead.
+
 `AerospikeExample` is the execution harness for documentation examples. Example files stay fully compiled and runnable in CI, but the harness owns connection setup, policy setup, logging, result reporting, and server-specific metadata.
 
 The goal is for each example file to stay small enough to be included directly in documentation. The `@@@SNIPSTART` / `@@@SNIPEND` markers carve out smaller portions for tools that splice snippets into markdown files in `aerospike-websites`.
@@ -22,7 +28,20 @@ public sealed class PutGet : SyncExample
 }
 ```
 
-The harness injects `console`, `client`, `args`, `ns`, `set`, `policy`, `writePolicy`, and `batchPolicy` at runtime. Avoid adding constructors, local connection setup, seed data, cleanup, or validation to examples unless the example is specifically demonstrating that behavior.
+The harness injects `client`, `args`, `ns`, `set`, `policy`, `writePolicy`, and `batchPolicy` at runtime. Avoid adding constructors, local connection setup, seed data, cleanup, or validation to examples unless the example is specifically demonstrating that behavior.
+
+## Output
+
+Examples log with plain `System.Console` so their source can be lifted into documentation unchanged:
+
+```csharp
+Console.WriteLine($"Record: {record}");
+Console.Error.WriteLine($"Create failed: {ae.Message}");
+```
+
+Do not introduce a logging abstraction into example code. `ExampleOutput` decorates the console streams while examples run, which is what adds timestamps and routes `Aerospike.Client.Log` messages into the same output. The harness summary is written after the streams are restored, so it stays unadorned.
+
+**Anything written to `Console.Error` counts as a failure.** `RunWithResult` compares the error count before and after each example, so an example can fail without throwing. Use `Console.Error.WriteLine` only for genuine failures, and prefer throwing when the example cannot continue.
 
 For server-capability gates use the parameterless `Require*` helpers in the base class (`RequireEnterprise`, `RequireMinServerVersion`, `RequireStrongConsistency`, `RequireBasic`, `RequireAuth`, `RequireTls`, `RequirePki`). They throw `ExampleSkipException` so the harness can mark the example as skipped instead of failed.
 

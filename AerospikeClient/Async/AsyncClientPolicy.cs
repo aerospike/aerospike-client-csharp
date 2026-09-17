@@ -23,29 +23,29 @@ namespace Aerospike.Client
 	{
 		/// <summary>
 		/// How to handle cases when the asynchronous maximum number of concurrent connections 
-		/// have been reached.  
+		/// has been reached. BLOCK waits on the caller thread, DELAY queues without blocking,
+		/// and REJECT fails immediately.
 		/// </summary>
 		public MaxCommandAction asyncMaxCommandAction = MaxCommandAction.BLOCK;
 
 		/// <summary>
 		/// Maximum number of concurrent asynchronous commands that can be active at any point in time.
-		/// Concurrent commands can target different nodes of the Aerospike cluster. Each command will 
-		/// use one concurrent connection. The number of concurrent open connections is therefore
-		/// limited by:
+		/// This is a client-wide command limit. It is distinct from
+		/// <see cref="asyncMaxConnsPerNode"/>, which limits connections to each node.
+		/// Concurrent commands can target different nodes of the Aerospike cluster and each active
+		/// command uses one connection.
 		/// <para>
-		/// max open connections = asyncMaxCommands
+		/// Commands are not spread evenly across nodes. In the extreme case, every active command
+		/// targets the same node, which then needs asyncMaxCommands connections to serve them.
+		/// Setting asyncMaxCommands higher than <see cref="asyncMaxConnsPerNode"/> therefore risks
+		/// exhausting a single node's connection pool, in which case commands go through retry logic
+		/// and may fail with <see cref="Aerospike.Client.ResultCode.NO_MORE_CONNECTIONS"/>.
 		/// </para>
-		/// The actual number of open connections to each node of the Aerospike cluster depends on how
-		/// balanced the commands are between nodes and are limited to asyncMaxConnsPerNode for any
-		/// given node. For an extreme case where all commands may be destined to the same node of the
-		/// cluster, asyncMaxCommands should not be set greater than asyncMaxConnsPerNode to avoid
-		/// running out of connections to the node.
 		/// <para>
-		/// Further, this maximum number of open connections across all nodes should not exceed the
-		/// total socket file descriptors available on the client machine. The socket file descriptors
-		/// available can be determined by the following command:
+		/// The connections open across all nodes must also fit within the socket file descriptors
+		/// available to the client process. On Unix-like systems, run "ulimit -n" to see the limit
+		/// in effect for the current shell.
 		/// </para>
-		/// <para>ulimit -n</para>
 		/// <para>Default: 100</para>
 		/// </summary>
 		public int asyncMaxCommands = 100;

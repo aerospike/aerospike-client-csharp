@@ -40,9 +40,9 @@ public sealed class ScanPage : SyncExample
 		{
 			recordCount = 0;
 
-			console.Info($"Scan page: {i}");
+			Console.WriteLine($"Scan page: {i}");
 			client.ScanPartitions(scanPolicy, filter, ns, SetName, ScanCallback);
-			console.Info($"Records returned: {recordCount}");
+			Console.WriteLine($"Records returned: {recordCount}");
 		}
 	}
 

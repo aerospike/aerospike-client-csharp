@@ -30,7 +30,8 @@ namespace Aerospike.Client
 			OPEN,
 			VERIFIED,
 			COMMITTED,
-			ABORTED
+			ABORTED,
+			COMMIT_FAILED
 		}
 
 		private static long randomState = DateTime.UtcNow.Ticks;
@@ -183,6 +184,10 @@ namespace Aerospike.Client
 					throw new AerospikeException(ResultCode.TXN_FAILED,
 						"Issuing commands to this transaction is forbidden because it is currently being committed.");
 
+				case TxnState.COMMIT_FAILED:
+					throw new AerospikeException(ResultCode.TXN_FAILED,
+						"Issuing commands to this transaction is forbidden because commit failed.");
+
 				default:
 					throw new AerospikeException(ResultCode.TXN_FAILED,
 						"Issuing commands to this transaction is forbidden because it is in an invalid state.");
@@ -251,6 +256,14 @@ namespace Aerospike.Client
 			writeInDoubt = true;
 			Reads.Remove(key);
 			Writes.Add(key);
+		}
+
+		internal void MarkCommitFailed(bool inDoubt)
+		{
+			if (inDoubt && State != TxnState.ABORTED && State != TxnState.COMMITTED)
+			{
+				State = TxnState.COMMIT_FAILED;
+			}
 		}
 
 		/// <summary>

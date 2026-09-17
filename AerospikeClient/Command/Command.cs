@@ -68,6 +68,8 @@ namespace Aerospike.Client
 		public static readonly int INFO4_TXN_ROLL_FORWARD = (1 << 1); // Roll forward transaction.
 		public static readonly int INFO4_TXN_ROLL_BACK = (1 << 2); // Roll back transaction.
 		public static readonly int INFO4_TXN_ON_LOCKING_ONLY = (1 << 4); // Must be able to lock record in transaction.
+		public static readonly int INFO4_ERROR_VERBOSITY_SHIFT = 5; // info4 bits 5-6: error detail verbosity level
+		public static readonly int INFO4_ERROR_VERBOSITY_MASK = 0x60; // 0b0110_0000: bits 5-6 only
 
 		public const byte STATE_READ_AUTH_HEADER = 1;
 		public const byte STATE_READ_HEADER = 2;
@@ -103,6 +105,13 @@ namespace Aerospike.Client
 		protected int expiration;
 		protected int fieldCount;
 		protected int opCount;
+
+		// Server error detail captured from the current response's ERROR_MESSAGE field
+		// (field 45). For batch commands, these values are reset at the start of each
+		// row's field walk and copied to that row's BatchRecord.
+		protected string serverMessage;
+		protected int serverSubCode;
+		protected ExpressionTrace expTrace;
 
 		public Command(int socketTimeout, int totalTimeout, int maxRetries)
 		{
@@ -386,6 +395,7 @@ namespace Aerospike.Client
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 					SizeTxnBatch(txn, ver, attr.hasWrite);
+					SizeBatchErrorVerbosity(txn, attr.errorDetailBits);
 					dataOffset += 2; // gen(2) = 2
 					keyPrev = key;
 					verPrev = ver;
@@ -1128,6 +1138,7 @@ namespace Aerospike.Client
 			IConfigProvider configProvider)
 		{
 			Begin();
+			int errorDetailBits = BatchErrorVerbosityBits(policy);
 			int max = batch.offsetsSize;
 			Txn txn = policy.Txn;
 			long?[] versions = null;
@@ -1166,7 +1177,9 @@ namespace Aerospike.Client
 
 				dataOffset += key.digest.Length + 4;
 
-				if (CanRepeat(policy, key, record, prev, ver, verPrev, configProvider))
+				bool sendKey = record.ResolveSendKey(policy, configProvider, writePolicy, udfPolicy, deletePolicy);
+
+				if (!sendKey && CanRepeat(key, record, prev, ver, verPrev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataOffset++;
@@ -1178,7 +1191,8 @@ namespace Aerospike.Client
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 					SizeTxnBatch(txn, ver, record.hasWrite);
-					dataOffset += record.Size(policy, configProvider);
+					SizeBatchErrorVerbosity(txn, errorDetailBits);
+					dataOffset += record.Size(sendKey);
 					prev = record;
 					verPrev = ver;
 				}
@@ -1196,7 +1210,10 @@ namespace Aerospike.Client
 			dataOffset += 4;
 			dataBuffer[dataOffset++] = GetBatchFlags(policy);
 
-			BatchAttr attr = new();
+			BatchAttr attr = new()
+			{
+				errorDetailBits = errorDetailBits
+			};
 			prev = null;
 			verPrev = null;
 
@@ -1213,7 +1230,9 @@ namespace Aerospike.Client
 				Array.Copy(digest, 0, dataBuffer, dataOffset, digest.Length);
 				dataOffset += digest.Length;
 
-				if (CanRepeat(policy, key, record, prev, ver, verPrev, configProvider))
+				bool sendKey = record.ResolveSendKey(policy, configProvider, writePolicy, udfPolicy, deletePolicy);
+
+				if (!sendKey && CanRepeat(key, record, prev, ver, verPrev))
 				{
 					// Can set repeat previous namespace/bin names to save space.
 					dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
@@ -1265,15 +1284,15 @@ namespace Aerospike.Client
 							{
 								BatchWrite bw = (BatchWrite)record;
 								BatchWritePolicy bwp = bw.policy ?? writePolicy;
+								bool durableDelete = bwp.durableDelete;
 
 								if (configProvider != null && configProvider.ConfigurationData != null)
 								{
 									var batchWriteConfig = configProvider.ConfigurationData.dynamicConfig.batch_write;
-									bwp.sendKey = batchWriteConfig.send_key ?? bwp.sendKey;
-									bwp.durableDelete = batchWriteConfig.durable_delete ?? bwp.durableDelete;
+									durableDelete = batchWriteConfig.durable_delete ?? bwp.durableDelete;
 								}
 
-								attr.SetWrite(bwp);
+								attr.SetWrite(bwp, sendKey, durableDelete);
 								attr.AdjustWrite(bw.ops);
 								WriteBatchOperations(key, txn, ver, bw.ops, attr, attr.filterExp);
 								break;
@@ -1283,15 +1302,15 @@ namespace Aerospike.Client
 							{
 								BatchUDF bu = (BatchUDF)record;
 								BatchUDFPolicy bup = bu.policy ?? udfPolicy;
+								bool durableDelete = bup.durableDelete;
 
 								if (configProvider != null && configProvider.ConfigurationData != null)
 								{
 									var batchUdfConfig = configProvider.ConfigurationData.dynamicConfig.batch_udf;
-									bup.sendKey = batchUdfConfig.send_key ?? bup.sendKey;
-									bup.durableDelete = batchUdfConfig.durable_delete ?? bup.durableDelete;
+									durableDelete = batchUdfConfig.durable_delete ?? bup.durableDelete;
 								}
 
-								attr.SetUDF(bup);
+								attr.SetUDF(bup, sendKey, durableDelete);
 								WriteBatchWrite(key, txn, ver, attr, attr.filterExp, 3, 0);
 								WriteField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
 								WriteField(bu.functionName, FieldType.UDF_FUNCTION);
@@ -1303,15 +1322,15 @@ namespace Aerospike.Client
 							{
 								BatchDelete bd = (BatchDelete)record;
 								BatchDeletePolicy bdp = bd.policy ?? deletePolicy;
+								bool durableDelete = bdp.durableDelete;
 
 								if (configProvider != null && configProvider.ConfigurationData != null)
 								{
 									var batchDeleteConfig = configProvider.ConfigurationData.dynamicConfig.batch_delete;
-									bdp.sendKey = batchDeleteConfig.send_key ?? bdp.sendKey;
-									bdp.durableDelete = batchDeleteConfig.durable_delete ?? bdp.durableDelete;
+									durableDelete = batchDeleteConfig.durable_delete ?? bdp.durableDelete;
 								}
 
-								attr.SetDelete(bdp);
+								attr.SetDelete(bdp, sendKey, durableDelete);
 								WriteBatchWrite(key, txn, ver, attr, attr.filterExp, 0, 0);
 								break;
 							}
@@ -1342,6 +1361,7 @@ namespace Aerospike.Client
 			long?[] versions = null;
 
 			Begin();
+			attr.errorDetailBits = BatchErrorVerbosityBits(policy);
 
 			if (txn != null)
 			{
@@ -1389,6 +1409,7 @@ namespace Aerospike.Client
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 					SizeTxnBatch(txn, ver, attr.hasWrite);
+					SizeBatchErrorVerbosity(txn, attr.errorDetailBits);
 
 					if (attr.sendKey)
 					{
@@ -1500,6 +1521,7 @@ namespace Aerospike.Client
 		{
 			// Estimate buffer size.
 			Begin();
+			attr.errorDetailBits = BatchErrorVerbosityBits(policy);
 			int max = batch.offsetsSize;
 			Txn txn = policy.Txn;
 			long?[] versions = null;
@@ -1550,6 +1572,7 @@ namespace Aerospike.Client
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.ns) + FIELD_HEADER_SIZE;
 					dataOffset += ByteUtil.EstimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 					SizeTxnBatch(txn, ver, attr.hasWrite);
+					SizeBatchErrorVerbosity(txn, attr.errorDetailBits);
 
 					if (attr.sendKey)
 					{
@@ -1613,13 +1636,11 @@ namespace Aerospike.Client
 		}
 
 		private static bool CanRepeat(
-			Policy policy,
 			Key key,
 			BatchRecord record,
 			BatchRecord prev,
 			long? ver,
-			long? verPrev,
-			IConfigProvider configProvider
+			long? verPrev
 		)
 		{
 			// Avoid relatively expensive full equality checks for performance reasons.
@@ -1629,17 +1650,6 @@ namespace Aerospike.Client
 			// Same goes for ver reference equality check.
 			if (!(verPrev == ver && prev != null && prev.key.ns == key.ns &&
 				prev.key.setName == key.setName))
-			{
-				return false;
-			}
-
-			bool sendKey = policy.sendKey;
-			if (configProvider != null && configProvider.ConfigurationData.HasDBWCsendKey())
-			{
-				sendKey = configProvider.ConfigurationData.dynamicConfig.batch_write.send_key.Value;
-			}
-
-			if (sendKey)
 			{
 				return false;
 			}
@@ -1704,6 +1714,38 @@ namespace Aerospike.Client
 			}
 		}
 
+		/// <summary>
+		/// Error-detail verbosity folded into the info4 bits the server reads per batch row
+		/// to decide whether to attach a per-row error detail (field 45). This setting is
+		/// batch-wide and comes from the parent batch policy.
+		/// </summary>
+		private static int BatchErrorVerbosityBits(BatchPolicy policy)
+		{
+			return ErrorVerbosityBits(policy.errorDetailVerbosity);
+		}
+
+		/// <summary>
+		/// Clamp error-detail verbosity before folding it into info4 bits 5-6.
+		/// Masking alone would encode a negative value as maximum verbosity.
+		/// </summary>
+		private static int ErrorVerbosityBits(int verbosity)
+		{
+			verbosity = Math.Clamp(verbosity, 0, 3);
+			return (verbosity << INFO4_ERROR_VERBOSITY_SHIFT) & INFO4_ERROR_VERBOSITY_MASK;
+		}
+
+		/// <summary>
+		/// Account for the per-row info4 byte that carries the error-detail verbosity opt-in
+		/// on non-transaction batches. Transaction rows are already sized with an info4 byte.
+		/// </summary>
+		private void SizeBatchErrorVerbosity(Txn txn, int errorDetailBits)
+		{
+			if (txn == null && errorDetailBits != 0)
+			{
+				dataOffset++;
+			}
+		}
+
 		private void WriteBatchHeader(Policy policy, int timeout, int fieldCount)
 		{
 			int readAttr = Command.INFO1_BATCH;
@@ -1757,54 +1799,70 @@ namespace Aerospike.Client
 
 		private void WriteBatchRead(Key key, Txn txn, long? ver, BatchAttr attr, Expression filter, int opCount)
 		{
+			// info4 carries transaction attributes and/or error-detail verbosity. Emit the
+			// byte whenever either is present so non-transaction rows can opt into details.
+			int info4 = attr.txnAttr | attr.errorDetailBits;
+			bool hasInfo4 = txn != null || info4 != 0;
+			int flags = BATCH_MSG_INFO | BATCH_MSG_TTL;
+
+			if (hasInfo4)
+			{
+				flags |= BATCH_MSG_INFO4;
+			}
+
+			dataBuffer[dataOffset++] = (byte)flags;
+			dataBuffer[dataOffset++] = (byte)attr.readAttr;
+			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+
+			if (hasInfo4)
+			{
+				dataBuffer[dataOffset++] = (byte)info4;
+			}
+			ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
+			dataOffset += 4;
+
 			if (txn != null)
 			{
-				dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_TTL);
-				dataBuffer[dataOffset++] = (byte)attr.readAttr;
-				dataBuffer[dataOffset++] = (byte)attr.writeAttr;
-				dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-				dataBuffer[dataOffset++] = (byte)attr.txnAttr;
-				ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
-				dataOffset += 4;
 				WriteBatchFieldsTxn(key, txn, ver, attr, filter, 0, opCount);
 			}
 			else
 			{
-				dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_TTL);
-				dataBuffer[dataOffset++] = (byte)attr.readAttr;
-				dataBuffer[dataOffset++] = (byte)attr.writeAttr;
-				dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-				ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
-				dataOffset += 4;
 				WriteBatchFieldsReg(key, attr, filter, 0, opCount);
 			}
 		}
 
 		private void WriteBatchWrite(Key key, Txn txn, long? ver, BatchAttr attr, Expression filter, int fieldCount, int opCount)
 		{
+			int info4 = attr.txnAttr | attr.errorDetailBits;
+			bool hasInfo4 = txn != null || info4 != 0;
+			int flags = BATCH_MSG_INFO | BATCH_MSG_GEN | BATCH_MSG_TTL;
+
+			if (hasInfo4)
+			{
+				flags |= BATCH_MSG_INFO4;
+			}
+
+			dataBuffer[dataOffset++] = (byte)flags;
+			dataBuffer[dataOffset++] = (byte)attr.readAttr;
+			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
+			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+
+			if (hasInfo4)
+			{
+				dataBuffer[dataOffset++] = (byte)info4;
+			}
+			ByteUtil.ShortToBytes((ushort)attr.generation, dataBuffer, dataOffset);
+			dataOffset += 2;
+			ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
+			dataOffset += 4;
+
 			if (txn != null)
 			{
-				dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_GEN | BATCH_MSG_TTL);
-				dataBuffer[dataOffset++] = (byte)attr.readAttr;
-				dataBuffer[dataOffset++] = (byte)attr.writeAttr;
-				dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-				dataBuffer[dataOffset++] = (byte)attr.txnAttr;
-				ByteUtil.ShortToBytes((ushort)attr.generation, dataBuffer, dataOffset);
-				dataOffset += 2;
-				ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
-				dataOffset += 4;
 				WriteBatchFieldsTxn(key, txn, ver, attr, filter, fieldCount, opCount);
 			}
 			else
 			{
-				dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_GEN | BATCH_MSG_TTL);
-				dataBuffer[dataOffset++] = (byte)attr.readAttr;
-				dataBuffer[dataOffset++] = (byte)attr.writeAttr;
-				dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-				ByteUtil.ShortToBytes((ushort)attr.generation, dataBuffer, dataOffset);
-				dataOffset += 2;
-				ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
-				dataOffset += 4;
 				WriteBatchFieldsReg(key, attr, filter, fieldCount, opCount);
 			}
 		}
@@ -2452,7 +2510,15 @@ namespace Aerospike.Client
 
 		private int EstimateKeyAttrSize(Policy policy, Key key, BatchAttr attr, Expression filterExp)
 		{
-			int fieldCount = EstimateKeySize(policy, key, attr.hasWrite);
+			int fieldCount = EstimateKeySize(key);
+
+			fieldCount += SizeTxn(key, policy.Txn, attr.hasWrite);
+
+			if (attr.sendKey)
+			{
+				dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
+				fieldCount++;
+			}
 
 			if (filterExp != null)
 			{
@@ -2599,6 +2665,8 @@ namespace Aerospike.Client
 				txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 			}
 
+			txnAttr |= ErrorVerbosityBits(policy.errorDetailVerbosity);
+
 			dataOffset += 8;
 
 			// Write all header data except total size which must be written last. 
@@ -2680,6 +2748,8 @@ namespace Aerospike.Client
 			{
 				txnAttr |= Command.INFO4_TXN_ON_LOCKING_ONLY;
 			}
+
+			txnAttr |= ErrorVerbosityBits(policy.errorDetailVerbosity);
 
 			switch (policy.readModeSC)
 			{
@@ -2768,8 +2838,9 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)readAttr;
 			dataBuffer[dataOffset++] = (byte)writeAttr;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
+			dataBuffer[dataOffset++] = (byte)ErrorVerbosityBits(policy.errorDetailVerbosity);
 
-			for (int i = 0; i < 6; i++)
+			for (int i = 0; i < 5; i++)
 			{
 				dataBuffer[dataOffset++] = 0;
 			}
@@ -2813,8 +2884,9 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)readAttr;
 			dataBuffer[dataOffset++] = (byte)0;
 			dataBuffer[dataOffset++] = (byte)infoAttr;
+			dataBuffer[dataOffset++] = (byte)ErrorVerbosityBits(policy.errorDetailVerbosity);
 
-			for (int i = 0; i < 6; i++)
+			for (int i = 0; i < 5; i++)
 			{
 				dataBuffer[dataOffset++] = 0;
 			}
@@ -2843,7 +2915,12 @@ namespace Aerospike.Client
 			dataBuffer[dataOffset++] = (byte)attr.readAttr;
 			dataBuffer[dataOffset++] = (byte)attr.writeAttr;
 			dataBuffer[dataOffset++] = (byte)attr.infoAttr;
-			dataBuffer[dataOffset++] = (byte)attr.txnAttr;
+
+			// Single-key batch commands send standard single-record messages through this
+			// path, so fold the parent policy's error-detail verbosity into info4 here.
+			// BatchAttr.errorDetailBits is used only by multi-record row writers.
+			int info4 = attr.txnAttr | ErrorVerbosityBits(policy.errorDetailVerbosity);
+			dataBuffer[dataOffset++] = (byte)info4;
 			dataBuffer[dataOffset++] = 0; // clear the result code
 			dataOffset += ByteUtil.IntToBytes((uint)attr.generation, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.IntToBytes((uint)attr.expiration, dataBuffer, dataOffset);
@@ -2851,7 +2928,13 @@ namespace Aerospike.Client
 			dataOffset += ByteUtil.ShortToBytes((ushort)fieldCount, dataBuffer, dataOffset);
 			dataOffset += ByteUtil.ShortToBytes((ushort)operationCount, dataBuffer, dataOffset);
 
-			WriteKey(policy, key, attr.hasWrite);
+			WriteKey(key);
+			WriteTxn(policy.Txn, attr.hasWrite);
+
+			if (attr.sendKey)
+			{
+				WriteField(key.userKey, FieldType.KEY);
+			}
 
 			filterExp?.Write(this);
 		}
@@ -3151,11 +3234,23 @@ namespace Aerospike.Client
 		internal virtual void SkipKey(int fieldCount)
 		{
 			// There can be fields in the response (setname etc).
-			// But for now, ignore them. Expose them to the API if needed in the future.
+			// Ignore them except for the per-row error detail (field 45). Expose the other
+			// fields to the API if needed in the future.
+			ResetServerErrorDetail();
+
 			for (int i = 0; i < fieldCount; i++)
 			{
 				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4 + fieldlen;
+				dataOffset += 4;
+
+				int fieldType = dataBuffer[dataOffset++];
+				int size = fieldlen - 1;
+
+				if (fieldType == FieldType.ERROR_MESSAGE && size > 0)
+				{
+					CaptureErrorDetail(dataOffset, size);
+				}
+				dataOffset += size;
 			}
 		}
 
@@ -3166,6 +3261,10 @@ namespace Aerospike.Client
 			string setName = null;
 			Value userKey = null;
 			bval = 0;
+
+			// Reset first so a row without field 45 does not inherit the
+			// previous row's error detail.
+			ResetServerErrorDetail();
 
 			for (int i = 0; i < fieldCount; i++)
 			{
@@ -3199,6 +3298,14 @@ namespace Aerospike.Client
 					case FieldType.BVAL_ARRAY:
 						bval = (ulong)ByteUtil.LittleBytesToLong(dataBuffer, dataOffset);
 						break;
+
+					case FieldType.ERROR_MESSAGE:
+						// Query/scan start-failure rows carry their detail here.
+						if (size > 0)
+						{
+							CaptureErrorDetail(dataOffset, size);
+						}
+						break;
 				}
 				dataOffset += size;
 			}
@@ -3208,6 +3315,7 @@ namespace Aerospike.Client
 		public long? ParseVersion(int fieldCount)
 		{
 			long? version = null;
+			ResetServerErrorDetail();
 
 			for (int i = 0; i < fieldCount; i++)
 			{
@@ -3221,6 +3329,10 @@ namespace Aerospike.Client
 				{
 					version = ByteUtil.VersionBytesToLong(dataBuffer, dataOffset);
 				}
+				else if (type == FieldType.ERROR_MESSAGE && size > 0)
+				{
+					CaptureErrorDetail(dataOffset, size);
+				}
 				dataOffset += size;
 			}
 			return version;
@@ -3228,9 +3340,13 @@ namespace Aerospike.Client
 
 		protected void ParseFields(Txn txn, Key key, bool hasWrite)
 		{
+			serverMessage = null;
+			serverSubCode = SubCode.NONE;
+			expTrace = null;
+
 			if (txn == null)
 			{
-				SkipFields(fieldCount);
+				ApplyErrorDetail(ErrorDetailParser.ParseFields(dataBuffer, ref dataOffset, fieldCount));
 				return;
 			}
 
@@ -3254,6 +3370,10 @@ namespace Aerospike.Client
 					{
 						throw new AerospikeException("Record version field has invalid size: " + size);
 					}
+				}
+				else if (type == FieldType.ERROR_MESSAGE && size > 0)
+				{
+					ApplyErrorDetail(ErrorDetailParser.Parse(dataBuffer, dataOffset, size));
 				}
 				dataOffset += size;
 			}
@@ -3287,15 +3407,50 @@ namespace Aerospike.Client
 			}
 		}
 
-		protected void SkipFields(int fieldCount)
+		private void ApplyErrorDetail(in ErrorDetail detail)
 		{
-			// There can be fields in the response (setname etc).
-			// But for now, ignore them. Expose them to the API if needed in the future.
-			for (int i = 0; i < fieldCount; i++)
-			{
-				int fieldlen = ByteUtil.BytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4 + fieldlen;
-			}
+			serverMessage = detail.Message;
+			serverSubCode = detail.SubCode;
+			expTrace = detail.ExpTrace;
+		}
+
+		/// <summary>
+		/// Clear detail captured for a prior batch row so a row without field 45 does not
+		/// inherit the previous row's values.
+		/// </summary>
+		protected void ResetServerErrorDetail()
+		{
+			serverMessage = null;
+			serverSubCode = SubCode.NONE;
+			expTrace = null;
+		}
+
+		/// <summary>
+		/// Decode the current batch row's ERROR_MESSAGE field payload.
+		/// </summary>
+		protected void CaptureErrorDetail(int offset, int size)
+		{
+			ApplyErrorDetail(ErrorDetailParser.Parse(dataBuffer, offset, size));
+		}
+
+		/// <summary>
+		/// Copy the detail captured during the field walk to the current batch record.
+		/// A row without field 45 receives cleared values.
+		/// </summary>
+		protected void ApplyErrorDetail(BatchRecord record)
+		{
+			record.SetErrorDetail(serverMessage, serverSubCode, expTrace);
+		}
+
+		/// <summary>
+		/// Build a failure exception carrying any server-supplied extended-error detail
+		/// (message and numeric subcode) parsed for this command. Route every non-OK
+		/// throw through here so the detail is never dropped on special-case result
+		/// codes such as FILTERED_OUT or KEY_NOT_FOUND_ERROR.
+		/// </summary>
+		protected AerospikeException CreateException(int resultCode)
+		{
+			return new AerospikeException(resultCode, serverMessage, serverSubCode, expTrace);
 		}
 
 		public static bool BatchInDoubt(bool isWrite, int commandSentCounter)

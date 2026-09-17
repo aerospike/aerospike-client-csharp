@@ -67,7 +67,7 @@ namespace Aerospike.Client
 					// Non-fatal error.
 					return false;
 				}
-				throw new AerospikeException(resultCode);
+				throw CreateException(resultCode);
 			}
 
 			if (opCount != 1)

@@ -26,12 +26,13 @@ namespace Aerospike.Client
 		bool Next();
 
 		/// <summary>
-		/// Close query.
+		/// Dispose this record set and close the query. Dispose each record set before
+		/// replacing it during pagination.
 		/// </summary>
 		void Dispose();
 
 		/// <summary>
-		/// Close query.
+		/// Close the query and stop producer threads when iteration ends early.
 		/// </summary>
 		void Close();
 

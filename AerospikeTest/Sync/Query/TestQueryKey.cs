@@ -23,7 +23,7 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "skindex";
 		private const string keyPrefix = "skkey";
-		private static readonly string binName = Suite.GetBinName("skbin");
+		private static readonly string binName = "skbin";
 		private const int size = 10;
 
 		[ClassInitialize()]

@@ -18,13 +18,13 @@ jobs:
       servers: ${{ steps.servers.outputs.servers }}
     steps:
     - name: Harden the runner (Audit all outbound calls)
-      uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
       with:
         egress-policy: audit
 
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
-        ref: stage
+        ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'stage' }}
 
     - name: Load nightly server matrix
       id: servers
@@ -38,22 +38,22 @@ jobs:
       version: ${{ steps.get-version.outputs.version }}
     steps:
     - name: Harden the runner (Audit all outbound calls)
-      uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
       with:
         egress-policy: audit
 
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
-        ref: stage
+        ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'stage' }}
     - name: Setup .NET
-      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
       with:
         dotnet-version: 8.0.x
 
     - name: Build artifacts
       uses: ./.github/actions/build
       with:
-        sgKey: ${{ secrets.SG_KEY }}
+        sign-client: false
 
     - name: Get version from nupkg
       id: get-version
@@ -71,23 +71,25 @@ jobs:
         server: ${{ fromJson(needs.load-test-matrix.outputs.servers) }}
         strong-consistency: ["1", "0"]
         exclude:
+          # Community edition does not support SC or TLS.
           - server:
               server-type: aerospike-server
             strong-consistency: "1"
+          # Hardened EE leg (TLS + security) runs AP only for now.
           - server:
-              server-type: aerospike-server
-              tls: true
-    name: test-${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.server.tls }}
+              security: true
+            strong-consistency: "1"
+    name: test-${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.server.tls }}-sec${{ matrix.server.security == true && 'true' || 'false' }}
     runs-on: ubuntu-latest
     steps:
     - name: Harden the runner (Audit all outbound calls)
-      uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
+      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
       with:
         egress-policy: audit
 
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
-        ref: stage
+        ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'stage' }}
     - name: Test
       uses: ./.github/actions/test
       with:
@@ -96,21 +98,95 @@ jobs:
         server-container-repo: ${{ matrix.server.server-container-repo }}
         strong-consistency: ${{ matrix.strong-consistency }}
         enable-tls: ${{ matrix.server.tls }}
+        enable-security: ${{ matrix.server.security == true && 'true' || 'false' }}
         features-content: ${{ matrix.server.server-type == 'aerospike-server-enterprise' && secrets.AES_FEATURES_CONF || '' }}
         oidc-provider: gh-aerospike
         oidc-audience: aerospike
-        artifact-suffix: ${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.server.tls }}
+        artifact-suffix: ${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}-sc${{ matrix.strong-consistency }}-tls${{ matrix.server.tls }}-sec${{ matrix.server.security == true && 'true' || 'false' }}
 
     - name: Publish test results
       if: ${{ !cancelled() }}
       uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
       with:
         files: test-results/**/*.trx
-        check_name: "Nightly - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }})"
+        check_name: "Nightly - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }}, SEC=${{ matrix.server.security == true && 'true' || 'false' }})"
 
     - name: Publish example run results
       if: ${{ !cancelled() && hashFiles('example-results/**/*.trx') != '' }}
       uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
       with:
         files: example-results/**/*.trx
-        check_name: "Nightly Examples - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }})"
+        check_name: "Nightly Examples - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }}, SEC=${{ matrix.server.security == true && 'true' || 'false' }})"
+
+  merge-coverage:
+    needs: test
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+      with:
+        egress-policy: audit
+
+    - name: Download raw coverage reports
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        pattern: coverage-raw-${{ github.sha }}-*
+        path: coverage-input
+
+    - name: Cache dotnet global tools
+      id: cache-dotnet-tools
+      uses: actions/cache@3edfce9056124e459a23f683a21433670d47daca # v4.3.0
+      with:
+        path: ~/.dotnet/tools
+        key: dotnet-tools-${{ runner.os }}-coverage-18.5.2
+
+    - name: Install dotnet-coverage
+      if: steps.cache-dotnet-tools.outputs.cache-hit != 'true'
+      run: dotnet tool install --global dotnet-coverage --version 18.5.2
+
+    - name: Ensure dotnet tools on PATH
+      run: echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+    - name: Merge coverage reports
+      run: |
+        shopt -s globstar nullglob
+        reports=(coverage-input/**/coverage.cobertura.xml)
+        if [ ${#reports[@]} -eq 0 ]; then
+          echo "::error::No raw coverage reports were downloaded."
+          exit 1
+        fi
+        if [ ${#reports[@]} -lt 2 ]; then
+          echo "::warning::Only ${#reports[@]} coverage report(s) found; merge is a no-op union of a single leg."
+        fi
+        echo "Merging ${#reports[@]} coverage report(s):"
+        printf '  - %s\n' "${reports[@]}"
+        mkdir -p coverage-merged
+        dotnet-coverage merge "${reports[@]}" \
+          -f cobertura \
+          -o coverage-merged/coverage.cobertura.xml
+
+    - name: Generate merged coverage report
+      uses: danielpalme/ReportGenerator-GitHub-Action@d3ebf1f760f7d8ab92cc44d9bcfee7ad73722a31 # v5.5.11
+      with:
+        reports: coverage-merged/coverage.cobertura.xml
+        targetdir: coverage-merged/report
+        reporttypes: HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub
+        assemblyfilters: +AerospikeClient
+
+    - name: Publish merged coverage summary
+      run: |
+        if [ -f coverage-merged/report/SummaryGithub.md ]; then
+          {
+            echo "## Merged Coverage (all nightly matrix configurations)"
+            echo ""
+            cat coverage-merged/report/SummaryGithub.md
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Upload merged coverage report
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: coverage-report-merged-${{ github.sha }}
+        path: coverage-merged/report/
+        retention-days: 90

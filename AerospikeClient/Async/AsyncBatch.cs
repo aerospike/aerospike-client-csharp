@@ -59,6 +59,7 @@ namespace Aerospike.Client
 			BatchRead record = records[batchIndex];
 
 			ParseFieldsRead(record.key);
+			ApplyErrorDetail(record);
 
 			if (resultCode == 0)
 			{
@@ -132,6 +133,7 @@ namespace Aerospike.Client
 			BatchRead record = records[batchIndex];
 
 			ParseFieldsRead(record.key);
+			ApplyErrorDetail(record);
 
 			if (resultCode == 0)
 			{
@@ -500,6 +502,7 @@ namespace Aerospike.Client
 			BatchRecord record = records[batchIndex];
 
 			ParseFields(record.key, record.hasWrite);
+			ApplyErrorDetail(record);
 
 			if (resultCode == 0)
 			{
@@ -616,6 +619,7 @@ namespace Aerospike.Client
 			BatchRecord record = records[batchIndex];
 
 			ParseFields(record.key, record.hasWrite);
+			ApplyErrorDetail(record);
 
 			if (resultCode == 0)
 			{
@@ -738,6 +742,7 @@ namespace Aerospike.Client
 			BatchRecord record = records[batchIndex];
 
 			ParseFields(record.key, record.hasWrite);
+			ApplyErrorDetail(record);
 
 			if (resultCode == 0)
 			{
@@ -852,6 +857,7 @@ namespace Aerospike.Client
 			{
 				record = new BatchRecord(keyOrig, null, resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
+			ApplyErrorDetail(record);
 			sent[batchIndex] = true;
 			AsyncBatch.OnRecord(cluster, listener, record, batchIndex);
 		}
@@ -952,6 +958,7 @@ namespace Aerospike.Client
 			BatchRecord record = records[batchIndex];
 
 			ParseFields(record.key, record.hasWrite);
+			ApplyErrorDetail(record);
 
 			if (resultCode == 0)
 			{
@@ -1104,6 +1111,7 @@ namespace Aerospike.Client
 			{
 				record = new BatchRecord(keyOrig, null, resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
+			ApplyErrorDetail(record);
 			sent[batchIndex] = true;
 			AsyncBatch.OnRecord(cluster, listener, record, batchIndex);
 		}

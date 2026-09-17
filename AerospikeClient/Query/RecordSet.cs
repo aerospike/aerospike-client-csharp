@@ -96,7 +96,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Close query
+		/// Dispose this record set and close the query. If records remain, producer threads
+		/// are stopped. Dispose each record set before replacing it during pagination.
 		/// </summary>
 		public void Dispose()
 		{
@@ -106,7 +107,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Close query.
+		/// Close the query. If records remain, producer threads are stopped. Calling this
+		/// method or <see cref="Dispose()"/> is required when iteration ends early.
 		/// </summary>
 		public void Close()
 		{

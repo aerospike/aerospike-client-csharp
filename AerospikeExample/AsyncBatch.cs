@@ -111,7 +111,7 @@ public sealed class AsyncBatch : AsyncExample
 			for (int i = 0; i < existsArray.Length; i++)
 			{
 				Key key = keys[i];
-				parent.console.Info($"Record: namespace={key.ns} set={key.setName} key={key.userKey} exists={existsArray[i]}");
+				Console.WriteLine($"Record: namespace={key.ns} set={key.setName} key={key.userKey} exists={existsArray[i]}");
 			}
 
 			parent.TaskComplete();
@@ -119,7 +119,7 @@ public sealed class AsyncBatch : AsyncExample
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Batch exists array failed: {Util.GetErrorMessage(e)}");
+			Console.Error.WriteLine($"Batch exists array failed: {Util.GetErrorMessage(e)}");
 			parent.TaskComplete();
 		}
 	}
@@ -128,14 +128,14 @@ public sealed class AsyncBatch : AsyncExample
 	{
 		public void OnExists(Key key, bool exists)
 		{
-			parent.console.Info($"Record: namespace={key.ns} set={key.setName} digest={ByteUtil.BytesToHexString(key.digest)} exists={exists}");
+			Console.WriteLine($"Record: namespace={key.ns} set={key.setName} digest={ByteUtil.BytesToHexString(key.digest)} exists={exists}");
 		}
 
 		public void OnSuccess() => parent.TaskComplete();
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Batch exists sequence failed: {Util.GetErrorMessage(e)}");
+			Console.Error.WriteLine($"Batch exists sequence failed: {Util.GetErrorMessage(e)}");
 			parent.TaskComplete();
 		}
 	}
@@ -151,21 +151,21 @@ public sealed class AsyncBatch : AsyncExample
 
 				if (record == null)
 				{
-					parent.console.Error($"Record not found: namespace={key.ns} set={key.setName} key={key.userKey} bin={BinName}");
+					Console.Error.WriteLine($"Record not found: namespace={key.ns} set={key.setName} key={key.userKey} bin={BinName}");
 				}
 				else
 				{
-					parent.console.Info($"Record: namespace={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={record.GetValue(BinName)}");
+					Console.WriteLine($"Record: namespace={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={record.GetValue(BinName)}");
 				}
 			}
 
-			parent.console.Info($"Records returned: {records.Length}");
+			Console.WriteLine($"Records returned: {records.Length}");
 			parent.TaskComplete();
 		}
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Batch get array failed: {Util.GetErrorMessage(e)}");
+			Console.Error.WriteLine($"Batch get array failed: {Util.GetErrorMessage(e)}");
 			parent.TaskComplete();
 		}
 	}
@@ -176,11 +176,11 @@ public sealed class AsyncBatch : AsyncExample
 		{
 			if (record == null)
 			{
-				parent.console.Error($"Record not found: namespace={key.ns} set={key.setName} digest={ByteUtil.BytesToHexString(key.digest)} bin={BinName}");
+				Console.Error.WriteLine($"Record not found: namespace={key.ns} set={key.setName} digest={ByteUtil.BytesToHexString(key.digest)} bin={BinName}");
 			}
 			else
 			{
-				parent.console.Info($"Record: namespace={key.ns} set={key.setName} digest={ByteUtil.BytesToHexString(key.digest)} bin={BinName} value={record.GetValue(BinName)}");
+				Console.WriteLine($"Record: namespace={key.ns} set={key.setName} digest={ByteUtil.BytesToHexString(key.digest)} bin={BinName} value={record.GetValue(BinName)}");
 			}
 		}
 
@@ -188,7 +188,7 @@ public sealed class AsyncBatch : AsyncExample
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Batch get sequence failed: {Util.GetErrorMessage(e)}");
+			Console.Error.WriteLine($"Batch get sequence failed: {Util.GetErrorMessage(e)}");
 			parent.TaskComplete();
 		}
 	}
@@ -204,21 +204,21 @@ public sealed class AsyncBatch : AsyncExample
 
 				if (record == null || (record.generation == 0 && record.expiration == 0))
 				{
-					parent.console.Error($"Record not found: namespace={key.ns} set={key.setName} key={key.userKey}");
+					Console.Error.WriteLine($"Record not found: namespace={key.ns} set={key.setName} key={key.userKey}");
 				}
 				else
 				{
-					parent.console.Info($"Record: namespace={key.ns} set={key.setName} key={key.userKey} generation={record.generation} expiration={record.expiration}");
+					Console.WriteLine($"Record: namespace={key.ns} set={key.setName} key={key.userKey} generation={record.generation} expiration={record.expiration}");
 				}
 			}
 
-			parent.console.Info($"Headers returned: {records.Length}");
+			Console.WriteLine($"Headers returned: {records.Length}");
 			parent.TaskComplete();
 		}
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Batch get headers failed: {Util.GetErrorMessage(e)}");
+			Console.Error.WriteLine($"Batch get headers failed: {Util.GetErrorMessage(e)}");
 			parent.TaskComplete();
 		}
 	}
@@ -237,21 +237,21 @@ public sealed class AsyncBatch : AsyncExample
 				if (rec != null)
 				{
 					found++;
-					parent.console.Info($"Record: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={rec.GetValue(BinName)}");
+					Console.WriteLine($"Record: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName} value={rec.GetValue(BinName)}");
 				}
 				else
 				{
-					parent.console.Info($"Record not found: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName}");
+					Console.WriteLine($"Record not found: ns={key.ns} set={key.setName} key={key.userKey} bin={BinName}");
 				}
 			}
 
-			parent.console.Info($"Records found: {found}");
+			Console.WriteLine($"Records found: {found}");
 			parent.TaskComplete();
 		}
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Batch read complex failed: {Util.GetErrorMessage(e)}");
+			Console.Error.WriteLine($"Batch read complex failed: {Util.GetErrorMessage(e)}");
 			parent.TaskComplete();
 		}
 	}

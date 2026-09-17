@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -54,7 +54,6 @@ namespace Aerospike.Benchmarks
 		internal bool latency;
 		internal bool latencyAltFormat;
 		internal bool debug;
-		internal bool singleBin;
 
 		public Args()
 		{
@@ -193,9 +192,6 @@ namespace Aerospike.Benchmarks
 			{
 				throw new Exception(string.Format("Failed to get namespace info: host={0} namespace={1}", node, ns));
 			}
-
-			singleBin = parseBoolean(namespaceTokens, "single-bin");
-			binName = singleBin ? "" : "bin";  // Single bin servers don't need a bin name.
 		}
 
 		private static bool parseBoolean(String namespaceTokens, String name)
@@ -218,12 +214,6 @@ namespace Aerospike.Benchmarks
 
 			string value = namespaceTokens.Substring(begin, end - begin);
 			return Convert.ToBoolean(value);
-		}
-
-		public string GetBinName(string name)
-		{
-			// Single bin servers don't need a bin name.
-			return singleBin ? "" : name;
 		}
 
 		public void SetFixedValue()

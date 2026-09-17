@@ -23,7 +23,8 @@ namespace Aerospike.Client
 	public enum ExpWriteFlags
 	{
 		/// <summary>
-		/// Default. Allow create or update.
+		/// Default. Allow the target bin to be created or updated. Policy and expression
+		/// evaluation failures fail the operation.
 		/// </summary>
 		DEFAULT = 0,
 
@@ -51,12 +52,14 @@ namespace Aerospike.Client
 		ALLOW_DELETE = 4,
 
 		/// <summary>
-		/// Do not raise error if operation is denied.
+		/// Do not raise an error when CREATE_ONLY, UPDATE_ONLY, or ALLOW_DELETE policy
+		/// conditions deny the operation. This flag does not suppress expression evaluation errors.
 		/// </summary>
 		POLICY_NO_FAIL = 8,
 
 		/// <summary>
 		/// Ignore failures caused by the expression resolving to unknown or a non-bin type.
+		/// This flag does not suppress CREATE_ONLY, UPDATE_ONLY, or ALLOW_DELETE policy errors.
 		/// </summary>
 		EVAL_NO_FAIL = 16
 	}

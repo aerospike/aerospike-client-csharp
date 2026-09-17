@@ -25,7 +25,7 @@ public abstract class SyncExample : Example
 	/// <summary>
 	/// Connect and run one or more synchronous client examples, sharing a single client connection.
 	/// </summary>
-	public static List<ExampleResultInfo> RunExamples(Console console, Arguments args)
+	public static List<ExampleResultInfo> RunExamples(Arguments args)
 	{
 		ClientPolicy policy = new()
 		{
@@ -48,22 +48,21 @@ public abstract class SyncExample : Example
 
 		foreach (string exampleName in args.syncExamples)
 		{
-			results.Add(RunExample(exampleName, client, args, console));
+			results.Add(RunExample(exampleName, client, args));
 		}
 
 		return results;
 	}
 
-	private static ExampleResultInfo RunExample(string exampleName, IAerospikeClient client, Arguments args, Console console)
+	private static ExampleResultInfo RunExample(string exampleName, IAerospikeClient client, Arguments args)
 	{
 		if (!ExampleRegistry.TryGetSync(exampleName, out ExampleDefinition definition))
 		{
-			console.Error($"Invalid sync example: {exampleName}");
+			Console.Error.WriteLine($"Invalid sync example: {exampleName}");
 			return new ExampleResultInfo(exampleName, ExampleResult.Failed, "example class not found");
 		}
 
 		SyncExample example = (SyncExample)Activator.CreateInstance(definition.Type);
-		example.SetConsole(console);
 
 		try
 		{
@@ -71,7 +70,7 @@ public abstract class SyncExample : Example
 		}
 		catch (Exception ex)
 		{
-			console.Error($"{exampleName} FAILED: {ex.Message}");
+			Console.Error.WriteLine($"{exampleName} FAILED: {ex.Message}");
 			return new ExampleResultInfo(exampleName, ExampleResult.Failed, ex.Message);
 		}
 	}

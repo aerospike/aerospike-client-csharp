@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -133,6 +133,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, false);
+				ApplyErrorDetail(record);
 				status.SetRowError();
 			}
 		}
@@ -204,6 +205,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
+				ApplyErrorDetail(record);
 				status.SetRowError();
 			}
 		}
@@ -253,6 +255,7 @@ namespace Aerospike.Client
 				// A KEY_NOT_FOUND_ERROR on a delete is benign, but still results in an overall
 				// batch status of false to be consistent with the original batch code.
 				record.SetError(resultCode, Command.BatchInDoubt(true, commandSentCounter));
+				ApplyErrorDetail(record);
 				status.SetRowError();
 			}
 		}
@@ -324,6 +327,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(true, commandSentCounter));
+				ApplyErrorDetail(record);
 				status.SetRowError();
 			}
 		}
@@ -484,7 +488,7 @@ namespace Aerospike.Client
 				p.sequence = sequence;
 				p.prevNode = node;
 				p.PrepareRetryWrite(timeout);
-				node = (AsyncNode)p.GetNodeWrite(cluster);
+				node = p.GetNodeWrite(cluster);
 				sequence = p.sequence;
 			}
 			else
@@ -493,7 +497,7 @@ namespace Aerospike.Client
 				p.sequence = sequence;
 				p.prevNode = node;
 				p.PrepareRetryRead(timeout);
-				node = (AsyncNode)p.GetNodeRead(cluster);
+				node = p.GetNodeRead(cluster);
 				sequence = p.sequence;
 			}
 			return true;

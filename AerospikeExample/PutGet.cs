@@ -31,9 +31,9 @@ public sealed class PutGet : SyncExample
 		client.Put(writePolicy, key, bin);
 
 		Record record = client.Get(policy, key);
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 
 		Record header = client.GetHeader(policy, key);
-		console.Info($"Header: generation={header.generation} expiration={header.expiration}");
+		Console.WriteLine($"Header: generation={header.generation} expiration={header.expiration}");
 	}
 }

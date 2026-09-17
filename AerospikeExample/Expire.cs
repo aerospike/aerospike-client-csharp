@@ -28,7 +28,7 @@ public sealed class Expire : SyncExample
 		Key key = new(ns, set, "expirekey");
 		Bin bin = new("expirebin", "expirevalue");
 
-		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={bin.name} value={bin.value} expiration=2");
+		Console.WriteLine($"Put: namespace={key.ns} set={key.setName} key={key.userKey} bin={bin.name} value={bin.value} expiration=2");
 
 		WritePolicy expirePolicy = new(writePolicy)
 		{
@@ -36,14 +36,14 @@ public sealed class Expire : SyncExample
 		};
 		client.Put(expirePolicy, key, bin);
 
-		console.Info($"Get: namespace={key.ns} set={key.setName} key={key.userKey}");
+		Console.WriteLine($"Get: namespace={key.ns} set={key.setName} key={key.userKey}");
 		Record record = client.Get(policy, key, bin.name);
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 
-		console.Info("Sleeping for 3 seconds ...");
+		Console.WriteLine("Sleeping for 3 seconds ...");
 		Thread.Sleep(TimeSpan.FromSeconds(3));
 
 		record = client.Get(policy, key, bin.name);
-		console.Info($"Record after expiration: {record}");
+		Console.WriteLine($"Record after expiration: {record}");
 	}
 }

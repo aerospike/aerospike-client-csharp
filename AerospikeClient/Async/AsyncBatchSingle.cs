@@ -133,6 +133,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, false);
+				ApplyErrorDetail(record);
 				executor.SetRowError();
 			}
 		}
@@ -652,6 +653,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
+				ApplyErrorDetail(record);
 				executor.SetRowError();
 			}
 		}
@@ -754,6 +756,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(true, commandSentCounter));
+				ApplyErrorDetail(record);
 				executor.SetRowError();
 			}
 		}
@@ -873,6 +876,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(true, commandSentCounter));
+				ApplyErrorDetail(record);
 				executor.SetRowError();
 			}
 		}
@@ -1058,6 +1062,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(true, commandSentCounter));
+				ApplyErrorDetail(record);
 				executor.SetRowError();
 			}
 		}
@@ -1238,6 +1243,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(true, commandSentCounter));
+				ApplyErrorDetail(record);
 				executor.SetRowError();
 			}
 		}

@@ -125,6 +125,7 @@ namespace Aerospike.Test
 		private static void SetServerSpecific()
 		{
 			Node node = SuiteHelpers.client.Nodes[0];
+			SuiteHelpers.serverVersion = node.serverVersion;
 			string editionFilter = node.serverVersion >= Node.SERVER_VERSION_8_1_1 ? "release" : "edition";
 			string namespaceFilter = "namespace/" + SuiteHelpers.ns;
 			Dictionary<string, string> map = Info.Request(null, node, editionFilter, namespaceFilter);
@@ -134,18 +135,40 @@ namespace Aerospike.Test
 			SuiteHelpers.enterprise = editionToken != null && editionToken.Contains("Enterprise");
 
 			string namespaceTokens = map[namespaceFilter] ?? throw new Exception(string.Format("Failed to get namespace info: host={0} namespace={1}", SuiteHelpers.hosts[0].name, SuiteHelpers.ns));
-			SuiteHelpers.singleBin = ParseBoolean(namespaceTokens, "single-bin");
 			SuiteHelpers.scMode = ParseBoolean(namespaceTokens, "strong-consistency");
+
+			int nsupPeriod = ParseInt(namespaceTokens, "nsup-period");
+			SuiteHelpers.hasTtl = nsupPeriod != 0 || ParseBoolean(namespaceTokens, "allow-ttl-without-nsup");
 		}
 
-		private static bool ParseBoolean(String namespaceTokens, String name)
+		public static void RequireTtlSupport()
+		{
+			if (!SuiteHelpers.hasTtl)
+			{
+				Assert.Inconclusive("Skipping test: namespace does not support TTL writes");
+			}
+		}
+
+		private static int ParseInt(string namespaceTokens, string name)
+		{
+			string value = ParseString(namespaceTokens, name);
+			return int.Parse(value);
+		}
+
+		private static bool ParseBoolean(string namespaceTokens, string name)
+		{
+			string value = ParseString(namespaceTokens, name);
+			return Convert.ToBoolean(value);
+		}
+
+		private static string ParseString(string namespaceTokens, string name)
 		{
 			string search = name + '=';
 			int begin = namespaceTokens.IndexOf(search);
 
 			if (begin < 0)
 			{
-				return false;
+				throw new Exception("Failed to find server config: " + name);
 			}
 
 			begin += search.Length;
@@ -156,14 +179,7 @@ namespace Aerospike.Test
 				end = namespaceTokens.Length;
 			}
 
-			string value = namespaceTokens[begin..end];
-			return Convert.ToBoolean(value);
-		}
-
-		public static string GetBinName(string name)
-		{
-			// Single bin servers don't need a bin name.
-			return SuiteHelpers.singleBin ? "" : name;
+			return namespaceTokens[begin..end];
 		}
 
 		public static void Close()

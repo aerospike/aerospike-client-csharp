@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Runtime.ExceptionServices;
+
 namespace Aerospike.Client
 {
 	public sealed class QueryPartitionExecutor : IQueryExecutor
@@ -221,12 +223,22 @@ namespace Aerospike.Client
 			// Throw an exception if an error occurred.
 			if (exception != null)
 			{
-				// Wrap exception because throwing will reset the exception's stack trace.
-				// Wrapped exceptions preserve the stack trace in the inner exception.
-				AerospikeException ae = new AerospikeException("Query Failed: " + exception.Message, exception);
 				tracker.PartitionError();
-				ae.Iteration = tracker.iteration;
-				throw ae;
+
+				if (exception is AerospikeException ae)
+				{
+					// Preserve the server result and extended error detail captured by
+					// the query command, along with the worker thread's stack trace.
+					ae.Iteration = tracker.iteration;
+					ExceptionDispatchInfo.Capture(ae).Throw();
+				}
+
+				// Preserve the existing public behavior for unexpected client errors.
+				AerospikeException wrapper = new("Query Failed: " + exception.Message, exception)
+				{
+					Iteration = tracker.iteration
+				};
+				throw wrapper;
 			}
 		}
 

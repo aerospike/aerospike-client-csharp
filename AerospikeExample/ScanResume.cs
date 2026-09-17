@@ -40,7 +40,7 @@ public sealed class ScanResume : SyncExample
 		recordCount = 0;
 		recordMax = 50;
 
-		console.Info("Start scan terminate");
+		Console.WriteLine("Start scan terminate");
 
 		try
 		{
@@ -50,18 +50,18 @@ public sealed class ScanResume : SyncExample
 			ae is AerospikeException.ScanTerminated ||
 			ae.InnerException is AerospikeException.ScanTerminated)
 		{
-			console.Info("Scan terminated as expected");
+			Console.WriteLine("Scan terminated as expected");
 		}
 
-		console.Info($"Records returned: {recordCount}");
+		Console.WriteLine($"Records returned: {recordCount}");
 
 		// PartitionFilter could be serialized at this point. Resume the scan now.
 		recordCount = 0;
 		recordMax = 0;
 
-		console.Info("Start scan resume");
+		Console.WriteLine("Start scan resume");
 		client.ScanPartitions(scanPolicy, filter, ns, SetName, ScanCallback);
-		console.Info($"Records returned: {recordCount}");
+		Console.WriteLine($"Records returned: {recordCount}");
 	}
 
 	private void ScanCallback(Key key, Record record)

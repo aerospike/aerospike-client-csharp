@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -29,6 +29,16 @@ namespace Aerospike.Client
 		public bool hasWrite;
 		public bool sendKey;
 
+		/// <summary>
+		/// Error-detail verbosity folded into info4 bits 5-6 (see
+		/// <see cref="Command.INFO4_ERROR_VERBOSITY_SHIFT"/> and
+		/// <see cref="Command.INFO4_ERROR_VERBOSITY_MASK"/>). This value is batch-wide,
+		/// taken from the parent <see cref="BatchPolicy"/>, and OR'd into each row's info4
+		/// by the batch read/write encoders. The Set methods never modify it, so it survives
+		/// per-row reuse of this instance.
+		/// </summary>
+		public int errorDetailBits;
+
 		public BatchAttr()
 		{
 		}
@@ -50,7 +60,7 @@ namespace Aerospike.Client
 			}
 		}
 
-		public BatchAttr(BatchPolicy rp, BatchWritePolicy wp, Operation[] ops)
+		public BatchAttr(BatchPolicy bp, BatchWritePolicy wp, Operation[] ops)
 		{
 			bool readAllBins = false;
 			bool readHeader = false;
@@ -83,7 +93,7 @@ namespace Aerospike.Client
 
 			if (hasWriteOp)
 			{
-				SetWrite(wp);
+				SetWrite(bp, wp);
 
 				if (hasRead)
 				{
@@ -103,7 +113,7 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				SetRead(rp);
+				SetRead(bp);
 
 				if (readAllBins)
 				{
@@ -220,7 +230,12 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void SetWrite(BatchWritePolicy wp)
+		public void SetWrite(BatchPolicy bp, BatchWritePolicy wp)
+		{
+			SetWrite(wp, bp.sendKey, wp.durableDelete);
+		}
+
+		public void SetWrite(BatchWritePolicy wp, bool sendKey, bool durableDelete)
 		{
 			filterExp = wp.filterExp;
 			readAttr = 0;
@@ -229,7 +244,7 @@ namespace Aerospike.Client
 			txnAttr = 0;
 			expiration = wp.expiration;
 			hasWrite = true;
-			sendKey = wp.sendKey;
+			this.sendKey = sendKey || wp.sendKey;
 
 			switch (wp.generationPolicy)
 			{
@@ -267,7 +282,7 @@ namespace Aerospike.Client
 					break;
 			}
 
-			if (wp.durableDelete)
+			if (durableDelete)
 			{
 				writeAttr |= Command.INFO2_DURABLE_DELETE;
 			}
@@ -308,7 +323,12 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void SetUDF(BatchUDFPolicy up)
+		public void SetUDF(BatchPolicy bp, BatchUDFPolicy up)
+		{
+			SetUDF(up, bp.sendKey, up.durableDelete);
+		}
+
+		public void SetUDF(BatchUDFPolicy up, bool sendKey, bool durableDelete)
 		{
 			filterExp = up.filterExp;
 			readAttr = 0;
@@ -318,9 +338,9 @@ namespace Aerospike.Client
 			expiration = up.expiration;
 			generation = 0;
 			hasWrite = true;
-			sendKey = up.sendKey;
+			this.sendKey = sendKey || up.sendKey;
 
-			if (up.durableDelete)
+			if (durableDelete)
 			{
 				writeAttr |= Command.INFO2_DURABLE_DELETE;
 			}
@@ -336,7 +356,12 @@ namespace Aerospike.Client
 			}
 		}
 
-		public void SetDelete(BatchDeletePolicy dp)
+		public void SetDelete(BatchPolicy bp, BatchDeletePolicy dp)
+		{
+			SetDelete(dp, bp.sendKey, dp.durableDelete);
+		}
+
+		public void SetDelete(BatchDeletePolicy dp, bool sendKey, bool durableDelete)
 		{
 			filterExp = dp.filterExp;
 			readAttr = 0;
@@ -345,7 +370,7 @@ namespace Aerospike.Client
 			txnAttr = 0;
 			expiration = 0;
 			hasWrite = true;
-			sendKey = dp.sendKey;
+			this.sendKey = sendKey || dp.sendKey;
 
 			switch (dp.generationPolicy)
 			{
@@ -365,7 +390,7 @@ namespace Aerospike.Client
 					break;
 			}
 
-			if (dp.durableDelete)
+			if (durableDelete)
 			{
 				writeAttr |= Command.INFO2_DURABLE_DELETE;
 			}

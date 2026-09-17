@@ -44,7 +44,7 @@ public sealed class BatchOperate : SyncExample
 	/// </summary>
 	private void BatchReadOperate()
 	{
-		console.Info(nameof(BatchReadOperate));
+		Console.WriteLine(nameof(BatchReadOperate));
 
 		Key[] keys = BuildKeys();
 		Expression exp = Exp.Build(Exp.Mul(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
@@ -56,11 +56,11 @@ public sealed class BatchOperate : SyncExample
 
 			if (record == null)
 			{
-				console.Info($"Result[{i}]: not found");
+				Console.WriteLine($"Result[{i}]: not found");
 				continue;
 			}
 
-			console.Info($"Result[{i}]: {record.GetInt(ResultName1)}");
+			Console.WriteLine($"Result[{i}]: {record.GetInt(ResultName1)}");
 		}
 	}
 
@@ -69,7 +69,7 @@ public sealed class BatchOperate : SyncExample
 	/// </summary>
 	private void BatchReadOperateComplex()
 	{
-		console.Info(nameof(BatchReadOperateComplex));
+		Console.WriteLine(nameof(BatchReadOperateComplex));
 
 		Expression exp1 = Exp.Build(Exp.Mul(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
 		Expression exp2 = Exp.Build(Exp.Add(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
@@ -103,7 +103,7 @@ public sealed class BatchOperate : SyncExample
 	/// </summary>
 	private void BatchListReadOperate()
 	{
-		console.Info(nameof(BatchListReadOperate));
+		Console.WriteLine(nameof(BatchListReadOperate));
 
 		Key[] keys = new Key[RecordCount];
 
@@ -125,12 +125,12 @@ public sealed class BatchOperate : SyncExample
 
 			if (record == null)
 			{
-				console.Info($"Result[{i}]: null");
+				Console.WriteLine($"Result[{i}]: null");
 				continue;
 			}
 
 			IList results = record.GetList(BinName3);
-			console.Info($"Result[{i}]: {results[0]},{results[1]}");
+			Console.WriteLine($"Result[{i}]: {results[0]},{results[1]}");
 		}
 	}
 
@@ -139,15 +139,23 @@ public sealed class BatchOperate : SyncExample
 	/// </summary>
 	private void BatchListWriteOperate()
 	{
-		console.Info(nameof(BatchListWriteOperate));
+		Console.WriteLine(nameof(BatchListWriteOperate));
 
 		Key[] keys = BuildKeys();
 
+		BatchPolicy batchPolicy = new(client.BatchParentPolicyWriteDefault)
+		{
+			// 0 issues all node requests in parallel. Positive values cap the thread count.
+			maxConcurrentThreads = 4
+		};
+
 		// Append integer to list and get size and last element of list bin for all records.
-		BatchResults batch = client.Operate(null, null, keys,
+		BatchResults batch = client.Operate(batchPolicy, null, keys,
 			ListOperation.Append(ListPolicy.Default, BinName3, Value.Get(999)),
 			ListOperation.Size(BinName3),
 			ListOperation.GetByIndex(BinName3, -1, ListReturnType.VALUE));
+
+		Console.WriteLine($"All batch sub-commands succeeded: {batch.status}");
 
 		for (int i = 0; i < batch.records.Length; i++)
 		{
@@ -156,11 +164,13 @@ public sealed class BatchOperate : SyncExample
 			if (br.resultCode == 0)
 			{
 				IList results = br.record.GetList(BinName3);
-				console.Info($"Result[{i}]: {results[1]},{results[2]}");
+				Console.WriteLine($"Result[{i}]: {results[1]},{results[2]}");
 			}
 			else
 			{
-				console.Info($"Result[{i}]: error: {ResultCode.GetResultString(br.resultCode)}");
+				Console.WriteLine(
+					$"Result[{i}]: error={ResultCode.GetResultString(br.resultCode)} " +
+					$"inDoubt={br.inDoubt}");
 			}
 		}
 	}
@@ -170,7 +180,7 @@ public sealed class BatchOperate : SyncExample
 	/// </summary>
 	private void BatchWriteOperateComplex()
 	{
-		console.Info(nameof(BatchWriteOperateComplex));
+		Console.WriteLine(nameof(BatchWriteOperateComplex));
 
 		Expression wexp1 = Exp.Build(Exp.Add(Exp.IntBin(BinName1), Exp.IntBin(BinName2), Exp.Val(1000)));
 		Expression rexp1 = Exp.Build(Exp.Mul(Exp.IntBin(BinName1), Exp.IntBin(BinName2)));
@@ -199,7 +209,9 @@ public sealed class BatchOperate : SyncExample
 			new BatchDelete(new Key(ns, set, $"{KeyPrefix}6")),
 		];
 
-		client.Operate(null, records);
+		// Retain the aggregate status; per-record resultCode still identifies partial failures.
+		bool allSucceeded = client.Operate(null, records);
+		Console.WriteLine($"All batch sub-commands succeeded: {allSucceeded}");
 
 		for (int i = 0; i < records.Count; i++)
 		{
@@ -209,11 +221,13 @@ public sealed class BatchOperate : SyncExample
 			{
 				object v1 = record.record?.GetValue(ResultName1) ?? "null";
 				object v2 = record.record?.GetValue(ResultName2) ?? "null";
-				console.Info($"Result[{i}]: {v1}, {v2}");
+				Console.WriteLine($"Result[{i}]: {v1}, {v2}");
 			}
 			else
 			{
-				console.Info($"Result[{i}]: error: {ResultCode.GetResultString(record.resultCode)}");
+				Console.WriteLine(
+					$"Result[{i}]: error={ResultCode.GetResultString(record.resultCode)} " +
+					$"inDoubt={record.inDoubt}");
 			}
 		}
 	}
@@ -228,11 +242,11 @@ public sealed class BatchOperate : SyncExample
 			{
 				object v1 = read.record.GetValue(ResultName1);
 				object v2 = read.record.GetValue(ResultName2);
-				console.Info($"Result[{i}]: {v1}, {v2}");
+				Console.WriteLine($"Result[{i}]: {v1}, {v2}");
 			}
 			else
 			{
-				console.Info($"Result[{i}]: error: {ResultCode.GetResultString(read.resultCode)}");
+				Console.WriteLine($"Result[{i}]: error: {ResultCode.GetResultString(read.resultCode)}");
 			}
 		}
 	}

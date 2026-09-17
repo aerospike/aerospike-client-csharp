@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -51,6 +51,8 @@ namespace Aerospike.Client
 					case Operation.Type.EXP_READ:
 					case Operation.Type.HLL_READ:
 					case Operation.Type.MAP_READ:
+					case Operation.Type.STRING_READ:
+					case Operation.Type.TO_STRING:
 						// Map operations require respondAllOps to be true.
 						respondAllOps = true;
 						rattr |= Command.INFO1_READ;
@@ -84,6 +86,7 @@ namespace Aerospike.Client
 					case Operation.Type.EXP_MODIFY:
 					case Operation.Type.HLL_MODIFY:
 					case Operation.Type.MAP_MODIFY:
+					case Operation.Type.STRING_MODIFY:
 						// Map operations require respondAllOps to be true.
 						respondAllOps = true;
 						wattr = Command.INFO2_WRITE;

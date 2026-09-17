@@ -229,8 +229,20 @@ namespace Aerospike.Client
 				{
 					if (resultCode != 0)
 					{
-						// The server returned a fatal error.
-						throw new AerospikeException(resultCode);
+						// Query/scan start failures carry field 45 in this end marker.
+						// Parse it before throwing, but never let malformed detail hide
+						// the original server result code.
+						try
+						{
+							int count = ByteUtil.BytesToShort(dataBuffer, dataOffset + 13);
+							dataOffset += 17;
+							SkipKey(count);
+						}
+						catch
+						{
+							ResetServerErrorDetail();
+						}
+						throw CreateException(resultCode);
 					}
 					return false;
 				}

@@ -34,25 +34,31 @@ public sealed class QueryPage : SyncExample
 			SetName = SetName,
 			BinNames = [BinName],
 			Filter = Filter.Range(BinName, 1, 200),
+			// MaxRecords is a cluster-wide page target. The client divides it among
+			// participating nodes, so an unbalanced data distribution can return fewer.
 			MaxRecords = 100
 		};
 
-		PartitionFilter filter = PartitionFilter.All();
+		PartitionFilter partitionFilter = PartitionFilter.All();
 
-		for (int i = 0; i < 3 && !filter.Done; i++)
+		int page = 0;
+
+		while (!partitionFilter.Done)
 		{
-			console.Info($"Query page: {i}");
-
-			using RecordSet rs = client.QueryPartitions(null, stmt, filter);
-
 			int count = 0;
 
-			while (rs.Next())
+			// Dispose each page before requesting the next one, so its per-node
+			// query threads are released.
+			using (RecordSet recordSet = client.QueryPartitions(null, stmt, partitionFilter))
 			{
-				count++;
+				while (recordSet.Next())
+				{
+					count++;
+				}
 			}
 
-			console.Info($"Records returned: {count}");
+			page++;
+			Console.WriteLine($"Page {page} | {count} records");
 		}
 	}
 }

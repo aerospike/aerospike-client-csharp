@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -55,6 +55,7 @@ namespace Aerospike.Client
 			BatchRead record = records[batchIndex];
 
 			ParseFieldsRead(record.key);
+			ApplyErrorDetail(record);
 
 			if (resultCode == 0)
 			{
@@ -740,6 +741,8 @@ namespace Aerospike.Client
 			{
 				SkipKey(fieldCount);
 			}
+
+			ApplyErrorDetail(br);
 		}
 
 		protected override Latency.LatencyType GetLatencyType()
@@ -808,13 +811,13 @@ namespace Aerospike.Client
 				{
 					if (ae.InDoubt)
 					{
-						SetInDoubt();
+						command.SetInDoubt();
 					}
 					status.SetException(ae);
 				}
 				catch (Exception e)
 				{
-					SetInDoubt();
+					command.SetInDoubt();
 					status.SetException(new AerospikeException(e));
 				}
 			}

@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Aerospike.Example;
 
@@ -26,11 +27,54 @@ public sealed class Connect : SyncExample
 {
 	public override void RunExample()
 	{
+		ShowPolicyOptions();
 		RunBasicConnect();
 		RunAuthConnect();
 		RunTlsConnect();
 		RunTlsPkiConnect();
-		console.Info("Connect completed successfully.");
+		Console.WriteLine("Connect completed successfully.");
+	}
+
+	private void ShowPolicyOptions()
+	{
+		ClientPolicy startupPolicy = new()
+		{
+			// False allows a client with a partial cluster view to start and discover
+			// unavailable nodes later.
+			failIfNotConnected = false
+		};
+
+		ClientPolicy poolPolicy = new()
+		{
+			minConnsPerNode = 10,
+			maxConnsPerNode = 100
+		};
+
+		ClientPolicy backoffPolicy = new()
+		{
+			maxErrorRate = 100,
+			errorRateWindow = 1
+		};
+
+		ClientPolicy alternateAddressPolicy = new()
+		{
+			// Use service/peer alternate addresses advertised by the cluster.
+			useServicesAlternate = true
+		};
+
+		// TlsPolicy also accepts its settings as strings, which suits configuration
+		// files. This overload loads the certificate file without a password.
+		TlsPolicy configuredTlsPolicy = new(
+			protocolString: "Tls12",
+			revokeString: null,
+			clientCertificateFile: null,
+			forLoginOnly: false);
+
+		_ = startupPolicy;
+		_ = poolPolicy;
+		_ = backoffPolicy;
+		_ = alternateAddressPolicy;
+		_ = configuredTlsPolicy;
 	}
 
 	private void RunBasicConnect()
@@ -43,7 +87,7 @@ public sealed class Connect : SyncExample
 		AerospikeClient client = new(host, port);
 		// @@@SNIPEND
 
-		console.Info($"Basic connect: host={host} port={port}");
+		Console.WriteLine($"Basic connect: host={host} port={port}");
 
 		// @@@SNIPSTART csharp-client-connect-close
 		client.Close();
@@ -68,7 +112,7 @@ public sealed class Connect : SyncExample
 		AerospikeClient client = new(policy, host, port);
 		// @@@SNIPEND
 
-		console.Info($"Auth connect: host={host} port={port} user={user}");
+		Console.WriteLine($"Auth connect: host={host} port={port} user={user}");
 		client.Close();
 	}
 
@@ -92,7 +136,7 @@ public sealed class Connect : SyncExample
 		AerospikeClient client = new(policy, tlsHost);
 		// @@@SNIPEND
 
-		console.Info($"TLS connect: host={host} tlsName={tlsName} port={port}");
+		Console.WriteLine($"TLS connect: host={host} tlsName={tlsName} port={port}");
 		client.Close();
 	}
 
@@ -103,11 +147,19 @@ public sealed class Connect : SyncExample
 		string host = args.hosts[0].name;
 		string tlsName = args.hosts[0].tlsName;
 		int port = args.port;
+		string clientCertificateFile = args.tlsClientCertFile;
+		string certificatePassword = args.tlsClientCertPassword;
 
 		// @@@SNIPSTART csharp-client-connect-tls-pki
 		Host tlsHost = new(host, tlsName, port);
 
-		TlsPolicy tlsPolicy = new();
+		X509Certificate2Collection clientCertificates = new();
+		clientCertificates.Import(clientCertificateFile, certificatePassword);
+
+		TlsPolicy tlsPolicy = new()
+		{
+			clientCertificates = clientCertificates
+		};
 
 		ClientPolicy policy = new()
 		{
@@ -118,7 +170,7 @@ public sealed class Connect : SyncExample
 		AerospikeClient client = new(policy, tlsHost);
 		// @@@SNIPEND
 
-		console.Info($"TLS+PKI connect: host={host} tlsName={tlsName} port={port}");
+		Console.WriteLine($"TLS+PKI connect: host={host} tlsName={tlsName} port={port}");
 		client.Close();
 	}
 }

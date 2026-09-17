@@ -381,8 +381,9 @@ namespace Aerospike.Client
 		/// record meta data is cached in memory.
 		/// </summary>
 		/// <para>
-		/// This expression should only be used for server versions less than 7.0. Use
-		/// <see cref="DeviceSize()"/> for server version 7.0+.
+		/// This expression should only be used for server versions less than 7.0.
+		/// <see cref="RecordSize()"/> is the equivalent on server version 7.0+, and this
+		/// expression is deprecated as of server version 8.1.
 		/// </para>
 		/// <example>
 		/// <code>
@@ -521,9 +522,14 @@ namespace Aerospike.Client
 		/// Exp.RegexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.StringBin("a"))
 		/// </code>
 		/// </example>
+		/// <para>
+		/// This legacy comparison uses POSIX regex and is not Unicode/DBCS-aware; the string-package
+		/// equivalent uses ICU regex and provides consistent Unicode handling across the string ops.
+		/// </para>
 		/// <param name="regex">regular expression string</param>
 		/// <param name="flags">regular expression bit flags. See <see cref="Aerospike.Client.RegexFlag"/></param>
 		/// <param name="bin">string bin or string value expression</param>
+		[Obsolete("Deprecated as of client 8.5+, use RegexCompare(Exp pattern, StringRegexFlags regexFlags, Exp src) instead")]
 		public static Exp RegexCompare(string regex, uint flags, Exp bin)
 		{
 			return new Regex(bin, regex, flags);
@@ -1247,14 +1253,15 @@ namespace Aerospike.Client
 		//--------------------------------------------------
 
 		/// <summary>
-		/// Conditionally select an expression from a variable number of expression pairs
-		/// followed by default expression action. Requires server version 5.6.0+.
+		/// Conditionally select an expression from a variable number of condition/action pairs
+		/// followed by a required default action. Conditions are evaluated in order and only
+		/// the action for the first true condition is evaluated. Requires server version 5.6.0+.
 		/// </summary>
 		/// <example>
 		/// <code>
 		/// // Args Format: bool exp1, action exp1, bool exp2, action exp2, ..., action-default
 		/// // Apply operator based on type.
-		/// Exp.cond(
+		/// Exp.Cond(
 		///   Exp.EQ(Exp.IntBin("type"), Exp.Val(0)), Exp.Add(Exp.IntBin("val1"), Exp.IntBin("val2")),
 		///   Exp.EQ(Exp.IntBin("type"), Exp.Val(1)), Exp.Sub(Exp.IntBin("val1"), Exp.IntBin("val2")),
 		///   Exp.EQ(Exp.IntBin("type"), Exp.Val(2)), Exp.Mul(Exp.IntBin("val1"), Exp.IntBin("val2")),
@@ -1267,7 +1274,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Define variables and expressions in scope.
+		/// Define variables and expressions in scope. Definitions must precede the final scoped
+		/// expression, and each variable is referenced by the same case-sensitive name.
 		/// Requires server version 5.6.0+.
 		/// </summary>
 		/// <example>
@@ -1289,8 +1297,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Assign variable to a <see cref="Aerospike.Client.Exp.Let(Exp[])"/> 
-		/// expression that can be accessed later.
+		/// Assign a named variable inside a <see cref="Aerospike.Client.Exp.Let(Exp[])"/>
+		/// expression. The definition must appear before expressions that reference it.
 		/// Requires server version 5.6.0+.
 		/// </summary>
 		/// <example>
@@ -1309,7 +1317,8 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Retrieve expression value from a variable.
+		/// Retrieve a previously defined expression value from a variable in the enclosing
+		/// <see cref="Aerospike.Client.Exp.Let(Exp[])"/> scope.
 		/// Requires server version 5.6.0+.
 		/// </summary>
 		/// <example>
@@ -1530,6 +1539,9 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Create unknown value. Used to intentionally fail an expression.
+		/// Unknown is distinct from nil. Expression operations return
+		/// <see cref="ResultCode.OP_NOT_APPLICABLE"/> unless the corresponding
+		/// EVAL_NO_FAIL flag is set.
 		/// The failure can be ignored with <see cref="Aerospike.Client.ExpWriteFlags.EVAL_NO_FAIL"/>
 		/// or <see cref="Aerospike.Client.ExpReadFlags.EVAL_NO_FAIL"/>
 		/// Requires server version 5.6.0+.
@@ -1541,7 +1553,7 @@ namespace Aerospike.Client
 		/// Exp.Let(
 		///   Exp.Def("v", Exp.Sub(Exp.FloatBin("balance"), Exp.Val(100.0))),
 		///   Exp.Cond(
-		///     Exp.GE(Exp.var("v"), Exp.Val(0.0)), Exp.Var("v"),
+		///     Exp.GE(Exp.Var("v"), Exp.Val(0.0)), Exp.Var("v"),
 		///     Exp.Unknown()));
 		/// </code>
 		/// </example>
@@ -1569,6 +1581,11 @@ namespace Aerospike.Client
 		//--------------------------------------------------
 		// Internal
 		//--------------------------------------------------
+
+		internal static Exp ToStringExp(Exp src)
+		{
+			return new CmdExp(TO_STRING, src);
+		}
 
 		private const int UNKNOWN = 0;
 		private const int CMD_EQ = 1;
@@ -1622,6 +1639,7 @@ namespace Aerospike.Client
 		private const int KEY = 80;
 		private const int BIN = 81;
 		private const int BIN_TYPE = 82;
+		private const int TO_STRING = 99;
 		private const int RESULT_REMOVE = 100;
 		private const int MAP_KEYS = 101;
 		private const int MAP_VALUES = 102;
@@ -1945,9 +1963,13 @@ namespace Aerospike.Client
 			{
 				// List values need an extra array and QUOTED in order to distinguish
 				// between a multiple argument array call and a local list.
+				// Value literals must be in canonical form (AER-6930): unordered maps
+				// at any depth are packed with keys sorted in server msgpack order.
+				packer.SortMaps(true);
 				packer.PackArrayBegin(2);
 				packer.PackNumber(QUOTED);
 				packer.PackList(list);
+				packer.SortMaps(false);
 			}
 		}
 
@@ -1970,7 +1992,11 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
+				// Value literals must be in canonical form (AER-6930): unordered maps
+				// at any depth are packed with keys sorted in server msgpack order.
+				packer.SortMaps(true);
 				packer.PackMap(map, order);
+				packer.SortMaps(false);
 			}
 		}
 

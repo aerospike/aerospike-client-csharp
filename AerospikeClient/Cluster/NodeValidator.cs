@@ -169,6 +169,28 @@ namespace Aerospike.Client
 			throw exception;
 		}
 
+		private static string BuildUserAgentCommand(Cluster cluster)
+		{
+			string appId = cluster.appId;
+
+			if (string.IsNullOrEmpty(appId))
+			{
+				if (cluster.user?.Length > 0)
+				{
+					appId = ByteUtil.Utf8ToString(cluster.user, 0, cluster.user.Length);
+				}
+				else
+				{
+					appId = "not-set";
+				}
+			}
+
+			Version clientVersion = new(cluster.client.clientVersion);
+			string agentValue = $"1,csharp-{clientVersion},{appId}";
+			string b64 = Convert.ToBase64String(ByteUtil.StringToUtf8(agentValue));
+			return "user-agent-set:value=" + b64;
+		}
+
 		private void ValidateAddress(Cluster cluster, IPAddress address, string tlsName, int port, bool detectLoadBalancer)
 		{
 			IPEndPoint socketAddress = new IPEndPoint(address, port);
@@ -245,6 +267,13 @@ namespace Aerospike.Client
 				ValidateNode(map);
 				ValidatePartitionGeneration(map);
 				SetServerBuildVersion(map);
+
+				bool sendUserAgent = serverVersion >= Node.SERVER_VERSION_8_1;
+				if (sendUserAgent)
+				{
+					Info.Request(conn, BuildUserAgentCommand(cluster));
+				}
+
 				SetFeatures(serverVersion);
 
 				if (hasClusterName)

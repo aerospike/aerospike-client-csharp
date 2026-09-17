@@ -31,10 +31,10 @@ public sealed class QueryExecute : SyncExample
 		const int begin = 3;
 		const int end = 9;
 
-		console.Info($"For ns={ns} set={set} index={indexName} bin={binName1} >= {begin} <= {end}");
-		console.Info($"Even integers: add 100 to existing {binName1}");
-		console.Info($"Multiple of 5: delete {binName2} bin");
-		console.Info("Multiple of 9: delete record");
+		Console.WriteLine($"For ns={ns} set={set} index={indexName} bin={binName1} >= {begin} <= {end}");
+		Console.WriteLine($"Even integers: add 100 to existing {binName1}");
+		Console.WriteLine($"Multiple of 5: delete {binName2} bin");
+		Console.WriteLine("Multiple of 9: delete record");
 
 		Statement stmt = new()
 		{

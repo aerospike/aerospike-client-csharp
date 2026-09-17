@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Runtime.ExceptionServices;
+
 namespace Aerospike.Client
 {
 	public abstract class QueryExecutor : IQueryExecutor
@@ -118,8 +120,14 @@ namespace Aerospike.Client
 			// Throw an exception if an error occurred.
 			if (exception != null)
 			{
-				// Wrap exception because throwing will reset the exception's stack trace.
-				// Wrapped exceptions preserve the stack trace in the inner exception.
+				if (exception is AerospikeException)
+				{
+					// Preserve the server result and extended error detail captured by
+					// the query command, along with the worker thread's stack trace.
+					ExceptionDispatchInfo.Capture(exception).Throw();
+				}
+
+				// Preserve the existing public behavior for unexpected client errors.
 				throw new AerospikeException("Query Failed: " + exception.Message, exception);
 			}
 		}

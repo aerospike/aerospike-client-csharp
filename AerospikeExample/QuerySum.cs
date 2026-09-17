@@ -30,7 +30,7 @@ public sealed class QuerySum : SyncExample
 		const int begin = 4;
 		const int end = 7;
 
-		console.Info($"Query for: ns={ns} set={set} index={indexName} bin={binName} >= {begin} <= {end}");
+		Console.WriteLine($"Query for: ns={ns} set={set} index={indexName} bin={binName} >= {begin} <= {end}");
 
 		Statement stmt = new()
 		{
@@ -45,7 +45,7 @@ public sealed class QuerySum : SyncExample
 
 		while (rs.Next())
 		{
-			console.Info($"Sum: {rs.Object}");
+			Console.WriteLine($"Sum: {rs.Object}");
 		}
 	}
 }

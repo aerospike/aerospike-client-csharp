@@ -292,6 +292,44 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create expression that joins a list of strings into one string with no separator
+		/// between elements. Inverse of <see cref="StringExp.Split(Exp)"/>.
+		/// </summary>
+		/// <example>
+		/// <code>
+		/// Exp joined = ListExp.Join(Exp.ListBin("items"));
+		/// </code>
+		/// </example>
+		/// <param name="bin">list bin or list value expression</param>
+		/// <param name="ctx">optional context path for nested CDT</param>
+		/// <returns>string-typed expression yielding the joined string</returns>
+		public static Exp Join(Exp bin, params CTX[] ctx)
+		{
+			byte[] bytes = PackUtil.Pack(ListOperation.STRING_LIST_JOIN, ctx);
+			return AddRead(bin, bytes, Exp.Type.STRING);
+		}
+
+		/// <summary>
+		/// Create expression that joins a list of strings into one string, inserting
+		/// <paramref name="separator"/> between each element. Inverse of
+		/// <see cref="StringExp.Split(Exp, Exp)"/>.
+		/// </summary>
+		/// <example>
+		/// <code>
+		/// Exp joined = ListExp.Join(Exp.Val(","), Exp.ListBin("items"));
+		/// </code>
+		/// </example>
+		/// <param name="separator">substring inserted between list elements</param>
+		/// <param name="bin">list bin or list value expression</param>
+		/// <param name="ctx">optional context path for nested CDT</param>
+		/// <returns>string-typed expression yielding the joined string</returns>
+		public static Exp Join(Exp separator, Exp bin, params CTX[] ctx)
+		{
+			byte[] bytes = PackUtil.Pack(ListOperation.STRING_LIST_JOIN, separator, ctx);
+			return AddRead(bin, bytes, Exp.Type.STRING);
+		}
+
+		/// <summary>
 		/// Create expression that selects list items identified by value and returns selected
 		/// data specified by returnType.
 		/// </summary>

@@ -29,17 +29,17 @@ public sealed class Exists : SyncExample
 		Bin bin = new("existsbin", "existsvalue");
 
 		bool exists = client.Exists(policy, key);
-		console.Info($"Exists before put: {exists}");
+		Console.WriteLine($"Exists before put: {exists}");
 
 		client.Put(writePolicy, key, bin);
-		console.Info($"Put: namespace={key.ns} set={key.setName} key={key.userKey}");
+		Console.WriteLine($"Put: namespace={key.ns} set={key.setName} key={key.userKey}");
 
 		exists = client.Exists(policy, key);
-		console.Info($"Exists after put: {exists}");
+		Console.WriteLine($"Exists after put: {exists}");
 
 		client.Delete(writePolicy, key);
 
 		exists = client.Exists(policy, key);
-		console.Info($"Exists after delete: {exists}");
+		Console.WriteLine($"Exists after delete: {exists}");
 	}
 }

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -19,6 +19,10 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Batch key and read only operations with default policy.
 	/// Used in batch read commands where different bins are needed for each key.
+	/// <para>
+	/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+	/// <see cref="BatchPolicy"/>.
+	/// </para>
 	/// </summary>
 	public sealed class BatchRead : BatchRecord
 	{
@@ -131,7 +135,7 @@ namespace Aerospike.Client
 		/// Optimized reference equality check to determine batch wire protocol repeat flag.
 		/// For internal use only.
 		/// </summary>
-		public override bool Equals(BatchRecord obj, IConfigProvider configProvider)
+		public override bool Equals(BatchRecord obj)
 		{
 			if (this.GetType() != obj.GetType())
 			{
@@ -145,7 +149,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return wire protocol size. For internal use only.
 		/// </summary>
-		public override int Size(Policy parentPolicy, IConfigProvider configProvider)
+		public override int Size(bool sendKey)
 		{
 			int size = 0;
 

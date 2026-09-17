@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,7 +22,7 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestAsyncUDF : TestAsync
 	{
-		private static readonly string binName = Suite.GetBinName("audfbin1");
+		private static readonly string binName = "audfbin1";
 		private const string binValue = "string value";
 
 		[ClassInitialize()]
@@ -123,6 +123,145 @@ namespace Aerospike.Test
 			client.Execute(null, null, new BatchUDFHandler(this), keys, "record_example", "writeBin", Value.Get("B5"), Value.Get("value5"));
 
 			WaitTillComplete();
+		}
+
+		[TestMethod]
+		public void AsyncBatchSingleUDF()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, 20016);
+			Key[] keys = [key];
+
+			client.Delete(null, null, keys);
+
+			client.Execute(null, null, new BatchSingleUDFHandler(this, key), keys,
+				"record_example", "writeBin", Value.Get(binName), Value.Get(binValue));
+
+			WaitTillComplete();
+		}
+
+		[TestMethod]
+		public void AsyncBatchSingleUDFOperate()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, 20017);
+			Value[] args = [Value.Get(binName), Value.Get(binValue)];
+
+			List<BatchRecord> records =
+			[
+				new BatchUDF(key, "record_example", "writeBin", args)
+			];
+
+			client.Operate(null, new BatchSingleUDFOperateHandler(this, key), records);
+
+			WaitTillComplete();
+		}
+
+		[TestMethod]
+		public void AsyncBatchSingleUDFOperateSequence()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, 20018);
+			Value[] args = [Value.Get(binName), Value.Get(binValue)];
+
+			List<BatchRecord> records =
+			[
+				new BatchUDF(key, "record_example", "writeBin", args)
+			];
+
+			client.Operate(null, new BatchSingleUDFOperateSequenceHandler(this, key), records);
+
+			WaitTillComplete();
+		}
+
+		[TestMethod]
+		public void AsyncBatchSingleUDFSequenceCommand()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, 20019);
+			Key[] keys = [key];
+
+			client.Delete(null, null, keys);
+
+			client.Execute(null, null, new BatchSingleUDFSequenceCommandHandler(this, key), keys,
+				"record_example", "writeBin", Value.Get(binName), Value.Get(binValue));
+
+			WaitTillComplete();
+		}
+
+		private class BatchSingleUDFHandler(TestAsyncUDF parent, Key key) : BatchRecordArrayListener
+		{
+			public void OnSuccess(BatchRecord[] records, bool status)
+			{
+				client.Get(null, new BatchSingleUDFReadHandler(parent, key), key, binName);
+			}
+
+			public void OnFailure(BatchRecord[] records, AerospikeException ae)
+			{
+				parent.SetError(ae);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class BatchSingleUDFReadHandler(TestAsyncUDF parent, Key key) : RecordListener
+		{
+			public void OnSuccess(Key readKey, Record record)
+			{
+				parent.AssertBinEqual(key, record, binName, binValue);
+				parent.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class BatchSingleUDFOperateHandler(TestAsyncUDF parent, Key key) : BatchOperateListListener
+		{
+			public void OnSuccess(List<BatchRecord> records, bool status)
+			{
+				client.Get(null, new BatchSingleUDFReadHandler(parent, key), key, binName);
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class BatchSingleUDFOperateSequenceHandler(TestAsyncUDF parent, Key key) : BatchRecordSequenceListener
+		{
+			public void OnRecord(BatchRecord record, int index)
+			{
+			}
+
+			public void OnSuccess()
+			{
+				client.Get(null, new BatchSingleUDFReadHandler(parent, key), key, binName);
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class BatchSingleUDFSequenceCommandHandler(TestAsyncUDF parent, Key key) : BatchRecordSequenceListener
+		{
+			public void OnRecord(BatchRecord record, int index)
+			{
+			}
+
+			public void OnSuccess()
+			{
+				client.Get(null, new BatchSingleUDFReadHandler(parent, key), key, binName);
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
 		}
 
 		private class BatchUDFHandler(TestAsyncUDF parent) : BatchRecordArrayListener

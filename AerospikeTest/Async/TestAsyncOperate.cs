@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,7 +22,7 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestAsyncOperate : TestAsync
 	{
-		private static readonly string binName = Suite.GetBinName("putgetbin");
+		private static readonly string binName = "putgetbin";
 
 		[TestMethod]
 		public void AsyncOperateList()
@@ -111,6 +111,50 @@ namespace Aerospike.Test
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "aopmkey1");
 			client.Delete(null, new DeleteHandlerMap(this), key);
 			WaitTillComplete();
+		}
+
+		[TestMethod]
+		public void AsyncOperateReadOnly()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "aopreadkey");
+			Bin bin = new(binName, "read-only");
+			client.Put(null, new SeedWriteHandler(this, key, bin), key, bin);
+			WaitTillComplete();
+		}
+
+		private class SeedWriteHandler(TestAsyncOperate parent, Key key, Bin bin) : WriteListener
+		{
+			public void OnSuccess(Key putKey)
+			{
+				client.Operate(null, new ReadOnlyOperateHandler(parent, key, bin.name), key, Operation.Get(bin.name));
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
+		}
+
+		private class ReadOnlyOperateHandler(TestAsyncOperate parent, Key key, string binName) : RecordListener
+		{
+			public void OnSuccess(Key recordKey, Record record)
+			{
+				if (parent.AssertRecordFound(key, record) && parent.AssertBinEqual(key, record, binName, "read-only"))
+				{
+					parent.NotifyCompleted();
+				}
+				else
+				{
+					parent.NotifyCompleted();
+				}
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				parent.SetError(e);
+				parent.NotifyCompleted();
+			}
 		}
 
 		static void DeleteHandlerMapSuccess(Key key, TestAsyncOperate parent)

@@ -24,8 +24,8 @@ namespace Aerospike.Test
 	{
 		private const string indexName = "tqeindex";
 		private const string keyPrefix = "tqekey";
-		private static readonly string binName1 = Suite.GetBinName("tqebin1");
-		private static readonly string binName2 = Suite.GetBinName("tqebin2");
+		private static readonly string binName1 = "tqebin1";
+		private static readonly string binName2 = "tqebin2";
 		private const int size = 10;
 
 		[ClassInitialize()]

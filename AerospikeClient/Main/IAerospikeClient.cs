@@ -202,7 +202,12 @@ namespace Aerospike.Client
 		/// Append bin string values to existing record bin values.
 		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
-		/// This call only works for string values. 
+		/// <para>
+		/// This legacy operation performs raw byte concatenation and is not Unicode-aware.
+		/// Use <see cref="StringOperation.Append"/> for string bins. For blob bins, use
+		/// <see cref="BitOperation.Insert"/> at a byte offset equal to the blob's current size.
+		/// There is no end-of-blob sentinel, so appending requires knowing the current size.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -214,7 +219,11 @@ namespace Aerospike.Client
 		/// Prepend bin string values to existing record bin values.
 		/// The policy specifies the command timeout, record expiration and how the command is
 		/// handled when the record already exists.
-		/// This call works only for string values. 
+		/// <para>
+		/// This legacy operation performs raw byte concatenation and is not Unicode-aware.
+		/// Use <see cref="StringOperation.Prepend"/> for string bins. For blob bins, use
+		/// <see cref="BitOperation.Insert"/> at byte offset 0.
+		/// </para>
 		/// </summary>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
@@ -247,6 +256,7 @@ namespace Aerospike.Client
 		/// Return whether record existed on server before deletion.
 		/// The policy specifies the command timeout.
 		/// </summary>
+		/// <seealso cref="Delete(BatchPolicy, BatchDeletePolicy, Key[])"/>
 		/// <param name="policy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if delete fails</exception>
@@ -258,7 +268,12 @@ namespace Aerospike.Client
 		/// <para>
 		/// Requires server version 6.0+
 		/// </para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Delete(WritePolicy, Key)"/>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="deletePolicy">delete configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
@@ -324,6 +339,7 @@ namespace Aerospike.Client
 		/// Return whether record exists or not.
 		/// The policy can be used to specify timeouts.
 		/// </summary>
+		/// <seealso cref="Exists(BatchPolicy, Key[])"/>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if command fails</exception>
@@ -332,7 +348,12 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Check if multiple record keys exist in one batch call.
 		/// The returned boolean array is in positional order with the original key array order.
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Exists(Policy, Key)"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException.BatchExists">which contains results for keys that did complete</exception>
@@ -347,6 +368,7 @@ namespace Aerospike.Client
 		/// If found, return record instance.  If not found, return null.
 		/// The policy can be used to specify timeouts.
 		/// </summary>
+		/// <seealso cref="Get(BatchPolicy, Key[])"/>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults </param>
 		/// <param name="key">unique record identifier</param>
 		/// <exception cref="AerospikeException">if read fails</exception>
@@ -357,6 +379,7 @@ namespace Aerospike.Client
 		/// If found, return record instance.  If not found, return null.
 		/// The policy can be used to specify timeouts.
 		/// </summary>
+		/// <seealso cref="Get(BatchPolicy, Key[], string[])"/>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
 		/// <param name="binNames">bins to retrieve</param>
@@ -382,7 +405,12 @@ namespace Aerospike.Client
 		/// This method allows different namespaces/bins to be requested for each key in the batch.
 		/// The returned records are located in the same list.
 		/// If the BatchRead key field is not found, the corresponding record field will be null.
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Get(Policy, Key)"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="records">list of unique record identifiers and the bins to retrieve.
 		/// The returned records are located in the same list.</param>
@@ -394,7 +422,12 @@ namespace Aerospike.Client
 		/// Read multiple records for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Get(Policy, Key)"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
@@ -404,7 +437,12 @@ namespace Aerospike.Client
 		/// Read multiple record headers and bins for specified keys in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Get(Policy, Key, string[])"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <param name="binNames">array of bins to retrieve</param>
@@ -415,7 +453,12 @@ namespace Aerospike.Client
 		/// Read multiple records for specified keys using read operations in one batch call.
 		/// The returned records are in positional order with the original key array order.
 		/// If a key is not found, the positional record will be null.
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Operate(WritePolicy, Key, Operation[])"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
 		/// <param name="ops">array of read operations on record</param>
@@ -473,6 +516,8 @@ namespace Aerospike.Client
 		/// MapOperation) can be performed in same call.
 		/// </para>
 		/// </summary>
+		/// <seealso cref="Operate(BatchPolicy, List{BatchRecord})"/>
+		/// <seealso cref="Operate(BatchPolicy, BatchWritePolicy, Key[], Operation[])"/>
 		/// <param name="policy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="key">unique record identifier</param>
 		/// <param name="operations">database operations to perform</param>
@@ -491,23 +536,37 @@ namespace Aerospike.Client
 		/// <see cref="BatchRecord"/> can be <see cref="BatchRead"/>, <see cref="BatchWrite"/>, <see cref="BatchDelete"/> or
 		/// <see cref="BatchUDF"/>.
 		/// </para>
+		/// Key-specific failures are stored in each record's <see cref="BatchRecord.resultCode"/>
+		/// and cause a false return value. Command or node failures can throw an exception.
 		/// <para>
 		/// Requires server version 6.0+
 		/// </para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Operate(WritePolicy, Key, Operation[])"/>
 		/// <param name="policy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="records">list of unique record identifiers and read/write operations</param>
-		/// <returns>true if all batch sub-commands succeeded</returns>
+		/// <returns>true only if every batch sub-command succeeded</returns>
 		/// <exception cref="AerospikeException">if command fails</exception>
 		bool Operate(BatchPolicy policy, List<BatchRecord> records);
 
 		/// <summary>
 		/// Perform read/write operations on multiple keys. If a key is not found, the corresponding result
 		/// <see cref="BatchRecord.resultCode"/> will be <see cref="ResultCode.KEY_NOT_FOUND_ERROR"/>.
+		/// Inspect <see cref="BatchResults.status"/> and every returned record because key-specific
+		/// failures do not necessarily abort other keys.
 		/// <para>
 		/// Requires server version 6.0+
 		/// </para>
+		/// <para>
+		/// Node sub-batches of size 1 automatically degrade to single-record commands; see
+		/// <see cref="BatchPolicy"/>.
+		/// </para>
 		/// </summary>
+		/// <seealso cref="Operate(WritePolicy, Key, Operation[])"/>
 		/// <param name="batchPolicy">batch configuration parameters, pass in null for defaults</param>
 		/// <param name="writePolicy">write configuration parameters, pass in null for defaults</param>
 		/// <param name="keys">array of unique record identifiers</param>
@@ -878,6 +937,9 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// IndexTask instance.
+		/// The supplied policy's <see cref="Policy.socketTimeout"/> is used for the create
+		/// info command, each task polling command, and the task wait deadline. A null
+		/// policy uses the socket timeout supplied by the client's default write policy.
 		/// Requires server version 8.1.2+.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
@@ -898,6 +960,9 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// IndexTask instance.
+		/// The supplied policy's <see cref="Policy.socketTimeout"/> is used for the create
+		/// info command, each task polling command, and the task wait deadline. A null
+		/// policy uses the socket timeout supplied by the client's default write policy.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
@@ -921,6 +986,9 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// IndexTask instance.
+		/// The supplied policy's <see cref="Policy.socketTimeout"/> is used for the create
+		/// info command, each task polling command, and the task wait deadline. A null
+		/// policy uses the socket timeout supplied by the client's default write policy.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="ns">namespace - equivalent to database name</param>
@@ -948,6 +1016,9 @@ namespace Aerospike.Client
 		/// This asynchronous server call will return before command is complete.
 		/// The user can optionally wait for command completion by using the returned
 		/// IndexTask instance.
+		/// The supplied policy's <see cref="Policy.socketTimeout"/> is used for the create
+		/// info command, each task polling command, and the task wait deadline. A null
+		/// policy uses the socket timeout supplied by the client's default write policy.
 		/// </summary>
 		/// <param name="policy">generic configuration parameters, pass in null for defaults</param>
 		/// <param name="ns">namespace - equivalent to database name</param>

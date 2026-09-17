@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,6 +17,20 @@
 
 namespace Aerospike.Client.Config
 {
+	/// <summary>
+	/// Marks the dynamic configuration schema version where a property was introduced.
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Property)]
+	public sealed class ConfigIntroducedInAttribute : Attribute
+	{
+		public ConfigIntroducedInAttribute(string version)
+		{
+			Version = new Version(version);
+		}
+
+		public Version Version { get; }
+	}
+
 	public interface IConfigurationData
 	{
 		public string version { get; set; }
@@ -35,6 +49,14 @@ namespace Aerospike.Client.Config
 		public string version { get; set; }
 		public StaticConfig staticConfig { get; set; }
 		public DynamicConfig dynamicConfig { get; set; }
+	}
+
+	public class ConfigurationDatav1_1_0 : ConfigurationDatav1_0_0
+	{
+		public ConfigurationDatav1_1_0()
+		{
+			version = "1.1.0";
+		}
 	}
 
 	public class StaticConfig
@@ -115,6 +137,8 @@ namespace Aerospike.Client.Config
 		public int? timeout_delay { get; set; }
 		public int? total_timeout { get; set; }
 		public int? max_retries { get; set; }
+		[ConfigIntroducedIn("1.1.0")]
+		public int? error_detail_verbosity { get; set; }
 	}
 
 	public class WriteConfig
@@ -129,6 +153,8 @@ namespace Aerospike.Client.Config
 		public int? total_timeout { get; set; }
 		public int? max_retries { get; set; }
 		public bool? durable_delete { get; set; }
+		[ConfigIntroducedIn("1.1.0")]
+		public int? error_detail_verbosity { get; set; }
 	}
 
 	public class QueryConfig

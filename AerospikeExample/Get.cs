@@ -43,7 +43,7 @@ public sealed class Get : SyncExample
 			socketTimeout = 300
 		};
 		// @@@SNIPEND
-		console.Info($"Read policy: socketTimeout={policy.socketTimeout}");
+		Console.WriteLine($"Read policy: socketTimeout={policy.socketTimeout}");
 	}
 
 	private void RunExists()
@@ -55,7 +55,7 @@ public sealed class Get : SyncExample
 		bool exists = client.Exists(policy, key);
 
 		// Do something
-		console.Info($"Exists: {exists}");
+		Console.WriteLine($"Exists: {exists}");
 		// @@@SNIPEND
 	}
 
@@ -68,7 +68,7 @@ public sealed class Get : SyncExample
 		Record record = client.GetHeader(policy, key);
 
 		// Do something
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 		// @@@SNIPEND
 	}
 
@@ -81,7 +81,7 @@ public sealed class Get : SyncExample
 		Record record = client.Get(policy, key);
 
 		// Do something
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 		// @@@SNIPEND
 	}
 
@@ -94,7 +94,7 @@ public sealed class Get : SyncExample
 		Record record = client.Get(policy, key, "report", "location");
 
 		// Do something
-		console.Info($"Record: {record}");
+		Console.WriteLine($"Record: {record}");
 		// @@@SNIPEND
 	}
 }

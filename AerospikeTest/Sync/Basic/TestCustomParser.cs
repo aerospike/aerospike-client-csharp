@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -65,7 +65,7 @@ namespace Aerospike.Test
 				{ "k7", -1234L }
 			};
 
-			Bin bin = new(Suite.GetBinName("listmapbin"), map);
+			Bin bin = new("listmapbin", map);
 			client.Put(null, key, bin);
 
 			var received = new Dictionary<object, object>();
@@ -139,7 +139,7 @@ namespace Aerospike.Test
 				false
 			};
 
-			Bin bin = new(Suite.GetBinName("listmapbin"), list);
+			Bin bin = new("listmapbin", list);
 			client.Put(null, key, bin);
 
 			var received = new List<object>();
@@ -190,7 +190,7 @@ namespace Aerospike.Test
 			m13.Add("k131", 300L);
 			l2.Add("some more text");
 
-			Bin bin = new(Suite.GetBinName("listmapbin"), list);
+			Bin bin = new("listmapbin", list);
 			client.Put(null, key, bin);
 
 			Record record = Get(key, buffer =>
@@ -272,7 +272,7 @@ namespace Aerospike.Test
 			m13.Add("k131", 300L);
 			l2.Add("some more text");
 
-			Bin bin = new(Suite.GetBinName("listmapbin"), list);
+			Bin bin = new("listmapbin", list);
 			client.Put(null, key, bin);
 
 			Record record = Get(key, buffer =>

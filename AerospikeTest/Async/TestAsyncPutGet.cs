@@ -1,5 +1,5 @@
 ﻿/* 
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,7 +21,7 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestAsyncPutGet : TestAsync
 	{
-		private static readonly string binName = Suite.GetBinName("putgetbin");
+		private static readonly string binName = "putgetbin";
 		private static readonly CancellationTokenSource tokenSource = new();
 
 		[TestMethod]

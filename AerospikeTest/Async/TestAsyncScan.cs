@@ -21,32 +21,76 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestAsyncScan : TestAsync
 	{
-		private int recordCount;
+		private const string KeyPrefix = "tierA-async-scan-";
+		private const string BinName = "aascanbin";
+		private const int RecordCount = 11;
+
+		[ClassInitialize]
+		public static void SeedRecords(TestContext testContext)
+		{
+			AsyncMonitor monitor = new();
+			for (int i = 1; i <= RecordCount; i++)
+			{
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, KeyPrefix + i);
+				Bin bin = new(BinName, i);
+				client.Put(null, new SeedWriteHandler(monitor), key, bin);
+			}
+			monitor.WaitTillComplete();
+		}
 
 		[TestMethod]
 		public void AsyncScan()
 		{
-			recordCount = 0;
-
-			ScanPolicy policy = new();
-			client.ScanAll(policy, new RecordSequenceHandler(this), SuiteHelpers.ns, SuiteHelpers.set);
+			client.ScanAll(null, new RecordSequenceHandler(this), SuiteHelpers.ns, SuiteHelpers.set);
 			WaitTillComplete();
+		}
+
+		private static bool IsSeededRecord(Record record)
+		{
+			return record.bins.ContainsKey(BinName);
+		}
+
+		private class SeedWriteHandler(AsyncMonitor monitor) : WriteListener
+		{
+			public void OnSuccess(Key key)
+			{
+				monitor.NotifyCompleted();
+			}
+
+			public void OnFailure(AerospikeException e)
+			{
+				monitor.SetError(e);
+				monitor.NotifyCompleted();
+			}
 		}
 
 		private class RecordSequenceHandler(TestAsyncScan parent) : RecordSequenceListener
 		{
+			private int count;
+			private int valueSum;
+
 			public void OnRecord(Key key, Record record)
 			{
-				parent.recordCount++;
-
-				if ((parent.recordCount % 10000) == 0)
+				if (!IsSeededRecord(record))
 				{
-					;
+					return;
 				}
+
+				int value = record.GetInt(BinName);
+				parent.AssertBetween(1, RecordCount, value);
+				Interlocked.Increment(ref count);
+				Interlocked.Add(ref valueSum, value);
 			}
 
 			public void OnSuccess()
 			{
+				if (!parent.AssertEquals(RecordCount, count))
+				{
+					parent.NotifyCompleted();
+					return;
+				}
+
+				parent.AssertEquals(66, valueSum); // 1+2+...+11
 				parent.NotifyCompleted();
 			}
 

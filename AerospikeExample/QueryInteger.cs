@@ -30,7 +30,7 @@ public sealed class QueryInteger : SyncExample
 		const int begin = 14;
 		const int end = 18;
 
-		console.Info($"Query for: ns={ns} set={set} index={indexName} bin={binName} >= {begin} <= {end}");
+		Console.WriteLine($"Query for: ns={ns} set={set} index={indexName} bin={binName} >= {begin} <= {end}");
 
 		Statement stmt = new()
 		{
@@ -47,7 +47,7 @@ public sealed class QueryInteger : SyncExample
 			Key key = rs.Key;
 			long result = rs.Record.GetLong(binName);
 
-			console.Info(
+			Console.WriteLine(
 				$"Record found: namespace={key.ns} set={key.setName} " +
 				$"digest={ByteUtil.BytesToHexString(key.digest)} bin={binName} value={result}");
 		}

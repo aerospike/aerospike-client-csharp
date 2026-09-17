@@ -37,7 +37,7 @@ public sealed class AsyncUserDefinedFunction : AsyncExample
 		Key key = new(ns, set, "audfkey1");
 		Bin bin = new("audfbin1", "string value");
 
-		console.Info($"Write with udf: namespace={key.ns} set={key.setName} key={key.userKey} value={bin.value}");
+		Console.WriteLine($"Write with udf: namespace={key.ns} set={key.setName} key={key.userKey} value={bin.value}");
 		client.Execute(null, new WriteHandler(this, key, bin.name), key,
 			"record_example", "writeBin", Value.Get(bin.name), bin.value);
 	}
@@ -48,14 +48,14 @@ public sealed class AsyncUserDefinedFunction : AsyncExample
 	{
 		public void OnSuccess(Key callbackKey, object obj)
 		{
-			parent.console.Info($"Read with udf: namespace={callbackKey.ns} set={callbackKey.setName} key={callbackKey.userKey}");
+			Console.WriteLine($"Read with udf: namespace={callbackKey.ns} set={callbackKey.setName} key={callbackKey.userKey}");
 			parent.client.Execute(null, new ReadHandler(parent), callbackKey,
 				"record_example", "readBin", Value.Get(binName));
 		}
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Failed to execute: namespace={key.ns} set={key.setName} key={key.userKey} exception={e.Message}");
+			Console.Error.WriteLine($"Failed to execute: namespace={key.ns} set={key.setName} key={key.userKey} exception={e.Message}");
 			parent.NotifyCompleted();
 		}
 	}
@@ -64,13 +64,13 @@ public sealed class AsyncUserDefinedFunction : AsyncExample
 	{
 		public void OnSuccess(Key key, object obj)
 		{
-			parent.console.Info($"Result: {obj}");
+			Console.WriteLine($"Result: {obj}");
 			parent.NotifyCompleted();
 		}
 
 		public void OnFailure(AerospikeException e)
 		{
-			parent.console.Error($"Failed to read: {e.Message}");
+			Console.Error.WriteLine($"Failed to read: {e.Message}");
 			parent.NotifyCompleted();
 		}
 	}

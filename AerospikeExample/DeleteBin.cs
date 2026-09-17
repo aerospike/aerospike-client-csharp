@@ -29,11 +29,11 @@ public sealed class DeleteBin : SyncExample
 		string binName1 = "bin1";
 		string binName2 = "bin2";
 
-		console.Info("Delete one bin in the record.");
+		Console.WriteLine("Delete one bin in the record.");
 		Bin nullBin = Bin.AsNull(binName1); // Set bin value to null to drop bin.
 		client.Put(writePolicy, key, nullBin);
 
-		console.Info("Read record.");
+		Console.WriteLine("Read record.");
 		Record record = client.Get(policy, key, nullBin.name, binName2, "bin3");
 
 		if (record == null)
@@ -43,7 +43,7 @@ public sealed class DeleteBin : SyncExample
 
 		foreach (KeyValuePair<string, object> entry in record.bins)
 		{
-			console.Info($"Received: namespace={key.ns} set={key.setName} key={key.userKey} bin={entry.Key} value={entry.Value}");
+			Console.WriteLine($"Received: namespace={key.ns} set={key.setName} key={key.userKey} bin={entry.Key} value={entry.Value}");
 		}
 	}
 }

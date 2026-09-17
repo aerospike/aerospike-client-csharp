@@ -41,7 +41,7 @@ public sealed class QueryResume : SyncExample
 
 		PartitionFilter filter = PartitionFilter.All();
 
-		console.Info("Start query");
+		Console.WriteLine("Start query");
 		recordCount = 0;
 		recordMax = 50;
 
@@ -51,18 +51,18 @@ public sealed class QueryResume : SyncExample
 		}
 		catch (AerospikeException.QueryTerminated)
 		{
-			console.Info("Query terminated as expected");
+			Console.WriteLine("Query terminated as expected");
 		}
 
-		console.Info($"Records returned: {recordCount}");
+		Console.WriteLine($"Records returned: {recordCount}");
 
 		// PartitionFilter could be serialized at this point. Resume the query now.
 		recordCount = 0;
 		recordMax = 0;
 
-		console.Info("Start query resume");
+		Console.WriteLine("Start query resume");
 		client.Query(null, stmt, filter, QueryListener);
-		console.Info($"Records returned: {recordCount}");
+		Console.WriteLine($"Records returned: {recordCount}");
 	}
 
 	private void QueryListener(Key key, Record record)

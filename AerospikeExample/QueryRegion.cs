@@ -42,7 +42,7 @@ public sealed class QueryRegion : SyncExample
 			] }
 			""";
 
-		console.Info($"QueryRegion: {region}");
+		Console.WriteLine($"QueryRegion: {region}");
 
 		Statement stmt = new()
 		{
@@ -56,7 +56,7 @@ public sealed class QueryRegion : SyncExample
 
 		while (rs.Next())
 		{
-			console.Info($"Record found: {rs.Record.GetGeoJSON(BinName)}");
+			Console.WriteLine($"Record found: {rs.Record.GetGeoJSON(BinName)}");
 		}
 	}
 
@@ -66,7 +66,7 @@ public sealed class QueryRegion : SyncExample
 		const double lat = 37.5;
 		const double radius = 50000.0;
 
-		console.Info($"QueryRadius long={lon} lat={lat} radius={radius}");
+		Console.WriteLine($"QueryRadius long={lon} lat={lat} radius={radius}");
 
 		Statement stmt = new()
 		{
@@ -80,7 +80,7 @@ public sealed class QueryRegion : SyncExample
 
 		while (rs.Next())
 		{
-			console.Info($"Record found: {rs.Record.GetGeoJSON(BinName)}");
+			Console.WriteLine($"Record found: {rs.Record.GetGeoJSON(BinName)}");
 		}
 	}
 }

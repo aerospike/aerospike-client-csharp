@@ -26,13 +26,22 @@ namespace Aerospike.Client
 		{
 			public byte[] Bytes { get; }
 
-			public override ParticleType Type { get => ParticleType.BLOB; }
+			private readonly ParticleType type;
+
+			public override ParticleType Type => type;
 
 			public override object Object { get => Bytes; }
 
 			public BytesValue(byte[] bytes)
 			{
 				Bytes = bytes;
+				type = ParticleType.BLOB;
+			}
+
+			public BytesValue(byte[] bytes, ParticleType type)
+			{
+				Bytes = bytes;
+				this.type = type;
 			}
 
 			public override int EstimateSize() => Bytes.Length;
