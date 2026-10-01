@@ -5,7 +5,7 @@ run-name: "Bump version to ${{ inputs.version }}${{ inputs.dry-run && ' (dry run
 # into stage. Use this for:
 #   - next-cycle base after GA/preview (e.g. 8.5.1)
 #   - clean GA cut (e.g. 8.5.0) before release-candidate dispatch
-#   - one-shot preview cut (e.g. 8.0.0-alpha) before release-candidate dispatch
+#   - one-shot preview cut (e.g. 8.0.0-alpha, 9.0.0-beta.1) before release-candidate dispatch
 #
 # It does NOT create release tags — that happens in release.yml after
 # stage→master. It does NOT create per-build uniqueness; stage pushes append
@@ -26,7 +26,7 @@ on:
       version:
         type: string
         required: true
-        description: Version to set (e.g. 8.5.1, 8.5.0, 8.0.0-alpha)
+        description: Version to set (e.g. 8.5.1, 8.0.0-alpha, 9.0.0-beta.1)
       dry-run:
         type: boolean
         required: false
@@ -37,7 +37,7 @@ on:
       version:
         type: string
         required: true
-        description: Version to set (e.g. 8.5.1, 8.5.0, 8.0.0-alpha)
+        description: Version to set (e.g. 8.5.1, 8.0.0-alpha, 9.0.0-beta.1)
       ref:
         type: string
         required: false
@@ -81,9 +81,9 @@ jobs:
         $targetVersion = $env:TARGET_VERSION.Trim()
         $isDryRun = $env:IS_DRY_RUN -eq 'true'
 
-        # Same allowlist as release-candidate in build-dev.yml.
-        if (-not ($targetVersion -match '^\d+\.\d+\.\d+$' -or $targetVersion -match '^\d+\.\d+\.\d+-alpha$')) {
-          Write-Error "Version must be clean X.Y.Z or preview X.Y.Z-alpha (got '$targetVersion')."
+        # Same allowlist as scripts/update-version.ps1 (NuGet/SemVer 2).
+        if (-not ($targetVersion -match '^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')) {
+          Write-Error "Version must be a NuGet/SemVer version (e.g. 8.5.1, 8.0.0-alpha, 9.0.0-beta.1); got '$targetVersion'."
           exit 1
         }
 
@@ -171,9 +171,9 @@ jobs:
 
         pr_body=$(printf '%s\n' \
           "## Summary" \
-          "Sets committed \`<Version>\` to **${TARGET_VERSION}** (cycle base, GA cut, or one-shot \`-alpha\` preview)." \
+          "Sets committed \`<Version>\` to **${TARGET_VERSION}** (cycle base, GA cut, or SemVer preview such as \`-alpha\` / \`-beta.1\`)." \
           "" \
-          "Per-build uniqueness (\`-ci.N\`) is applied automatically by CI on stage pushes for clean bases. After merging a GA/\`-alpha\` cut, run **Build and test** with \`release-candidate=true\` from the **stage** branch to publish the bare version. After shipping, open another bump PR back to the next clean \`X.Y.Z\`." \
+          "Per-build uniqueness (\`-ci.N\`) is applied automatically by CI on stage pushes for clean bases. After merging a GA or preview cut, run **Build and test** with \`release-candidate=true\` from the **stage** branch to publish the bare version. After shipping, open another bump PR back to the next clean \`X.Y.Z\`." \
           "" \
           "## Test plan" \
           "- [ ] PR CI green" \

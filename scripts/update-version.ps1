@@ -8,12 +8,12 @@
     opens a PR into stage for the same change.
 
     Use this for the committed cycle base (clean X.Y.Z), a GA cut, or a
-    one-shot preview (X.Y.Z-alpha). Per-build JFrog uniqueness (-ci.N) is
+    SemVer preview (e.g. X.Y.Z-alpha, X.Y.Z-beta.1). Per-build JFrog uniqueness (-ci.N) is
     applied by CI on stage pushes — do not hand-bump for every merge.
 
 .PARAMETER Version
-    The version string to set (e.g. "8.5.1", "8.5.0", "8.0.0-alpha").
-    Must be clean X.Y.Z or preview X.Y.Z-alpha (same allowlist as Bump version / RC).
+    The version string to set (e.g. "8.5.1", "8.0.0-alpha", "9.0.0-beta.1").
+    Must be a NuGet/SemVer 2 version (same allowlist as Bump version / RC).
 
 .PARAMETER DryRun
     Show what would be changed without writing any files.
@@ -26,7 +26,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [ValidatePattern('^\d+\.\d+\.\d+(?:-alpha)?$')]
+    [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')]
     [string]$Version,
 
     [switch]$DryRun

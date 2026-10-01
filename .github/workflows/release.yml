@@ -8,7 +8,7 @@ run-name: Tag release and generate API docs
 # Order: release-candidate green and promoted in JFrog (DEV→TEST via CI;
 # higher envs via JFrog/devops) → merge stage→master → tag clean X.Y.Z →
 # then open a Bump version PR for the next clean cycle base.
-# Only clean X.Y.Z is tagged; -ci. and -alpha are refused.
+# Only clean X.Y.Z is tagged; -ci. and other SemVer previews are refused.
 permissions:
   contents: read
 
@@ -57,7 +57,7 @@ jobs:
         }
         Write-Host "Release version: $version"
         if ($version -notmatch '^\d+\.\d+\.\d+$') {
-          Write-Error "Refusing to tag non-GA version '$version'. Merge a clean X.Y.Z (preview -alpha is not tagged via this path), then bump the next cycle base after tagging."
+          Write-Error "Refusing to tag non-GA version '$version'. Merge a clean X.Y.Z (SemVer previews are not tagged via this path), then bump the next cycle base after tagging."
           exit 1
         }
         "version=$version" >> $env:GITHUB_OUTPUT

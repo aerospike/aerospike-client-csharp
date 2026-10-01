@@ -38,7 +38,7 @@ on:
         type: boolean
         required: false
         default: false
-        description: Pack .csproj Version as-is (GA or -alpha) and deploy to JFrog. Must run from stage. Do not use for ordinary builds.
+        description: Pack .csproj Version as-is (GA or SemVer preview) and deploy to JFrog. Must run from stage. Do not use for ordinary builds.
       server-tag:
         type: string
         required: false
@@ -117,11 +117,11 @@ jobs:
             exit 1
           }
           if ($isCiLabel) {
-            Write-Error "release-candidate=true refuses CI prerelease base '$base'. Set a clean X.Y.Z or preview X.Y.Z-alpha via Bump version first."
+            Write-Error "release-candidate=true refuses CI prerelease base '$base'. Set a clean X.Y.Z or a SemVer preview (e.g. -alpha, -beta.1) via Bump version first."
             exit 1
           }
-          if (-not ($base -match '^\d+\.\d+\.\d+$' -or $base -match '^\d+\.\d+\.\d+-alpha$')) {
-            Write-Error "release-candidate=true expects clean X.Y.Z or X.Y.Z-alpha (got '$base')."
+          if (-not ($base -match '^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')) {
+            Write-Error "release-candidate=true expects a NuGet/SemVer version (got '$base')."
             exit 1
           }
           $packageVersion = $base
