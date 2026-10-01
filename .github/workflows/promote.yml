@@ -6,14 +6,15 @@ permissions:
   contents: read
 
 # Manual promotion wrapper. Promotion approval and maturity policy live in the
-# JFrog/shared-workflow path; this workflow only prevents accidental stage skips.
+# JFrog/shared-workflow path; this workflow prevents accidental stage skips and
+# enforces version-class ceilings (CI prerelease ≤ TEST, -alpha ≤ PREVIEW).
 on:
   workflow_dispatch:
     inputs:
       version:
         type: string
         required: true
-        description: Release bundle version to promote
+        description: Release bundle version to promote (e.g. 8.5.1-ci.12, 8.0.0-alpha, 8.5.0)
       environment:
         type: choice
         required: true
@@ -42,6 +43,50 @@ jobs:
       with:
         oidc-provider-name: gh-aerospike
         oidc-audience: aerospike
+
+    - name: Validate version-class promotion ceiling
+      env:
+        BUNDLE_VERSION: ${{ inputs.version }}
+        TARGET_ENV: ${{ inputs.environment }}
+      run: |
+        set -euo pipefail
+
+        # CI prerelease: 8.5.1-ci.12 or 8.5.1-ci.12.2 — never above TEST.
+        if [[ "$BUNDLE_VERSION" =~ (^|[.-])ci\. ]]; then
+          case "$TARGET_ENV" in
+            DEV|TEST) echo "CI prerelease '$BUNDLE_VERSION' may promote to $TARGET_ENV." ;;
+            *)
+              echo "::error::CI prerelease versions (containing -ci.) cannot promote to $TARGET_ENV. Max environment is TEST."
+              exit 1
+              ;;
+          esac
+          exit 0
+        fi
+
+        # Customer preview: bare X.Y.Z-alpha — through PREVIEW, not PROD.
+        if [[ "$BUNDLE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-alpha$ ]]; then
+          case "$TARGET_ENV" in
+            DEV|TEST|STAGE|PREVIEW) echo "Preview version '$BUNDLE_VERSION' may promote to $TARGET_ENV." ;;
+            PROD)
+              echo "::error::Preview versions (X.Y.Z-alpha) cannot promote to PROD. Stop at PREVIEW; GA is a separate clean version."
+              exit 1
+              ;;
+            *)
+              echo "::error::Unexpected target environment: $TARGET_ENV"
+              exit 1
+              ;;
+          esac
+          exit 0
+        fi
+
+        # Clean GA: X.Y.Z — full ladder allowed (adjacency check still applies).
+        if [[ "$BUNDLE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Clean version '$BUNDLE_VERSION' may promote through PROD (adjacency still enforced)."
+          exit 0
+        fi
+
+        echo "::error::Unrecognized version form '$BUNDLE_VERSION'. Expected X.Y.Z, X.Y.Z-alpha, or X.Y.Z-ci.N."
+        exit 1
 
     # Adjacency guard: refuse to skip stages.
     # Reads the bundle's existing promotion records from the JFrog Lifecycle API

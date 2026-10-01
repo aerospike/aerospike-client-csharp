@@ -4,8 +4,10 @@ Aerospike C# Client Package
 ## AI coding agent entry point
 
 The Aerospike C# client — NuGet package `Aerospike.Client`, namespace
-`Aerospike.Client`. Authoritative version: `<Version>` in
-`AerospikeClient/AerospikeClient.csproj`. Requires .NET 8+.
+`Aerospike.Client`. Authoritative **cycle base** version: `<Version>` in
+`AerospikeClient/AerospikeClient.csproj` (clean `X.Y.Z`). In-cycle JFrog
+packages append `-ci.N` automatically on stage pushes; GA/preview cuts use
+**Build and test** with `release-candidate=true`. Requires .NET 8+.
 API reference: https://aerospike.com/apidocs/csharp/
 
 ### What to read, by task
@@ -39,7 +41,8 @@ aerospike-client-csharp/
 ├── .cursorrules             contributor-facing: code style and conventions
 ├── docfx.json, toc.yml      API reference build (docfx over the XML doc comments)
 ├── docs/intro.md            guide landing page for the generated site
-├── scripts/                 update-version.ps1 — bumps <Version> in every csproj
+├── scripts/                 update-version.ps1 — local bump of <Version> in every csproj
+│                            (prefer GitHub "Bump version" workflow → PR into stage)
 ├── AerospikeClient/         client library — the API surface
 │   ├── Main/                top-level API: AerospikeClient, IAerospikeClient,
 │   │                        Key, Bin, Record, Operation, Txn, ResultCode, Batch* types
@@ -120,6 +123,13 @@ against a local server, then run the examples with
 Both run in CI on every change. A passing run proves the client builds and the suite
 agrees with the installed server version; it does not prove your application logic is
 correct.
+
+### Versioning (contributors)
+
+- Keep `<Version>` in `.csproj` as a clean cycle base (`X.Y.Z`). Do not hand-bump on every merge for JFrog uniqueness.
+- Merges to `stage` publish `{base}-ci.{run_number}` to JFrog (DEV → TEST only).
+- To cut GA or a rare `-alpha` preview: run **Bump version** (opens a PR into `stage`), merge it, then **Build and test** with `release-candidate=true` **from the stage branch**. After shipping, bump back to the next clean base.
+- Prefer the **Bump version** workflow over editing versions by hand; `scripts/update-version.ps1` is the local equivalent.
 
 ### Aerospike agent skills
 

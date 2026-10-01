@@ -4,19 +4,22 @@
 
 .DESCRIPTION
     Replaces the <Version> tag in each project's .csproj file with the
-    specified version string. This is the equivalent of what the old
-    PackageManager WinForms app did via its UpdateVersion / ReplaceVersion
-    methods, now available as a standalone script.
+    specified version string. Prefer the GitHub "Bump version" workflow, which
+    opens a PR into stage for the same change.
+
+    Use this for the committed cycle base (clean X.Y.Z), a GA cut, or a
+    one-shot preview (X.Y.Z-alpha). Per-build JFrog uniqueness (-ci.N) is
+    applied by CI on stage pushes — do not hand-bump for every merge.
 
 .PARAMETER Version
-    The version string to set (e.g. "8.4.0", "9.0.0-beta1").
+    The version string to set (e.g. "8.5.1", "8.5.0", "8.0.0-alpha").
 
 .PARAMETER DryRun
     Show what would be changed without writing any files.
 
 .EXAMPLE
-    ./scripts/update-version.ps1 -Version 8.4.0
-    ./scripts/update-version.ps1 -Version 9.0.0-beta1 -DryRun
+    ./scripts/update-version.ps1 -Version 8.5.1
+    ./scripts/update-version.ps1 -Version 8.0.0-alpha -DryRun
 #>
 
 [CmdletBinding()]

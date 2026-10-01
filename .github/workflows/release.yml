@@ -3,7 +3,10 @@ run-name: Tag release and generate API docs
 
 # Triggered when stage merges to master. Uses the version from .csproj on the
 # commit shared by master and stage, then tags that same commit. Release
-# artifacts are created by the stage build and are not recreated here.
+# artifacts are created by the stage RC build and are not recreated here.
+#
+# Order: release-candidate green and promoted → merge stage→master → tag →
+# then open a Bump version PR for the next clean cycle base.
 permissions:
   contents: read
 
@@ -51,6 +54,10 @@ jobs:
           exit 1
         }
         Write-Host "Release version: $version"
+        if ($version -match '(^|[.-])ci\.') {
+          Write-Error "Refusing to tag CI prerelease version '$version'. Merge a clean GA version (or preview is not tagged via this path), then bump the next cycle base after tagging."
+          exit 1
+        }
         "version=$version" >> $env:GITHUB_OUTPUT
 
   generate-api-docs:
@@ -121,6 +128,10 @@ jobs:
         git config user.email "github-actions[bot]@users.noreply.github.com"
         if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
           echo "::error::Tag ${tag} already exists. Did you forget to bump the version?"
+          exit 1
+        fi
+        if [[ "$VERSION" =~ (^|[.-])ci\. ]]; then
+          echo "::error::Refusing to create tag for CI prerelease version '${VERSION}'."
           exit 1
         fi
         git tag -a "${tag}" -m "Release ${tag}" "${TARGET_SHA}"

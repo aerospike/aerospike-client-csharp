@@ -1,16 +1,24 @@
 name: Bump version
 run-name: "Bump version to ${{ inputs.version }}${{ inputs.dry-run && ' (dry run)' || '' }}"
 
-# Advances the *base* version in .csproj. Run this when starting a new
-# release line (e.g. 8.4.0 -> 8.5.0, or 8.5.0 -> 9.0.0-beta1). It does NOT
-# create release tags — that happens automatically in release.yml when a
-# build is shipped to PROD.
+# Sets the committed *base* (or ship/preview cut) version in .csproj via a PR
+# into stage. Use this for:
+#   - next-cycle base after GA/preview (e.g. 8.5.1)
+#   - clean GA cut (e.g. 8.5.0) before release-candidate dispatch
+#   - one-shot preview cut (e.g. 8.0.0-alpha) before release-candidate dispatch
 #
-# Per-build JFrog versions (the suffixed ones used by build.yml: -pr.*,
-# -rc.*, -dev.*) are computed at build time and don't need a commit here.
+# It does NOT create release tags — that happens in release.yml after
+# stage→master. It does NOT create per-build uniqueness; stage pushes append
+# -ci.{run_number} automatically for clean bases.
+#
+# Who can run this: anyone with write access who can dispatch Actions (same as
+# other workflow_dispatch jobs). The opened PR still needs normal review before
+# merge to stage — that is the real gate. Prefer restricting via branch
+# protection / CODEOWNERS on *.csproj over a dedicated GitHub Environment.
 
 permissions:
   contents: write
+  pull-requests: write
 
 on:
   workflow_dispatch:
@@ -18,36 +26,41 @@ on:
       version:
         type: string
         required: true
-        description: Base version to set (e.g. 8.4.0, 9.0.0-beta1)
+        description: Version to set (e.g. 8.5.1, 8.5.0, 8.0.0-alpha)
       dry-run:
         type: boolean
         required: false
         default: false
-        description: Show what would change without committing
+        description: Show what would change without opening a PR
   workflow_call:
     inputs:
       version:
         type: string
         required: true
-        description: Base version to set (e.g. 8.4.0, 9.0.0-beta1)
+        description: Version to set (e.g. 8.5.1, 8.5.0, 8.0.0-alpha)
       ref:
         type: string
         required: false
-        description: Branch or ref to bump version on
+        default: stage
+        description: Branch to open the PR against (default stage)
       dry-run:
         type: boolean
         required: false
         default: false
     outputs:
-      commit-sha:
-        description: SHA of the version bump commit
-        value: ${{ jobs.bump.outputs.commit-sha }}
+      pr-url:
+        description: URL of the opened version-bump pull request
+        value: ${{ jobs.bump.outputs.pr-url }}
+      branch:
+        description: Branch name created for the bump PR
+        value: ${{ jobs.bump.outputs.branch }}
 
 jobs:
   bump:
     runs-on: ubuntu-latest
     outputs:
-      commit-sha: ${{ steps.commit.outputs.sha }}
+      pr-url: ${{ steps.open-pr.outputs.pr-url }}
+      branch: ${{ steps.open-pr.outputs.branch }}
     steps:
     - name: Harden the runner (Audit all outbound calls)
       uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -56,7 +69,7 @@ jobs:
 
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
-        ref: ${{ inputs.ref || github.ref }}
+        ref: ${{ inputs.ref || 'stage' }}
 
     - name: Update version in .csproj files
       shell: pwsh
@@ -115,38 +128,76 @@ jobs:
           }
         }
 
-    - name: Commit version bump
+    - name: Open pull request
       if: ${{ !inputs.dry-run }}
-      id: commit
-      shell: pwsh
+      id: open-pr
       env:
         TARGET_VERSION: ${{ inputs.version }}
+        BASE_REF: ${{ inputs.ref || 'stage' }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        set -euo pipefail
+
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
+
+        if git diff --quiet && git diff --cached --quiet; then
+          echo "No changes — version already at ${TARGET_VERSION}"
+          echo "pr-url=" >> "$GITHUB_OUTPUT"
+          echo "branch=" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        branch="chore/bump-version-${TARGET_VERSION}"
+        # Avoid collisions if the branch already exists from a prior run.
+        if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+          branch="${branch}-${GITHUB_RUN_ID}"
+        fi
+
+        git checkout -b "$branch"
         git add -A
-        $status = git status --porcelain
-        if ($status) {
-          git commit -m "Update version $env:TARGET_VERSION [skip ci]"
-          $sha = git rev-parse HEAD
-          echo "sha=$sha" >> $env:GITHUB_OUTPUT
-          git push
-        } else {
-          Write-Host "No changes to commit — version already at $env:TARGET_VERSION"
-        }
+        git commit -m "Update version ${TARGET_VERSION}"
+        git push -u origin HEAD
+
+        pr_body=$(printf '%s\n' \
+          "## Summary" \
+          "Sets committed \`<Version>\` to **${TARGET_VERSION}** (cycle base, GA cut, or one-shot \`-alpha\` preview)." \
+          "" \
+          "Per-build uniqueness (\`-ci.N\`) is applied automatically by CI on stage pushes for clean bases. After merging a GA/\`-alpha\` cut, run **Build and test** with \`release-candidate=true\` from the **stage** branch to publish the bare version. After shipping, open another bump PR back to the next clean \`X.Y.Z\`." \
+          "" \
+          "## Test plan" \
+          "- [ ] PR CI green" \
+          "- [ ] Confirm \`<Version>\` in all \`.csproj\` files is \`${TARGET_VERSION}\`")
+
+        pr_url=$(gh pr create \
+          --base "$BASE_REF" \
+          --head "$branch" \
+          --title "Bump version to ${TARGET_VERSION}" \
+          --body "$pr_body")
+
+        echo "pr-url=${pr_url}" >> "$GITHUB_OUTPUT"
+        echo "branch=${branch}" >> "$GITHUB_OUTPUT"
+        echo "Opened PR: ${pr_url}"
 
     - name: Summary
       shell: pwsh
       env:
         TARGET_VERSION: ${{ inputs.version }}
         IS_DRY_RUN: ${{ inputs.dry-run }}
-        COMMIT_SHA: ${{ steps.commit.outputs.sha }}
+        PR_URL: ${{ steps.open-pr.outputs.pr-url }}
+        BRANCH: ${{ steps.open-pr.outputs.branch }}
       run: |
         $summary = "## Version Bump`n"
-        $summary += "- **Base version:** $env:TARGET_VERSION`n"
+        $summary += "- **Version:** $env:TARGET_VERSION`n"
         $summary += "- **Dry run:** $env:IS_DRY_RUN"
-        if ($env:IS_DRY_RUN -ne 'true' -and $env:COMMIT_SHA) {
-          $summary += "`n- **Commit:** ``$env:COMMIT_SHA``"
+        if ($env:IS_DRY_RUN -ne 'true') {
+          if ($env:PR_URL) {
+            $summary += "`n- **Pull request:** $($env:PR_URL)"
+            $summary += "`n- **Branch:** ``$($env:BRANCH)``"
+          }
+          else {
+            $summary += "`n- **Result:** no changes (already at target version)"
+          }
         }
-        $summary += "`n`n_Release tags (e.g. ``v$env:TARGET_VERSION``) are created automatically by ``release.yml`` when a build is published to PROD._"
+        $summary += "`n`nApprove and merge the PR into ``stage``. Release tags are created by ``release.yml`` after stage→master for a clean GA version."
         $summary | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
