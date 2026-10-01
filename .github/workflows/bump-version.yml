@@ -77,9 +77,19 @@ jobs:
         TARGET_VERSION: ${{ inputs.version }}
         IS_DRY_RUN: ${{ inputs.dry-run }}
       run: |
-        $targetVersion = $env:TARGET_VERSION
+        $ErrorActionPreference = 'Stop'
+        $targetVersion = $env:TARGET_VERSION.Trim()
         $isDryRun = $env:IS_DRY_RUN -eq 'true'
-        $projectFiles = Get-ChildItem -Path . -Recurse -Filter *.csproj -File | Sort-Object FullName
+
+        # Same allowlist as release-candidate in build-dev.yml.
+        if (-not ($targetVersion -match '^\d+\.\d+\.\d+$' -or $targetVersion -match '^\d+\.\d+\.\d+-alpha$')) {
+          Write-Error "Version must be clean X.Y.Z or preview X.Y.Z-alpha (got '$targetVersion')."
+          exit 1
+        }
+
+        $projectFiles = Get-ChildItem -Path . -Recurse -Filter *.csproj -File |
+          Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
+          Sort-Object FullName
 
         if (-not $projectFiles) {
           Write-Host "No .csproj files found."

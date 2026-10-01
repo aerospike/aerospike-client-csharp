@@ -127,8 +127,10 @@ correct.
 ### Versioning (contributors)
 
 - Keep `<Version>` in `.csproj` as a clean cycle base (`X.Y.Z`). Do not hand-bump on every merge for JFrog uniqueness.
-- Merges to `stage` publish `{base}-ci.{run_number}` to JFrog (DEV → TEST only).
-- To cut GA or a rare `-alpha` preview: run **Bump version** (opens a PR into `stage`), merge it, then **Build and test** with `release-candidate=true` **from the stage branch**. After shipping, bump back to the next clean base.
+- Merges to `stage` with a clean base publish `{base}-ci.{run_number}` to JFrog (DEV → TEST only). Higher environments are promoted outside this repo (JFrog / devops).
+- To cut GA or a rare `-alpha` preview: run **Bump version** (opens a PR into `stage` for CODEOWNERS review), merge it, then **Build and test** with `release-candidate=true` **from the stage branch**. Only trusted operators should dispatch RC.
+- **Note:** Merging a clean GA bump (e.g. `8.5.0`) also triggers one automatic `{GA}-ci.N` publish on that stage push before you run RC for the bare `X.Y.Z`. Merging an `-alpha` cut skips auto-deploy until RC.
+- After shipping GA (stage→master tags `vX.Y.Z`), bump back to the next clean cycle base via **Bump version**.
 - Prefer the **Bump version** workflow over editing versions by hand; `scripts/update-version.ps1` is the local equivalent.
 
 ### Aerospike agent skills

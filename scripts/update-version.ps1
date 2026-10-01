@@ -13,6 +13,7 @@
 
 .PARAMETER Version
     The version string to set (e.g. "8.5.1", "8.5.0", "8.0.0-alpha").
+    Must be clean X.Y.Z or preview X.Y.Z-alpha (same allowlist as Bump version / RC).
 
 .PARAMETER DryRun
     Show what would be changed without writing any files.
@@ -25,7 +26,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')]
+    [ValidatePattern('^\d+\.\d+\.\d+(?:-alpha)?$')]
     [string]$Version,
 
     [switch]$DryRun
