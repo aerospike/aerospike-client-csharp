@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using Aerospike.Client.Config;
 using System.Collections;
 
 #pragma warning disable 0618
@@ -1411,7 +1410,7 @@ namespace Aerospike.Client
 					SizeTxnBatch(txn, ver, attr.hasWrite);
 					SizeBatchErrorVerbosity(txn, attr.errorDetailBits);
 
-					if (attr.sendKey)
+					if (attr.sendKey && key.userKey != null)
 					{
 						dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
 					}
@@ -1574,7 +1573,7 @@ namespace Aerospike.Client
 					SizeTxnBatch(txn, ver, attr.hasWrite);
 					SizeBatchErrorVerbosity(txn, attr.errorDetailBits);
 
-					if (attr.sendKey)
+					if (attr.sendKey && key.userKey != null)
 					{
 						dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
 					}
@@ -1886,7 +1885,7 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
-			if (attr.sendKey)
+			if (attr.sendKey && key.userKey != null)
 			{
 				fieldCount++;
 			}
@@ -1907,7 +1906,7 @@ namespace Aerospike.Client
 
 			filter?.Write(this);
 
-			if (attr.sendKey)
+			if (attr.sendKey && key.userKey != null)
 			{
 				WriteField(key.userKey, FieldType.KEY);
 			}
@@ -1926,7 +1925,7 @@ namespace Aerospike.Client
 				fieldCount++;
 			}
 
-			if (attr.sendKey)
+			if (attr.sendKey && key.userKey != null)
 			{
 				fieldCount++;
 			}
@@ -1935,7 +1934,7 @@ namespace Aerospike.Client
 
 			filter?.Write(this);
 
-			if (attr.sendKey)
+			if (attr.sendKey && key.userKey != null)
 			{
 				WriteField(key.userKey, FieldType.KEY);
 			}
@@ -2514,7 +2513,7 @@ namespace Aerospike.Client
 
 			fieldCount += SizeTxn(key, policy.Txn, attr.hasWrite);
 
-			if (attr.sendKey)
+			if (attr.sendKey && key.userKey != null)
 			{
 				dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
 				fieldCount++;
@@ -2534,7 +2533,7 @@ namespace Aerospike.Client
 
 			fieldCount += SizeTxn(key, policy.Txn, hasWrite);
 
-			if (policy.sendKey)
+			if (policy.sendKey && key.userKey != null)
 			{
 				dataOffset += key.userKey.EstimateSize() + FIELD_HEADER_SIZE + 1;
 				fieldCount++;
@@ -2931,7 +2930,7 @@ namespace Aerospike.Client
 			WriteKey(key);
 			WriteTxn(policy.Txn, attr.hasWrite);
 
-			if (attr.sendKey)
+			if (attr.sendKey && key.userKey != null)
 			{
 				WriteField(key.userKey, FieldType.KEY);
 			}
@@ -2944,7 +2943,7 @@ namespace Aerospike.Client
 			WriteKey(key);
 			WriteTxn(policy.Txn, sendDeadline);
 
-			if (policy.sendKey)
+			if (policy.sendKey && key.userKey != null)
 			{
 				WriteField(key.userKey, FieldType.KEY);
 			}

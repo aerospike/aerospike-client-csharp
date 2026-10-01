@@ -97,6 +97,79 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void DigestKeyReadWithSendKey()
+		{
+			// sendKey=true with a digest-only key (userKey null) must not throw.
+			// Matches Go/C: skip sending the KEY field when there is no user key value.
+			Key userKey = new(SuiteHelpers.ns, SuiteHelpers.set, "digest-sendkey-read");
+			Bin bin = new(BinName, "sendkey-value");
+
+			client.Put(null, userKey, bin);
+
+			Key digestKey = new(SuiteHelpers.ns, userKey.digest, SuiteHelpers.set, null);
+			Assert.IsNull(digestKey.userKey);
+
+			Policy policy = new()
+			{
+				sendKey = true
+			};
+
+			Record record = client.Get(policy, digestKey, BinName);
+
+			AssertRecordFound(digestKey, record);
+			Assert.AreEqual("sendkey-value", record.GetString(BinName));
+		}
+
+		[TestMethod]
+		public void DigestKeyBatchReadWithSendKey()
+		{
+			Key userKey1 = new(SuiteHelpers.ns, SuiteHelpers.set, "digest-sendkey-batch1");
+			Key userKey2 = new(SuiteHelpers.ns, SuiteHelpers.set, "digest-sendkey-batch2");
+			Bin bin = new(BinName, "batch-sendkey-value");
+
+			client.Put(null, userKey1, bin);
+			client.Put(null, userKey2, bin);
+
+			Key[] keys = [
+				new(SuiteHelpers.ns, userKey1.digest, SuiteHelpers.set, null),
+				new(SuiteHelpers.ns, userKey2.digest, SuiteHelpers.set, null)
+			];
+
+			BatchPolicy policy = new()
+			{
+				sendKey = true
+			};
+
+			Record[] records = client.Get(policy, keys, BinName);
+
+			Assert.AreEqual(2, records.Length);
+			AssertRecordFound(keys[0], records[0]);
+			AssertRecordFound(keys[1], records[1]);
+			Assert.AreEqual("batch-sendkey-value", records[0].GetString(BinName));
+			Assert.AreEqual("batch-sendkey-value", records[1].GetString(BinName));
+		}
+
+		[TestMethod]
+		public void DigestKeyWriteWithSendKey()
+		{
+			// Write with sendKey=true and null userKey should succeed (KEY field omitted).
+			Key userKey = new(SuiteHelpers.ns, SuiteHelpers.set, "digest-sendkey-write");
+			Key digestKey = new(SuiteHelpers.ns, userKey.digest, SuiteHelpers.set, null);
+			Bin bin = new(BinName, "write-sendkey-value");
+
+			WritePolicy policy = new()
+			{
+				sendKey = true
+			};
+
+			client.Put(policy, digestKey, bin);
+
+			Record record = client.Get(null, userKey, BinName);
+			AssertRecordFound(userKey, record);
+			Assert.AreEqual("write-sendkey-value", record.GetString(BinName));
+		}
+
+		[TestMethod]
 		public void KeyEqualityAndHashCode()
 		{
 			Key key1 = new(SuiteHelpers.ns, SuiteHelpers.set, "eq-key");

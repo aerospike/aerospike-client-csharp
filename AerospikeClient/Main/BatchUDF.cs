@@ -148,7 +148,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			if (sendKey)
+			if (sendKey && key.userKey != null)
 			{
 				size += key.userKey.EstimateSize() + Command.FIELD_HEADER_SIZE + 1;
 			}
