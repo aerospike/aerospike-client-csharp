@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Runtime.ExceptionServices;
+
 namespace Aerospike.Client
 {
 	public sealed class BatchStatus : IBatchStatus
@@ -72,7 +74,7 @@ namespace Aerospike.Client
 		{
 			if (exception != null)
 			{
-				throw exception;
+				ExceptionDispatchInfo.Capture(exception).Throw();
 			}
 		}
 	}
