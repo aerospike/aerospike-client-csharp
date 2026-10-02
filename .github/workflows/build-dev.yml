@@ -135,13 +135,14 @@ jobs:
             $packageVersion = ''
             $version = $base
             $shouldDeploy = 'false'
-            @"
-## Version resolution
-
-- **Base:** ``$base``
-- **Deploy:** skipped (non-clean base on automatic stage push)
-- **Next step:** run **Build and test** with ``release-candidate=true``, or open a Bump version PR back to a clean ``X.Y.Z``
-"@ | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
+            # Keep every line indented for YAML | block scalars (column-0 lines end the block).
+            @(
+              '## Version resolution'
+              ''
+              "- **Base:** ``$base``"
+              '- **Deploy:** skipped (non-clean base on automatic stage push)'
+              '- **Next step:** run **Build and test** with ``release-candidate=true``, or open a Bump version PR back to a clean ``X.Y.Z``'
+            ) | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
           }
           else {
             $suffix = $env:RUN_NUMBER
