@@ -3,7 +3,12 @@ run-name: Tag release and generate API docs
 
 # Triggered when stage merges to master. Uses the version from .csproj on the
 # commit shared by master and stage, then tags that same commit. Release
-# artifacts are created by the stage build and are not recreated here.
+# artifacts are created by the stage RC build and are not recreated here.
+#
+# Order: release-candidate green and promoted in JFrog (DEV→TEST via CI;
+# higher envs via JFrog/devops) → merge stage→master → tag clean X.Y.Z →
+# then open a Bump version PR for the next clean cycle base.
+# Only clean X.Y.Z is tagged; -ci. and other SemVer previews are refused.
 permissions:
   contents: read
 
@@ -51,6 +56,10 @@ jobs:
           exit 1
         }
         Write-Host "Release version: $version"
+        if ($version -notmatch '^\d+\.\d+\.\d+$') {
+          Write-Error "Refusing to tag non-GA version '$version'. Merge a clean X.Y.Z (SemVer previews are not tagged via this path), then bump the next cycle base after tagging."
+          exit 1
+        }
         "version=$version" >> $env:GITHUB_OUTPUT
 
   generate-api-docs:
@@ -121,6 +130,10 @@ jobs:
         git config user.email "github-actions[bot]@users.noreply.github.com"
         if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
           echo "::error::Tag ${tag} already exists. Did you forget to bump the version?"
+          exit 1
+        fi
+        if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error::Refusing to create tag for non-GA version '${VERSION}'. Expected clean X.Y.Z."
           exit 1
         fi
         git tag -a "${tag}" -m "Release ${tag}" "${TARGET_SHA}"
