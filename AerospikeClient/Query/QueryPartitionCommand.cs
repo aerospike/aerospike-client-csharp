@@ -22,8 +22,10 @@ namespace Aerospike.Client
 		private readonly Statement statement;
 		private readonly ulong taskId;
 		private readonly RecordSet recordSet;
+		private readonly ReduceSpec<Record, Record> reducer;
 		private readonly PartitionTracker tracker;
 		private readonly NodePartitions nodePartitions;
+		private readonly bool sendTopK;
 
 		public QueryPartitionCommand
 		(
@@ -32,15 +34,19 @@ namespace Aerospike.Client
 			Statement statement,
 			ulong taskId,
 			RecordSet recordSet,
+			ReduceSpec<Record, Record> reducer,
 			PartitionTracker tracker,
-			NodePartitions nodePartitions
+			NodePartitions nodePartitions,
+			bool sendTopK
 		) : base(cluster, policy, nodePartitions.node, statement.ns, tracker.socketTimeout, tracker.totalTimeout)
 		{
 			this.statement = statement;
 			this.taskId = taskId;
 			this.recordSet = recordSet;
+			this.reducer = reducer;
 			this.tracker = tracker;
 			this.nodePartitions = nodePartitions;
+			this.sendTopK = sendTopK;
 		}
 
 		public override void Execute()
@@ -65,7 +71,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(cluster, policy, statement, taskId, false, nodePartitions, nodePartitions.node);
+			SetQuery(cluster, policy, statement, taskId, false, nodePartitions, nodePartitions.node, sendTopK);
 		}
 
 		protected internal override bool ParseRow()
@@ -99,7 +105,14 @@ namespace Aerospike.Client
 
 			if (tracker.AllowRecord())
 			{
-				if (!recordSet.Put(new KeyRecord(key, record)))
+				if (reducer != null)
+				{
+					// Feed the client-side global reduce combiner instead of streaming this
+					// partial result directly to the caller. The executor emits the merged
+					// result (if any) once all partitions have been received.
+					reducer.AcceptPartial(record, key);
+				}
+				else if (!recordSet.Put(new KeyRecord(key, record)))
 				{
 					Stop();
 					throw new AerospikeException.QueryTerminated();

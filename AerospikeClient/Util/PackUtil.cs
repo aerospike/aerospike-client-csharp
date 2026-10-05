@@ -20,13 +20,33 @@ namespace Aerospike.Client
 {
 	public sealed class PackUtil
 	{
+		[ThreadStatic]
+		private static bool lastHasVector;
+
+		/// <summary>
+		/// Return and clear whether the most recent PackUtil.Pack call on this thread
+		/// packed a vector. Used by <see cref="Exp.Module"/> to propagate vector presence.
+		/// </summary>
+		internal static bool ConsumeLastHasVector()
+		{
+			bool value = lastHasVector;
+			lastHasVector = false;
+			return value;
+		}
+
+		internal static byte[] Finish(Packer packer)
+		{
+			lastHasVector = packer.HasVector();
+			return packer.ToByteArray();
+		}
+
 		public static byte[] Pack(int command, params CTX[] ctx)
 		{
 			Packer packer = new Packer();
 			Init(packer, ctx);
 			packer.PackArrayBegin(1);
 			packer.PackNumber(command);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, params CTX[] ctx)
@@ -36,7 +56,7 @@ namespace Aerospike.Client
 			packer.PackArrayBegin(2);
 			packer.PackNumber(command);
 			packer.PackNumber(v1);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, int v2, params CTX[] ctx)
@@ -47,7 +67,7 @@ namespace Aerospike.Client
 			packer.PackNumber(command);
 			packer.PackNumber(v1);
 			packer.PackNumber(v2);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, int v2, int v3, params CTX[] ctx)
@@ -59,7 +79,7 @@ namespace Aerospike.Client
 			packer.PackNumber(v1);
 			packer.PackNumber(v2);
 			packer.PackNumber(v3);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, int v2, int v3, int v4, params CTX[] ctx)
@@ -72,7 +92,7 @@ namespace Aerospike.Client
 			packer.PackNumber(v2);
 			packer.PackNumber(v3);
 			packer.PackNumber(v4);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, int v2, long v3, int v4, params CTX[] ctx)
@@ -85,7 +105,7 @@ namespace Aerospike.Client
 			packer.PackNumber(v2);
 			packer.PackNumber(v3);
 			packer.PackNumber(v4);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, int v2, bool v3, params CTX[] ctx)
@@ -97,7 +117,7 @@ namespace Aerospike.Client
 			packer.PackNumber(v1);
 			packer.PackNumber(v2);
 			packer.PackBoolean(v3);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, int v2, byte[] v3, int v4, params CTX[] ctx)
@@ -110,7 +130,7 @@ namespace Aerospike.Client
 			packer.PackNumber(v2);
 			packer.PackParticleBytes(v3);
 			packer.PackNumber(v4);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, byte[] v2, int v3, params CTX[] ctx)
@@ -122,7 +142,7 @@ namespace Aerospike.Client
 			packer.PackNumber(v1);
 			packer.PackParticleBytes(v2);
 			packer.PackNumber(v3);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, Value v2, params CTX[] ctx)
@@ -133,7 +153,7 @@ namespace Aerospike.Client
 			packer.PackNumber(command);
 			packer.PackNumber(v1);
 			v2.Pack(packer);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, Value v2, int v3, params CTX[] ctx)
@@ -145,7 +165,7 @@ namespace Aerospike.Client
 			packer.PackNumber(v1);
 			v2.Pack(packer);
 			packer.PackNumber(v3);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, Value v2, int v3, int v4, params CTX[] ctx)
@@ -158,7 +178,7 @@ namespace Aerospike.Client
 			v2.Pack(packer);
 			packer.PackNumber(v3);
 			packer.PackNumber(v4);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, IList list, params CTX[] ctx)
@@ -169,7 +189,7 @@ namespace Aerospike.Client
 			packer.PackNumber(command);
 			packer.PackNumber(v1);
 			packer.PackList(list);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, IList v2, int v3, params CTX[] ctx)
@@ -181,7 +201,7 @@ namespace Aerospike.Client
 			packer.PackNumber(v1);
 			packer.PackList(v2);
 			packer.PackNumber(v3);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Value value, params CTX[] ctx)
@@ -191,7 +211,7 @@ namespace Aerospike.Client
 			packer.PackArrayBegin(2);
 			packer.PackNumber(command);
 			value.Pack(packer);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Value value, int v1, params CTX[] ctx)
@@ -202,7 +222,7 @@ namespace Aerospike.Client
 			packer.PackNumber(command);
 			value.Pack(packer);
 			packer.PackNumber(v1);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Value value, int v1, int v2, params CTX[] ctx)
@@ -214,7 +234,7 @@ namespace Aerospike.Client
 			value.Pack(packer);
 			packer.PackNumber(v1);
 			packer.PackNumber(v2);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Value v1, Value v2, int v3, params CTX[] ctx)
@@ -226,7 +246,7 @@ namespace Aerospike.Client
 			v1.Pack(packer);
 			v2.Pack(packer);
 			packer.PackNumber(v3);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, IList list, int v1, int v2, params CTX[] ctx)
@@ -238,7 +258,7 @@ namespace Aerospike.Client
 			packer.PackList(list);
 			packer.PackNumber(v1);
 			packer.PackNumber(v2);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, IList list, int v1, int v2, int v3, params CTX[] ctx)
@@ -251,7 +271,7 @@ namespace Aerospike.Client
 			packer.PackNumber(v1);
 			packer.PackNumber(v2);
 			packer.PackNumber(v3);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, Exp v2, params CTX[] ctx)
@@ -262,7 +282,7 @@ namespace Aerospike.Client
 			packer.PackNumber(command);
 			packer.PackNumber(v1);
 			v2.Pack(packer);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, Exp v2, Exp v3, params CTX[] ctx)
@@ -274,7 +294,7 @@ namespace Aerospike.Client
 			packer.PackNumber(v1);
 			v2.Pack(packer);
 			v3.Pack(packer);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, Exp v2, Exp v3, Exp v4, params CTX[] ctx)
@@ -287,7 +307,7 @@ namespace Aerospike.Client
 			v2.Pack(packer);
 			v3.Pack(packer);
 			v4.Pack(packer);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, int v1, Expression expression)
@@ -297,7 +317,7 @@ namespace Aerospike.Client
 			packer.PackNumber(command);
 			packer.PackNumber(v1);
 			packer.PackByteArray(expression.Bytes, 0, expression.Bytes.Length);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Exp v1)
@@ -306,7 +326,7 @@ namespace Aerospike.Client
 			packer.PackArrayBegin(2);
 			packer.PackNumber(command);
 			v1.Pack(packer);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Exp v1, params CTX[] ctx)
@@ -316,7 +336,7 @@ namespace Aerospike.Client
 			packer.PackArrayBegin(2);
 			packer.PackNumber(command);
 			v1.Pack(packer);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Exp v1, int v2, params CTX[] ctx)
@@ -327,7 +347,7 @@ namespace Aerospike.Client
 			packer.PackNumber(command);
 			v1.Pack(packer);
 			packer.PackNumber(v2);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Exp v1, int v2, int v3, params CTX[] ctx)
@@ -339,7 +359,7 @@ namespace Aerospike.Client
 			v1.Pack(packer);
 			packer.PackNumber(v2);
 			packer.PackNumber(v3);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Exp v1, Exp v2, params CTX[] ctx)
@@ -350,7 +370,7 @@ namespace Aerospike.Client
 			packer.PackNumber(command);
 			v1.Pack(packer);
 			v2.Pack(packer);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Exp v1, Exp v2, int v3, params CTX[] ctx)
@@ -362,7 +382,7 @@ namespace Aerospike.Client
 			v1.Pack(packer);
 			v2.Pack(packer);
 			packer.PackNumber(v3);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Exp v1, Exp v2, int v3, int v4, params CTX[] ctx)
@@ -375,7 +395,7 @@ namespace Aerospike.Client
 			v2.Pack(packer);
 			packer.PackNumber(v3);
 			packer.PackNumber(v4);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Exp v1, Exp v2, Exp v3, params CTX[] ctx)
@@ -387,7 +407,7 @@ namespace Aerospike.Client
 			v1.Pack(packer);
 			v2.Pack(packer);
 			v3.Pack(packer);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static byte[] Pack(int command, Exp v1, Exp v2, Exp v3, int v4, params CTX[] ctx)
@@ -400,7 +420,7 @@ namespace Aerospike.Client
 			v2.Pack(packer);
 			v3.Pack(packer);
 			packer.PackNumber(v4);
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 
 		public static void Init(Packer packer, CTX[] ctx)
@@ -443,7 +463,7 @@ namespace Aerospike.Client
 					packer.PackByteArray(c.exp.Bytes, 0, c.exp.Bytes.Length);
 				}
 			}
-			return packer.ToByteArray();
+			return Finish(packer);
 		}
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,21 +24,30 @@ namespace Aerospike.Client
 	public sealed class Expression
 	{
 		private readonly byte[] bytes;
+		[NonSerialized]
+		private readonly bool hasVector;
 
 		internal Expression(Exp exp)
 		{
 			Packer packer = new Packer();
 			exp.Pack(packer);
 			bytes = packer.ToByteArray();
+			hasVector = packer.HasVector();
 		}
 
 		internal Expression(byte[] bytes)
 		{
 			this.bytes = bytes;
+			this.hasVector = false;
 		}
 
 		/// <summary>
 		/// Return a new expression from packed expression instructions in bytes.
+		/// <para>
+		/// Advanced escape hatch: the reconstituted expression is unclassified
+		/// (<c>hasVector</c> is always false), so vector capability checks are skipped.
+		/// Prefer building expressions via <see cref="Exp"/> when vector gating is required.
+		/// </para>
 		/// </summary>
 		public static Expression FromBytes(byte[] bytes)
 		{
@@ -47,6 +56,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Return a new expression from packed expression instructions in base64 encoded chars.
+		/// Same unclassified semantics as <see cref="FromBytes"/>.
 		/// </summary>
 		public static Expression FromBase64(char[] chars)
 		{
@@ -55,6 +65,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Return a new expression from packed expression instructions in base64 encoded string.
+		/// Same unclassified semantics as <see cref="FromBytes"/>.
 		/// </summary>
 		public static Expression FromBase64(string s)
 		{
@@ -67,6 +78,14 @@ namespace Aerospike.Client
 		public byte[] Bytes
 		{
 			get { return bytes; }
+		}
+
+		/// <summary>
+		/// Does this expression contain a vector? For internal use only.
+		/// </summary>
+		internal bool HasVector()
+		{
+			return hasVector;
 		}
 
 		/// <summary>
@@ -92,6 +111,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Write(Command cmd)
 		{
+			cmd.CheckVectorSupport(hasVector);
 			cmd.WriteExpHeader(bytes.Length, FieldType.FILTER_EXP);
 			Array.Copy(bytes, 0, cmd.dataBuffer, cmd.dataOffset, bytes.Length);
 			cmd.dataOffset += bytes.Length;
@@ -103,6 +123,7 @@ namespace Aerospike.Client
 		/// </summary>
 		internal void WriteIndex(Command cmd)
 		{
+			cmd.CheckVectorSupport(hasVector);
 			cmd.WriteExpHeader(bytes.Length, FieldType.INDEX_EXPRESSION);
 			Array.Copy(bytes, 0, cmd.dataBuffer, cmd.dataOffset, bytes.Length);
 			cmd.dataOffset += bytes.Length;

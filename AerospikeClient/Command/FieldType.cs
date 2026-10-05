@@ -45,5 +45,7 @@ namespace Aerospike.Client
 		public const int BATCH_INDEX = 41;
 		public const int FILTER_EXP = 43;
 		public const int ERROR_MESSAGE = 45;
+		public const int ORDER_BY = 46;
+		public const int TOP_K = 47;
 	}
 }

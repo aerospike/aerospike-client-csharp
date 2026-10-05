@@ -68,6 +68,7 @@ namespace Aerospike.Client
 			this.policy = policy;
 			this.metricsEnabled = cluster.MetricsEnabled;
 			this.ns = ns;
+			this.vectorSupported = cluster.hasVector;
 		}
 
 		/// <summary>
@@ -80,6 +81,7 @@ namespace Aerospike.Client
 			this.policy = policy;
 			this.metricsEnabled = cluster.MetricsEnabled;
 			this.ns = ns;
+			this.vectorSupported = cluster.hasVector;
 		}
 
 		/// <summary>
@@ -97,6 +99,7 @@ namespace Aerospike.Client
 			this.iteration = other.iteration;
 			this.commandSentCounter = other.commandSentCounter;
 			this.metricsEnabled = cluster.MetricsEnabled;
+			this.vectorSupported = other.vectorSupported;
 		}
 
 		public void SetBatchRetry(AsyncCommand other)

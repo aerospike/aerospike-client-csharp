@@ -380,6 +380,12 @@ namespace Aerospike.Client
 			{
 				features |= Node.HAS_QUERY_OPS_PROJECTION_EXT;
 			}
+
+			if (serverVersion >= Node.SERVER_VERSION_8_2_0) // TODO: flip to SERVER_VERSION_8_2_1 when test servers advertise 8.2.1+
+			{
+				features |= Node.HAS_QUERY_ORDER_BY;
+				features |= Node.HAS_VECTOR;
+			}
 		}
 
 		private void ValidateClusterName(Cluster cluster, Dictionary<string, string> map)

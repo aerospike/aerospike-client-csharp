@@ -25,6 +25,7 @@ namespace Aerospike.Client
 	/// </summary>
 	public class Node : IDisposable
 	{
+		public static Version SERVER_VERSION_8_2_1 = new(8, 2, 1, 0);
 		public static Version SERVER_VERSION_8_2_0 = new(8, 2, 0, 0);
 		public static Version SERVER_VERSION_8_1_2 = new(8, 1, 2, 0);
 		public static Version SERVER_VERSION_8_1_1 = new(8, 1, 1, 0);
@@ -43,6 +44,8 @@ namespace Aerospike.Client
 		public const int HAS_BATCH_ANY = (1 << 2);
 		public const int HAS_PARTITION_QUERY = (1 << 3);
 		public const int HAS_QUERY_OPS_PROJECTION_EXT = (1 << 4);
+		public const int HAS_QUERY_ORDER_BY = (1 << 5);
+		public const int HAS_VECTOR = (1 << 6);
 
 		private static readonly string[] INFO_PERIODIC = new string[] { "node", "peers-generation", "partition-generation" };
 		private static readonly string[] INFO_PERIODIC_REB = new string[] { "node", "peers-generation", "partition-generation", "rebalance-generation" };
@@ -1262,6 +1265,22 @@ namespace Aerospike.Client
 		public bool HasQueryOpsProjectionExt
 		{
 			get { return (features & HAS_QUERY_OPS_PROJECTION_EXT) != 0; }
+		}
+
+		/// <summary>
+		/// Does this node support query ORDER BY / Top-K pushdown? Requires server version 8.2.1+.
+		/// </summary>
+		public bool HasQueryOrderBy
+		{
+			get { return (features & HAS_QUERY_ORDER_BY) != 0; }
+		}
+
+		/// <summary>
+		/// Does this node support native vector particle type? Requires server version 8.2.1+.
+		/// </summary>
+		public bool HasVector
+		{
+			get { return (features & HAS_VECTOR) != 0; }
 		}
 
 		/// <summary>

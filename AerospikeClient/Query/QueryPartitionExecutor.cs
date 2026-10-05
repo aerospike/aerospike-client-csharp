@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -27,6 +27,7 @@ namespace Aerospike.Client
 		private readonly CancellationTokenSource cancel;
 		private readonly PartitionTracker tracker;
 		private readonly RecordSet recordSet;
+		private readonly ReduceSpec<Record, Record> reducer;
 		private volatile Exception exception;
 		private int maxConcurrentThreads;
 		private int completedCount;
@@ -49,6 +50,7 @@ namespace Aerospike.Client
 			this.cancel = new CancellationTokenSource();
 			this.tracker = tracker;
 			this.recordSet = new RecordSet(this, policy.recordQueueSize, cancel.Token);
+			this.reducer = statement.ResolveReduce();
 			cluster.AddCommandCount();
 			ThreadPool.UnsafeQueueUserWorkItem(this.Run, null);
 		}
@@ -72,6 +74,7 @@ namespace Aerospike.Client
 			while (true)
 			{
 				List<NodePartitions> list = tracker.AssignPartitionsToNodes(cluster, statement.ns);
+				bool sendTopK = SupportsTopKPushdown(list);
 
 				// Initialize maximum number of nodes to query in parallel.
 				maxConcurrentThreads = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= list.Count) ? list.Count : policy.maxConcurrentNodes;
@@ -92,7 +95,7 @@ namespace Aerospike.Client
 					{
 						foreach (NodePartitions nodePartitions in list)
 						{
-							MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, tracker, nodePartitions);
+							MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, reducer, tracker, nodePartitions, sendTopK);
 							threads.Add(new QueryThread(this, command));
 						}
 
@@ -111,7 +114,7 @@ namespace Aerospike.Client
 				{
 					foreach (NodePartitions nodePartitions in list)
 					{
-						MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, tracker, nodePartitions);
+						MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, reducer, tracker, nodePartitions, sendTopK);
 						command.Execute();
 					}
 				}
@@ -126,6 +129,16 @@ namespace Aerospike.Client
 
 				if (tracker.IsClusterComplete(cluster, policy))
 				{
+					if (reducer is TopKReduceSpec topK)
+					{
+						Record[] records = topK.GetResult();
+						Key[] keys = topK.GetResultKeys();
+
+						for (int i = 0; i < records.Length; i++)
+						{
+							recordSet.Put(new KeyRecord(keys[i], records[i]));
+						}
+					}
 					// All partitions received.
 					recordSet.Put(RecordSet.END);
 					break;
@@ -144,6 +157,23 @@ namespace Aerospike.Client
 				// taskId must be reset on next pass to avoid server duplicate query detection.
 				taskId = RandomShift.ThreadLocalInstance.NextLong();
 			}
+		}
+
+		private bool SupportsTopKPushdown(List<NodePartitions> list)
+		{
+			if (!statement.HasTopK)
+			{
+				return false;
+			}
+
+			foreach (NodePartitions nodePartitions in list)
+			{
+				if (!nodePartitions.node.HasQueryOrderBy)
+				{
+					return false;
+				}
+			}
+			return true;
 		}
 
 		private void WaitTillComplete()

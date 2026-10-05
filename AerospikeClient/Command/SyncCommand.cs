@@ -38,6 +38,7 @@ namespace Aerospike.Client
 			this.policy = policy;
 			this.deadline = DateTime.MinValue;
 			this.ns = ns;
+			this.vectorSupported = cluster.hasVector;
 		}
 
 		/// <summary>
@@ -50,6 +51,7 @@ namespace Aerospike.Client
 			this.policy = policy;
 			this.deadline = DateTime.MinValue;
 			this.ns = ns;
+			this.vectorSupported = cluster.hasVector;
 		}
 
 		public virtual void Execute()

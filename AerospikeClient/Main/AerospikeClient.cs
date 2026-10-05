@@ -2498,6 +2498,8 @@ namespace Aerospike.Client
 				policy = new QueryPolicy(policy, configProvider);
 			}
 
+			ValidateTopK(statement);
+
 			Node[] nodes = cluster.ValidateNodes();
 
 			if (cluster.hasPartitionQuery || statement.filter == null)
@@ -2540,6 +2542,8 @@ namespace Aerospike.Client
 			{
 				policy = new QueryPolicy(policy, configProvider);
 			}
+
+			RejectTopK(statement);
 
 			Node[] nodes = cluster.ValidateNodes();
 
@@ -2595,6 +2599,8 @@ namespace Aerospike.Client
 				policy = new QueryPolicy(policy, configProvider);
 			}
 
+			RejectTopK(statement);
+
 			Node[] nodes = cluster.ValidateNodes();
 
 			if (cluster.hasPartitionQuery || statement.filter == null)
@@ -2636,6 +2642,8 @@ namespace Aerospike.Client
 				policy = new QueryPolicy(policy, configProvider);
 			}
 
+			ValidateTopK(statement);
+
 			Node[] nodes = cluster.ValidateNodes();
 
 			if (cluster.hasPartitionQuery || statement.filter == null)
@@ -2647,6 +2655,31 @@ namespace Aerospike.Client
 			else
 			{
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "QueryPartitions() not supported");
+			}
+		}
+
+		private void ValidateTopK(Statement statement)
+		{
+			if (!statement.HasTopK)
+			{
+				return;
+			}
+
+			statement.ValidateTopK();
+
+			if (!cluster.hasPartitionQuery)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"Top-K requires partition query support");
+			}
+		}
+
+		protected static void RejectTopK(Statement statement)
+		{
+			if (statement.HasTopK)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"Top-K is only supported by synchronous partition queries");
 			}
 		}
 

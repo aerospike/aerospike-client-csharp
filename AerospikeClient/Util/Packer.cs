@@ -50,6 +50,7 @@ namespace Aerospike.Client
 		private int offset;
 		private List<BufferItem> bufferList;
 		private bool sortMaps;
+		private bool hasVector;
 
 		public Packer()
 		{
@@ -60,6 +61,16 @@ namespace Aerospike.Client
 		{
 			this.buffer = new byte[initialSize];
 		}
+
+		/// <summary>
+		/// Was a vector packed?
+		/// </summary>
+		internal bool HasVector() => hasVector;
+
+		/// <summary>
+		/// Record a packed vector.
+		/// </summary>
+		internal void MarkVector() => hasVector = true;
 
 		/// <summary>
 		/// Pack unordered maps at any depth with entries sorted by key in the server's
@@ -691,6 +702,37 @@ namespace Aerospike.Client
 			PackByteArray(buffer, 0, buffer.Length);
 		}
 
+		/// <summary>
+		/// Pack a vector particle into a MessagePack blob.
+		/// </summary>
+		public void PackVector(Vector val)
+		{
+			PackParticleVector(val, ParticleType.VECTOR);
+		}
+
+		/// <summary>
+		/// Pack a vector's wire bytes as a BLOB particle (Java VectorDist wire shape).
+		/// </summary>
+		internal void PackVectorAsBlob(Vector val)
+		{
+			PackParticleVector(val, ParticleType.BLOB);
+		}
+
+		private void PackParticleVector(Vector val, ParticleType type)
+		{
+			hasVector = true;
+			int size = val.GetWireSize();
+			PackByteArrayBegin(size + 1);
+			PackByte((byte)type);
+
+			if (offset + size > buffer.Length)
+			{
+				Resize(size);
+			}
+			val.WriteTo(buffer, offset);
+			offset += size;
+		}
+
 		private void PackByteArrayBegin(int size)
 		{
 			// Use string header codes for byte arrays.
@@ -716,6 +758,12 @@ namespace Aerospike.Client
 			if (obj == null)
 			{
 				PackNil();
+				return;
+			}
+
+			if (obj is Vector)
+			{
+				PackVector((Vector)obj);
 				return;
 			}
 

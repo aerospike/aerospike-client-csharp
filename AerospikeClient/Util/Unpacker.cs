@@ -253,6 +253,10 @@ namespace Aerospike.Client
 					val = new Value.HLLValue(hllBytes);
 					break;
 
+				case ParticleType.VECTOR:
+					val = Vector.From(buffer, offset, count);
+					break;
+
 				default:
 					byte[] dest = new byte[count];
 					Array.Copy(buffer, offset, dest, 0, count);

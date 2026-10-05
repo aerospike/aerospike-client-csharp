@@ -27,6 +27,7 @@ namespace Aerospike.Client
 			public byte[] Bytes { get; }
 
 			private readonly ParticleType type;
+			internal bool hasVector;
 
 			public override ParticleType Type => type;
 
@@ -52,7 +53,9 @@ namespace Aerospike.Client
 				return Bytes.Length;
 			}
 
-			public override void Pack(Packer packer) => packer.PackParticleBytes(Bytes);
+			public override void Pack(Packer packer) => packer.PackParticleBytes(Bytes, type);
+
+			internal override bool HasVector() => hasVector;
 
 			public override string ToString() => ByteUtil.BytesToHexString(Bytes);
 

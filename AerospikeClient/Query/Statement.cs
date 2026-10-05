@@ -38,6 +38,15 @@ namespace Aerospike.Client
 		internal ulong taskId;
 		internal long maxRecords;
 		internal int recordsPerSecond;
+		internal ReduceSpec<Record, Record>[] reduceSpecs;
+		internal ReduceSpec<Record, Record> resolvedReduce;
+		internal bool reduceResolved;
+		internal string orderByBin;
+		internal BinDataType orderByType;
+		internal Order orderByOrder;
+		internal OrderByFlags orderByFlags;
+		internal bool orderBySet;
+		internal TopKSpec topK;
 
 		/// <summary>
 		/// Query namespace.
@@ -322,11 +331,290 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Set reduce spec(s) for this query. Accepts:
+		/// <list type="bullet">
+		/// <item>zero args - clear any reduce (stream all matching records; default behavior)</item>
+		/// <item>one Top-K spec - e.g. <c>SetReduce(Reduce.TopK("d", BinDataType.DOUBLE, Order.ASC, OrderByFlags.NONE, 10))</c></item>
+		/// <item>exactly one <see cref="Reduce.OrderBy"/> + one <see cref="Reduce.Limit"/> on the same bin -
+		/// split Top-K, equivalent to <see cref="Reduce.TopK"/></item>
+		/// </list>
+		/// Mutually exclusive with <see cref="SetAggregateFunction(string, string, Value[])"/>. Replaces any
+		/// previously set reduce (this setter does not accumulate across calls, consistent with
+		/// <see cref="Operations"/> and <see cref="SetBinNames"/>).
+		/// <para>
+		/// Not public for now - <see cref="SetOrderBy(string, BinDataType, Order)"/> + <see cref="SetTopK"/>
+		/// are the only supported public entry points into the reduce framework while the API is still settling.
+		/// </para>
+		/// </summary>
+		internal void SetReduce(params ReduceSpec<Record, Record>[] reduceSpecs)
+		{
+			this.reduceSpecs = reduceSpecs;
+			this.resolvedReduce = null;
+			this.reduceResolved = false;
+			this.topK = null;
+		}
+
+		/// <summary>
+		/// Return reduce spec(s) set by <see cref="SetReduce"/>.
+		/// </summary>
+		internal ReduceSpec<Record, Record>[] GetReduce()
+		{
+			return reduceSpecs;
+		}
+
+		/// <summary>
+		/// Sort order building block for <see cref="SetTopK(int)"/>. Equivalent to
+		/// <c>SetOrderBy(binName, type, order, OrderByFlags.NONE)</c>.
+		/// <para>
+		/// Sugar: remembers the sort order for a subsequent <see cref="SetTopK(int)"/> call, which
+		/// together resolve internally to <c>SetReduce(Reduce.TopK(binName, type, order, flags, k))</c>.
+		/// </para>
+		/// </summary>
+		/// <param name="binName">bin name to order by</param>
+		/// <param name="type">scalar type of <paramref name="binName"/></param>
+		/// <param name="order">sort direction</param>
+		public void SetOrderBy(string binName, BinDataType type, Order order)
+		{
+			SetOrderBy(binName, type, order, OrderByFlags.NONE);
+		}
+
+		/// <summary>
+		/// Sort order building block for <see cref="SetTopK(int)"/>.
+		/// <para>
+		/// Sugar: remembers the sort order for a subsequent <see cref="SetTopK(int)"/> call, which
+		/// together resolve internally to <c>SetReduce(Reduce.TopK(binName, type, order, flags, k))</c>.
+		/// </para>
+		/// </summary>
+		/// <param name="binName">bin name to order by</param>
+		/// <param name="type">scalar type of <paramref name="binName"/></param>
+		/// <param name="order">sort direction</param>
+		/// <param name="flags">
+		/// comparison options (<see cref="OrderByFlags.CASE_INSENSITIVE"/> for
+		/// <see cref="BinDataType.STRING"/> only)
+		/// </param>
+		public void SetOrderBy(string binName, BinDataType type, Order order, OrderByFlags flags)
+		{
+			this.orderByBin = binName;
+			this.orderByType = type;
+			this.orderByOrder = order;
+			this.orderByFlags = flags;
+			this.orderBySet = true;
+			// Order-by sugar changed: clear any previously resolved Top-K until SetTopK() is called again.
+			this.topK = null;
+			this.reduceSpecs = null;
+			this.resolvedReduce = null;
+			this.reduceResolved = false;
+		}
+
+		/// <summary>
+		/// Ordered LIMIT k query; must be preceded by a <see cref="SetOrderBy(string, BinDataType, Order)"/> call
+		/// on this statement.
+		/// <para>
+		/// Sugar for <c>SetReduce(Reduce.TopK(binName, type, order, flags, k))</c> using the bin,
+		/// type, order, and flags from the preceding <see cref="SetOrderBy(string, BinDataType, Order)"/> call.
+		/// Like <see cref="SetReduce"/>, replaces any previously set reduce.
+		/// Supported nodes return bounded candidates; mixed clusters fall back to client-side reduction.
+		/// </para>
+		/// </summary>
+		/// <param name="k">maximum number of records to return, in [1, 1000]</param>
+		/// <exception cref="InvalidOperationException">if <see cref="SetOrderBy(string, BinDataType, Order)"/> was not called first</exception>
+		public void SetTopK(int k)
+		{
+			if (!orderBySet)
+			{
+				throw new InvalidOperationException("SetTopK() requires SetOrderBy() to be called first");
+			}
+			SetReduce(Reduce.TopK(orderByBin, orderByType, orderByOrder, orderByFlags, k));
+			topK = new TopKSpec(orderByBin, orderByType, orderByOrder, orderByFlags, k);
+		}
+
+		/// <summary>
+		/// Return whether this statement has a Top-K specification.
+		/// </summary>
+		public bool HasTopK => topK != null;
+
+		/// <summary>
+		/// Return the Top-K order-by bin name, or null when Top-K is not set.
+		/// </summary>
+		public string TopKBin => topK?.bin;
+
+		/// <summary>
+		/// Return the Top-K order-by type when Top-K is set.
+		/// </summary>
+		public BinDataType TopKType => topK != null ? topK.type : default;
+
+		/// <summary>
+		/// Return the Top-K order direction when Top-K is set.
+		/// </summary>
+		public Order TopKOrder => topK != null ? topK.order : default;
+
+		/// <summary>
+		/// Return the Top-K order-by flags when Top-K is set.
+		/// </summary>
+		public OrderByFlags TopKFlags => topK != null ? topK.flags : default;
+
+		/// <summary>
+		/// Return the Top-K limit, or zero when Top-K is not set.
+		/// </summary>
+		public int TopKLimit => topK == null ? 0 : topK.limit;
+
+		/// <summary>
+		/// Validate the Top-K specification.
+		/// </summary>
+		public void ValidateTopK()
+		{
+			if (topK == null)
+			{
+				return;
+			}
+
+			if (topK.bin == null)
+			{
+				throw new ArgumentException("Top-K order-by specification is incomplete");
+			}
+
+			int length = ByteUtil.EstimateSizeUtf8(topK.bin);
+
+			if (length == 0 || length > 15 || topK.bin.IndexOf('\0') >= 0)
+			{
+				throw new ArgumentException("Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL");
+			}
+
+			if (topK.flags != OrderByFlags.NONE && topK.type != BinDataType.STRING)
+			{
+				throw new ArgumentException("Top-K order-by flags are only valid for STRING");
+			}
+
+			if (topK.limit < 1 || topK.limit > 1000)
+			{
+				throw new ArgumentException("Top-K limit must be in [1, 1000]");
+			}
+
+			if (maxRecords != 0)
+			{
+				throw new ArgumentException("Top-K is incompatible with maxRecords");
+			}
+
+			if (functionName != null)
+			{
+				throw new ArgumentException("Top-K is only valid for foreground queries");
+			}
+
+			if (operations != null)
+			{
+				foreach (Operation operation in operations)
+				{
+					if (topK.bin.Equals(operation.binName))
+					{
+						return;
+					}
+				}
+				throw new ArgumentException("Top-K order-by bin must be included in the operations projection");
+			}
+
+			if (binNames != null)
+			{
+				foreach (string binName in binNames)
+				{
+					if (topK.bin.Equals(binName))
+					{
+						return;
+					}
+				}
+				throw new ArgumentException("Top-K order-by bin must be included in the bin projection");
+			}
+		}
+
+		/// <summary>
+		/// Resolve the reduce spec(s) set by <see cref="SetReduce"/> into a single combiner usable by a
+		/// query executor. Returns null if no reduce was set. Composes a split
+		/// <see cref="Reduce.OrderBy"/> + <see cref="Reduce.Limit"/> pair into a single Top-K combiner.
+		/// </summary>
+		/// <exception cref="ArgumentException">
+		/// if the reduce specs are not a single reducer or a valid orderBy/limit pair on the same bin
+		/// </exception>
+		internal ReduceSpec<Record, Record> ResolveReduce()
+		{
+			if (!reduceResolved)
+			{
+				resolvedReduce = ComputeResolveReduce();
+				reduceResolved = true;
+			}
+			return resolvedReduce;
+		}
+
+		private ReduceSpec<Record, Record> ComputeResolveReduce()
+		{
+			if (reduceSpecs == null || reduceSpecs.Length == 0)
+			{
+				return null;
+			}
+
+			bool isSplit = reduceSpecs[0] is OrderByReduceSpec || reduceSpecs[0] is LimitReduceSpec;
+
+			if (reduceSpecs.Length == 1 && !isSplit)
+			{
+				return reduceSpecs[0];
+			}
+
+			ReduceSpec<Record, Record> orderBy = null;
+			ReduceSpec<Record, Record> limit = null;
+
+			foreach (ReduceSpec<Record, Record> spec in reduceSpecs)
+			{
+				if (spec is OrderByReduceSpec)
+				{
+					if (orderBy != null)
+					{
+						throw new ArgumentException("topK requires exactly one orderBy spec");
+					}
+					orderBy = spec;
+				}
+				else if (spec is LimitReduceSpec)
+				{
+					if (limit != null)
+					{
+						throw new ArgumentException("topK requires exactly one limit spec");
+					}
+					limit = spec;
+				}
+				else
+				{
+					throw new ArgumentException("Cannot mix topK parts (orderBy/limit) with other reducers");
+				}
+			}
+
+			if (orderBy == null || limit == null)
+			{
+				throw new ArgumentException("topK requires both an orderBy spec and a limit spec");
+			}
+			return TopKReduceSpec.Compose(orderBy, limit);
+		}
+
+		/// <summary>
 		/// Return taskId if set by user. Otherwise return a new taskId.
 		/// </summary>
 		internal ulong PrepareTaskId()
 		{
 			return (taskId != 0) ? taskId : RandomShift.ThreadLocalInstance.NextLong();
+		}
+
+		internal sealed class TopKSpec
+		{
+			internal readonly string bin;
+			internal readonly BinDataType type;
+			internal readonly Order order;
+			internal readonly OrderByFlags flags;
+			internal readonly int limit;
+
+			internal TopKSpec(string bin, BinDataType type, Order order, OrderByFlags flags, int limit)
+			{
+				this.bin = bin;
+				this.type = type;
+				this.order = order;
+				this.flags = flags;
+				this.limit = limit;
+			}
 		}
 	}
 }
