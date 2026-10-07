@@ -85,7 +85,7 @@ jobs:
   sign:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
     needs: build
-    uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
+    uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@b4b1e9dc89314a2d542f9d6fe0ee150ad06f9860 # v5.0.0
     with:
       gh-unsigned-artifacts: AerospikeClient-${{ github.run_id }}
       gh-workflows-ref: v4.1.0
@@ -169,7 +169,7 @@ jobs:
     # Dependabot/fork PR tokens cannot write checks/comments.
     - name: Publish test results
       if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
-      uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
+      uses: step-security/publish-unit-test-result-action@8cf946dca1a299ebf36dff640273fda13717050a # v2.24.0
       with:
         files: test-results/**/*.trx
         check_name: "Test Results (${{ steps.cfg.outputs.server-tag }})"
@@ -177,7 +177,7 @@ jobs:
     # Trusted PR-only: publish example smoke tests as their own result check.
     - name: Publish example run results
       if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && hashFiles('example-results/**/*.trx') != '' }}
-      uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
+      uses: step-security/publish-unit-test-result-action@8cf946dca1a299ebf36dff640273fda13717050a # v2.24.0
       with:
         files: example-results/**/*.trx
         check_name: "Example Run (${{ steps.cfg.outputs.server-tag }})"
@@ -185,7 +185,7 @@ jobs:
   deploy:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
     needs: [build, sign, test]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
+    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@b4b1e9dc89314a2d542f9d6fe0ee150ad06f9860 # v5.0.0
     with:
       jf-project: database
       jf-build-name: aerospike-client-csharp
@@ -208,7 +208,7 @@ jobs:
         egress-policy: audit
 
     - name: Setup JFrog CLI
-      uses: step-security/setup-jfrog-cli@53aeacb709fce45d0baf69a13ec3342f7e2d71a9 # v5.1.0
+      uses: step-security/setup-jfrog-cli@f67dd6dcfe5fab8d1ebd695c456631275009a39d # v5.2.0
       env:
         JF_URL: https://artifact.aerospike.io
         JF_PROJECT: database
@@ -231,7 +231,7 @@ jobs:
   deploy-test:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
     needs: [build, test, prepare-test-artifacts]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
+    uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@b4b1e9dc89314a2d542f9d6fe0ee150ad06f9860 # v5.0.0
     with:
       jf-project: database
       jf-build-name: aerospike-client-csharp-tests
@@ -254,7 +254,7 @@ jobs:
         egress-policy: audit
 
     - name: Setup JFrog CLI
-      uses: step-security/setup-jfrog-cli@53aeacb709fce45d0baf69a13ec3342f7e2d71a9 # v5.1.0
+      uses: step-security/setup-jfrog-cli@f67dd6dcfe5fab8d1ebd695c456631275009a39d # v5.2.0
       env:
         JF_URL: https://artifact.aerospike.io
         JF_PROJECT: database
@@ -353,7 +353,7 @@ jobs:
   create-release-bundle:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
     needs: [build, deploy, prepare-release-bundle]
-    uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
+    uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@b4b1e9dc89314a2d542f9d6fe0ee150ad06f9860 # v5.0.0
     with:
       jf-project: database
       jf-build-names: "aerospike-client-csharp:${{ github.run_id }}-${{ github.run_attempt }}"
@@ -374,7 +374,7 @@ jobs:
         egress-policy: audit
 
     - name: Setup JFrog CLI
-      uses: step-security/setup-jfrog-cli@53aeacb709fce45d0baf69a13ec3342f7e2d71a9 # v5.1.0
+      uses: step-security/setup-jfrog-cli@f67dd6dcfe5fab8d1ebd695c456631275009a39d # v5.2.0
       env:
         JF_URL: https://artifact.aerospike.io
         JF_PROJECT: database
@@ -383,7 +383,7 @@ jobs:
         oidc-audience: aerospike
 
     - name: Promote release bundle to TEST
-      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
+      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@b4b1e9dc89314a2d542f9d6fe0ee150ad06f9860 # v5.0.0
       with:
         bundle-name: aerospike-client-csharp
         version: ${{ needs.build.outputs.version }}

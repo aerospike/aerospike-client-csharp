@@ -106,14 +106,14 @@ jobs:
 
     - name: Publish test results
       if: ${{ !cancelled() }}
-      uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
+      uses: step-security/publish-unit-test-result-action@8cf946dca1a299ebf36dff640273fda13717050a # v2.24.0
       with:
         files: test-results/**/*.trx
         check_name: "Nightly - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }}, SEC=${{ matrix.server.security == true && 'true' || 'false' }})"
 
     - name: Publish example run results
       if: ${{ !cancelled() && hashFiles('example-results/**/*.trx') != '' }}
-      uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
+      uses: step-security/publish-unit-test-result-action@8cf946dca1a299ebf36dff640273fda13717050a # v2.24.0
       with:
         files: example-results/**/*.trx
         check_name: "Nightly Examples - ${{ matrix.server.server-tag }} (${{ matrix.server.server-type }}, SC=${{ matrix.strong-consistency }}, TLS=${{ matrix.server.tls }}, SEC=${{ matrix.server.security == true && 'true' || 'false' }})"
