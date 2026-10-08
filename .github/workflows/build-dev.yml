@@ -1,5 +1,5 @@
 name: Build and test
-run-name: "${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.pull_request.number) || (github.event_name == 'push' && 'Stage') || 'Dev' }} build (${{ inputs.server-tag || 'latest' }}, ${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && 'enterprise' || 'community' }}, ${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && (format('{0}', inputs.strong-consistency) == 'false' && 'AP' || 'SC') || 'AP' }}${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && inputs.enable-tls && ', TLS' || '' }})"
+run-name: "${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.pull_request.number) || (github.event_name == 'workflow_dispatch' && inputs.release-candidate && 'Release candidate') || (github.event_name == 'push' && 'Stage') || 'Dev' }} build (${{ inputs.server-tag || 'latest' }}, ${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && 'enterprise' || 'community' }}, ${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && (format('{0}', inputs.strong-consistency) == 'false' && 'AP' || 'SC') || 'AP' }}${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && inputs.enable-tls && ', TLS' || '' }})"
 
 permissions:
   # Required for OIDC token requests (used by JFrog/sign jobs)
@@ -9,20 +9,23 @@ permissions:
   checks: write
   pull-requests: write
 
-# Single workflow that covers both PR validation against `stage` and the
-# post-merge build that publishes RC artifacts to JFrog.
+# Single workflow that covers PR validation against `stage`, post-merge
+# prerelease publishes to JFrog, and explicit release-candidate cuts.
 #
 # Trigger matrix:
-#   pull_request      → PR validation (build/test only; no signing)
-#   push to stage     → post-merge build (build/sign/test, deploy to JFrog,
-#                       create release bundle, promote to TEST)
-#   workflow_dispatch → ad-hoc dev build with custom server settings (no signing)
+#   pull_request      → PR validation (build/test only; no signing/deploy)
+#   push to stage     → prerelease: pack base-ci.N, sign/test, deploy to JFrog,
+#                       create release bundle, promote DEV then TEST
+#   workflow_dispatch → ad-hoc build; with release-candidate=true (from stage
+#                       only) packs the bare .csproj version and deploys
 #
-# JFrog requires a unique version per build, so the .csproj <Version> must be
-# bumped for each change merged to stage (use the `Bump version` workflow or
-# `scripts/update-version.ps1`). The build action reads the version straight
-# from .csproj and we surface it as a job output via the produced .nupkg
-# filename.
+# Cycle base in .csproj must stay clean X.Y.Z for automatic stage deploys.
+# CI appends -ci.{run_number} (and .{run_attempt} on re-runs). Do not hand-bump
+# for uniqueness — use Bump version (PR into stage) only to change the base
+# or to set a ship/preview cut version before an RC dispatch.
+#
+# release-candidate=true must be dispatched from the stage branch. Stage push
+# and RC deploys share a concurrency group so JFrog create/promote cannot race.
 on:
   pull_request:
     branches: [stage]
@@ -31,6 +34,11 @@ on:
     branches: [stage]
   workflow_dispatch:
     inputs:
+      release-candidate:
+        type: boolean
+        required: false
+        default: false
+        description: Pack .csproj Version as-is (GA or SemVer preview) and deploy to JFrog. Must run from stage. Do not use for ordinary builds.
       server-tag:
         type: string
         required: false
@@ -51,11 +59,20 @@ on:
         default: false
         description: Enable TLS for server and test connections. Enterprise edition required.
 
+# Queue stage push + RC deploys so JFrog bundle create/promote cannot overlap.
+# PR and ad-hoc (non-RC) runs use a unique group and do not block each other.
+concurrency:
+  group: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/stage') || (github.event_name == 'workflow_dispatch' && inputs.release-candidate)) && format('jfrog-csharp-{0}', github.ref) || format('{0}-{1}', github.workflow, github.run_id) }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: windows-latest
     outputs:
-      version: ${{ steps.get-version.outputs.version }}
+      version: ${{ steps.resolve-version.outputs.version }}
+      should-deploy: ${{ steps.resolve-version.outputs.should-deploy }}
+      is-ci-prerelease: ${{ steps.resolve-version.outputs.is-ci-prerelease }}
+      package-version: ${{ steps.resolve-version.outputs.package-version }}
     steps:
     - name: Harden the runner (Audit all outbound calls)
       uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -63,6 +80,95 @@ jobs:
         egress-policy: audit
 
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Resolve package version
+      id: resolve-version
+      shell: pwsh
+      env:
+        RELEASE_CANDIDATE: ${{ format('{0}', inputs.release-candidate) }}
+        EVENT_NAME: ${{ github.event_name }}
+        REF: ${{ github.ref }}
+        RUN_NUMBER: ${{ github.run_number }}
+        RUN_ATTEMPT: ${{ github.run_attempt }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        [xml]$xml = Get-Content -Path AerospikeClient\AerospikeClient.csproj
+        $base = ($xml.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1)
+        if (-not $base) {
+          Write-Error "Could not read <Version> from AerospikeClient/AerospikeClient.csproj"
+          exit 1
+        }
+        $base = $base.Trim()
+        Write-Host "Committed base version: $base"
+
+        $isRC = $env:RELEASE_CANDIDATE -eq 'true'
+        $isStagePush = ($env:EVENT_NAME -eq 'push') -and ($env:REF -eq 'refs/heads/stage')
+        $hasPrerelease = $base -match '-'
+        $isCiLabel = $base -match '(^|[.-])ci\.'
+
+        $packageVersion = ''
+        $shouldDeploy = 'false'
+        $isCiPrerelease = 'false'
+        $version = $base
+
+        if ($isRC) {
+          if ($env:REF -ne 'refs/heads/stage') {
+            Write-Error "release-candidate=true must be dispatched from the stage branch (got '$($env:REF)'). In the Actions UI, set 'Use workflow from' to stage."
+            exit 1
+          }
+          if ($isCiLabel) {
+            Write-Error "release-candidate=true refuses CI prerelease base '$base'. Set a clean X.Y.Z or a SemVer preview (e.g. -alpha, -beta.1) via Bump version first."
+            exit 1
+          }
+          if (-not ($base -match '^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')) {
+            Write-Error "release-candidate=true expects a NuGet/SemVer version (got '$base')."
+            exit 1
+          }
+          $packageVersion = $base
+          $version = $base
+          $shouldDeploy = 'true'
+          Write-Host "Release candidate: packing bare version $version from stage"
+        }
+        elseif ($isStagePush) {
+          if ($hasPrerelease) {
+            Write-Host "::warning::Stage push with non-clean base '$base'. Skipping JFrog deploy (will not invent -alpha.ci.N). Run release-candidate=true for a preview/GA cut, or bump back to a clean X.Y.Z cycle base."
+            $packageVersion = ''
+            $version = $base
+            $shouldDeploy = 'false'
+            # Keep every line indented for YAML | block scalars (column-0 lines end the block).
+            @(
+              '## Version resolution'
+              ''
+              "- **Base:** ``$base``"
+              '- **Deploy:** skipped (non-clean base on automatic stage push)'
+              '- **Next step:** run **Build and test** with ``release-candidate=true``, or open a Bump version PR back to a clean ``X.Y.Z``'
+            ) | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
+          }
+          else {
+            $suffix = $env:RUN_NUMBER
+            if ([int]$env:RUN_ATTEMPT -gt 1) {
+              $suffix = "$suffix.$($env:RUN_ATTEMPT)"
+            }
+            $packageVersion = "$base-ci.$suffix"
+            $version = $packageVersion
+            $shouldDeploy = 'true'
+            $isCiPrerelease = 'true'
+            Write-Host "In-cycle prerelease: $version"
+          }
+        }
+        else {
+          Write-Host "PR/ad-hoc build: using committed base $base (no JFrog deploy)"
+          $packageVersion = ''
+          $version = $base
+          $shouldDeploy = 'false'
+        }
+
+        "base=$base" >> $env:GITHUB_OUTPUT
+        "package-version=$packageVersion" >> $env:GITHUB_OUTPUT
+        "version=$version" >> $env:GITHUB_OUTPUT
+        "should-deploy=$shouldDeploy" >> $env:GITHUB_OUTPUT
+        "is-ci-prerelease=$isCiPrerelease" >> $env:GITHUB_OUTPUT
+
     - name: Setup .NET
       uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
       with:
@@ -72,18 +178,31 @@ jobs:
       uses: ./.github/actions/build
       with:
         sgKey: ${{ secrets.SG_KEY }}
-        sign-client: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+        sign-client: ${{ steps.resolve-version.outputs.should-deploy == 'true' }}
+        package-version: ${{ steps.resolve-version.outputs.package-version }}
 
-    - name: Get version from nupkg
-      id: get-version
+    - name: Verify nupkg version
+      if: ${{ steps.resolve-version.outputs.package-version != '' }}
       shell: pwsh
+      env:
+        EXPECTED: ${{ steps.resolve-version.outputs.version }}
       run: |
-        $nupkg = Get-ChildItem -Path AerospikeClient\bin\Release -Filter "Aerospike.Client.*.nupkg" | Where-Object { $_.Extension -eq ".nupkg" } | Select-Object -First 1
-        $version = $nupkg.BaseName -replace '^Aerospike\.Client\.', ''
-        echo "version=$version" >> $env:GITHUB_OUTPUT
+        $nupkg = Get-ChildItem -Path AerospikeClient\bin\Release -Filter "Aerospike.Client.*.nupkg" |
+          Where-Object { $_.Extension -eq ".nupkg" } |
+          Select-Object -First 1
+        if (-not $nupkg) {
+          Write-Error "No Aerospike.Client.*.nupkg found"
+          exit 1
+        }
+        $actual = $nupkg.BaseName -replace '^Aerospike\.Client\.', ''
+        if ($actual -ne $env:EXPECTED) {
+          Write-Error "nupkg version '$actual' does not match expected '$($env:EXPECTED)'"
+          exit 1
+        }
+        Write-Host "Verified nupkg version: $actual"
 
   sign:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    if: ${{ needs.build.outputs.should-deploy == 'true' }}
     needs: build
     uses: aerospike/shared-workflows/.github/workflows/reusable_sign-artifacts.yaml@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
     with:
@@ -183,7 +302,7 @@ jobs:
         check_name: "Example Run (${{ steps.cfg.outputs.server-tag }})"
 
   deploy:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    if: ${{ needs.build.outputs.should-deploy == 'true' }}
     needs: [build, sign, test]
     uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
     with:
@@ -198,7 +317,7 @@ jobs:
       oidc-audience: aerospike
 
   prepare-test-artifacts:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    if: ${{ needs.build.outputs.should-deploy == 'true' }}
     needs: [build, test]
     runs-on: ubuntu-latest
     steps:
@@ -229,7 +348,7 @@ jobs:
         jf rt delete "${test_artifacts_path}*" --quiet
 
   deploy-test:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    if: ${{ needs.build.outputs.should-deploy == 'true' }}
     needs: [build, test, prepare-test-artifacts]
     uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
     with:
@@ -244,7 +363,7 @@ jobs:
       oidc-audience: aerospike
 
   prepare-release-bundle:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    if: ${{ needs.build.outputs.should-deploy == 'true' }}
     needs: [build, deploy]
     runs-on: ubuntu-latest
     steps:
@@ -262,13 +381,22 @@ jobs:
         oidc-provider-name: gh-aerospike
         oidc-audience: aerospike
 
-    - name: Remove existing lower-environment release bundle
+    - name: Guard release bundle uniqueness
       env:
         BUNDLE_NAME: aerospike-client-csharp
         BUNDLE_VERSION: ${{ needs.build.outputs.version }}
+        IS_CI_PRERELEASE: ${{ needs.build.outputs.is-ci-prerelease }}
         JF_PROJECT: database
       run: |
         set -euo pipefail
+
+        # CI prereleases are unique per run (-ci.N). Skip the pre-create check.
+        # Clean/preview coordinates are immutable until INFRA-692 supersede:
+        # refuse to create if any completed promotion already exists for this version.
+        if [ "$IS_CI_PRERELEASE" = "true" ]; then
+          echo "CI prerelease ${BUNDLE_VERSION}: unique coordinate; skipping prior-bundle check."
+          exit 0
+        fi
 
         records_path="/lifecycle/api/v2/promotion/records/${BUNDLE_NAME}?project=${JF_PROJECT}&filter_by=${BUNDLE_VERSION}&order_by=created_millis&order_asc=true"
         echo "Checking promotion records for ${BUNDLE_NAME}/${BUNDLE_VERSION}..."
@@ -303,20 +431,6 @@ jobs:
           fi
         fi
 
-        higher_envs=$(echo "$records_json" | jq -r --arg version "$BUNDLE_VERSION" '
-          [(.promotions // [])[]?
-            | select((.release_bundle_version // .releaseBundleVersion // .version // "") == $version)
-            | select((.status // "COMPLETED") == "COMPLETED")
-            | (.environment // .target_environment // .targetEnvironment // empty)
-            | select(. == "STAGE" or . == "PREVIEW" or . == "PROD")]
-          | unique
-          | join(", ")
-        ')
-        if [ -n "$higher_envs" ]; then
-          echo "::error::Release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION} already exists in higher stage(s): ${higher_envs}. Refusing to replace it."
-          exit 1
-        fi
-
         existing_envs=$(echo "$records_json" | jq -r --arg version "$BUNDLE_VERSION" '
           [(.promotions // [])[]?
             | select((.release_bundle_version // .releaseBundleVersion // .version // "") == $version)
@@ -325,33 +439,17 @@ jobs:
           | unique
           | join(", ")
         ')
+
         if [ -n "$existing_envs" ]; then
-          echo "Existing release bundle promotions: ${existing_envs}."
-        else
-          echo "No existing release bundle promotions found."
+          echo "::error::Release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION} already has completed promotions: ${existing_envs}."
+          echo "::error::Refusing to create a duplicate clean/preview coordinate. Escalate to devops until INFRA-692 supersede is available."
+          exit 1
         fi
 
-        echo "Deleting existing release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION} if it exists..."
-        set +e
-        delete_output=$(jf rbdell --project="${JF_PROJECT}" --quiet --sync "${BUNDLE_NAME}" "${BUNDLE_VERSION}" 2>jfrog-error.log)
-        status=$?
-        set -e
-
-        if [ "$status" -ne 0 ]; then
-          error_text="$(<jfrog-error.log)"
-          if [[ "$error_text" == *"404"* || "$error_text" == *"not found"* || "$delete_output" == *"404"* ]]; then
-            echo "No existing release bundle record found."
-          else
-            echo "::error::Failed to delete release bundle ${BUNDLE_NAME}/${BUNDLE_VERSION}."
-            echo "$error_text"
-            exit "$status"
-          fi
-        else
-          echo "$delete_output"
-        fi
+        echo "No existing release bundle promotions for ${BUNDLE_VERSION}; safe to create."
 
   create-release-bundle:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+    if: ${{ needs.build.outputs.should-deploy == 'true' }}
     needs: [build, deploy, prepare-release-bundle]
     uses: aerospike/shared-workflows/.github/workflows/reusable_create-release-bundle.yaml@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
     with:
@@ -363,8 +461,8 @@ jobs:
       oidc-provider-name: gh-aerospike
       oidc-audience: aerospike
 
-  promote-release-bundle-to-test:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stage' }}
+  promote-release-bundle:
+    if: ${{ needs.build.outputs.should-deploy == 'true' }}
     needs: [build, create-release-bundle]
     runs-on: ubuntu-latest
     steps:
@@ -382,6 +480,14 @@ jobs:
         oidc-provider-name: gh-aerospike
         oidc-audience: aerospike
 
+    - name: Promote release bundle to DEV
+      uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
+      with:
+        bundle-name: aerospike-client-csharp
+        version: ${{ needs.build.outputs.version }}
+        environment: DEV
+        jf-project: database
+
     - name: Promote release bundle to TEST
       uses: aerospike/shared-workflows/.github/actions/promote-release-bundle@0d843cff870d70ac527048ab0d006c7c301fbb2f # v4.1.0
       with:
@@ -396,4 +502,7 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "- **Bundle:** aerospike-client-csharp" >> $GITHUB_STEP_SUMMARY
         echo "- **Version:** ${{ needs.build.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Environment:** TEST" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environments:** DEV → TEST" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ needs.build.outputs.is-ci-prerelease }}" = "true" ]; then
+          echo "- **Note:** CI prerelease — do not promote above TEST" >> $GITHUB_STEP_SUMMARY
+        fi
