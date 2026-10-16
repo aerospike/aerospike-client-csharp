@@ -43,17 +43,20 @@ namespace Aerospike.Client
 
 		public void AcceptPartial(Record record, Key key)
 		{
-			throw new NotSupportedException("orderBy must be combined with limit (see Reduce.TopK)");
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				"orderBy must be combined with limit (see Reduce.TopK)");
 		}
 
 		public Record GetScalarResult()
 		{
-			throw new NotSupportedException("orderBy must be combined with limit (see Reduce.TopK)");
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				"orderBy must be combined with limit (see Reduce.TopK)");
 		}
 
 		public Record[] GetResult()
 		{
-			throw new NotSupportedException("orderBy must be combined with limit (see Reduce.TopK)");
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				"orderBy must be combined with limit (see Reduce.TopK)");
 		}
 	}
 }

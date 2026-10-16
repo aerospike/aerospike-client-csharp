@@ -34,6 +34,15 @@ namespace Aerospike.Client
 			return value;
 		}
 
+		/// <summary>
+		/// Clear a leftover hasVector flag. Call when wrapping PackUtil bytes with
+		/// <see cref="Value.Get(byte[])"/> without consuming the flag into a BytesValue.
+		/// </summary>
+		internal static void ClearLastHasVector()
+		{
+			lastHasVector = false;
+		}
+
 		internal static byte[] Finish(Packer packer)
 		{
 			lastHasVector = packer.HasVector();
@@ -152,7 +161,7 @@ namespace Aerospike.Client
 			packer.PackArrayBegin(3);
 			packer.PackNumber(command);
 			packer.PackNumber(v1);
-			v2.Pack(packer);
+			packer.PackNested(v2);
 			return Finish(packer);
 		}
 
@@ -163,7 +172,7 @@ namespace Aerospike.Client
 			packer.PackArrayBegin(4);
 			packer.PackNumber(command);
 			packer.PackNumber(v1);
-			v2.Pack(packer);
+			packer.PackNested(v2);
 			packer.PackNumber(v3);
 			return Finish(packer);
 		}
@@ -175,7 +184,7 @@ namespace Aerospike.Client
 			packer.PackArrayBegin(5);
 			packer.PackNumber(command);
 			packer.PackNumber(v1);
-			v2.Pack(packer);
+			packer.PackNested(v2);
 			packer.PackNumber(v3);
 			packer.PackNumber(v4);
 			return Finish(packer);
@@ -210,7 +219,7 @@ namespace Aerospike.Client
 			Init(packer, ctx);
 			packer.PackArrayBegin(2);
 			packer.PackNumber(command);
-			value.Pack(packer);
+			packer.PackNested(value);
 			return Finish(packer);
 		}
 
@@ -220,7 +229,7 @@ namespace Aerospike.Client
 			Init(packer, ctx);
 			packer.PackArrayBegin(3);
 			packer.PackNumber(command);
-			value.Pack(packer);
+			packer.PackNested(value);
 			packer.PackNumber(v1);
 			return Finish(packer);
 		}
@@ -231,7 +240,7 @@ namespace Aerospike.Client
 			Init(packer, ctx);
 			packer.PackArrayBegin(4);
 			packer.PackNumber(command);
-			value.Pack(packer);
+			packer.PackNested(value);
 			packer.PackNumber(v1);
 			packer.PackNumber(v2);
 			return Finish(packer);
@@ -243,8 +252,8 @@ namespace Aerospike.Client
 			Init(packer, ctx);
 			packer.PackArrayBegin(4);
 			packer.PackNumber(command);
-			v1.Pack(packer);
-			v2.Pack(packer);
+			packer.PackNested(v1);
+			packer.PackNested(v2);
 			packer.PackNumber(v3);
 			return Finish(packer);
 		}

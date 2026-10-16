@@ -116,7 +116,7 @@ namespace Aerospike.Test
 		{
 			Statement stmt = new();
 			Internals.SetReduce(stmt, Reduce.OrderBy(Bin, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE));
-			Assert.Throws<ArgumentException>(() => Internals.ResolveReduce(stmt));
+			Assert.Throws<AerospikeException>(() => Internals.ResolveReduce(stmt));
 		}
 
 		[TestMethod]
@@ -126,7 +126,7 @@ namespace Aerospike.Test
 			Internals.SetReduce(stmt,
 				Reduce.OrderBy("binA", BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
 				Reduce.Limit("binB", 2));
-			Assert.Throws<ArgumentException>(() => Internals.ResolveReduce(stmt));
+			Assert.Throws<AerospikeException>(() => Internals.ResolveReduce(stmt));
 		}
 
 		[TestMethod]
@@ -137,7 +137,7 @@ namespace Aerospike.Test
 				Reduce.OrderBy(Bin, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
 				Reduce.OrderBy(Bin, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE),
 				Reduce.Limit(Bin, 2));
-			Assert.Throws<ArgumentException>(() => Internals.ResolveReduce(stmt));
+			Assert.Throws<AerospikeException>(() => Internals.ResolveReduce(stmt));
 		}
 
 		[TestMethod]
@@ -148,7 +148,7 @@ namespace Aerospike.Test
 				Reduce.OrderBy(Bin, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE),
 				Reduce.Limit(Bin, 2),
 				Reduce.Limit(Bin, 3));
-			Assert.Throws<ArgumentException>(() => Internals.ResolveReduce(stmt));
+			Assert.Throws<AerospikeException>(() => Internals.ResolveReduce(stmt));
 		}
 
 		[TestMethod]
@@ -214,18 +214,109 @@ namespace Aerospike.Test
 			Statement flags = new();
 			flags.SetOrderBy(Bin, BinDataType.INTEGER, Order.ASC, OrderByFlags.CASE_INSENSITIVE);
 			flags.SetTopK(1);
-			Assert.Throws<ArgumentException>(() => flags.ValidateTopK());
+			Assert.Throws<AerospikeException>(() => flags.ValidateTopK());
 
 			Statement projection = new();
 			projection.SetBinNames("other");
 			projection.SetOrderBy(Bin, BinDataType.INTEGER, Order.ASC);
 			projection.SetTopK(1);
-			Assert.Throws<ArgumentException>(() => projection.ValidateTopK());
+			Assert.Throws<AerospikeException>(() => projection.ValidateTopK());
 
 			Statement name = new();
 			name.SetOrderBy("sixteen-byte-bin", BinDataType.INTEGER, Order.ASC);
 			name.SetTopK(1);
-			Assert.Throws<ArgumentException>(() => name.ValidateTopK());
+			Assert.Throws<AerospikeException>(() => name.ValidateTopK());
+
+			Statement duplicateOps = new();
+			duplicateOps.Operations = [Operation.Get(Bin), Operation.Get(Bin)];
+			duplicateOps.SetOrderBy(Bin, BinDataType.INTEGER, Order.ASC);
+			duplicateOps.SetTopK(1);
+			AerospikeException dup = Assert.Throws<AerospikeException>(() => duplicateOps.ValidateTopK());
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, dup.Result);
+			Assert.IsTrue(dup.Message.Contains("exactly one projection operation"));
+		}
+
+		[TestMethod]
+		public void OrderByWithoutTopKIsVisibleOnStatement()
+		{
+			Statement stmt = new();
+			stmt.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+
+			Assert.IsTrue(stmt.HasOrderBy);
+			Assert.IsFalse(stmt.HasTopK);
+			Assert.AreEqual(Bin, stmt.TopKBin);
+			Assert.AreEqual(BinDataType.INTEGER, stmt.TopKType);
+			Assert.AreEqual(Order.DESC, stmt.TopKOrder);
+		}
+
+		[TestMethod]
+		public void SetOrderByKeepsTopKLimit()
+		{
+			Statement stmt = new();
+			stmt.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+			stmt.SetTopK(3);
+			stmt.SetOrderBy("other", BinDataType.INTEGER, Order.ASC);
+
+			Assert.IsTrue(stmt.HasTopK);
+			Assert.IsTrue(stmt.HasOrderBy);
+			Assert.AreEqual(3, stmt.TopKLimit);
+			Assert.AreEqual("other", stmt.TopKBin);
+			Assert.IsFalse(stmt.HasTopKThen);
+		}
+
+		[TestMethod]
+		public void ThenOrderByAddsSecondKeyAndKeepsLimit()
+		{
+			Statement stmt = new();
+			stmt.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+			stmt.SetTopK(5);
+			stmt.ThenOrderBy("ts", BinDataType.INTEGER, Order.ASC);
+
+			Assert.IsTrue(stmt.HasTopK);
+			Assert.AreEqual(5, stmt.TopKLimit);
+			Assert.AreEqual(Bin, stmt.TopKBin);
+			Assert.IsTrue(stmt.HasTopKThen);
+			Assert.AreEqual("ts", stmt.TopKThenBin);
+
+			ReduceSpec<Record, Record> resolved = Internals.ResolveReduce(stmt);
+			resolved.AcceptPartial(
+				new Record(new Dictionary<string, object> { { Bin, 10L }, { "ts", 2L } }, 1, 0),
+				Key("a"));
+			resolved.AcceptPartial(
+				new Record(new Dictionary<string, object> { { Bin, 10L }, { "ts", 1L } }, 1, 0),
+				Key("b"));
+			resolved.AcceptPartial(
+				new Record(new Dictionary<string, object> { { Bin, 9L }, { "ts", 0L } }, 1, 0),
+				Key("c"));
+
+			Record[] result = resolved.GetResult();
+			Assert.AreEqual(5, stmt.TopKLimit);
+			Assert.AreEqual(3, result.Length);
+			Assert.AreEqual(10L, result[0].GetLong(Bin));
+			Assert.AreEqual(1L, result[0].GetLong("ts"));
+			Assert.AreEqual(10L, result[1].GetLong(Bin));
+			Assert.AreEqual(2L, result[1].GetLong("ts"));
+		}
+
+		[TestMethod]
+		public void ThenOrderByThirdKeyThrows()
+		{
+			Statement stmt = new();
+			stmt.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+			stmt.ThenOrderBy("ts", BinDataType.INTEGER, Order.ASC);
+			Assert.Throws<AerospikeException>(() =>
+				stmt.ThenOrderBy("id", BinDataType.INTEGER, Order.ASC));
+		}
+
+		[TestMethod]
+		public void ThenOrderByBeforeSetOrderByDoesNotThrow()
+		{
+			Statement stmt = new();
+			stmt.ThenOrderBy("ts", BinDataType.INTEGER, Order.ASC);
+			stmt.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+			stmt.SetTopK(2);
+			Assert.AreEqual(Bin, stmt.TopKBin);
+			Assert.IsFalse(stmt.HasTopKThen);
 		}
 	}
 }

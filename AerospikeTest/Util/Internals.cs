@@ -45,6 +45,32 @@ namespace Aerospike.Test
 			}
 		}
 
+		internal static byte[] PackUtilFinish(Packer packer)
+		{
+			MethodInfo method = typeof(PackUtil).GetMethod("Finish", BindingFlags.Static | BindingFlags.NonPublic);
+			try
+			{
+				return (byte[])method.Invoke(null, new object[] { packer });
+			}
+			catch (TargetInvocationException e)
+			{
+				throw e.InnerException ?? e;
+			}
+		}
+
+		internal static bool ConsumeLastHasVector()
+		{
+			MethodInfo method = typeof(PackUtil).GetMethod("ConsumeLastHasVector", BindingFlags.Static | BindingFlags.NonPublic);
+			try
+			{
+				return (bool)method.Invoke(null, null);
+			}
+			catch (TargetInvocationException e)
+			{
+				throw e.InnerException ?? e;
+			}
+		}
+
 		internal static bool HasVector(Expression expression)
 		{
 			MethodInfo method = typeof(Expression).GetMethod("HasVector", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);

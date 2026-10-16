@@ -2164,8 +2164,13 @@ namespace Aerospike.Client
 			if (topKFields != null)
 			{
 				dataOffset += FIELD_HEADER_SIZE + topKFields.orderBy.Length;
-				dataOffset += FIELD_HEADER_SIZE + topKFields.limit.Length;
-				fieldCount += 2;
+				fieldCount++;
+
+				if (topKFields.limit != null)
+				{
+					dataOffset += FIELD_HEADER_SIZE + topKFields.limit.Length;
+					fieldCount++;
+				}
 			}
 
 			byte[] packedCtx = null;
@@ -2406,7 +2411,11 @@ namespace Aerospike.Client
 			if (topKFields != null)
 			{
 				WriteField(topKFields.orderBy, FieldType.ORDER_BY);
-				WriteField(topKFields.limit, FieldType.TOP_K);
+
+				if (topKFields.limit != null)
+				{
+					WriteField(topKFields.limit, FieldType.TOP_K);
+				}
 			}
 
 			if (statement.filter != null)
@@ -2524,11 +2533,29 @@ namespace Aerospike.Client
 
 		private static byte[] GetTopKOrderByField(Statement statement)
 		{
-			byte[] bin = ByteUtil.StringToUtf8(statement.TopKBin);
+			byte[] primary = EncodeOrderBySpec(
+				statement.TopKBin, statement.TopKType, statement.TopKOrder, statement.TopKFlags);
+
+			if (!statement.HasTopKThen)
+			{
+				return primary;
+			}
+
+			byte[] secondary = EncodeOrderBySpec(
+				statement.TopKThenBin, statement.TopKThenType, statement.TopKThenOrder, statement.TopKThenFlags);
+			byte[] field = new byte[primary.Length + secondary.Length];
+			Array.Copy(primary, 0, field, 0, primary.Length);
+			Array.Copy(secondary, 0, field, primary.Length, secondary.Length);
+			return field;
+		}
+
+		private static byte[] EncodeOrderBySpec(string binName, BinDataType type, Order order, OrderByFlags flags)
+		{
+			byte[] bin = ByteUtil.StringToUtf8(binName);
 			byte[] field = new byte[4 + bin.Length];
-			field[0] = (byte)GetOrderByType(statement.TopKType);
-			field[1] = (byte)GetOrderByDirection(statement.TopKOrder);
-			field[2] = (byte)(statement.TopKFlags == OrderByFlags.CASE_INSENSITIVE ? 1 : 0);
+			field[0] = (byte)GetOrderByType(type);
+			field[1] = (byte)GetOrderByDirection(order);
+			field[2] = (byte)(flags == OrderByFlags.CASE_INSENSITIVE ? 1 : 0);
 			field[3] = (byte)bin.Length;
 			Array.Copy(bin, 0, field, 4, bin.Length);
 			return field;
@@ -2536,11 +2563,16 @@ namespace Aerospike.Client
 
 		private static TopKFields GetTopKFields(Statement statement, bool sendTopK)
 		{
-			if (!sendTopK || !statement.HasTopK)
+			// sendTopK means the cluster supports ORDER_BY / TOP_K fields.
+			// Order-by without top-k is still sent so the server can reject it (PRD decision 2026-10-13).
+			if (!sendTopK || !statement.HasOrderBy)
 			{
 				return null;
 			}
-			return new TopKFields(GetTopKOrderByField(statement), GetTopKField(statement.TopKLimit));
+
+			byte[] orderBy = GetTopKOrderByField(statement);
+			byte[] limit = statement.HasTopK ? GetTopKField(statement.TopKLimit) : null;
+			return new TopKFields(orderBy, limit);
 		}
 
 		private static byte[] GetTopKField(int limit)
@@ -2563,7 +2595,7 @@ namespace Aerospike.Client
 				case BinDataType.BYTES:
 					return 4;
 				default:
-					throw new ArgumentException("Unsupported BinDataType: " + type);
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Unsupported BinDataType: " + type);
 			}
 		}
 

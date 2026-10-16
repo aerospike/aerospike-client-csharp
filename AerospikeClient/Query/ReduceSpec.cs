@@ -34,7 +34,7 @@ namespace Aerospike.Client
 	/// (usually <see cref="Record"/>).
 	/// </typeparam>
 	/// <typeparam name="TResult">Element type returned by <see cref="GetResult"/>.</typeparam>
-	public interface ReduceSpec<TInput, TResult>
+	internal interface ReduceSpec<TInput, TResult>
 	{
 		/// <summary>
 		/// Merge one partial result from a node into this combiner.

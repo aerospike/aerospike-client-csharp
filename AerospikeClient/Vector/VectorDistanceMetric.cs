@@ -24,7 +24,7 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Squared Euclidean (L2) distance. Smaller values indicate closer vectors.
 		/// </summary>
-		EUCLIDEAN = 0,
+		EUCLIDEAN_SQUARED = 0,
 
 		/// <summary>
 		/// Dot product. Larger values indicate more similar vectors.
@@ -34,6 +34,6 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Cosine similarity. Larger values indicate closer (more similar) vectors.
 		/// </summary>
-		COSINE = 2
+		COSINE_SIMILARITY = 2
 	}
 }

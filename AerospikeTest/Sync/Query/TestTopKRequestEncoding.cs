@@ -42,6 +42,64 @@ namespace Aerospike.Test
 			Assert.IsFalse(fallback.ContainsKey(FieldType.TOP_K));
 		}
 
+		[TestMethod]
+		public void OrderByWithoutTopKIsSentForServerReject()
+		{
+			Cluster cluster = ((AerospikeClient)client).Cluster;
+			Node node = cluster.GetRandomNode();
+			Statement statement = new();
+			statement.SetNamespace(SuiteHelpers.ns);
+			statement.SetSetName("topKWire");
+			statement.SetBinNames("rank");
+			statement.SetOrderBy("rank", BinDataType.INTEGER, Order.DESC);
+
+			Dictionary<int, byte[]> pushed = Fields(Build(cluster, node, statement, true));
+			Assert.IsTrue(pushed.ContainsKey(FieldType.ORDER_BY));
+			Assert.IsFalse(pushed.ContainsKey(FieldType.TOP_K));
+			CollectionAssert.AreEqual(new byte[] { 1, 1, 0, 4, (byte)'r', (byte)'a', (byte)'n', (byte)'k' }, pushed[FieldType.ORDER_BY]);
+
+			Dictionary<int, byte[]> fallback = Fields(Build(cluster, node, statement, false));
+			Assert.IsFalse(fallback.ContainsKey(FieldType.ORDER_BY));
+			Assert.IsFalse(fallback.ContainsKey(FieldType.TOP_K));
+		}
+
+		[TestMethod]
+		public void ShouldSendOrderByFieldsTracksNodeSupport()
+		{
+			Cluster cluster = ((AerospikeClient)client).Cluster;
+			Node node = cluster.GetRandomNode();
+			Statement statement = new();
+			statement.SetOrderBy("rank", BinDataType.INTEGER, Order.DESC);
+
+			Assert.AreEqual(node.HasQueryOrderBy, statement.ShouldSendOrderByFields(node));
+			Assert.IsFalse(statement.ShouldSendOrderByFields(null));
+
+			Statement plain = new();
+			Assert.IsFalse(plain.ShouldSendOrderByFields(node));
+		}
+
+		[TestMethod]
+		public void TwoOrderKeysAreConcatenatedInOrderByField()
+		{
+			Cluster cluster = ((AerospikeClient)client).Cluster;
+			Node node = cluster.GetRandomNode();
+			Statement statement = new();
+			statement.SetNamespace(SuiteHelpers.ns);
+			statement.SetSetName("topKWire");
+			statement.SetBinNames("rank", "ts");
+			statement.SetOrderBy("rank", BinDataType.INTEGER, Order.DESC);
+			statement.ThenOrderBy("ts", BinDataType.INTEGER, Order.ASC);
+			statement.SetTopK(3);
+
+			Dictionary<int, byte[]> pushed = Fields(Build(cluster, node, statement, true));
+			CollectionAssert.AreEqual(new byte[]
+			{
+				1, 1, 0, 4, (byte)'r', (byte)'a', (byte)'n', (byte)'k',
+				1, 0, 0, 2, (byte)'t', (byte)'s'
+			}, pushed[FieldType.ORDER_BY]);
+			CollectionAssert.AreEqual(new byte[] { 0, 0, 0, 3 }, pushed[FieldType.TOP_K]);
+		}
+
 		private static Statement MakeStatement()
 		{
 			Statement statement = new();
@@ -78,7 +136,8 @@ namespace Aerospike.Test
 				offset += 4 + size;
 			}
 
-			Assert.AreEqual(buffer.Length, offset + Command.OPERATION_HEADER_SIZE + 4);
+			// Remaining bytes are READ ops for projected bins (one or more).
+			Assert.IsTrue(buffer.Length >= offset + Command.OPERATION_HEADER_SIZE);
 			Assert.IsTrue(fields.ContainsKey(FieldType.NAMESPACE));
 			Assert.IsTrue(fields.ContainsKey(FieldType.TABLE));
 			return fields;
@@ -106,18 +165,18 @@ namespace Aerospike.Test
 				SetQuery(cluster, policy, statement, taskId, background, nodePartitions, node, sendTopK);
 			}
 
-			protected override int SizeBuffer()
+			protected internal override int SizeBuffer()
 			{
 				dataBuffer = new byte[dataOffset];
 				dataOffset = 0;
 				return dataBuffer.Length;
 			}
 
-			protected override void End()
+			protected internal override void End()
 			{
 			}
 
-			protected override void SetLength(int length)
+			protected internal override void SetLength(int length)
 			{
 			}
 		}

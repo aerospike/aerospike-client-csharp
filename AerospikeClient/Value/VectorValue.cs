@@ -32,7 +32,7 @@ namespace Aerospike.Client
 
 			public VectorValue(Vector vector)
 			{
-				this.Vector = vector;
+				this.Vector = vector ?? throw new ArgumentNullException(nameof(vector));
 			}
 
 			public override int EstimateSize() => Vector.GetWireSize();

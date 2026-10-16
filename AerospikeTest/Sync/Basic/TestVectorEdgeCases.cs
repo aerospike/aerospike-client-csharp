@@ -23,13 +23,22 @@ namespace Aerospike.Test
 	public class TestVectorEdgeCases
 	{
 		[TestMethod]
-		public void EmptyVectorsAreAllowedLocally()
+		public void EmptyVectorsAreRejected()
 		{
-			// Cross-client rule: permissive construction/decode; server rejects zero-dim writes.
-			AssertRoundTrip(Vector.OfFloat16(Array.Empty<short>()));
-			AssertRoundTrip(Vector.OfInt32(Array.Empty<int>()));
-			AssertRoundTrip(Vector.OfFloat32(Array.Empty<float>()));
-			AssertRoundTrip(Vector.OfFloat64(Array.Empty<double>()));
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(Array.Empty<short>()));
+			Assert.Throws<ArgumentException>(() => Vector.OfInt32(Array.Empty<int>()));
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat32(Array.Empty<float>()));
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat64(Array.Empty<double>()));
+		}
+
+		[TestMethod]
+		public void FromZeroDimensionsThrows()
+		{
+			byte[] buffer = new byte[Vector.HEADER_SIZE];
+			buffer[0] = Vector.VERSION;
+			buffer[1] = (byte)Vector.ElementType.FLOAT32;
+			ByteUtil.IntToLittleBytes(0, buffer, 2);
+			Assert.Throws<ArgumentException>(() => Vector.From(buffer, 0, buffer.Length));
 		}
 
 		[TestMethod]
@@ -162,7 +171,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void FromPreservesUnknownVersion()
+		public void FromRejectsUnknownVersion()
 		{
 			Vector v = Vector.OfInt32(new int[] { 1, 2, 3 });
 			byte[] buffer = new byte[v.GetWireSize()];
@@ -170,20 +179,22 @@ namespace Aerospike.Test
 
 			buffer[0] = 0x02;
 
-			Vector parsed = Vector.From(buffer, 0, buffer.Length);
-			Assert.AreEqual(2, parsed.version);
-			Assert.AreNotEqual(v, parsed);
-			CollectionAssert.AreEqual(buffer, parsed.GetWireBytes());
+			Assert.Throws<ArgumentException>(() => Vector.From(buffer, 0, buffer.Length));
 		}
 
 		[TestMethod]
 		public void RecordGetVector()
 		{
 			Vector v = Vector.OfInt32(new int[] { 1, 2, 3 });
-			Record record = new Record(new Dictionary<string, object> { { "vecbin", v } }, 1, 0);
+			Record record = new Record(new Dictionary<string, object>
+			{
+				{ "vecbin", v },
+				{ "other", 42L }
+			}, 1, 0);
 
 			Assert.AreSame(v, record.GetVector("vecbin"));
 			Assert.IsNull(record.GetVector("missing"));
+			Assert.IsNull(record.GetVector("other"));
 		}
 
 		[TestMethod]
@@ -196,43 +207,36 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void VectorAsMapValueRoundTrips()
+		public void PackerRejectsVectorAsMapValue()
 		{
 			Vector v = Vector.OfInt32(new int[] { 1, 2, 3 });
 			Dictionary<object, object> map = new() { { "k", Value.Get(v) } };
-
-			byte[] packed = Packer.Pack(map, MapOrder.UNORDERED);
-			Unpacker unpacker = new Unpacker(packed, 0, packed.Length, false);
-			IDictionary outMap = (IDictionary)unpacker.UnpackObject();
-
-			Assert.AreEqual(1, outMap.Count);
-			Assert.IsInstanceOfType(outMap["k"], typeof(Vector));
-			Assert.AreEqual(v, outMap["k"]);
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => Packer.Pack(map, MapOrder.UNORDERED));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
 		[TestMethod]
-		public void RawVectorInMapBinPacksSuccessfully()
+		public void RawVectorInMapBinRejected()
 		{
 			Vector v = Vector.OfInt32(new int[] { 1, 2, 3 });
 			Bin bin = new Bin("vecmap", new Dictionary<object, object> { { "k", v } });
-
-			byte[] buffer = new byte[bin.value.EstimateSize()];
-			int written = bin.value.Write(buffer, 0);
-			Assert.AreEqual(buffer.Length, written);
+			AerospikeException e = Assert.Throws<AerospikeException>(() => bin.value.EstimateSize());
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
 		[TestMethod]
-		public void NestedListOfMapOfVectorRoundTrips()
+		public void NestedListOfMapOfVectorRejected()
 		{
 			Vector v = Vector.OfFloat32(new float[] { 1.5f, -2.5f });
 			Dictionary<object, object> inner = new() { { "v", Value.Get(v) } };
 			List<object> list = new() { inner };
 
-			byte[] packed = Packer.Pack(list);
-			Unpacker unpacker = new Unpacker(packed, 0, packed.Length, false);
-			IList outList = (IList)unpacker.UnpackObject();
-			IDictionary outMap = (IDictionary)outList[0];
-			Assert.AreEqual(v, outMap["v"]);
+			AerospikeException e = Assert.Throws<AerospikeException>(() => Packer.Pack(list));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
 		private static void AssertRoundTrip(Vector v)

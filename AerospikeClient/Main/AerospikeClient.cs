@@ -2395,6 +2395,8 @@ namespace Aerospike.Client
 				policy = new WritePolicy(policy, configProvider);
 			}
 
+			RejectTopK(statement);
+
 			statement.PackageName = packageName;
 			statement.FunctionName = functionName;
 			statement.FunctionArgs = functionArgs;
@@ -2436,6 +2438,8 @@ namespace Aerospike.Client
 			{
 				policy = new WritePolicy(policy, configProvider);
 			}
+
+			RejectTopK(statement);
 
 			if (operations.Length > 0)
 			{
@@ -2642,7 +2646,7 @@ namespace Aerospike.Client
 				policy = new QueryPolicy(policy, configProvider);
 			}
 
-			ValidateTopK(statement);
+			ValidateTopK(statement, partitionFilter);
 
 			Node[] nodes = cluster.ValidateNodes();
 
@@ -2660,6 +2664,11 @@ namespace Aerospike.Client
 
 		private void ValidateTopK(Statement statement)
 		{
+			ValidateTopK(statement, null);
+		}
+
+		private void ValidateTopK(Statement statement, PartitionFilter partitionFilter)
+		{
 			if (!statement.HasTopK)
 			{
 				return;
@@ -2672,6 +2681,43 @@ namespace Aerospike.Client
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 					"Top-K requires partition query support");
 			}
+
+			// PRD: Top-K needs every node in the cluster; soft client-side ranking is not allowed.
+			if (!cluster.hasQueryOrderBy)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"Top-K requires every node in the cluster to support query order-by");
+			}
+
+			if (partitionFilter != null && PartitionFilterHasResumePoints(partitionFilter))
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"Top-K cannot use a partition filter that carries resume points from an earlier query");
+			}
+		}
+
+		private static bool PartitionFilterHasResumePoints(PartitionFilter filter)
+		{
+			if (filter.Digest != null)
+			{
+				return true;
+			}
+
+			PartitionStatus[] partitions = filter.Partitions;
+
+			if (partitions == null)
+			{
+				return false;
+			}
+
+			foreach (PartitionStatus status in partitions)
+			{
+				if (status != null && (status.digest != null || status.bval != 0))
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 
 		protected static void RejectTopK(Statement statement)
@@ -2761,6 +2807,8 @@ namespace Aerospike.Client
 			{
 				policy = new QueryPolicy(policy, configProvider);
 			}
+
+			RejectTopK(statement);
 
 			Node[] nodes = cluster.ValidateNodes();
 			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, nodes);

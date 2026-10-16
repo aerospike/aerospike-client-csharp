@@ -174,7 +174,24 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Get byte array value instance.
 		/// </summary>
-		static public Value Get(byte[] value) => value is null ? NullValue.Instance : new BytesValue(value);
+		static public Value Get(byte[] value)
+		{
+			if (value is null)
+			{
+				return NullValue.Instance;
+			}
+			// Absorb PackUtil.Finish's ThreadStatic flag so CDT/bit/HLL ops that wrap
+			// packed bytes without an explicit hasVector argument neither drop vector
+			// presence nor leak a stale true into a later Exp.Module on this thread.
+			bool hasVector = PackUtil.ConsumeLastHasVector();
+			if (!hasVector)
+			{
+				return new BytesValue(value);
+			}
+			BytesValue bv = new(value);
+			bv.hasVector = true;
+			return bv;
+		}
 
 		/// <summary>
 		/// Get byte array with vector flag. For internal use only.
@@ -185,6 +202,8 @@ namespace Aerospike.Client
 			{
 				return NullValue.Instance;
 			}
+			// Explicit flag wins; clear any leftover ThreadStatic from PackUtil.Finish.
+			PackUtil.ClearLastHasVector();
 			BytesValue bv = new(value);
 			bv.hasVector = hasVector;
 			return bv;

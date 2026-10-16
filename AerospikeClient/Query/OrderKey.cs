@@ -32,16 +32,31 @@ namespace Aerospike.Client
 		internal readonly Order order;
 		internal readonly OrderByFlags flags;
 		internal readonly byte[] digest;
+		/// <summary>Optional secondary (then-order-by) key; compared only when the primary ties.</summary>
+		internal readonly OrderKey secondary;
 		/// <summary>UTF-8 bytes for STRING order keys; null otherwise.</summary>
 		private readonly byte[] stringBytes;
 
 		internal OrderKey(Record record, string bin, BinDataType type, Order order, OrderByFlags flags, byte[] digest)
+			: this(record, bin, type, order, flags, digest, null)
+		{
+		}
+
+		internal OrderKey(
+			Record record,
+			string bin,
+			BinDataType type,
+			Order order,
+			OrderByFlags flags,
+			byte[] digest,
+			OrderKey secondary)
 		{
 			object raw = ReadValue(record, bin, type);
 			this.type = type;
 			this.order = order;
 			this.flags = flags;
 			this.digest = digest;
+			this.secondary = secondary;
 
 			if (raw is string s)
 			{
@@ -59,6 +74,32 @@ namespace Aerospike.Client
 
 		public int CompareTo(OrderKey other)
 		{
+			int cmp = ComparePrimary(other);
+
+			if (cmp != 0)
+			{
+				return cmp;
+			}
+
+			if (secondary != null && other.secondary != null)
+			{
+				cmp = secondary.ComparePrimary(other.secondary);
+
+				if (cmp != 0)
+				{
+					return cmp;
+				}
+			}
+
+			// Tie-break: digest ascending (stable, deterministic ordering).
+			return CompareDigest(digest, other.digest);
+		}
+
+		/// <summary>
+		/// Compare this key's primary value only (nil last; no digest tie-break).
+		/// </summary>
+		private int ComparePrimary(OrderKey other)
+		{
 			bool nilA = IsNil;
 			bool nilB = other.IsNil;
 
@@ -66,8 +107,7 @@ namespace Aerospike.Client
 			{
 				if (nilA && nilB)
 				{
-					// Break NIL ties by digest.
-					return CompareDigest(digest, other.digest);
+					return 0;
 				}
 				// NIL sorts last in either direction.
 				return nilA ? 1 : -1;
@@ -79,8 +119,7 @@ namespace Aerospike.Client
 			{
 				return order == Order.ASC ? cmp : -cmp;
 			}
-			// Tie-break: digest ascending (stable, deterministic ordering).
-			return CompareDigest(digest, other.digest);
+			return 0;
 		}
 
 		/// <summary>
@@ -99,8 +138,13 @@ namespace Aerospike.Client
 			switch (type)
 			{
 				case BinDataType.INTEGER:
-					// Server always returns integer bins as long.
-					return value is long ? value : null;
+					// Server always returns integer bins as long; accept int for hand-built records.
+					return value switch
+					{
+						long l => l,
+						int i => (long)i,
+						_ => null
+					};
 				case BinDataType.DOUBLE:
 					return value is double ? value : null;
 				case BinDataType.STRING:
@@ -126,7 +170,8 @@ namespace Aerospike.Client
 
 			if (a.type == BinDataType.DOUBLE)
 			{
-				// Match Java Double.compare: NaN sorts after all finite values; -0.0 < +0.0.
+				// Server / PRD R29: NaN ranks after every finite value (and +Inf);
+				// −0.0 equals 0.0 (tie breaks by digest in CompareTo).
 				return CompareDouble((double)a.value, (double)b.value);
 			}
 
@@ -135,8 +180,7 @@ namespace Aerospike.Client
 
 		private static int CompareDouble(double a, double b)
 		{
-			// Match Java Double.compare / Double.doubleToLongBits:
-			// NaN sorts after all finite values (and +Inf); -0.0 < +0.0.
+			// Finite ordering, including −0.0 == 0.0 (IEEE equality).
 			if (a < b)
 			{
 				return -1;
@@ -145,6 +189,12 @@ namespace Aerospike.Client
 			if (a > b)
 			{
 				return 1;
+			}
+
+			// a and b are equal, or at least one is NaN (NaN compares unequal to everything).
+			if (!double.IsNaN(a) && !double.IsNaN(b))
+			{
+				return 0;
 			}
 
 			long ba = DoubleToComparableBits(a);

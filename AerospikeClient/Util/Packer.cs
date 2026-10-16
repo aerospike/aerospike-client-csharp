@@ -51,6 +51,8 @@ namespace Aerospike.Client
 		private List<BufferItem> bufferList;
 		private bool sortMaps;
 		private bool hasVector;
+		/// <summary>Nesting depth of list/map containers currently being packed.</summary>
+		private int nestDepth;
 
 		public Packer()
 		{
@@ -94,10 +96,34 @@ namespace Aerospike.Client
 
 		public void PackList(IList list)
 		{
-			PackArrayBegin(list.Count);
-			foreach (object obj in list)
+			nestDepth++;
+			try
 			{
-				PackObject(obj);
+				PackArrayBegin(list.Count);
+				foreach (object obj in list)
+				{
+					PackObject(obj);
+				}
+			}
+			finally
+			{
+				nestDepth--;
+			}
+		}
+
+		/// <summary>
+		/// Pack a value as a nested list/map element. Vectors are rejected (PRD R71).
+		/// </summary>
+		internal void PackNested(Value value)
+		{
+			nestDepth++;
+			try
+			{
+				value.Pack(this);
+			}
+			finally
+			{
+				nestDepth--;
 			}
 		}
 
@@ -130,11 +156,19 @@ namespace Aerospike.Client
 				return;
 			}
 
-			PackMapBegin(map.Count, order);
-			foreach (DictionaryEntry entry in map)
+			nestDepth++;
+			try
 			{
-				PackObject(entry.Key);
-				PackObject(entry.Value);
+				PackMapBegin(map.Count, order);
+				foreach (DictionaryEntry entry in map)
+				{
+					PackObject(entry.Key);
+					PackObject(entry.Value);
+				}
+			}
+			finally
+			{
+				nestDepth--;
 			}
 		}
 
@@ -152,6 +186,8 @@ namespace Aerospike.Client
 				// corrupt its in-progress serialization.
 				Packer packer = new(256);
 				packer.sortMaps = true;
+				// Keys are nested map elements; reject vector keys (PRD R71).
+				packer.nestDepth = 1;
 				packer.PackObject(entry.Key);
 				keys[i] = packer.ToByteArray();
 				values[i] = entry.Value;
@@ -181,13 +217,21 @@ namespace Aerospike.Client
 				}
 			}
 
-			PackMapBegin(map.Count);
-
-			for (i = 0; i < ranks.Length; i++)
+			nestDepth++;
+			try
 			{
-				byte[] key = keys[ranks[i]];
-				PackByteArray(key, 0, key.Length);
-				PackObject(values[ranks[i]]);
+				PackMapBegin(map.Count);
+
+				for (i = 0; i < ranks.Length; i++)
+				{
+					byte[] key = keys[ranks[i]];
+					PackByteArray(key, 0, key.Length);
+					PackObject(values[ranks[i]]);
+				}
+			}
+			finally
+			{
+				nestDepth--;
 			}
 		}
 
@@ -720,6 +764,14 @@ namespace Aerospike.Client
 
 		private void PackParticleVector(Vector val, ParticleType type)
 		{
+			// Nested VECTOR particles (list/map elements or keys) are not in Phase 1 (PRD R71).
+			// PackVectorAsBlob uses BLOB and remains valid for distance expression literals.
+			if (type == ParticleType.VECTOR && nestDepth > 0)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"list/map cannot hold a vector");
+			}
+
 			hasVector = true;
 			int size = val.GetWireSize();
 			PackByteArrayBegin(size + 1);

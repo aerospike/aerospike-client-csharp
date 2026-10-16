@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		private readonly NodePartitions nodePartitions;
 		private readonly bool sendTopK;
 
-		public QueryPartitionCommand
+		internal QueryPartitionCommand
 		(
 			Cluster cluster,
 			Policy policy,

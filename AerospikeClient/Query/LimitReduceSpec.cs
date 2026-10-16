@@ -34,7 +34,8 @@ namespace Aerospike.Client
 		{
 			if (limit < 1 || limit > 1000)
 			{
-				throw new ArgumentException("limit must be in [1, 1000], got: " + limit);
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"limit must be in [1, 1000], got: " + limit);
 			}
 			this.bin = bin;
 			this.limit = limit;
@@ -42,17 +43,20 @@ namespace Aerospike.Client
 
 		public void AcceptPartial(Record record, Key key)
 		{
-			throw new NotSupportedException("limit must be combined with orderBy (see Reduce.TopK)");
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				"limit must be combined with orderBy (see Reduce.TopK)");
 		}
 
 		public Record GetScalarResult()
 		{
-			throw new NotSupportedException("limit must be combined with orderBy (see Reduce.TopK)");
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				"limit must be combined with orderBy (see Reduce.TopK)");
 		}
 
 		public Record[] GetResult()
 		{
-			throw new NotSupportedException("limit must be combined with orderBy (see Reduce.TopK)");
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				"limit must be combined with orderBy (see Reduce.TopK)");
 		}
 	}
 }

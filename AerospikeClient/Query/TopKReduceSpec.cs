@@ -20,12 +20,6 @@ namespace Aerospike.Client
 	/// Ordered LIMIT k reduce combiner backing
 	/// <see cref="Reduce.TopK(string, BinDataType, Order, OrderByFlags, int)"/>
 	/// and the composed split form <c>SetReduce(Reduce.OrderBy(...), Reduce.Limit(...))</c>.
-	/// <para>
-	/// Maintains a size-k heap keyed by the order bin, deduplicated by record digest (a record may
-	/// be re-scanned across partition migrations) with ties broken by digest ascending for stable,
-	/// deterministic results. Not part of the public API surface beyond the <see cref="Reduce.TopK"/>
-	/// factory method.
-	/// </para>
 	/// </summary>
 	internal sealed class TopKReduceSpec : ReduceSpec<Record, Record>
 	{
@@ -36,6 +30,10 @@ namespace Aerospike.Client
 		private readonly BinDataType type;
 		private readonly Order order;
 		private readonly OrderByFlags flags;
+		private readonly string thenBin;
+		private readonly BinDataType thenType;
+		private readonly Order thenOrder;
+		private readonly OrderByFlags thenFlags;
 		private readonly int limit;
 
 		/// <summary>digest -> (key, record), for dedup and result reconstruction.</summary>
@@ -80,36 +78,66 @@ namespace Aerospike.Client
 			}
 		}
 
-		private TopKReduceSpec(string bin, BinDataType type, Order order, OrderByFlags flags, int limit)
+		private TopKReduceSpec(
+			string bin,
+			BinDataType type,
+			Order order,
+			OrderByFlags flags,
+			string thenBin,
+			BinDataType thenType,
+			Order thenOrder,
+			OrderByFlags thenFlags,
+			int limit)
 		{
 			this.bin = bin;
 			this.type = type;
 			this.order = order;
 			this.flags = flags;
+			this.thenBin = thenBin;
+			this.thenType = thenType;
+			this.thenOrder = thenOrder;
+			this.thenFlags = thenFlags;
 			this.limit = limit;
 		}
 
 		/// <summary>
 		/// Compose an <see cref="OrderByReduceSpec"/> and a <see cref="LimitReduceSpec"/> on the same bin into a
-		/// single <see cref="TopKReduceSpec"/> combiner. Used by <see cref="Reduce.TopK"/> and by
-		/// <see cref="Statement.ResolveReduce"/> when the two specs are set separately.
+		/// single <see cref="TopKReduceSpec"/> combiner.
 		/// </summary>
-		/// <exception cref="ArgumentException">
-		/// if the specs are not exactly one orderBy + one limit, or their bins do not match
-		/// </exception>
 		internal static TopKReduceSpec Compose(ReduceSpec<Record, Record> orderBy, ReduceSpec<Record, Record> limit)
 		{
 			if (orderBy is not OrderByReduceSpec ob || limit is not LimitReduceSpec lim)
 			{
-				throw new ArgumentException("topK requires one orderBy spec and one limit spec");
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"topK requires one orderBy spec and one limit spec");
 			}
 
 			if (!ob.bin.Equals(lim.bin))
 			{
-				throw new ArgumentException(
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 					"orderBy bin (" + ob.bin + ") must match limit bin (" + lim.bin + ")");
 			}
-			return new TopKReduceSpec(ob.bin, ob.type, ob.order, ob.flags, lim.limit);
+			return Create(ob.bin, ob.type, ob.order, ob.flags, null, default, default, default, lim.limit);
+		}
+
+		internal static TopKReduceSpec Create(
+			string bin,
+			BinDataType type,
+			Order order,
+			OrderByFlags flags,
+			string thenBin,
+			BinDataType thenType,
+			Order thenOrder,
+			OrderByFlags thenFlags,
+			int limit)
+		{
+			if (limit < 1 || limit > 1000)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"limit must be in [1, 1000], got: " + limit);
+			}
+
+			return new TopKReduceSpec(bin, type, order, flags, thenBin, thenType, thenOrder, thenFlags, limit);
 		}
 
 		public void AcceptPartial(Record record, Key key)
@@ -117,15 +145,24 @@ namespace Aerospike.Client
 			lock (sync)
 			{
 				byte[] digest = key.digest;
-				OrderKey candidate = new(record, bin, type, order, flags, digest);
+				OrderKey candidate = MakeOrderKey(record, digest);
 
 				// Dedup: at most one row per digest (partition migration may re-scan a record).
+				// PRD R29: keep the most recent version, not the better-ranked copy.
+				// Generation is used until the server includes last-update time on query records
+				// (drift #12); then switch to LUT comparison.
 				if (byDigest.TryGetValue(digest, out Entry existingEntry))
 				{
-					if (candidate.CompareTo(existingEntry.orderKey) >= 0)
+					if (record.generation < existingEntry.record.generation)
 					{
-						return; // existing entry is at least as good.
+						return; // stale rescan
 					}
+
+					if (record.generation == existingEntry.record.generation)
+					{
+						return; // same version already held
+					}
+
 					heap.Remove(existingEntry.orderKey);
 					byDigest.Remove(digest);
 				}
@@ -140,6 +177,17 @@ namespace Aerospike.Client
 					byDigest.Remove(evicted.digest);
 				}
 			}
+		}
+
+		private OrderKey MakeOrderKey(Record record, byte[] digest)
+		{
+			if (thenBin == null)
+			{
+				return new OrderKey(record, bin, type, order, flags, digest);
+			}
+
+			OrderKey secondary = new(record, thenBin, thenType, thenOrder, thenFlags, digest);
+			return new OrderKey(record, bin, type, order, flags, digest, secondary);
 		}
 
 		public Record GetScalarResult()
@@ -167,7 +215,6 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Return the record keys corresponding to <see cref="GetResult"/>, in the same order.
-		/// Used by the query executor to reconstruct key/record pairs for <see cref="RecordSet"/>.
 		/// </summary>
 		internal Key[] GetResultKeys()
 		{

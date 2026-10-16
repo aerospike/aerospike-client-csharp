@@ -43,6 +43,8 @@ namespace Aerospike.Client
 			{
 				Bytes = bytes;
 				this.type = type;
+				// VECTOR particle subtype must participate in cluster capability checks.
+				this.hasVector = type == ParticleType.VECTOR;
 			}
 
 			public override int EstimateSize() => Bytes.Length;

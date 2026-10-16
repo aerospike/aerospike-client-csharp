@@ -161,7 +161,8 @@ namespace Aerospike.Client
 
 		private bool SupportsTopKPushdown(List<NodePartitions> list)
 		{
-			if (!statement.HasTopK)
+			// Also true for order-by without top-k so ORDER_BY is sent and the server rejects it.
+			if (!statement.HasTopK && !statement.HasOrderBy)
 			{
 				return false;
 			}
@@ -170,6 +171,13 @@ namespace Aerospike.Client
 			{
 				if (!nodePartitions.node.HasQueryOrderBy)
 				{
+					// Top-K was already rejected at ValidateTopK when the whole cluster lacks
+					// support; a node that loses the feature mid-query must not soft-fallback.
+					if (statement.HasTopK)
+					{
+						throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+							"Top-K requires every node in the cluster to support query order-by");
+					}
 					return false;
 				}
 			}

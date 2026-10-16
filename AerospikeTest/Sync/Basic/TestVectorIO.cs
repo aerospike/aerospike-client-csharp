@@ -78,14 +78,28 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void EmptyVectorRejectedByClient()
+		{
+			// Of* rejects empty arrays before any round trip (CLIENT-5686 / PRD R30).
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat32(Array.Empty<float>()));
+		}
+
+		[TestMethod]
 		public void EmptyVectorWriteRejectedByServer()
 		{
+			// Bypass Vector.Of* and send a raw zero-dimension VECTOR particle so the
+			// server still rejects malformed wire data.
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "vecempty");
 			client.Delete(null, key);
 
+			byte[] empty = new byte[Vector.HEADER_SIZE];
+			empty[0] = Vector.VERSION;
+			empty[1] = (byte)Vector.ElementType.FLOAT32;
+			ByteUtil.IntToLittleBytes(0, empty, 2);
+
 			try
 			{
-				client.Put(null, key, new Bin(BinName, Vector.OfFloat32(Array.Empty<float>())));
+				client.Put(null, key, new Bin(BinName, new Value.BytesValue(empty, ParticleType.VECTOR)));
 				Assert.Fail("Expected PARAMETER_ERROR for zero-dimension vector");
 			}
 			catch (AerospikeException e)
@@ -95,36 +109,29 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void VectorInListBin()
+		public void VectorInListBinRejected()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "veclistbin");
 			client.Delete(null, key);
 
 			Vector v = Vector.OfInt32(new int[] { 1, 2, 3 });
-			client.Put(null, key, new Bin("listbin", new List<object> { v }));
-
-			Record record = client.Get(null, key);
-			AssertRecordFound(key, record);
-
-			IList list = record.GetList("listbin");
-			Assert.AreEqual(1, list.Count);
-			Assert.AreEqual(v, list[0]);
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => client.Put(null, key, new Bin("listbin", new List<object> { v })));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
 		[TestMethod]
-		public void VectorInMapBin()
+		public void VectorInMapBinRejected()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "vecmapbin");
 			client.Delete(null, key);
 
 			Vector v = Vector.OfFloat32(new float[] { 1.5f, 2.5f });
-			client.Put(null, key, new Bin("mapbin", new Dictionary<object, object> { { "k", v } }));
-
-			Record record = client.Get(null, key);
-			AssertRecordFound(key, record);
-
-			IDictionary map = record.GetMap("mapbin");
-			Assert.AreEqual(v, map["k"]);
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => client.Put(null, key, new Bin("mapbin", new Dictionary<object, object> { { "k", v } })));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
 		[TestMethod]

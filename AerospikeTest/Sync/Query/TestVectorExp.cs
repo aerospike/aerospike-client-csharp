@@ -70,7 +70,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterByEuclideanDistance()
 		{
-			AssertFilterIds(VectorDistanceMetric.EUCLIDEAN, false, 0.01, 5);
+			AssertFilterIds(VectorDistanceMetric.EUCLIDEAN_SQUARED, false, 0.01, 5);
 		}
 
 		[TestMethod]
@@ -82,7 +82,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FilterByCosineDistance()
 		{
-			AssertFilterIds(VectorDistanceMetric.COSINE, true, 0.999999, 5);
+			AssertFilterIds(VectorDistanceMetric.COSINE_SIMILARITY, true, 0.999999, 5);
 		}
 
 		[TestMethod]
@@ -145,7 +145,7 @@ namespace Aerospike.Test
 
 				Record record = client.Operate(null, key,
 					ExpOperation.Read("distance",
-						Exp.Build(VectorExp.Distance(VectorDistanceMetric.EUCLIDEAN, Query(0), Exp.VectorBin(VecBin))),
+						Exp.Build(VectorExp.Distance(VectorDistanceMetric.EUCLIDEAN_SQUARED, Query(0), Exp.VectorBin(VecBin))),
 						ExpReadFlags.EVAL_NO_FAIL));
 
 				Assert.IsNull(record.GetValue("distance"));
@@ -170,7 +170,7 @@ namespace Aerospike.Test
 			[
 				Operation.Get(IdBin),
 				ExpOperation.Read(distBin,
-					Exp.Build(VectorExp.Distance(VectorDistanceMetric.EUCLIDEAN, Query(0), Exp.VectorBin(VecBin))),
+					Exp.Build(VectorExp.Distance(VectorDistanceMetric.EUCLIDEAN_SQUARED, Query(0), Exp.VectorBin(VecBin))),
 					ExpReadFlags.DEFAULT)
 			];
 			stmt.SetOrderBy(distBin, BinDataType.DOUBLE, Order.ASC);

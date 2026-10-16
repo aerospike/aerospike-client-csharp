@@ -36,7 +36,12 @@ namespace Aerospike.Test
 
 		private static Record Record(string binName, object value)
 		{
-			return new Record(new Dictionary<string, object> { { binName, value } }, 1, 0);
+			return Record(binName, value, 1);
+		}
+
+		private static Record Record(string binName, object value, int generation)
+		{
+			return new Record(new Dictionary<string, object> { { binName, value } }, generation, 0);
 		}
 
 		//-------------------------------------------------------
@@ -101,35 +106,138 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void TopKDedupesSameDigestKeepingBetterValue()
+		public void TopKDedupesSameDigestKeepingNewestGeneration()
 		{
 			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 5);
 
 			Key k1 = Key("k1");
 
-			reducer.AcceptPartial(Record(Bin, 1L), k1);
-			reducer.AcceptPartial(Record(Bin, 1L), Key("k2"));
-			reducer.AcceptPartial(Record(Bin, 9L), k1);
+			reducer.AcceptPartial(Record(Bin, 1L, 1), k1);
+			reducer.AcceptPartial(Record(Bin, 1L, 1), Key("k2"));
+			// Newer generation replaces even when the order key is worse for DESC.
+			reducer.AcceptPartial(Record(Bin, 0L, 2), k1);
 
 			Record[] result = reducer.GetResult();
 			Assert.AreEqual(2, result.Length);
-			Assert.AreEqual(9L, result[0].GetLong(Bin));
-			Assert.AreEqual(1L, result[1].GetLong(Bin));
+			Assert.AreEqual(1L, result[0].GetLong(Bin));
+			Assert.AreEqual(0L, result[1].GetLong(Bin));
+			Assert.AreEqual(2, result[1].generation);
 		}
 
 		[TestMethod]
-		public void TopKDedupeIgnoresWorseRescan()
+		public void TopKDedupeIgnoresStaleGenerationEvenIfBetterRanked()
 		{
 			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 5);
 
 			Key k1 = Key("k1");
 
-			reducer.AcceptPartial(Record(Bin, 9L), k1);
-			reducer.AcceptPartial(Record(Bin, 1L), k1);
+			reducer.AcceptPartial(Record(Bin, 1L, 3), k1);
+			// Older generation with a "better" DESC value must not win (R29).
+			reducer.AcceptPartial(Record(Bin, 9L, 1), k1);
 
 			Record[] result = reducer.GetResult();
 			Assert.AreEqual(1, result.Length);
-			Assert.AreEqual(9L, result[0].GetLong(Bin));
+			Assert.AreEqual(1L, result[0].GetLong(Bin));
+			Assert.AreEqual(3, result[0].generation);
+		}
+
+		[TestMethod]
+		public void TopKNegativeZeroEqualsPositiveZero()
+		{
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.DOUBLE, Order.ASC, OrderByFlags.NONE, 2);
+
+			Key neg = Key("neg");
+			Key pos = Key("pos");
+			Key one = Key("one");
+
+			reducer.AcceptPartial(Record(Bin, -0.0), neg);
+			reducer.AcceptPartial(Record(Bin, 0.0), pos);
+			reducer.AcceptPartial(Record(Bin, 1.0), one);
+
+			Record[] result = reducer.GetResult();
+			Assert.AreEqual(2, result.Length);
+			// −0.0 and 0.0 tie; digest ascending decides which comes first.
+			Assert.AreEqual(0.0, result[0].GetDouble(Bin));
+			Assert.AreEqual(0.0, result[1].GetDouble(Bin));
+
+			TopKReduceSpec typed = (TopKReduceSpec)reducer;
+			Key[] keys = typed.GetResultKeys();
+			Assert.AreEqual(2, keys.Length);
+			int digestCmp = CompareDigests(keys[0].digest, keys[1].digest);
+			Assert.IsTrue(digestCmp < 0, "tied zeros must sort by digest ascending");
+		}
+
+		private static int CompareDigests(byte[] a, byte[] b)
+		{
+			int len = Math.Min(a.Length, b.Length);
+
+			for (int i = 0; i < len; i++)
+			{
+				int cmp = (a[i] & 0xff) - (b[i] & 0xff);
+
+				if (cmp != 0)
+				{
+					return cmp;
+				}
+			}
+			return a.Length - b.Length;
+		}
+
+		[TestMethod]
+		public void TopKIntegerAcceptsBoxedInt()
+		{
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 2);
+
+			reducer.AcceptPartial(Record(Bin, 1), Key("k1"));
+			reducer.AcceptPartial(Record(Bin, 9), Key("k2"));
+			reducer.AcceptPartial(Record(Bin, 5), Key("k3"));
+
+			Record[] result = reducer.GetResult();
+			Assert.AreEqual(2, result.Length);
+			// Hand-built records store boxed int; assert via GetValue (GetLong expects long).
+			Assert.AreEqual(9, result[0].GetValue(Bin));
+			Assert.AreEqual(5, result[1].GetValue(Bin));
+		}
+
+		[TestMethod]
+		public void TopKThenOrderByBreaksPrimaryTies()
+		{
+			const string thenBin = "ts";
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(
+				Bin, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE,
+				thenBin, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE,
+				2);
+
+			reducer.AcceptPartial(RecordTwo(Bin, 10L, thenBin, 30L), Key("late"));
+			reducer.AcceptPartial(RecordTwo(Bin, 10L, thenBin, 10L), Key("early"));
+			reducer.AcceptPartial(RecordTwo(Bin, 10L, thenBin, 20L), Key("mid"));
+			reducer.AcceptPartial(RecordTwo(Bin, 5L, thenBin, 1L), Key("low"));
+
+			Record[] result = reducer.GetResult();
+			Assert.AreEqual(2, result.Length);
+			Assert.AreEqual(10L, result[0].GetLong(Bin));
+			Assert.AreEqual(10L, result[0].GetLong(thenBin));
+			Assert.AreEqual(10L, result[1].GetLong(Bin));
+			Assert.AreEqual(20L, result[1].GetLong(thenBin));
+		}
+
+		[TestMethod]
+		public void TopKTwoKeyRejectsOutOfRangeLimit()
+		{
+			AerospikeException ex = Assert.Throws<AerospikeException>(() => Reduce.TopK(
+				Bin, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE,
+				"ts", BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE,
+				0));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ex.Result);
+		}
+
+		private static Record RecordTwo(string binA, object valueA, string binB, object valueB)
+		{
+			return new Record(new Dictionary<string, object>
+			{
+				{ binA, valueA },
+				{ binB, valueB }
+			}, 1, 0);
 		}
 
 		[TestMethod]
@@ -174,8 +282,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void LimitRejectsOutOfRangeValues()
 		{
-			Assert.Throws<ArgumentException>(() => Reduce.Limit(Bin, 0));
-			Assert.Throws<ArgumentException>(() => Reduce.Limit(Bin, 1001));
+			Assert.Throws<AerospikeException>(() => Reduce.Limit(Bin, 0));
+			Assert.Throws<AerospikeException>(() => Reduce.Limit(Bin, 1001));
 		}
 
 		[TestMethod]
@@ -183,7 +291,7 @@ namespace Aerospike.Test
 		{
 			ReduceSpec<Record, Record> orderBy = Reduce.OrderBy(Bin, BinDataType.INTEGER, Order.ASC, OrderByFlags.NONE);
 
-			Assert.Throws<NotSupportedException>(() => orderBy.AcceptPartial(Record(Bin, 1L), Key("k1")));
+			Assert.Throws<AerospikeException>(() => orderBy.AcceptPartial(Record(Bin, 1L), Key("k1")));
 		}
 
 		[TestMethod]
@@ -191,7 +299,7 @@ namespace Aerospike.Test
 		{
 			ReduceSpec<Record, Record> limit = Reduce.Limit(Bin, 5);
 
-			Assert.Throws<NotSupportedException>(() => limit.AcceptPartial(Record(Bin, 1L), Key("k1")));
+			Assert.Throws<AerospikeException>(() => limit.AcceptPartial(Record(Bin, 1L), Key("k1")));
 		}
 
 		[TestMethod]
@@ -199,7 +307,8 @@ namespace Aerospike.Test
 		{
 			Statement stmt = new();
 
-			Assert.Throws<InvalidOperationException>(() => stmt.SetTopK(5));
+			AerospikeException ex = Assert.Throws<AerospikeException>(() => stmt.SetTopK(5));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ex.Result);
 		}
 
 		[TestMethod]

@@ -197,8 +197,8 @@ namespace Aerospike.Client
 				PackUtil.Init(packer, ctx);
 				packer.PackArrayBegin(5);
 				packer.PackNumber(MapOperation.PUT);
-				key.Pack(packer);
-				value.Pack(packer);
+				packer.PackNested(key);
+				packer.PackNested(value);
 				packer.PackNumber(policy.attributes);
 				packer.PackNumber(policy.flags);
 			}
@@ -210,16 +210,16 @@ namespace Aerospike.Client
 					PackUtil.Init(packer, ctx);
 					packer.PackArrayBegin(3);
 					packer.PackNumber(policy.itemCommand);
-					key.Pack(packer);
-					value.Pack(packer);
+					packer.PackNested(key);
+					packer.PackNested(value);
 				}
 				else
 				{
 					PackUtil.Init(packer, ctx);
 					packer.PackArrayBegin(4);
 					packer.PackNumber(policy.itemCommand);
-					key.Pack(packer);
-					value.Pack(packer);
+					packer.PackNested(key);
+					packer.PackNested(value);
 					packer.PackNumber(policy.attributes);
 				}
 			}

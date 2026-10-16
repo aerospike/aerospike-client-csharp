@@ -33,7 +33,7 @@ namespace Aerospike.Client
 		/// // Records whose "embedding" vector is within cosine distance threshold of a query
 		/// Vector query = Vector.OfFloat32(queryEmbedding);
 		/// Exp.GT(
-		///   VectorExp.Distance(VectorDistanceMetric.COSINE, query, Exp.VectorBin("embedding")),
+		///   VectorExp.Distance(VectorDistanceMetric.COSINE_SIMILARITY, query, Exp.VectorBin("embedding")),
 		///   Exp.Val(0.8))
 		/// </code>
 		/// </example>
@@ -46,6 +46,12 @@ namespace Aerospike.Client
 			{
 				throw new ArgumentNullException(nameof(query));
 			}
+
+			if (bin is null)
+			{
+				throw new ArgumentNullException(nameof(bin));
+			}
+
 			return new Exp.VectorDist(Exp.VectorDistOpcode(metric), query, bin);
 		}
 

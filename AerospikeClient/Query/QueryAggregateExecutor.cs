@@ -60,7 +60,7 @@ namespace Aerospike.Client
 
 				foreach (Value value in statement.functionArgs)
 				{
-					args[count++] = value.Object;
+					args[count++] = ValueToLuaArg(value);
 				}
 				lua.Call("apply_stream", args);
 			}
@@ -145,6 +145,36 @@ namespace Aerospike.Client
 			{
 				return resultSet;
 			}
+		}
+
+		/// <summary>
+		/// Convert a stream-UDF argument for client-side Lua. Vectors are passed as bytes
+		/// (wire layout), matching HyperLogLog (PRD R72).
+		/// </summary>
+		private static object ValueToLuaArg(Value value)
+		{
+			if (value is Value.VectorValue vv)
+			{
+				byte[] buf = new byte[vv.Vector.GetWireSize()];
+				vv.Vector.WriteTo(buf, 0);
+				return new LuaBytes(buf);
+			}
+
+			object obj = value.Object;
+
+			if (obj is Vector vector)
+			{
+				byte[] buf = new byte[vector.GetWireSize()];
+				vector.WriteTo(buf, 0);
+				return new LuaBytes(buf);
+			}
+
+			if (obj is byte[] bytes)
+			{
+				return new LuaBytes(bytes);
+			}
+
+			return obj;
 		}
 	}
 }

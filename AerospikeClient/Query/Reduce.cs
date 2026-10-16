@@ -19,53 +19,54 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Factory for <see cref="ReduceSpec{TInput, TResult}"/> instances used with
 	/// <see cref="Statement.SetReduce(ReduceSpec{Record, Record}[])"/>.
-	/// <para>
-	/// Supports ordered LIMIT k reduces (<see cref="TopK"/>, or <see cref="OrderBy"/> +
-	/// <see cref="Limit"/> passed together) - returns up to k full records, globally ordered.
-	/// </para>
+	/// Internal until a public aggregation API exists; use
+	/// <see cref="Statement.SetOrderBy(string, BinDataType, Order)"/> /
+	/// <see cref="Statement.ThenOrderBy(string, BinDataType, Order)"/> /
+	/// <see cref="Statement.SetTopK(int)"/>.
 	/// </summary>
-	public static class Reduce
+	internal static class Reduce
 	{
 		/// <summary>
-		/// Ordered LIMIT k reduce; returns up to <paramref name="k"/> full records in global sort order
-		/// (e.g. vector search Top-K, <c>ORDER BY bin LIMIT k</c>).
+		/// Ordered LIMIT k reduce; returns up to <paramref name="k"/> full records in global sort order.
 		/// </summary>
-		/// <param name="bin">
-		/// bin name to order by; must be a physical bin or a projected bin from
-		/// <see cref="Statement.Operations"/>
-		/// </param>
-		/// <param name="type">scalar type of <paramref name="bin"/></param>
-		/// <param name="order">sort direction</param>
-		/// <param name="flags">
-		/// comparison options (<see cref="OrderByFlags.CASE_INSENSITIVE"/> for
-		/// <see cref="BinDataType.STRING"/> only)
-		/// </param>
-		/// <param name="k">maximum number of records to return, in [1, 1000]</param>
-		public static ReduceSpec<Record, Record> TopK(string bin, BinDataType type, Order order, OrderByFlags flags, int k)
+		internal static ReduceSpec<Record, Record> TopK(string bin, BinDataType type, Order order, OrderByFlags flags, int k)
 		{
 			return TopKReduceSpec.Compose(OrderBy(bin, type, order, flags), Limit(bin, k));
 		}
 
 		/// <summary>
-		/// Sort-order building block for <see cref="TopK"/>. Must be paired with
-		/// <see cref="Limit(string, int)"/> on the same bin via
-		/// <see cref="Statement.SetReduce(ReduceSpec{Record, Record}[])"/>; using it alone throws
-		/// <see cref="NotSupportedException"/>.
+		/// Ordered LIMIT k reduce with a primary and secondary (tie-breaker) order key.
 		/// </summary>
-		public static ReduceSpec<Record, Record> OrderBy(string bin, BinDataType type, Order order, OrderByFlags flags)
+		internal static ReduceSpec<Record, Record> TopK(
+			string bin,
+			BinDataType type,
+			Order order,
+			OrderByFlags flags,
+			string thenBin,
+			BinDataType thenType,
+			Order thenOrder,
+			OrderByFlags thenFlags,
+			int k)
+		{
+			return TopKReduceSpec.Create(bin, type, order, flags, thenBin, thenType, thenOrder, thenFlags, k);
+		}
+
+		/// <summary>
+		/// Sort-order building block for single-key Top-K. Must be paired with
+		/// <see cref="Limit(string, int)"/> on the same bin via
+		/// <see cref="Statement.SetReduce(ReduceSpec{Record, Record}[])"/>.
+		/// </summary>
+		internal static ReduceSpec<Record, Record> OrderBy(string bin, BinDataType type, Order order, OrderByFlags flags)
 		{
 			return new OrderByReduceSpec(bin, type, order, flags);
 		}
 
 		/// <summary>
-		/// Cap building block for <see cref="TopK"/>. Must be paired with
+		/// Cap building block for single-key Top-K. Must be paired with
 		/// <see cref="OrderBy(string, BinDataType, Order, OrderByFlags)"/> on the same bin via
-		/// <see cref="Statement.SetReduce(ReduceSpec{Record, Record}[])"/>; using it alone throws
-		/// <see cref="NotSupportedException"/>.
+		/// <see cref="Statement.SetReduce(ReduceSpec{Record, Record}[])"/>.
 		/// </summary>
-		/// <param name="bin">bin name; must match the paired <c>OrderBy</c> bin</param>
-		/// <param name="limit">maximum number of records to return, in [1, 1000]</param>
-		public static ReduceSpec<Record, Record> Limit(string bin, int limit)
+		internal static ReduceSpec<Record, Record> Limit(string bin, int limit)
 		{
 			return new LimitReduceSpec(bin, limit);
 		}

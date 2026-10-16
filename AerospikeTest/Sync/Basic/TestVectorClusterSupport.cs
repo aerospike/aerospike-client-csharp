@@ -36,7 +36,7 @@ namespace Aerospike.Test
 				Internals.SetVectorSupported(this, vectorSupported);
 			}
 
-			protected override int SizeBuffer()
+			protected internal override int SizeBuffer()
 			{
 				if (dataBuffer == null || dataBuffer.Length < dataOffset)
 				{
@@ -45,11 +45,11 @@ namespace Aerospike.Test
 				return dataBuffer.Length;
 			}
 
-			protected override void End()
+			protected internal override void End()
 			{
 			}
 
-			protected override void SetLength(int length)
+			protected internal override void SetLength(int length)
 			{
 			}
 		}
@@ -60,7 +60,7 @@ namespace Aerospike.Test
 		{
 			return Exp.Build(
 				Exp.GT(
-					VectorExp.Distance(VectorDistanceMetric.COSINE, Vec, Exp.VectorBin("v")),
+					VectorExp.Distance(VectorDistanceMetric.COSINE_SIMILARITY, Vec, Exp.VectorBin("v")),
 					Exp.Val(0.5)));
 		}
 
@@ -143,28 +143,47 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void ListOperationVector()
+		public void ListOperationVectorRejected()
 		{
-			Assert.IsTrue(Internals.HasVector(ListOperation.Append("v", Value.Get(Vec)).value));
 			Assert.IsFalse(Internals.HasVector(ListOperation.Append("v", Value.Get(1)).value));
-			Assert.IsTrue(Internals.HasVector(ListOperation.AppendItems("v", new List<object> { Value.Get(Vec) }).value));
-			Assert.IsTrue(Internals.HasVector(ListOperation.InsertItems("v", 0, new List<object> { Value.Get(Vec) }).value));
+
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => ListOperation.Append("v", Value.Get(Vec)));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
+
+			e = Assert.Throws<AerospikeException>(
+				() => ListOperation.AppendItems("v", new List<object> { Value.Get(Vec) }));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+
+			e = Assert.Throws<AerospikeException>(
+				() => ListOperation.InsertItems("v", 0, new List<object> { Value.Get(Vec) }));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
 		}
 
 		[TestMethod]
-		public void MapOperationVector()
+		public void MapOperationVectorRejected()
 		{
-			Assert.IsTrue(Internals.HasVector(MapOperation.Put(MapPolicy.Default, "m", Value.Get("k"), Value.Get(Vec)).value));
 			Assert.IsFalse(Internals.HasVector(MapOperation.Put(MapPolicy.Default, "m", Value.Get("k"), Value.Get(1)).value));
 
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => MapOperation.Put(MapPolicy.Default, "m", Value.Get("k"), Value.Get(Vec)));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
+
 			Dictionary<object, object> items = new() { { Value.Get("k"), Value.Get(Vec) } };
-			Assert.IsTrue(Internals.HasVector(MapOperation.PutItems(MapPolicy.Default, "m", items).value));
+			e = Assert.Throws<AerospikeException>(
+				() => MapOperation.PutItems(MapPolicy.Default, "m", items));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
 		}
 
 		[TestMethod]
-		public void HllOperationVector()
+		public void HllOperationVectorRejected()
 		{
-			Assert.IsTrue(Internals.HasVector(HLLOperation.Add(HLLPolicy.Default, "h", new List<object> { Value.Get(Vec) }).value));
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => HLLOperation.Add(HLLPolicy.Default, "h", new List<object> { Value.Get(Vec) }));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
 		[TestMethod]
@@ -205,15 +224,23 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void WriteVectorInListBinFailsWhenUnsupported()
+		public void WriteVectorInListBinRejectedEvenWhenSupported()
 		{
-			AssertWriteThrows(new Bin("v", new List<object> { Vec }));
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => NewCommand(true).SetWrite(new WritePolicy(), Operation.Type.WRITE, Key,
+					new Bin[] { new Bin("v", new List<object> { Vec }) }));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
 		[TestMethod]
-		public void WriteVectorInMapBinFailsWhenUnsupported()
+		public void WriteVectorInMapBinRejectedEvenWhenSupported()
 		{
-			AssertWriteThrows(new Bin("v", new Dictionary<object, object> { { "k", Vec } }));
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => NewCommand(true).SetWrite(new WritePolicy(), Operation.Type.WRITE, Key,
+					new Bin[] { new Bin("v", new Dictionary<object, object> { { "k", Vec } }) }));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
 		[TestMethod]
@@ -240,16 +267,12 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void OperateVectorCdtFailsWhenUnsupported()
+		public void OperateVectorCdtRejectedAtPack()
 		{
-			Operation[] ops = new Operation[] { ListOperation.Append("v", Value.Get(Vec)) };
-			WritePolicy wp = new();
-			OperateArgs args = new(wp, null, null, ops);
-
 			AerospikeException e = Assert.Throws<AerospikeException>(
-				() => NewCommand(false).SetOperate(args.writePolicy, Key, args));
+				() => ListOperation.Append("v", Value.Get(Vec)));
 			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
-			Assert.IsTrue(e.Message.Contains(ExpectedMessage));
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
 		[TestMethod]

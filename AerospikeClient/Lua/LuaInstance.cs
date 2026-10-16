@@ -216,6 +216,9 @@ namespace Aerospike.Client
 					return ByteUtil.BytesToDouble(buf, offset);
 
 				case ParticleType.BLOB:
+				case ParticleType.HLL:
+				case ParticleType.VECTOR:
+					// HLL and VECTOR are opaque byte payloads in client-side Lua (PRD R72).
 					byte[] dest = new byte[len];
 					Array.Copy(buf, offset, dest, 0, len);
 					return new LuaBytes(dest);

@@ -151,6 +151,9 @@ namespace Aerospike.Client
 		// Does cluster support query by partition.
 		internal bool hasPartitionQuery;
 
+		// Does every node support query ORDER BY / Top-K pushdown.
+		internal bool hasQueryOrderBy;
+
 		// Does cluster support native vectors.
 		internal bool hasVector;
 
@@ -836,6 +839,7 @@ namespace Aerospike.Client
 				AddNode(peer);
 			}
 			hasPartitionQuery = Cluster.SupportsPartitionQuery(nodeArray);
+			hasQueryOrderBy = Cluster.SupportsQueryOrderBy(nodeArray);
 			hasVector = Cluster.SupportsVector(nodeArray);
 
 			// Replace nodes with copy.
@@ -865,6 +869,7 @@ namespace Aerospike.Client
 				AddNode(node);
 			}
 			hasPartitionQuery = Cluster.SupportsPartitionQuery(nodeArray);
+			hasQueryOrderBy = Cluster.SupportsQueryOrderBy(nodeArray);
 			hasVector = Cluster.SupportsVector(nodeArray);
 
 			// Replace nodes with copy.
@@ -964,6 +969,7 @@ namespace Aerospike.Client
 				nodeArray = nodeArray2;
 			}
 			hasPartitionQuery = Cluster.SupportsPartitionQuery(nodeArray);
+			hasQueryOrderBy = Cluster.SupportsQueryOrderBy(nodeArray);
 			hasVector = Cluster.SupportsVector(nodeArray);
 
 			// Replace nodes with copy.
@@ -1503,6 +1509,23 @@ namespace Aerospike.Client
 			foreach (Node node in nodes)
 			{
 				if (!node.HasPartitionQuery)
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
+		private static bool SupportsQueryOrderBy(Node[] nodes)
+		{
+			if (nodes.Length == 0)
+			{
+				return false;
+			}
+
+			foreach (Node node in nodes)
+			{
+				if (!node.HasQueryOrderBy)
 				{
 					return false;
 				}

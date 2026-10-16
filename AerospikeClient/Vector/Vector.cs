@@ -193,15 +193,20 @@ namespace Aerospike.Client
 			int pos = offset;
 
 			byte version = buffer[pos++];
+
+			if (version != VERSION)
+			{
+				throw new ArgumentException(
+					"Unsupported vector format version " + version + " (expected " + VERSION + ")");
+			}
+
 			ElementType elementType = ElementTypeFromCode(buffer[pos++]);
 			int dimensions = ByteUtil.LittleBytesToInt(buffer, pos);
 			pos += DIMENSIONS_SIZE;
 
-			// Permissive decode: allow dims == 0 (server rejects zero-dim writes).
-			// Negative dims indicate a corrupt header.
-			if (dimensions < 0)
+			if (dimensions < 1)
 			{
-				throw new ArgumentException("Invalid vector dimensions: " + dimensions);
+				throw new ArgumentException("Vector must have at least 1 dimension");
 			}
 
 			// Use long math so a large dimensions count cannot overflow the int size computation
@@ -227,35 +232,39 @@ namespace Aerospike.Client
 		/// raw 16-bit bit pattern.
 		/// </summary>
 		public static Vector OfFloat16(short[] data) =>
-			new(VERSION, ElementType.FLOAT16, RequireNonNull(data, nameof(data)).Length, (short[])data.Clone());
+			new(VERSION, ElementType.FLOAT16, RequireNonEmpty(data, nameof(data)).Length, (short[])data.Clone());
 
 		/// <summary>
 		/// Create a vector of int32 elements.
 		/// </summary>
 		public static Vector OfInt32(int[] data) =>
-			new(VERSION, ElementType.INT32, RequireNonNull(data, nameof(data)).Length, (int[])data.Clone());
+			new(VERSION, ElementType.INT32, RequireNonEmpty(data, nameof(data)).Length, (int[])data.Clone());
 
 		/// <summary>
 		/// Create a vector of float (fp32) elements.
 		/// </summary>
 		public static Vector OfFloat32(float[] data) =>
-			new(VERSION, ElementType.FLOAT32, RequireNonNull(data, nameof(data)).Length, (float[])data.Clone());
+			new(VERSION, ElementType.FLOAT32, RequireNonEmpty(data, nameof(data)).Length, (float[])data.Clone());
 
 		/// <summary>
 		/// Create a vector of double (fp64) elements.
 		/// </summary>
 		public static Vector OfFloat64(double[] data) =>
-			new(VERSION, ElementType.FLOAT64, RequireNonNull(data, nameof(data)).Length, (double[])data.Clone());
+			new(VERSION, ElementType.FLOAT64, RequireNonEmpty(data, nameof(data)).Length, (double[])data.Clone());
 
 		/// <summary>
-		/// Empty arrays are allowed locally; the server rejects zero-dimension writes
-		/// with PARAMETER_ERROR (cross-client rule matching Java).
+		/// Reject null and empty arrays; empty vectors are invalid (PRD R30).
 		/// </summary>
-		private static T[] RequireNonNull<T>(T[] data, string paramName)
+		private static T[] RequireNonEmpty<T>(T[] data, string paramName)
 		{
 			if (data is null)
 			{
 				throw new ArgumentNullException(paramName);
+			}
+
+			if (data.Length == 0)
+			{
+				throw new ArgumentException("Vector must have at least 1 dimension", paramName);
 			}
 			return data;
 		}

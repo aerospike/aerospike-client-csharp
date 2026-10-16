@@ -396,42 +396,34 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void UnpackerDeserializesNestedVector()
+		public void PackerRejectsNestedVectorValueInList()
 		{
 			Vector v = Vector.OfInt32(new int[] { 1, 2, 3 });
 			Packer packer = new Packer();
-			packer.PackList(new List<object> { Value.Get(v) });
-			byte[] packed = packer.ToByteArray();
-
-			Unpacker unpacker = new Unpacker(packed, 0, packed.Length, false);
-			IList unpackedList = (IList)unpacker.UnpackObject();
-			Assert.AreEqual(1, unpackedList.Count);
-			Assert.IsInstanceOfType(unpackedList[0], typeof(Vector));
-			Assert.AreEqual(v, unpackedList[0]);
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => packer.PackList(new List<object> { Value.Get(v) }));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
 		[TestMethod]
-		public void UnpackerRoundTripsRawVectorInList()
+		public void PackerRejectsNestedRawVectorInList()
 		{
 			Vector v = Vector.OfFloat32(new float[] { 1.5f, -2.25f, 3.0f });
-			byte[] packed = Packer.Pack(new List<object> { v });
-
-			Unpacker unpacker = new Unpacker(packed, 0, packed.Length, false);
-			IList unpackedList = (IList)unpacker.UnpackObject();
-			Assert.AreEqual(1, unpackedList.Count);
-			Assert.IsInstanceOfType(unpackedList[0], typeof(Vector));
-			Assert.AreEqual(v, unpackedList[0]);
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => Packer.Pack(new List<object> { v }));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
 		[TestMethod]
-		public void BinWithRawVectorInListPacksSuccessfully()
+		public void BinWithRawVectorInListRejected()
 		{
 			Vector v = Vector.OfInt32(new int[] { 1, 2, 3 });
 			Bin bin = new Bin("veclist", new List<object> { v });
-
-			byte[] buffer = new byte[bin.value.EstimateSize()];
-			int written = bin.value.Write(buffer, 0);
-			Assert.AreEqual(buffer.Length, written);
+			AerospikeException e = Assert.Throws<AerospikeException>(() => bin.value.EstimateSize());
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
 		[TestMethod]
@@ -449,6 +441,20 @@ namespace Aerospike.Test
 		public void GetVectorNull()
 		{
 			Assert.AreSame(Value.AsNull, Value.Get((Vector)null));
+		}
+
+		[TestMethod]
+		public void VectorValueRejectsNull()
+		{
+			Assert.Throws<ArgumentNullException>(() => new Value.VectorValue(null));
+		}
+
+		[TestMethod]
+		public void VectorExpDistanceRejectsNullBin()
+		{
+			Vector query = Vector.OfFloat32(new float[] { 1.0f });
+			Assert.Throws<ArgumentNullException>(() =>
+				VectorExp.Distance(VectorDistanceMetric.EUCLIDEAN_SQUARED, query, null));
 		}
 
 		[TestMethod]
@@ -594,7 +600,7 @@ namespace Aerospike.Test
 		public void VectorExpDistancePacks()
 		{
 			Vector query = Vector.OfFloat32(new float[] { 1.0f, 0.0f });
-			Exp exp = VectorExp.Distance(VectorDistanceMetric.COSINE, query, Exp.VectorBin("emb"));
+			Exp exp = VectorExp.Distance(VectorDistanceMetric.COSINE_SIMILARITY, query, Exp.VectorBin("emb"));
 
 			Packer packer = new Packer();
 			exp.Pack(packer);
@@ -627,8 +633,26 @@ namespace Aerospike.Test
 		public void BytesValueVectorFlag()
 		{
 			byte[] bytes = new byte[] { 1, 2, 3 };
-			Assert.IsFalse(Internals.HasVector(Value.Get(bytes)));
+			// Explicit false so a leftover PackUtil ThreadStatic flag cannot flunk this check.
+			Assert.IsFalse(Internals.HasVector(Value.Get(bytes, false)));
 			Assert.IsTrue(Internals.HasVector(Value.Get(bytes, true)));
+		}
+
+		[TestMethod]
+		public void ValueGetBytesAbsorbsPackUtilHasVectorFlag()
+		{
+			Packer packer = new Packer();
+			packer.PackVector(Vector.OfInt32(new int[] { 1, 2 }));
+			byte[] bytes = Internals.PackUtilFinish(packer);
+
+			// Value.Get(byte[]) must absorb PackUtil's ThreadStatic flag into BytesValue
+			// and clear it so a later Exp.Module does not inherit a stale true.
+			Value value = Value.Get(bytes);
+			Assert.IsTrue(Internals.HasVector(value));
+			Assert.IsFalse(Internals.ConsumeLastHasVector());
+
+			Expression exp = Exp.Build(ListExp.Size(Exp.ListBin("l")));
+			Assert.IsFalse(Internals.HasVector(exp));
 		}
 
 		[TestMethod]
@@ -649,7 +673,7 @@ namespace Aerospike.Test
 		public void ExpressionFromVectorExpReportsHasVector()
 		{
 			Vector query = Vector.OfFloat32(new float[] { 1.0f, 0.0f });
-			Expression exp = Exp.Build(VectorExp.Distance(VectorDistanceMetric.COSINE, query, Exp.VectorBin("emb")));
+			Expression exp = Exp.Build(VectorExp.Distance(VectorDistanceMetric.COSINE_SIMILARITY, query, Exp.VectorBin("emb")));
 			Assert.IsTrue(Internals.HasVector(exp));
 
 			Expression plain = Exp.Build(Exp.EQ(Exp.IntBin("a"), Exp.Val(1)));

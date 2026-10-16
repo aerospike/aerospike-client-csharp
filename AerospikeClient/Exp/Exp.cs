@@ -316,7 +316,7 @@ namespace Aerospike.Client
 		/// <code>
 		/// // Cosine distance between vector bin "v" and a query vector > 0.8
 		/// Exp.GT(
-		///   VectorExp.Distance(VectorDistanceMetric.COSINE, query, Exp.VectorBin("v")),
+		///   VectorExp.Distance(VectorDistanceMetric.COSINE_SIMILARITY, query, Exp.VectorBin("v")),
 		///   Exp.Val(0.8))
 		/// </code>
 		/// </example>
@@ -1778,15 +1778,17 @@ namespace Aerospike.Client
 				packer.PackNumber(opcode);
 				bin.Pack(packer);
 				// Match Java VectorDist: pack wire bytes as BLOB (not VECTOR particle type).
+				// Server build_vector_distance requires BLOB rtypes; build_value_blob
+				// strips the particle-type byte before as_vector_bytes_check.
 				packer.PackVectorAsBlob(query);
 			}
 		}
 
 		internal static int VectorDistOpcode(VectorDistanceMetric metric) => metric switch
 		{
-			VectorDistanceMetric.EUCLIDEAN => VECTOR_EUCLIDEAN_DIST,
+			VectorDistanceMetric.EUCLIDEAN_SQUARED => VECTOR_EUCLIDEAN_DIST,
 			VectorDistanceMetric.DOT_PRODUCT => VECTOR_DOT_PRODUCT,
-			VectorDistanceMetric.COSINE => VECTOR_COSINE_SIM,
+			VectorDistanceMetric.COSINE_SIMILARITY => VECTOR_COSINE_SIM,
 			_ => throw new ArgumentException("Unsupported vector distance metric: " + metric)
 		};
 

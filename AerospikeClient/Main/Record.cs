@@ -239,11 +239,11 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Get bin value as Vector.
+		/// Get bin value as Vector. Returns null when the bin is missing or not a Vector.
 		/// </summary>
 		public Vector GetVector(string name)
 		{
-			return (Vector)GetValue(name);
+			return GetValue(name) as Vector;
 		}
 
 		/**
