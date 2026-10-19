@@ -294,7 +294,7 @@ namespace Aerospike.Test
 			version: 1.0.0
 			static:
 			  client:
-			    config_interval: 250
+			    config_interval: 5000
 			dynamic:
 			  client:
 			    tend_interval: 250
@@ -307,7 +307,7 @@ namespace Aerospike.Test
 			version: 1.0.0
 			static:
 			  client:
-			    config_interval: 250
+			    config_interval: 5000
 			dynamic:
 			  client:
 			    tend_interval: 250
@@ -316,11 +316,24 @@ namespace Aerospike.Test
 			    max_retries: 33
 			""";
 
+		public const string ReloadInvalidTendIntervalYaml = """
+			version: 1.0.0
+			static:
+			  client:
+			    config_interval: 5000
+			dynamic:
+			  client:
+			    app_id: rejected_reload
+			    tend_interval: 6000
+			  read:
+			    max_retries: 33
+			""";
+
 		public const string ReloadRemoveDynamicYaml = """
 			version: 1.0.0
 			static:
 			  client:
-			    config_interval: 250
+			    config_interval: 5000
 			""";
 
 		public const string MetricsEnabledYaml = """
@@ -328,6 +341,29 @@ namespace Aerospike.Test
 			dynamic:
 			  metrics:
 			    enable: true
+			""";
+
+		public const string MetricsVersion12Yaml = """
+			version: 1.2.0
+			dynamic:
+			  metrics:
+			    enabled: false
+			    extended:
+			      operational:
+			        enabled: true
+			        latency_unit: microseconds
+			        sampler:
+			          range: 100
+			          threshold: 25
+			      usage:
+			        enabled: true
+			""";
+
+		public const string MetricsVersion11With12FieldYaml = """
+			version: 1.1.0
+			dynamic:
+			  metrics:
+			    enabled: false
 			""";
 
 		public const string AsyncStaticConfigYaml = """

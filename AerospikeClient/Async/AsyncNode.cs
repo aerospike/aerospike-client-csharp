@@ -74,7 +74,7 @@ namespace Aerospike.Client
 			{
 				if (!cluster.IsConnCurrentTran(conn.LastUsed))
 				{
-					CloseAsyncConn(conn);
+					CloseAsyncConn(conn, ConnectionCloseReason.Idle);
 					continue;
 				}
 
@@ -98,7 +98,9 @@ namespace Aerospike.Client
 
 			if (!(active && asyncConnQueue.Enqueue(conn)))
 			{
-				CloseAsyncConn(conn);
+				CloseAsyncConn(conn, active
+					? ConnectionCloseReason.PoolShrink
+					: ConnectionCloseReason.NodeRemoved);
 			}
 		}
 
@@ -135,11 +137,11 @@ namespace Aerospike.Client
 				{
 					if (!asyncConnQueue.EnqueueLast(conn))
 					{
-						CloseAsyncConn(conn);
+						CloseAsyncConn(conn, ConnectionCloseReason.PoolShrink);
 					}
 					break;
 				}
-				CloseAsyncConn(conn);
+				CloseAsyncConn(conn, ConnectionCloseReason.Idle);
 				count--;
 			}
 		}
@@ -154,6 +156,9 @@ namespace Aerospike.Client
 			AsyncConnection conn;
 			while (asyncConnQueue.TryDequeue(out conn))
 			{
+				DecrAsyncConnTotal();
+				IncrAsyncConnClosed();
+				RecordConnectionClosedIfAdmitted(ConnectionCloseReason.NodeRemoved);
 				conn.Close();
 			}
 		}
@@ -161,13 +166,14 @@ namespace Aerospike.Client
 		internal void CloseAsyncConnOnError(AsyncConnection conn)
 		{
 			IncrErrorRate();
-			CloseAsyncConn(conn);
+			CloseAsyncConn(conn, ConnectionCloseReason.Error);
 		}
 
-		private void CloseAsyncConn(AsyncConnection conn)
+		private void CloseAsyncConn(AsyncConnection conn, ConnectionCloseReason reason)
 		{
 			DecrAsyncConnTotal();
 			IncrAsyncConnClosed();
+			RecordConnectionClosedIfAdmitted(reason);
 			conn.Close();
 		}
 
@@ -176,6 +182,7 @@ namespace Aerospike.Client
 			if (asyncConnQueue.IncrTotal() > asyncConnQueue.Capacity)
 			{
 				asyncConnQueue.DecrTotal();
+				cluster.RecordPoolExhausted(this);
 				throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
 					"Async max connections " + cluster.asyncMaxConnsPerNode + " would be exceeded.");
 			}

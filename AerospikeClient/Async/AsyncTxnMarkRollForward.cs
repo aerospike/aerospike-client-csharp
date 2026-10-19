@@ -27,7 +27,7 @@ namespace Aerospike.Client
 			WriteListener listener,
 			WritePolicy writePolicy,
 			Key key
-		) : base(cluster, writePolicy, key)
+		) : base(cluster, writePolicy, key, false)
 		{
 			this.listener = listener;
 		}

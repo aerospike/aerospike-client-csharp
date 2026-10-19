@@ -25,9 +25,11 @@ namespace Aerospike.Client
 		public SyncReadCommand(Cluster cluster, Policy policy, Key key)
 			: base(cluster, policy, key.ns)
 		{
+			StartCommandMetrics();
 			this.key = key;
 			this.partition = Partition.Read(cluster, policy, key);
 			cluster.AddCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 		}
 
 		protected internal override Node GetNode()

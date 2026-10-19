@@ -16,6 +16,7 @@
  */
 using Aerospike.Client;
 using Aerospike.Client.Config;
+using System.Reflection;
 
 namespace Aerospike.Test
 {
@@ -94,6 +95,24 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void ConfigReloadRejectsTendIntervalAboveConfigInterval()
+		{
+			using ConfigClientScope scope =
+				ConfigClientScope.Create(ConfigTestHelpers.ReloadInitialYaml);
+			AerospikeClient configClient = scope.Client;
+
+			Assert.Throws<TargetInvocationException>(() =>
+				scope.RewriteYaml(ConfigTestHelpers.ReloadInvalidTendIntervalYaml));
+
+			Assert.AreEqual(
+				10,
+				ConfigTestHelpers.GetMergedReadPolicy(configClient).maxRetries);
+			Assert.AreEqual(
+				"reload_test",
+				ConfigTestHelpers.GetClientPolicy(configClient).AppId);
+		}
+
+		[TestMethod]
 		public void ConfigReloadRemovesDynamicSection()
 		{
 			using ConfigClientScope scope = ConfigClientScope.Create(ConfigTestHelpers.ReloadInitialYaml);
@@ -114,6 +133,29 @@ namespace Aerospike.Test
 			using ConfigClientScope scope = ConfigClientScope.Create(ConfigTestHelpers.MetricsEnabledYaml);
 
 			Assert.IsTrue(scope.Client.Cluster.MetricsEnabled);
+		}
+
+		[TestMethod]
+		public void ConfigLoadVersion12Metrics()
+		{
+			using ConfigClientScope scope = ConfigClientScope.Create(ConfigTestHelpers.MetricsVersion12Yaml);
+			IConfigProvider provider = ConfigTestHelpers.GetConfigProvider(scope.Client);
+			Assert.IsNotNull(provider);
+			IConfigurationData data = provider.ConfigurationData;
+
+			Assert.IsFalse(data.dynamicConfig.metrics.enabled.Value);
+			Assert.IsTrue(data.dynamicConfig.metrics.extended.operational.enabled.Value);
+			Assert.AreEqual("microseconds", data.dynamicConfig.metrics.extended.operational.latency_unit);
+			Assert.AreEqual((ulong)100, data.dynamicConfig.metrics.extended.operational.sampler.range.Value);
+			Assert.AreEqual((ulong)25, data.dynamicConfig.metrics.extended.operational.sampler.threshold.Value);
+			Assert.IsTrue(data.dynamicConfig.metrics.extended.usage.enabled.Value);
+		}
+
+		[TestMethod]
+		public void ConfigLoadVersion11Rejects12MetricsField()
+		{
+			using ConfigClientScope scope = ConfigClientScope.Create(ConfigTestHelpers.MetricsVersion11With12FieldYaml);
+			Assert.IsNull(ConfigTestHelpers.GetConfigProvider(scope.Client));
 		}
 
 		[TestMethod]

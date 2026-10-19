@@ -22,7 +22,7 @@ namespace Aerospike.Client
 		private readonly Txn txn;
 
 		public TxnClose(Cluster cluster, Txn txn, WritePolicy writePolicy, Key key)
-			: base(cluster, writePolicy, key)
+			: base(cluster, writePolicy, key, false)
 		{
 			this.txn = txn;
 		}

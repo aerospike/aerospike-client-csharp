@@ -30,6 +30,9 @@ namespace Aerospike.Client
 		) : base(cluster)
 		{
 			this.listener = listener;
+			cluster.AddCommandCount();
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Deferred);
 
 			// Create commands.
 			ulong taskId = statement.PrepareTaskId();

@@ -114,7 +114,7 @@ namespace Aerospike.Client
 
 			this.verifyRecords = records;
 
-			AsyncBatchRecordArrayExecutor executor = new(cluster, verifyListener, records);
+			AsyncBatchRecordArrayExecutor executor = new(cluster, verifyListener, records, false);
 			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, verifyPolicy, keys, records, false, executor);
 			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
 
@@ -207,7 +207,7 @@ namespace Aerospike.Client
 			BatchAttr attr = new();
 			attr.SetTxn(txnAttr);
 
-			AsyncBatchRecordArrayExecutor executor = new(cluster, rollListener, records);
+			AsyncBatchRecordArrayExecutor executor = new(cluster, rollListener, records, false);
 			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, rollPolicy, keys, records, true, executor);
 			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
 			int count = 0;

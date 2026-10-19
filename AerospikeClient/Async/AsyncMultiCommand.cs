@@ -27,8 +27,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Batch constructor.
 		/// </summary>
-		public AsyncMultiCommand(AsyncCluster cluster, Policy policy, AsyncNode node, bool isOperation)
-			: base(cluster, policy, null)
+		public AsyncMultiCommand(AsyncCluster cluster, Policy policy, AsyncNode node, string ns, bool isOperation)
+			: base(cluster, policy, ns)
 		{
 			this.serverNode = node;
 			this.isOperation = isOperation;

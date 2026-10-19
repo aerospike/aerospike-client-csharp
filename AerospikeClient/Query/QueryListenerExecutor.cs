@@ -28,6 +28,8 @@ namespace Aerospike.Client
 		)
 		{
 			cluster.AddCommandCount();
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 
 			ulong taskId = statement.PrepareTaskId();
 

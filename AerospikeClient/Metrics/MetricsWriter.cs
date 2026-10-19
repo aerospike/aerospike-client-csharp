@@ -74,9 +74,24 @@ namespace Aerospike.Client
 				Directory.CreateDirectory(dir);
 				Open();
 			}
-			catch (IOException ioe)
+			catch (Exception e)
 			{
-				throw new AerospikeException(ioe);
+				enabled = false;
+
+				try
+				{
+					writer?.Dispose();
+				}
+				catch
+				{
+				}
+				writer = null;
+
+				if (e is AerospikeException)
+				{
+					throw;
+				}
+				throw new AerospikeException(e);
 			}
 
 			enabled = true;
@@ -112,17 +127,32 @@ namespace Aerospike.Client
 		/// </summary>
 		public void OnDisable(Cluster cluster)
 		{
-			if (enabled)
+			if (writer != null)
 			{
 				try
 				{
 					enabled = false;
-					WriteCluster(cluster);
-					writer.Close();
+					if (writer.BaseStream.CanWrite)
+					{
+						WriteCluster(cluster);
+					}
 				}
 				catch (Exception e)
 				{
 					Log.Error("Failed to close metrics writer: " + Util.GetErrorMessage(e));
+				}
+				finally
+				{
+					try
+					{
+						writer.Dispose();
+					}
+					catch (Exception e)
+					{
+						Log.Error("Failed to dispose metrics writer: " +
+							Util.GetErrorMessage(e));
+					}
+					writer = null;
 				}
 			}
 		}
@@ -130,8 +160,31 @@ namespace Aerospike.Client
 		private void Open()
 		{
 			DateTime now = DateTime.Now;
-			string path = dir + Path.DirectorySeparatorChar + "metrics-" + now.ToString(filenameFormat) + ".log";
-			writer = new StreamWriter(path, false);
+			string stem = dir + Path.DirectorySeparatorChar + "metrics-" +
+				now.ToString(filenameFormat);
+			int collision = 0;
+
+			while (true)
+			{
+				string path = collision == 0
+					? stem + ".log"
+					: stem + "-" + collision + ".log";
+
+				try
+				{
+					writer = new StreamWriter(
+						new FileStream(
+							path,
+							FileMode.CreateNew,
+							FileAccess.Write,
+							FileShare.Read));
+					break;
+				}
+				catch (IOException) when (File.Exists(path))
+				{
+					collision++;
+				}
+			}
 			size = 0;
 
 			sb.Append(now.ToString(timestampFormat));
@@ -256,7 +309,9 @@ namespace Aerospike.Client
 			WriteConn(asyncStats);
 			sb.Append(",[");
 
-			Histograms hGrams = node.GetMetrics()?.Histograms;
+			using NodeMetricsLease metricsLease = node.AcquireMetrics();
+			NodeMetrics nodeMetrics = metricsLease.Metrics;
+			Histograms hGrams = nodeMetrics?.Histograms;
 			ConcurrentHashMap<string, LatencyBuckets[]> hMap = hGrams?.histoMap;
 			int max = Latency.GetMax();
 
@@ -271,9 +326,9 @@ namespace Aerospike.Client
 					sb.Append(',');
 					sb.Append(node.GetKeyBusyCountByNS(ns));
 					sb.Append(',');
-					sb.Append(node.GetBytesInByNS(ns));
+					sb.Append(nodeMetrics.BytesInCounter?.GetCountByNS(ns) ?? 0);
 					sb.Append(',');
-					sb.Append(node.GetBytesOutByNS(ns));
+					sb.Append(nodeMetrics.BytesOutCounter?.GetCountByNS(ns) ?? 0);
 					sb.Append(",[");
 					LatencyBuckets[] latencyBuckets = hGrams.GetBuckets(ns);
 					for (int i = 0; i < max; i++)

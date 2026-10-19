@@ -22,7 +22,7 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Asynchronous command handler.
 	/// </summary>
-	public abstract class AsyncCommand : Command, IAsyncCommand, ITimeout
+	public abstract class AsyncCommand : Command, IAsyncCommand, IAsyncByteProgress, ITimeout
 	{
 		private static int ErrorCount = 0;
 		private const int IN_PROGRESS = 0;
@@ -57,17 +57,35 @@ namespace Aerospike.Client
 		private readonly string ns;
 		private long bytesIn;
 		private long bytesOut;
+		private CommandMetricsHandle commandMetrics;
+		private bool commandMetricsStarted;
+		private QueryServerMetricsState queryServerMetrics;
+		private readonly bool collectCommandMetrics;
+		private ConnectionMetricsHandle connectionMetrics;
+		private int openingConnection;
+		private ApiMetricsContext apiMetricsContext;
 
 		/// <summary>
 		/// Default Constructor.
 		/// </summary>
 		public AsyncCommand(AsyncCluster cluster, Policy policy, string ns)
+			: this(cluster, policy, ns, true)
+		{
+		}
+
+		private protected AsyncCommand(
+			AsyncCluster cluster,
+			Policy policy,
+			string ns,
+			bool collectCommandMetrics)
 			: base(policy.socketTimeout, policy.totalTimeout, policy.maxRetries)
 		{
 			this.cluster = cluster;
 			this.policy = policy;
-			this.metricsEnabled = cluster.MetricsEnabled;
+			this.metricsEnabled = cluster.MetricsOperationalEnabled;
 			this.ns = ns;
+			this.collectCommandMetrics = collectCommandMetrics;
+			apiMetricsContext = cluster.CaptureApiMetricsContext();
 		}
 
 		/// <summary>
@@ -78,8 +96,10 @@ namespace Aerospike.Client
 		{
 			this.cluster = cluster;
 			this.policy = policy;
-			this.metricsEnabled = cluster.MetricsEnabled;
+			this.metricsEnabled = cluster.MetricsOperationalEnabled;
 			this.ns = ns;
+			this.collectCommandMetrics = true;
+			apiMetricsContext = cluster.CaptureApiMetricsContext();
 		}
 
 		/// <summary>
@@ -96,14 +116,28 @@ namespace Aerospike.Client
 			this.totalWatch = other.totalWatch;
 			this.iteration = other.iteration;
 			this.commandSentCounter = other.commandSentCounter;
-			this.metricsEnabled = cluster.MetricsEnabled;
+			this.metricsEnabled = other.metricsEnabled;
+			this.ns = other.ns;
+			this.commandMetrics = other.commandMetrics;
+			this.commandMetricsStarted = other.commandMetricsStarted;
+			this.queryServerMetrics = other.queryServerMetrics;
+			this.collectCommandMetrics = other.collectCommandMetrics;
+			this.apiMetricsContext = other.apiMetricsContext;
 		}
 
-		public void SetBatchRetry(AsyncCommand other)
+		internal void SetApiMetricsContext(ApiMetricsContext context)
+		{
+			apiMetricsContext = context;
+		}
+
+		public void SetBatchRetry(AsyncCommand other, string childNamespace)
 		{
 			// This batch retry command will be added to the timeout queue in ExecuteCore().
 			this.iteration = other.iteration;
 			this.totalWatch = other.totalWatch;
+			this.commandMetrics =
+				other.commandMetrics.ForkRpc(childNamespace);
+			this.commandMetricsStarted = true;
 		}
 
 		// Simply ask the cluster object to schedule the command for execution.
@@ -112,6 +146,8 @@ namespace Aerospike.Client
 		// Otherwise, the command will start its execution from the thread pool.
 		public void Execute()
 		{
+			StartCommandMetrics();
+
 			if (totalTimeout > 0)
 			{
 				// totalTimeout is a fixed timeout. Stopwatch is started once on first
@@ -119,17 +155,37 @@ namespace Aerospike.Client
 				totalWatch = ValueStopwatch.StartNew();
 				AsyncTimeoutQueue.Instance.Add(this, totalTimeout);
 			}
-			cluster.ScheduleCommandExecution(this);
+			try
+			{
+				cluster.ScheduleCommandExecution(this);
+			}
+			catch (AerospikeException.CommandRejected ae)
+			{
+				RejectBeforeScheduling(ae);
+				throw;
+			}
 		}
 
 		public void ExecuteBatchRetry()
 		{
+			StartCommandMetrics();
+
 			if (totalTimeout > 0)
 			{
 				int remain = (int)(totalTimeout - totalWatch.ElapsedMilliseconds);
 				AsyncTimeoutQueue.Instance.Add(this, remain);
 			}
-			cluster.ScheduleCommandExecution(this);
+			try
+			{
+				cluster.AddRetry();
+				commandMetrics.AddRetry();
+				cluster.ScheduleCommandExecution(this);
+			}
+			catch (AerospikeException.CommandRejected ae)
+			{
+				RejectBeforeScheduling(ae);
+				throw;
+			}
 		}
 
 		// Executes the command on the current thread.
@@ -232,7 +288,17 @@ namespace Aerospike.Client
 				if (conn == null)
 				{
 					node.IncrAsyncConnTotal();
-					conn = node.CreateAsyncConnection(this);
+					connectionMetrics = cluster.StartConnectionMetrics();
+					Volatile.Write(ref openingConnection, 1);
+					try
+					{
+						conn = node.CreateAsyncConnection(this);
+					}
+					catch
+					{
+						node.DecrAsyncConnTotal();
+						throw;
+					}
 					conn.Connect(node.address);
 				}
 				else
@@ -244,6 +310,7 @@ namespace Aerospike.Client
 			}
 			catch (AerospikeException.Connection aec)
 			{
+				RecordOpeningTransportFailure();
 				ErrorCount++;
 				node?.AddError(ns);
 				ConnectionFailed(aec);
@@ -269,12 +336,14 @@ namespace Aerospike.Client
 			catch (IOException ioe)
 			{
 				// IO errors are considered temporary anomalies.  Retry.
+				RecordOpeningTransportFailure();
 				ErrorCount++;
 				node?.AddError(ns);
 				ConnectionFailed(new AerospikeException.Connection(ioe));
 			}
 			catch (Exception e)
 			{
+				RecordOpeningTransportFailure();
 				ErrorCount++;
 				node?.AddError(ns);
 				FailOnApplicationError(new AerospikeException(e));
@@ -302,7 +371,6 @@ namespace Aerospike.Client
 					AdminCommand command = new AdminCommand(dataBuffer, dataOffset);
 					dataLength = command.SetAuthenticate(cluster, token);
 					conn?.Send(dataBuffer, dataOffset, dataLength - dataOffset);
-					bytesOut += dataLength - dataOffset;
 					return;
 				}
 			}
@@ -311,9 +379,31 @@ namespace Aerospike.Client
 
 		private void ConnectionReady()
 		{
-			WriteBuffer();
-			conn?.Send(dataBuffer, dataOffset, dataLength - dataOffset);
-			bytesOut += dataLength - dataOffset;
+			lock (this)
+			{
+				if (state != IN_PROGRESS)
+				{
+					return;
+				}
+
+				int opening = Volatile.Read(ref openingConnection);
+
+				if (opening != 0)
+				{
+					if (opening != 1 ||
+						Interlocked.CompareExchange(
+						ref openingConnection,
+						2,
+						1) != 1)
+					{
+						return;
+					}
+					connectionMetrics.Complete(node, ns);
+				}
+
+				WriteBuffer();
+				conn?.Send(dataBuffer, dataOffset, dataLength - dataOffset);
+			}
 		}
 
 		protected internal sealed override int SizeBuffer()
@@ -388,7 +478,6 @@ namespace Aerospike.Client
 			}
 
 			conn?.Receive(dataBuffer, segment.offset, 8);
-			bytesIn += 8;
 		}
 
 		public void ReceiveComplete()
@@ -410,7 +499,6 @@ namespace Aerospike.Client
 					// Some server versions returned zero length groups for batch/scan/query.
 					// Receive again to retrieve next group.
 					conn?.Receive(dataBuffer, dataOffset, 8);
-					bytesIn += 8;
 					return;
 				}
 
@@ -426,13 +514,11 @@ namespace Aerospike.Client
 
 				dataLength = dataOffset + length;
 				conn?.Receive(dataBuffer, dataOffset, length);
-				bytesIn += length;
 			}
 			else
 			{
 				if (inAuthenticate)
 				{
-					inAuthenticate = false;
 					inHeader = true;
 
 					int resultCode = dataBuffer[dataOffset + 1];
@@ -451,6 +537,7 @@ namespace Aerospike.Client
 						// overwhelm server.
 						throw new AerospikeException(resultCode);
 					}
+					inAuthenticate = false;
 					ConnectionReady();
 					return;
 				}
@@ -477,13 +564,45 @@ namespace Aerospike.Client
 		{
 			inHeader = true;
 			conn?.Receive(dataBuffer, segment.offset, 8);
-			bytesIn += 8;
+		}
+
+		void IAsyncByteProgress.OnBytesSent(int count)
+		{
+			if (!inAuthenticate)
+			{
+				bytesOut += count;
+			}
+		}
+
+		void IAsyncByteProgress.OnBytesReceived(int count)
+		{
+			if (!inAuthenticate)
+			{
+				bytesIn += count;
+			}
 		}
 
 		public void OnError(Exception e)
 		{
 			try
 			{
+				bool authenticating = inAuthenticate;
+				bool opening = TryFailOpening(authenticating
+					? ConnectionFailurePhase.Auth
+					: IsTlsHandshake()
+						? ConnectionFailurePhase.Tls
+						: ConnectionFailurePhase.Open);
+
+				if (inAuthenticate)
+				{
+					inAuthenticate = false;
+					if (!opening &&
+						Volatile.Read(ref openingConnection) != 3)
+					{
+						cluster.RecordConnectionFailure(ConnectionFailurePhase.Auth, false);
+					}
+				}
+
 				if (e is AerospikeException.Connection ac)
 				{
 					node.AddError(ns);
@@ -553,6 +672,21 @@ namespace Aerospike.Client
 
 		public void OnSocketError(SocketError se)
 		{
+			bool authenticating = inAuthenticate;
+			inAuthenticate = false;
+
+			bool opening = TryFailOpening(authenticating
+				? ConnectionFailurePhase.Auth
+				: IsTlsHandshake()
+					? ConnectionFailurePhase.Tls
+					: ConnectionFailurePhase.Open);
+			if (!opening &&
+				authenticating &&
+				Volatile.Read(ref openingConnection) != 3)
+			{
+				cluster.RecordConnectionFailure(ConnectionFailurePhase.Auth, false);
+			}
+
 			AerospikeException ae;
 
 			if (se == SocketError.TimedOut)
@@ -566,6 +700,31 @@ namespace Aerospike.Client
 				node.AddError(ns);
 			}
 			ConnectionFailed(ae);
+		}
+
+		private void RecordOpeningTransportFailure()
+		{
+			TryFailOpening(IsTlsHandshake()
+				? ConnectionFailurePhase.Tls
+				: ConnectionFailurePhase.Open);
+		}
+
+		private bool TryFailOpening(ConnectionFailurePhase phase)
+		{
+			if (Interlocked.CompareExchange(
+				ref openingConnection,
+				3,
+				1) == 1)
+			{
+				connectionMetrics.Fail(phase);
+				return true;
+			}
+			return false;
+		}
+
+		private bool IsTlsHandshake()
+		{
+			return conn is AsyncConnectionTls tls && tls.HandshakeStarted;
 		}
 
 		private void ConnectionFailed(AerospikeException ae)
@@ -603,6 +762,7 @@ namespace Aerospike.Client
 		private void RetryServerError(AerospikeException ae)
 		{
 			node.IncrErrorRate();
+			AddCommandMetricsBytesAndReset();
 
 			if (ShouldRetry())
 			{
@@ -733,6 +893,7 @@ namespace Aerospike.Client
 					AsyncTimeoutQueue.Instance.Add(command, remain);
 				}
 				cluster.AddRetry();
+				commandMetrics.AddRetry();
 				command.ExecuteCommand();
 			}
 			else
@@ -756,11 +917,34 @@ namespace Aerospike.Client
 			if (totalWatch.IsActive && totalWatch.ElapsedMilliseconds >= totalTimeout)
 			{
 				// Total timeout has occurred.
-				if (Interlocked.CompareExchange(ref state, FAIL_TOTAL_TIMEOUT, IN_PROGRESS) == IN_PROGRESS)
+				bool timedOut;
+
+				lock (this)
+				{
+					timedOut = Interlocked.CompareExchange(
+						ref state,
+						FAIL_TOTAL_TIMEOUT,
+						IN_PROGRESS) == IN_PROGRESS;
+
+					if (timedOut)
+					{
+						TryFailOpening(inAuthenticate
+							? ConnectionFailurePhase.Auth
+							: IsTlsHandshake()
+								? ConnectionFailurePhase.Tls
+								: ConnectionFailurePhase.Open);
+					}
+				}
+
+				if (timedOut)
 				{
 					// Close connection. This will result in a socket error in the async callback thread.
 					if (node != null && conn != null)
 					{
+						if (policy.TimeoutDelay == 0)
+						{
+							cluster.RecordImmediateTimeout();
+						}
 						node.CloseAsyncConnOnError(conn);
 					}
 
@@ -787,13 +971,36 @@ namespace Aerospike.Client
 				}
 
 				// Socket timeout has occurred.
-				if (Interlocked.CompareExchange(ref state, FAIL_SOCKET_TIMEOUT, IN_PROGRESS) == IN_PROGRESS)
+				bool timedOut;
+
+				lock (this)
+				{
+					timedOut = Interlocked.CompareExchange(
+						ref state,
+						FAIL_SOCKET_TIMEOUT,
+						IN_PROGRESS) == IN_PROGRESS;
+
+					if (timedOut)
+					{
+						TryFailOpening(inAuthenticate
+							? ConnectionFailurePhase.Auth
+							: IsTlsHandshake()
+								? ConnectionFailurePhase.Tls
+								: ConnectionFailurePhase.Open);
+					}
+				}
+
+				if (timedOut)
 				{
 					// User will be notified in command thread and this timeout thread.
 					// Close connection. This will result in a socket error in the async callback thread
 					// and a possible retry.
 					if (node != null && conn != null)
 					{
+						if (policy.TimeoutDelay == 0)
+						{
+							cluster.RecordImmediateTimeout();
+						}
 						node.CloseAsyncConnOnError(conn);
 					}
 
@@ -816,6 +1023,8 @@ namespace Aerospike.Client
 				AddBytesInOut();
 				node.PutAsyncConnection(conn);
 				ReleaseBuffer();
+				commandMetrics.CompleteSuccess(node);
+				queryServerMetrics?.Complete();
 			}
 			else if (status == FAIL_TOTAL_TIMEOUT)
 			{
@@ -829,7 +1038,10 @@ namespace Aerospike.Client
 				// Timeout thread closed connection, but command still completed.
 				// User has not been notified of the timeout. Release buffer and let
 				// OnSuccess() be called.
+				AddBytesInOut();
 				ReleaseBuffer();
+				commandMetrics.CompleteSuccess(node);
+				queryServerMetrics?.Complete();
 			}
 			else
 			{
@@ -840,7 +1052,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			LatencyType latencyType = cluster.MetricsEnabled ? GetLatencyType() : LatencyType.NONE;
+			LatencyType latencyType = metricsEnabled ? GetLatencyType() : LatencyType.NONE;
 			if (latencyType != LatencyType.NONE)
 			{
 				node.AddLatency(ns, latencyType, metricsWatch.Elapsed.TotalMilliseconds);
@@ -906,6 +1118,22 @@ namespace Aerospike.Client
 			}
 		}
 
+		internal void FailBeforeExecution(AerospikeException ae)
+		{
+			commandMetrics.CompleteFailure(null, ae, false);
+			queryServerMetrics?.Complete();
+			OnFailure(ae);
+		}
+
+		private void RejectBeforeScheduling(AerospikeException.CommandRejected ae)
+		{
+			if (Interlocked.CompareExchange(ref state, FAIL_QUEUE_ERROR, IN_PROGRESS) == IN_PROGRESS)
+			{
+				commandMetrics.CompleteFailure(null, ae, false);
+				queryServerMetrics?.Complete();
+			}
+		}
+
 		private void AlreadyCompleted(int status)
 		{
 			// Only need to release resources from AsyncTimeoutQueue timeout.
@@ -919,6 +1147,7 @@ namespace Aerospike.Client
 			else if (status == FAIL_SOCKET_TIMEOUT)
 			{
 				// Connection should have already been closed on AsyncTimeoutQueue timeout.
+				AddBytesInOut();
 				AerospikeException timeoutException = new AerospikeException.Timeout(policy, true);
 
 				if (iteration <= maxRetries)
@@ -949,6 +1178,10 @@ namespace Aerospike.Client
 		{
 			try
 			{
+				bool clientTimeout = ae is AerospikeException.Timeout timeout && timeout.client;
+				commandMetrics.CompleteFailure(node, ae, clientTimeout);
+				queryServerMetrics?.Complete();
+
 				ae.Node = node;
 				ae.Policy = policy;
 				ae.Iteration = iteration;
@@ -982,6 +1215,8 @@ namespace Aerospike.Client
 
 		private void AddBytesInOut()
 		{
+			commandMetrics.AddBytes(node, bytesIn, bytesOut);
+
 			if (node.AreMetricsEnabled())
 			{
 				node.AddBytesIn(ns, bytesIn);
@@ -989,6 +1224,72 @@ namespace Aerospike.Client
 			}
 			bytesIn = 0;
 			bytesOut = 0;
+		}
+
+		private void AddCommandMetricsBytesAndReset()
+		{
+			commandMetrics.AddBytes(node, bytesIn, bytesOut);
+			bytesIn = 0;
+			bytesOut = 0;
+		}
+
+		private protected void StartCommandMetrics()
+		{
+			if (commandMetricsStarted)
+			{
+				return;
+			}
+			commandMetricsStarted = true;
+
+			if (!collectCommandMetrics)
+			{
+				return;
+			}
+
+			LatencyType type = GetLatencyType();
+
+			if (type == LatencyType.NONE)
+			{
+				return;
+			}
+
+			bool countCommand = type == LatencyType.READ || type == LatencyType.WRITE;
+			commandMetrics = cluster.BeginMetricsCommand(
+				apiMetricsContext,
+				ns,
+				type,
+				countCommand);
+
+			if (type == LatencyType.QUERY)
+			{
+				QueryMetricsHandle queryMetrics =
+					cluster.BeginQueryMetrics(apiMetricsContext);
+
+				if (queryMetrics.Enabled)
+				{
+					queryServerMetrics = new QueryServerMetricsState(queryMetrics);
+				}
+			}
+		}
+
+		private sealed class QueryServerMetricsState
+		{
+			private readonly QueryMetricsHandle queryMetrics;
+			private int completed;
+
+			internal QueryServerMetricsState(QueryMetricsHandle queryMetrics)
+			{
+				this.queryMetrics = queryMetrics;
+				queryMetrics.AddServer(1);
+			}
+
+			internal void Complete()
+			{
+				if (Interlocked.CompareExchange(ref completed, 1, 0) == 0)
+				{
+					queryMetrics.AddServer(-1);
+				}
+			}
 		}
 
 		internal void ReleaseBuffer()

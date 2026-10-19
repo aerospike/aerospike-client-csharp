@@ -107,7 +107,7 @@ namespace Aerospike.Client
 
 			public override void OnFailure(AerospikeException ae)
 			{
-				command.OnFailure(ae);
+				command.FailBeforeExecution(ae);
 			}
 		}
 

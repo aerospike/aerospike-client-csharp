@@ -23,7 +23,7 @@ namespace Aerospike.Client
 		private readonly Txn txn;
 
 		public TxnAddKeys(Cluster cluster, Key key, OperateArgs args, Txn txn)
-			: base(cluster, args.writePolicy, key)
+			: base(cluster, args.writePolicy, key, false)
 		{
 			this.args = args;
 			this.txn = txn;

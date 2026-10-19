@@ -18,7 +18,7 @@ using System.Runtime.ExceptionServices;
 
 namespace Aerospike.Client
 {
-	public abstract class QueryExecutor : IQueryExecutor
+	public abstract class QueryExecutor : IQueryExecutor, IQueryMetrics
 	{
 		protected internal readonly Cluster cluster;
 		protected internal readonly QueryPolicy policy;
@@ -28,6 +28,8 @@ namespace Aerospike.Client
 		private readonly QueryThread[] threads;
 		protected internal readonly CancellationTokenSource cancel;
 		protected volatile Exception exception;
+		private readonly QueryMetricsHandle queryMetrics;
+		private readonly ApiMetricsContext apiMetricsContext;
 		private readonly int maxConcurrentNodes;
 		private int completedCount;
 		private int done;
@@ -41,10 +43,14 @@ namespace Aerospike.Client
 			this.nodes = nodes;
 			this.threads = new QueryThread[nodes.Length];
 			this.cancel = new CancellationTokenSource();
+			this.apiMetricsContext = cluster.CaptureApiMetricsContext();
+			this.queryMetrics = cluster.BeginQueryMetrics(apiMetricsContext);
 
 			// Initialize maximum number of nodes to query in parallel.
 			this.maxConcurrentNodes = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.Length) ? threads.Length : policy.maxConcurrentNodes;
 			cluster.AddCommandCount();
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 		}
 
 		protected internal void InitializeThreads()
@@ -57,6 +63,7 @@ namespace Aerospike.Client
 			for (int i = 0; i < nodes.Length; i++)
 			{
 				MultiCommand command = CreateCommand(nodes[i], clusterKey, first);
+				command.SetApiMetricsContext(apiMetricsContext);
 				threads[i] = new QueryThread(this, command);
 				first = false;
 			}
@@ -130,6 +137,16 @@ namespace Aerospike.Client
 				// Preserve the existing public behavior for unexpected client errors.
 				throw new AerospikeException("Query Failed: " + exception.Message, exception);
 			}
+		}
+
+		void IQueryMetrics.RecordQueued(int delta)
+		{
+			queryMetrics.AddQueued(delta);
+		}
+
+		void IQueryMetrics.RecordAbandoned()
+		{
+			queryMetrics.AddAbandoned();
 		}
 
 		private sealed class QueryThread
