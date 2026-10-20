@@ -1060,6 +1060,7 @@ namespace Aerospike.Test
 
 				scheduler.Advance(10);
 				exporter.WaitForCount(5);
+				waitVersion = scheduler.WaitFor(10, waitVersion);
 				Assert.AreEqual(2, acknowledged);
 				Assert.AreEqual(1, exporter.MaximumConcurrent);
 			}
@@ -1245,26 +1246,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void MetricsSnapshotDefaultDispatchSupportsReleased850Binary()
 		{
-			string configuration = new DirectoryInfo(
-				AppContext.BaseDirectory).Parent.Name;
-			string fixtureBin = Path.GetFullPath(Path.Combine(
-				AppContext.BaseDirectory,
-				"..",
-				"..",
-				"..",
-				"Compatibility",
-				"released-8.5.0",
-				"Released850Implementer",
-				"bin"));
-			string fixturePath =
-				new[] { configuration, "Debug_Unix", "Debug" }
-					.Distinct()
-					.Select(candidate => Path.Combine(
-						fixtureBin,
-						candidate,
-						"net8.0",
-						"Released850Implementer.dll"))
-					.FirstOrDefault(File.Exists);
+			string fixturePath = FindReleased850CompatibilityFixture();
 			Assert.IsTrue(
 				fixturePath != null,
 				"Released 8.5.0 compatibility fixture was not built.");
@@ -1298,6 +1280,42 @@ namespace Aerospike.Test
 			Assert.AreEqual(
 				typeof(IAerospikeClient),
 				map.TargetMethods[index].DeclaringType);
+		}
+
+		private static string FindReleased850CompatibilityFixture()
+		{
+			string publishedFixture = Path.Combine(
+				AppContext.BaseDirectory,
+				"Compatibility",
+				"released-8.5.0",
+				"Released850Implementer",
+				"Released850Implementer.dll");
+
+			if (File.Exists(publishedFixture))
+			{
+				return publishedFixture;
+			}
+
+			string configuration = new DirectoryInfo(
+				AppContext.BaseDirectory).Parent.Name;
+			string fixtureBin = Path.GetFullPath(Path.Combine(
+				AppContext.BaseDirectory,
+				"..",
+				"..",
+				"..",
+				"Compatibility",
+				"released-8.5.0",
+				"Released850Implementer",
+				"bin"));
+
+			return new[] { configuration, "Debug_Unix", "Debug" }
+				.Distinct()
+				.Select(candidate => Path.Combine(
+					fixtureBin,
+					candidate,
+					"net8.0",
+					"Released850Implementer.dll"))
+				.FirstOrDefault(File.Exists);
 		}
 
 		[TestMethod]
