@@ -79,6 +79,27 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void OrderByFlagsByteIsEncodedOnWire()
+		{
+			Cluster cluster = ((AerospikeClient)client).Cluster;
+			Node node = cluster.GetRandomNode();
+			Statement statement = new();
+			statement.SetNamespace(SuiteHelpers.ns);
+			statement.SetSetName("topKWire");
+			statement.SetBinNames("name");
+			statement.SetOrderBy("name", BinDataType.STRING, Order.ASC, OrderByFlags.CASE_INSENSITIVE);
+			statement.SetTopK(3);
+
+			Dictionary<int, byte[]> pushed = Fields(Build(cluster, node, statement, true));
+			byte[] orderBy = pushed[FieldType.ORDER_BY];
+			// type=STRING(3), ASC(0), flags=CASE_INSENSITIVE(1), binLen=4, "name"
+			Assert.AreEqual(3, orderBy[0]);
+			Assert.AreEqual(0, orderBy[1]);
+			Assert.AreEqual(1, orderBy[2]);
+			Assert.AreEqual(4, orderBy[3]);
+		}
+
+		[TestMethod]
 		public void TwoOrderKeysAreConcatenatedInOrderByField()
 		{
 			Cluster cluster = ((AerospikeClient)client).Cluster;

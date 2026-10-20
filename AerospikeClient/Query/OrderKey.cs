@@ -58,6 +58,9 @@ namespace Aerospike.Client
 			this.digest = digest;
 			this.secondary = secondary;
 
+			// STRING order keys compare as UTF-8 bytes (current server Top-K behavior).
+			// Unicode collation (R73) is still an open design choice — do not invent a client
+			// collator here until that lands (sort keys or an agreed comparator).
 			if (raw is string s)
 			{
 				this.stringBytes = Encoding.UTF8.GetBytes(s);
@@ -152,7 +155,7 @@ namespace Aerospike.Client
 				case BinDataType.BYTES:
 					return value is byte[] ? value : null;
 				default:
-					throw new ArgumentException("Unsupported BinDataType: " + type);
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Unsupported BinDataType: " + type);
 			}
 		}
 
@@ -222,11 +225,12 @@ namespace Aerospike.Client
 			return bits;
 		}
 
-		private static int CompareBytes(byte[] a, byte[] b)
-		{
-			return CompareBytes(a, b, false);
-		}
+		private static int CompareBytes(byte[] a, byte[] b) =>
+			CompareBytes(a, b, false);
 
+		/// <summary>
+		/// Unsigned byte order; optional ASCII A–Z fold to match current server Top-K.
+		/// </summary>
 		private static int CompareBytes(byte[] a, byte[] b, bool foldAscii)
 		{
 			int len = Math.Min(a.Length, b.Length);

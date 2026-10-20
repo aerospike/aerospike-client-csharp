@@ -31,21 +31,21 @@ namespace Aerospike.Test
 
 		private static Key Key(string userKey) => new(Ns, Set, userKey);
 
-		private static Record Record(object value) =>
-			new(new Dictionary<string, object> { { Bin, value } }, 1, 0);
+		private static Record Record(object value, int generation = 1) =>
+			new(new Dictionary<string, object> { { Bin, value } }, generation, 0);
 
 		[TestMethod]
-		public void CaseInsensitiveStringUsesAsciiFolding()
+		public void NegativeZeroEqualsPositiveZero()
 		{
-			// U+212A (Kelvin) lowercases to 'k' in Unicode, but order-by ASCII folding
-			// only maps A-Z. So "K" folds to 0x6B and sorts before the multi-byte Kelvin.
-			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.STRING, Order.ASC, OrderByFlags.CASE_INSENSITIVE, 2);
-			reducer.AcceptPartial(Record("\u212a"), Key("kelvin"));
-			reducer.AcceptPartial(Record("K"), Key("ascii"));
+			// PRD R29 / reduce-design: −0.0 equals 0.0; tie breaks by digest.
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.DOUBLE, Order.ASC, OrderByFlags.NONE, 2);
+			reducer.AcceptPartial(Record(0.0), Key("pos"));
+			reducer.AcceptPartial(Record(-0.0), Key("neg"));
 
 			Record[] result = reducer.GetResult();
-			Assert.AreEqual("K", result[0].GetString(Bin));
-			Assert.AreEqual("\u212a", result[1].GetString(Bin));
+			Assert.AreEqual(2, result.Length);
+			Assert.AreEqual(0.0, result[0].GetDouble(Bin));
+			Assert.AreEqual(0.0, result[1].GetDouble(Bin));
 		}
 
 		[TestMethod]
@@ -64,6 +64,23 @@ namespace Aerospike.Test
 			Record[] descResult = desc.GetResult();
 			Assert.IsTrue(double.IsNaN(descResult[0].GetDouble(Bin)));
 			Assert.AreEqual(1.0, descResult[1].GetDouble(Bin));
+		}
+
+		[TestMethod]
+		public void DedupPrefersHigherGeneration()
+		{
+			// R29: when the same digest arrives twice, keep the newer generation
+			// (not the better-ranked order-key value).
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 1);
+			Key key = Key("same");
+
+			reducer.AcceptPartial(Record(10L, generation: 1), key);
+			reducer.AcceptPartial(Record(99L, generation: 3), key);
+
+			Record[] result = reducer.GetResult();
+			Assert.AreEqual(1, result.Length);
+			Assert.AreEqual(99L, result[0].GetLong(Bin));
+			Assert.AreEqual(3, result[0].generation);
 		}
 	}
 }

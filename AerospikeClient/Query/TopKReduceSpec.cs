@@ -148,19 +148,12 @@ namespace Aerospike.Client
 				OrderKey candidate = MakeOrderKey(record, digest);
 
 				// Dedup: at most one row per digest (partition migration may re-scan a record).
-				// PRD R29: keep the most recent version, not the better-ranked copy.
-				// Generation is used until the server includes last-update time on query records
-				// (drift #12); then switch to LUT comparison.
+				// PRD R29: keep the most recent version (higher generation), not the better-ranked copy.
 				if (byDigest.TryGetValue(digest, out Entry existingEntry))
 				{
-					if (record.generation < existingEntry.record.generation)
+					if (record.generation <= existingEntry.record.generation)
 					{
-						return; // stale rescan
-					}
-
-					if (record.generation == existingEntry.record.generation)
-					{
-						return; // same version already held
+						return; // stale or same version already held
 					}
 
 					heap.Remove(existingEntry.orderKey);

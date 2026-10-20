@@ -2555,7 +2555,7 @@ namespace Aerospike.Client
 			byte[] field = new byte[4 + bin.Length];
 			field[0] = (byte)GetOrderByType(type);
 			field[1] = (byte)GetOrderByDirection(order);
-			field[2] = (byte)(flags == OrderByFlags.CASE_INSENSITIVE ? 1 : 0);
+			field[2] = (byte)flags;
 			field[3] = (byte)bin.Length;
 			Array.Copy(bin, 0, field, 4, bin.Length);
 			return field;

@@ -385,6 +385,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TopKCaseSensitiveStringOrdering()
 		{
+			// Current server/client merge: UTF-8 byte order (not Unicode collation).
 			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.STRING, Order.ASC, OrderByFlags.NONE, 3);
 
 			reducer.AcceptPartial(Record(Bin, "banana"), Key("k1"));

@@ -211,21 +211,25 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TopKRejectsInvalidWireSpecification()
 		{
+			// CLIENT-5673 / R28: Top-K misuse is PARAMETER_ERROR (4), not ArgumentException.
 			Statement flags = new();
 			flags.SetOrderBy(Bin, BinDataType.INTEGER, Order.ASC, OrderByFlags.CASE_INSENSITIVE);
 			flags.SetTopK(1);
-			Assert.Throws<AerospikeException>(() => flags.ValidateTopK());
+			AerospikeException flagEx = Assert.Throws<AerospikeException>(() => flags.ValidateTopK());
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, flagEx.Result);
 
 			Statement projection = new();
 			projection.SetBinNames("other");
 			projection.SetOrderBy(Bin, BinDataType.INTEGER, Order.ASC);
 			projection.SetTopK(1);
-			Assert.Throws<AerospikeException>(() => projection.ValidateTopK());
+			AerospikeException projEx = Assert.Throws<AerospikeException>(() => projection.ValidateTopK());
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, projEx.Result);
 
 			Statement name = new();
 			name.SetOrderBy("sixteen-byte-bin", BinDataType.INTEGER, Order.ASC);
 			name.SetTopK(1);
-			Assert.Throws<AerospikeException>(() => name.ValidateTopK());
+			AerospikeException nameEx = Assert.Throws<AerospikeException>(() => name.ValidateTopK());
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, nameEx.Result);
 
 			Statement duplicateOps = new();
 			duplicateOps.Operations = [Operation.Get(Bin), Operation.Get(Bin)];
