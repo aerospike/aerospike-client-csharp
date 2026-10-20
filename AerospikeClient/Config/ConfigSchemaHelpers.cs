@@ -23,7 +23,24 @@ namespace Aerospike.Client.Config
 		{
 			return configData != null && configData.dynamicConfig != null &&
 				configData.dynamicConfig.metrics != null &&
-				configData.dynamicConfig.metrics.enable != null;
+				(configData.dynamicConfig.metrics.enable.HasValue ||
+				configData.dynamicConfig.metrics.enabled.HasValue);
+		}
+
+		public static bool? GetMetricsEnabled(this IConfigurationData configData)
+		{
+			MetricsConfig metrics = configData?.dynamicConfig?.metrics;
+
+			if (metrics == null)
+			{
+				return null;
+			}
+			return metrics.enabled ?? metrics.enable;
+		}
+
+		public static bool HasLegacyMetricsEnable(this IConfigurationData configData)
+		{
+			return configData?.dynamicConfig?.metrics?.enable.HasValue == true;
 		}
 
 		public static bool HasDBWCsendKey(this IConfigurationData configData)

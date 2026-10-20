@@ -45,6 +45,8 @@ namespace Aerospike.Client
 			this.tracker = tracker;
 
 			cluster.AddCommandCount();
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Deferred);
 			tracker.SleepBetweenRetries = 0;
 			ScanPartitions();
 		}

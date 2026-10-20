@@ -24,6 +24,15 @@ namespace Aerospike.Client
 		{
 		}
 
+		private protected AsyncSingleCommand(
+			AsyncCluster cluster,
+			Policy policy,
+			string ns,
+			bool collectCommandMetrics)
+			: base(cluster, policy, ns, collectCommandMetrics)
+		{
+		}
+
 		public AsyncSingleCommand(AsyncSingleCommand other)
 			: base(other)
 		{

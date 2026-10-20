@@ -279,7 +279,7 @@ namespace Aerospike.Client
 				}
 			}
 
-			BatchExecutor.Execute(cluster, verifyPolicy, commands, status);
+			BatchExecutor.Execute(cluster, verifyPolicy, commands, status, false);
 
 			if (!status.GetStatus())
 			{
@@ -344,7 +344,7 @@ namespace Aerospike.Client
 						cluster, bn, rollPolicy, txn, keys, records, attr, status);
 				}
 			}
-			BatchExecutor.Execute(cluster, rollPolicy, commands, status);
+			BatchExecutor.Execute(cluster, rollPolicy, commands, status, false);
 
 			if (!status.GetStatus())
 			{

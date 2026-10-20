@@ -670,7 +670,7 @@ namespace Aerospike.Client
 			BatchPolicy batchPolicy,
 			BatchStatus status,
 			bool isOperation
-		) : base(cluster, batchPolicy, batch.node, isOperation)
+		) : base(cluster, batchPolicy, batch.node, batch.ns, isOperation)
 		{
 			this.batch = batch;
 			this.batchPolicy = batchPolicy;
@@ -788,6 +788,7 @@ namespace Aerospike.Client
 			}
 
 			splitRetry = true;
+			DelegateCommandMetrics();
 
 			// Run batch requests sequentially in same thread.
 			foreach (BatchNode batchNode in batchNodes)
@@ -801,10 +802,12 @@ namespace Aerospike.Client
 				command.iteration = iteration;
 				command.commandSentCounter = commandSentCounter;
 				command.deadline = deadline;
+				command.SetCommandMetrics(ForkCommandMetrics(batchNode.ns));
 
 				try
 				{
 					cluster.AddRetry();
+					command.AddCommandMetricsRetry();
 					command.ExecuteCommand();
 				}
 				catch (AerospikeException ae)

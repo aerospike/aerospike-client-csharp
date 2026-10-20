@@ -80,18 +80,62 @@ namespace Aerospike.Client
 		private readonly string filePath;
 
 		private volatile bool modified = false;
+		private long revision;
+		private readonly object revisionLock = new();
+		private StagedConfig pendingInitialLog;
 
 		private static readonly Version DefaultVersion = new(1, 0, 0);
 
 		private static readonly Dictionary<Type, SchemaProperty[]> schemaPropertyCache = new();
 
-		private readonly Dictionary<Version, IConfigurationData> supportedVersions = new()
+		private readonly Dictionary<Version, Func<IConfigurationData>> supportedVersions = new()
 		{
-			{ new Version(1, 0, 0), new ConfigurationDatav1_0_0() },
-			{ new Version(1, 1, 0), new ConfigurationDatav1_1_0() }
+			{ new Version(1, 0, 0), () => new ConfigurationDatav1_0_0() },
+			{ new Version(1, 1, 0), () => new ConfigurationDatav1_1_0() },
+			{ new Version(1, 2, 0), () => new ConfigurationDatav1_2_0() }
 		};
 
 		private Version schemaVersion = DefaultVersion;
+
+		internal sealed class StagedConfig
+		{
+			internal readonly IConfigurationData Data;
+			internal readonly Version Version;
+			internal readonly int Interval;
+			internal readonly long Revision;
+			internal readonly bool Initial;
+
+			internal StagedConfig(
+				IConfigurationData data,
+				Version version,
+				int interval,
+				long revision,
+				bool initial)
+			{
+				Data = data;
+				Version = version;
+				Interval = interval;
+				Revision = revision;
+				Initial = initial;
+			}
+		}
+
+		internal sealed class CandidateProvider : IConfigProvider
+		{
+			public IConfigurationData ConfigurationData { get; }
+			public int Interval { get; }
+
+			internal CandidateProvider(StagedConfig candidate)
+			{
+				ConfigurationData = candidate.Data;
+				Interval = candidate.Interval;
+			}
+
+			public bool LoadConfig()
+			{
+				return false;
+			}
+		}
 
 		public static string GetConfigPath()
 		{
@@ -136,7 +180,7 @@ namespace Aerospike.Client
 				if (envUri.IsFile)
 				{
 					filePath = envUri.AbsolutePath;
-					LoadConfig();
+					LoadConfig(false);
 				}
 				else
 				{
@@ -153,7 +197,11 @@ namespace Aerospike.Client
 		{
 			_ = this.configRoot.GetReloadToken().RegisterChangeCallback(_ =>
 			{
-				modified = true;
+				lock (revisionLock)
+				{
+					modified = true;
+					revision++;
+				}
 				Watch();
 			}, null);
 		}
@@ -164,6 +212,11 @@ namespace Aerospike.Client
 		/// <returns>true if a YAML config could be loaded and parsed.</returns>
 		public bool LoadConfig()
 		{
+			return LoadConfig(true);
+		}
+
+		private bool LoadConfig(bool logApplied)
+		{
 			if (configRoot == null)
 			{
 				try
@@ -172,11 +225,8 @@ namespace Aerospike.Client
 					   .AddYamlFile(filePath, optional: false, reloadOnChange: true)
 					   .Build();
 
-					ConfigurationData = ResolveConfigurationData();
-					ValidateSchemaVersion(configRoot, schemaVersion);
-					ProcessStaticConfig();
-					ProcessDynamicConfig();
-					LogConfigChanges(true);
+					StagedConfig candidate = StageConfig(true);
+					Commit(candidate, logApplied);
 
 					Watch();
 					return true;
@@ -189,29 +239,154 @@ namespace Aerospike.Client
 
 			if (modified) // Modified is set in the callback from the watch if file changes
 			{
-				ConfigurationData = ResolveConfigurationData();
-				ValidateSchemaVersion(configRoot, schemaVersion);
-				ProcessDynamicConfig();
-				LogConfigChanges(false);
-				modified = false;
+				Commit(StageConfig(false), logApplied);
 				return true;
 			}
 			return false;
 		}
 
-		private IConfigurationData ResolveConfigurationData()
+		internal bool TryStage(out StagedConfig candidate)
+		{
+			if (!modified)
+			{
+				candidate = null;
+				return false;
+			}
+
+			candidate = StageConfig(false);
+			return true;
+		}
+
+		internal StagedConfig StageConfig(bool initial)
+		{
+			long candidateRevision = Volatile.Read(ref revision);
+			IConfigurationData data = ResolveConfigurationData(out Version version);
+			ValidateSchemaVersion(configRoot, version);
+			configRoot.GetSection("static").Bind(data.staticConfig);
+			int interval = initial &&
+				data.staticConfig.client.config_interval.HasValue
+				? data.staticConfig.client.config_interval.Value
+				: Interval;
+			IConfigurationSection dynamicSection = configRoot.GetSection("dynamic");
+
+			if (dynamicSection.Exists())
+			{
+				dynamicSection.Bind(data.dynamicConfig);
+				data.dynamicConfig.client.rack_ids =
+					dynamicSection.GetSection("client:rack_ids").Get<int[]>();
+				new MetricsPolicy(new MetricsPolicy(), data).Validate();
+			}
+			else
+			{
+				data = null;
+			}
+
+			return new StagedConfig(
+				data,
+				version,
+				interval,
+				candidateRevision,
+				initial);
+		}
+
+		internal void Commit(StagedConfig candidate, bool logApplied)
+		{
+			lock (revisionLock)
+			{
+				if (candidate == null ||
+					candidate.Revision != revision)
+				{
+					throw new AerospikeException(
+						"YAML configuration changed while it was being applied.");
+				}
+
+				ConfigurationData = candidate.Data;
+				schemaVersion = candidate.Version;
+				Interval = candidate.Interval;
+				modified = false;
+			}
+
+			if (logApplied)
+			{
+				LogApplied(candidate);
+			}
+			else
+			{
+				pendingInitialLog = candidate;
+			}
+		}
+
+		internal void CommitApplied(StagedConfig candidate)
+		{
+			if (candidate == null)
+			{
+				throw new ArgumentNullException(nameof(candidate));
+			}
+
+			lock (revisionLock)
+			{
+				ConfigurationData = candidate.Data;
+				schemaVersion = candidate.Version;
+				Interval = candidate.Interval;
+
+				// A newer file revision may arrive while listener callbacks are running.
+				// Keep that revision pending instead of throwing after the candidate has
+				// already been applied to the live client.
+				modified = candidate.Revision != revision;
+			}
+		}
+
+		internal void LogApplied(StagedConfig candidate)
+		{
+			try
+			{
+				if (candidate.Data == null)
+				{
+					Log.Info("Dynamic configuration has been disabled.");
+				}
+				else
+				{
+					Log.Info("YAML config successfully loaded.");
+				}
+				LogConfigChanges(candidate.Initial);
+			}
+			catch
+			{
+				// Logging callbacks must not make an applied configuration appear
+				// unsuccessful or leave the live client partially published.
+			}
+		}
+
+		internal void LogInitialApplied()
+		{
+			StagedConfig candidate =
+				Interlocked.Exchange(ref pendingInitialLog, null);
+
+			if (candidate != null)
+			{
+				LogApplied(candidate);
+			}
+		}
+
+		internal bool IsCurrent(StagedConfig candidate)
+		{
+			return candidate != null &&
+				candidate.Revision == Volatile.Read(ref revision);
+		}
+
+		private IConfigurationData ResolveConfigurationData(out Version resolvedVersion)
 		{
 			Version version = new(configRoot.GetSection("version").Value);
 
-			if (!supportedVersions.TryGetValue(version, out IConfigurationData value))
+			if (!supportedVersions.TryGetValue(version, out Func<IConfigurationData> factory))
 			{
 				Log.Warn("YAML config must contain a valid version field.");
-				schemaVersion = DefaultVersion;
-				return supportedVersions[DefaultVersion]; // Default to the first supported version
+				resolvedVersion = DefaultVersion;
+				return supportedVersions[DefaultVersion](); // Default to the first supported version
 			}
 
-			schemaVersion = version;
-			return value;
+			resolvedVersion = version;
+			return factory();
 		}
 
 		private static void ValidateSchemaVersion(IConfiguration config, Version declaredVersion)

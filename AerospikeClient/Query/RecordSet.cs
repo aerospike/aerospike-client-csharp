@@ -30,6 +30,10 @@ namespace Aerospike.Client
 		private readonly IQueryExecutor executor;
 		private readonly BlockingCollection<KeyRecord> queue;
 		private readonly CancellationToken cancelToken;
+		private readonly object queueMetricsLock = new();
+		private int countedQueued;
+		private int pendingDequeues;
+		private int closed;
 		private KeyRecord record;
 		private volatile bool valid = true;
 
@@ -63,6 +67,10 @@ namespace Aerospike.Client
 			try
 			{
 				record = queue.Take(cancelToken);
+				if (record != END)
+				{
+					RecordQueued(-1);
+				}
 			}
 			catch (OperationCanceledException)
 			{
@@ -112,17 +120,28 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Close()
 		{
+			if (Interlocked.CompareExchange(ref closed, 1, 0) != 0)
+			{
+				return;
+			}
 			valid = false;
 
-			// Check if more records are available.
-			if (record != END)
+			if (record != END && executor != null &&
+				executor.StopThreads(new AerospikeException.QueryTerminated()))
 			{
-				if (queue.TryTake(out record) && record != END && executor != null)
+				RecordAbandoned();
+			}
+
+			// Drain every discarded item, including queues whose producers already
+			// completed before Close().
+			while (queue.TryTake(out KeyRecord queued))
+			{
+				if (queued != END)
 				{
-					// Some query threads may still be running. Stop these threads.
-					executor.StopThreads(new AerospikeException.QueryTerminated());
+					RecordQueued(-1);
 				}
 			}
+			record = END;
 		}
 
 		//-------------------------------------------------------
@@ -180,6 +199,10 @@ namespace Aerospike.Client
 			{
 				// This add will block if queue capacity is reached.
 				queue.Add(record, cancelToken);
+				if (record != END)
+				{
+					RecordQueued(1);
+				}
 				return true;
 			}
 			catch (OperationCanceledException)
@@ -200,24 +223,67 @@ namespace Aerospike.Client
 		{
 			valid = false;
 
+			// Discard queued records before sending the end token.
+			while (queue.TryTake(out KeyRecord tmp))
+			{
+				if (tmp != END)
+				{
+					RecordQueued(-1);
+				}
+			}
+
 			// Send end command to command thread.
-			// It's critical that the end token add succeeds.
 			while (!queue.TryAdd(END))
 			{
-				// Queue must be full. Remove one item to make room.
-				KeyRecord tmp;
-				if (!queue.TryTake(out tmp))
+				if (queue.TryTake(out KeyRecord next) && next != END)
 				{
-					// Can't add or take.  Nothing can be done here.
-					/*
-					if (Log.DebugEnabled())
-					{
-						Log.Debug("RecordSet " + executor.statement.taskId + " both add and take failed on abort");
-					}
-					*/
-					break;
+					RecordQueued(-1);
 				}
 			}
 		}
+
+		private void RecordQueued(int delta)
+		{
+			int recordedDelta = 0;
+
+			lock (queueMetricsLock)
+			{
+				if (delta > 0)
+				{
+					if (pendingDequeues > 0)
+					{
+						pendingDequeues--;
+					}
+					else
+					{
+						countedQueued++;
+						recordedDelta = 1;
+					}
+				}
+				else if (countedQueued > 0)
+				{
+					countedQueued--;
+					recordedDelta = -1;
+				}
+				else
+				{
+					pendingDequeues++;
+				}
+			}
+
+			if (recordedDelta != 0 && executor is IQueryMetrics metrics)
+			{
+				metrics.RecordQueued(recordedDelta);
+			}
+		}
+
+		private void RecordAbandoned()
+		{
+			if (executor is IQueryMetrics metrics)
+			{
+				metrics.RecordAbandoned();
+			}
+		}
+
 	}
 }

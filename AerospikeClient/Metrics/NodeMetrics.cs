@@ -27,7 +27,7 @@ namespace Aerospike.Client
 		public Histograms Histograms { get; private set; }
 		public Counter BytesInCounter;
 		public Counter BytesOutCounter;
-		private bool disposedValue;
+		private int disposed;
 
 		/// <summary>
 		/// Initialize extended node metrics.
@@ -53,9 +53,33 @@ namespace Aerospike.Client
 			Histograms?.AddLatency(ns, type, elapsedMs);
 		}
 
+		internal void Reshape(MetricsPolicy policy)
+		{
+			ReplaceHistograms(CreateHistograms(policy));
+		}
+
+		internal static Histograms CreateHistograms(
+			MetricsPolicy policy)
+		{
+			return new Histograms(
+				policy.LatencyColumns,
+				policy.LatencyShift);
+		}
+
+		internal Histograms ReplaceHistograms(
+			Histograms replacement)
+		{
+			// Do not dispose the previous map here. A command that captured it before
+			// the swap may still be recording latency. It becomes collectible when
+			// those in-flight readers release it.
+			Histograms previous = Histograms;
+			Histograms = replacement;
+			return previous;
+		}
+
 		private void Dispose(bool disposing)
 		{
-			if (!disposedValue)
+			if (Interlocked.Exchange(ref disposed, 1) == 0)
 			{
 				if (disposing)
 				{
@@ -67,7 +91,6 @@ namespace Aerospike.Client
 					Histograms = null;
 				}
 
-				disposedValue = true;
 			}
 		}
 
@@ -76,6 +99,106 @@ namespace Aerospike.Client
 			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
 			Dispose(disposing: true);
 			GC.SuppressFinalize(this);
+		}
+	}
+
+	internal sealed class NodeMetricsSlot
+	{
+		private int readers = 1;
+		private int retired;
+		internal readonly NodeMetrics Metrics;
+
+		internal NodeMetricsSlot(NodeMetrics metrics)
+		{
+			Metrics = metrics;
+		}
+
+		internal NodeMetricsLease Acquire()
+		{
+			while (true)
+			{
+				if (Volatile.Read(ref retired) != 0)
+				{
+					return default;
+				}
+
+				int current = Volatile.Read(ref readers);
+
+				if (current == 0)
+				{
+					return default;
+				}
+
+				if (Interlocked.CompareExchange(
+					ref readers,
+					current + 1,
+					current) == current)
+				{
+					if (Volatile.Read(ref retired) == 0)
+					{
+						return new NodeMetricsLease(this, Metrics);
+					}
+
+					Release();
+					return default;
+				}
+			}
+		}
+
+		internal void Retire()
+		{
+			if (Interlocked.Exchange(ref retired, 1) == 0)
+			{
+				Release();
+			}
+		}
+
+		internal T RetireAndCapture<T>(Func<NodeMetrics, T> capture)
+		{
+			if (Interlocked.Exchange(ref retired, 1) != 0)
+			{
+				return default;
+			}
+
+			SpinWait spinner = new();
+			while (Volatile.Read(ref readers) != 1)
+			{
+				spinner.SpinOnce();
+			}
+
+			try
+			{
+				return capture(Metrics);
+			}
+			finally
+			{
+				Release();
+			}
+		}
+
+		internal void Release()
+		{
+			if (Interlocked.Decrement(ref readers) == 0)
+			{
+				Metrics.Dispose();
+			}
+		}
+	}
+
+	internal readonly struct NodeMetricsLease : IDisposable
+	{
+		private readonly NodeMetricsSlot slot;
+		internal readonly NodeMetrics Metrics;
+
+		internal NodeMetricsLease(NodeMetricsSlot slot, NodeMetrics metrics)
+		{
+			this.slot = slot;
+			Metrics = metrics;
+		}
+
+		public void Dispose()
+		{
+			slot?.Release();
 		}
 	}
 }

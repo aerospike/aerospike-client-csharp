@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client.Config;
+using System.Collections.ObjectModel;
 using System.Text;
 
 namespace Aerospike.Client
@@ -85,6 +86,8 @@ namespace Aerospike.Client
 
 		// Thread-safe queue of sync connections to be closed.
 		private Pool<ConnectionRecover> recoverQueue;
+		private readonly object recoverLock = new();
+		private bool recoverAccepting = true;
 
 		// Minimum sync connections per node.
 		internal readonly int minConnsPerNode;
@@ -152,11 +155,98 @@ namespace Aerospike.Client
 		internal bool hasPartitionQuery;
 		public bool MetricsEnabled;
 		public MetricsPolicy MetricsPolicy;
+		internal bool MetricsOperationalEnabled =>
+			MetricsEnabled && MetricsPolicy?.OperationalEnabled == true;
+		private MetricsPolicy metricsPolicyBase = new();
 		private volatile IMetricsListener metricsListener;
+		private volatile MetricsSession metricsSession;
+		private volatile MetricsReadPublication metricsPublication;
+		private bool metricsStopping;
+		private MetricsReporter metricsReporter;
+		private MetricsWriter metricsFileWriter;
+		private readonly MetricsDepartureStore metricsDepartureStore = new();
+		private readonly MetricsProcessSampler metricsPullProcessSampler = new();
+		private readonly MetricsProcessSampler metricsReporterProcessSampler = new();
+		private readonly MetricsProcessSampler metricsLegacyProcessSampler = new(true);
+		private readonly Dictionary<Node, LegacyMetricsFileNodeSnapshot>
+			metricsFrozenLegacyNodes =
+				new(ReferenceEqualityComparer.Instance);
+		private MetricsExporterFailureRegistry metricsExporterFailures = new();
+		private Action<MetricsReporter> metricsReporterStarter =
+			static reporter => reporter.Start();
+		private Func<string, long, int, int, MetricsWriter>
+			metricsWriterFactory =
+				static (dir, limit, columns, shift) =>
+					new MetricsWriter(dir, limit, columns, shift);
+		private double metricsFrozenCpuPercent;
+		private long metricsFrozenMemoryBytes;
+		private double metricsFrozenLegacyCpuPercent;
+		private long metricsFrozenLegacyMemoryBytes;
+		private long metricsTopologyVersion;
+		[ThreadStatic]
+		private static ApiMetricsContext apiMetricsContext;
+		[ThreadStatic]
+		private static bool apiMetricsDelegation;
+		private readonly object metricsLifecycleLock = new();
 		internal readonly object metricsLock = new();
 		private volatile int retryCount;
 		private volatile int commandCount;
 		private volatile int delayQueueTimeoutCount;
+
+		private sealed class MetricsReadPublication
+		{
+			internal readonly MetricsSession Session;
+			internal readonly MetricsRuntimeConfig Config;
+			internal readonly IReadOnlyDictionary<string, string> Labels;
+			internal readonly string AppId;
+			internal readonly string LegacyAppId;
+
+			internal MetricsReadPublication(
+				MetricsSession session,
+				MetricsRuntimeConfig config,
+				IReadOnlyDictionary<string, string> labels,
+				string appId,
+				string legacyAppId)
+			{
+				Session = session;
+				Config = config;
+				Labels = labels;
+				AppId = appId;
+				LegacyAppId = legacyAppId;
+			}
+		}
+
+		private sealed class MetricsDeliveryCandidate
+		{
+			internal readonly MetricsReporter PreviousReporter;
+			internal readonly MetricsWriter PreviousWriter;
+			internal readonly MetricsReporter Reporter;
+			internal readonly MetricsWriter Writer;
+			internal readonly MetricsReporterConfig Config;
+			internal readonly bool ReconfigureReporter;
+			internal bool OwnsReporter;
+			internal bool OwnsWriter;
+
+			internal MetricsDeliveryCandidate(
+				MetricsReporter previousReporter,
+				MetricsWriter previousWriter,
+				MetricsReporter reporter,
+				MetricsWriter writer,
+				MetricsReporterConfig config,
+				bool reconfigureReporter,
+				bool ownsReporter,
+				bool ownsWriter)
+			{
+				PreviousReporter = previousReporter;
+				PreviousWriter = previousWriter;
+				Reporter = reporter;
+				Writer = writer;
+				Config = config;
+				ReconfigureReporter = reconfigureReporter;
+				OwnsReporter = ownsReporter;
+				OwnsWriter = ownsWriter;
+			}
+		}
 
 		public Cluster(AerospikeClient client, ClientPolicy policy, string configPath, Host[] hosts)
 		{
@@ -363,8 +453,12 @@ namespace Aerospike.Client
 				AddSeeds(seedsToAdd.ToArray());
 			}
 
-			if (configData != null && configData.dynamicConfig.metrics.enable.HasValue &&
-				configData.dynamicConfig.metrics.enable.Value)
+			// Always bind and validate the metrics section, even when metrics resolves
+			// disabled, so contradictory startup aliases are never silently accepted.
+			MetricsPolicy = MergeMetricsPolicyWithConfig(metricsPolicyBase);
+			MetricsPolicy.Validate();
+
+			if (configData.GetMetricsEnabled() == true)
 			{
 				lock (metricsLock)
 				{
@@ -483,8 +577,14 @@ namespace Aerospike.Client
 		/// </summary>
 		private void Tend(bool isInit)
 		{
+			MetricsSession tendMetricsSession = metricsSession;
+			long tendMetricsStart =
+				tendMetricsSession?.StartTend() ?? long.MinValue;
+
 			// Initialize tend iteration node statistics.
 			Peers peers = new Peers(nodes.Length + 16);
+			try
+			{
 
 			// Clear node reference counts.
 			foreach (Node node in nodes)
@@ -582,7 +682,10 @@ namespace Aerospike.Client
 			// Perform metrics snapshot
 			lock (metricsLock)
 			{
-				if (MetricsEnabled && (tendCount % MetricsPolicy.Interval) == 0)
+				if (MetricsEnabled &&
+					!metricsStopping &&
+					metricsListener != null &&
+					(tendCount % MetricsPolicy.Interval) == 0)
 				{
 					metricsListener.OnSnapshot(this);
 				}
@@ -590,7 +693,7 @@ namespace Aerospike.Client
 
 			// Convert config interval from a millisecond duration to the number of cluster tend
 			// iterations.
-			int interval = configInterval / tendInterval;
+			int interval = Math.Max(1, configInterval / tendInterval);
 
 			// Check configuration file for updates.
 			if (configPath != null && tendCount % interval == 0)
@@ -608,7 +711,17 @@ namespace Aerospike.Client
 				}
 			}
 
-			ProcessRecoverQueue();
+				ProcessRecoverQueue();
+			}
+			finally
+			{
+				if (tendMetricsStart != long.MinValue)
+				{
+					tendMetricsSession?.CompleteTend(
+						tendMetricsStart,
+						peers.InvalidCount);
+				}
+			}
 		}
 
 		private bool SeedNode(Peers peers)
@@ -742,11 +855,19 @@ namespace Aerospike.Client
 		{
 			Node node = new Node(this, nv);
 
-			if (createMinConn)
+			try
 			{
-				node.CreateMinConnections();
+				if (createMinConn)
+				{
+					node.CreateMinConnections();
+				}
+				return node;
 			}
-			return node;
+			catch
+			{
+				node.Close();
+				throw;
+			}
 		}
 
 		private void FindNodesToRemove(Peers peers)
@@ -833,8 +954,7 @@ namespace Aerospike.Client
 			}
 			hasPartitionQuery = Cluster.SupportsPartitionQuery(nodeArray);
 
-			// Replace nodes with copy.
-			nodes = nodeArray;
+			PublishAddedNodes(nodeArray, nodeArray);
 		}
 
 		/// <summary>
@@ -861,8 +981,7 @@ namespace Aerospike.Client
 			}
 			hasPartitionQuery = Cluster.SupportsPartitionQuery(nodeArray);
 
-			// Replace nodes with copy.
-			nodes = nodeArray;
+			PublishAddedNodes(nodeArray, nodesToAdd.Values);
 		}
 
 		private void AddNode(Node node)
@@ -875,7 +994,65 @@ namespace Aerospike.Client
 			nodesMap[node.Name] = node;
 		}
 
+		private void PublishAddedNodes(
+			Node[] nodeArray,
+			IEnumerable<Node> addedNodes)
+		{
+			lock (metricsLock)
+			{
+				List<Node> added = [.. addedNodes];
+				NodeMetrics[] staged = MetricsEnabled
+					? new NodeMetrics[added.Count]
+					: null;
+
+				try
+				{
+					if (staged != null)
+					{
+						for (int i = 0; i < added.Count; i++)
+						{
+							staged[i] = new NodeMetrics(MetricsPolicy);
+						}
+					}
+				}
+				catch
+				{
+					DisposeNodeMetrics(staged);
+					throw;
+				}
+
+				Interlocked.Increment(ref metricsTopologyVersion);
+
+				try
+				{
+					for (int i = 0; i < added.Count; i++)
+					{
+						added[i].ResetMetricsDepartureTransfer();
+						added[i].ReplaceMetrics(staged?[i]);
+					}
+					nodes = nodeArray;
+
+					foreach (Node node in added)
+					{
+						node.CompleteAdmissionMetrics();
+					}
+				}
+				finally
+				{
+					Interlocked.Increment(ref metricsTopologyVersion);
+				}
+			}
+		}
+
 		private void RemoveNodes(HashSet<Node> nodesToRemove)
+		{
+			lock (metricsLifecycleLock)
+			{
+				RemoveNodesInternal(nodesToRemove);
+			}
+		}
+
+		private void RemoveNodesInternal(HashSet<Node> nodesToRemove)
 		{
 			// There is no need to delete nodes from partitionWriteMap because the nodes 
 			// have already been set to inactive. Further connection requests will result 
@@ -889,7 +1066,9 @@ namespace Aerospike.Client
 
 				lock (metricsLock)
 				{
-					if (MetricsEnabled)
+					if (MetricsEnabled &&
+						!metricsStopping &&
+						metricsListener != null)
 					{
 						// Flush node metrics before removal.
 						try
@@ -903,24 +1082,72 @@ namespace Aerospike.Client
 					}
 				}
 
-				if (tendValid)
-				{
-					node.Close();
-				}
-				else
-				{
-					return;
-				}
 			}
 
-			// Remove all nodes at once to avoid copying entire array multiple times.
-			RemoveNodesCopy(nodesToRemove);
+			Node[] nodeArray = CreateNodesAfterRemoval(nodesToRemove);
+
+			lock (metricsLock)
+			{
+				Interlocked.Increment(ref metricsTopologyVersion);
+
+				try
+				{
+					foreach (Node node in nodesToRemove)
+					{
+						TransferNodeDeparture(node);
+					}
+					nodes = nodeArray;
+				}
+				finally
+				{
+					Interlocked.Increment(ref metricsTopologyVersion);
+				}
+			}
+		}
+
+		private void TransferNodeDeparture(Node node)
+		{
+			if (!node.TryBeginMetricsDepartureTransfer())
+			{
+				return;
+			}
+			try
+			{
+				MetricsSession departureSession =
+					metricsSession ?? metricsPublication?.Session;
+				MetricsNodeDeparture departure =
+					departureSession?.BeginNodeDeparture(node);
+				node.CloseForDeparture();
+
+				if (departure != null)
+				{
+					if (!metricsFrozenLegacyNodes.Remove(
+						node,
+						out LegacyMetricsFileNodeSnapshot legacy))
+					{
+						legacy = BuildLegacyFileNodeSnapshot(node, true);
+					}
+					metricsDepartureStore.Add(
+						node.Name,
+						node.address.Address.ToString(),
+						node.address.Port,
+						node.GetErrorRate(),
+						departure,
+						legacy);
+				}
+				node.DisposeAfterDeparture();
+			}
+			catch
+			{
+				node.ResetMetricsDepartureTransfer();
+				throw;
+			}
 		}
 
 		/// <summary>
 		/// Remove nodes using copy on write semantics.
 		/// </summary>
-		private void RemoveNodesCopy(HashSet<Node> nodesToRemove)
+		private Node[] CreateNodesAfterRemoval(HashSet<Node> nodesToRemove)
 		{
 			// Create temporary nodes array.
 			// Since nodes are only marked for deletion using node references in the nodes array,
@@ -958,9 +1185,7 @@ namespace Aerospike.Client
 				nodeArray = nodeArray2;
 			}
 			hasPartitionQuery = Cluster.SupportsPartitionQuery(nodeArray);
-
-			// Replace nodes with copy.
-			nodes = nodeArray;
+			return nodeArray;
 		}
 
 		internal bool IsConnCurrentTran(DateTime lastUsed)
@@ -991,55 +1216,93 @@ namespace Aerospike.Client
 				return;
 			}
 
-			// Do not let queue get out of control.
-			if (Interlocked.Increment(ref recoverCount) < 10000)
+			bool admitted = false;
+
+			lock (recoverLock)
 			{
-				recoverQueue.EnqueueLast(cs);
+				if (recoverAccepting &&
+					recoverCount < recoverQueue.Capacity &&
+					recoverQueue.EnqueueLast(cs))
+				{
+					recoverCount++;
+					cs.MarkEnqueued();
+					admitted = true;
+				}
 			}
-			else
+
+			if (!admitted)
 			{
-				Interlocked.Decrement(ref recoverCount);
 				cs.Abort();
 			}
 		}
 
 		private void ProcessRecoverQueue()
 		{
-			ConnectionRecover last = recoverQueue.PeekLast();
+			List<ConnectionRecover> recoveries;
 
-			if (last == default)
+			lock (recoverLock)
 			{
-				return;
+				if (recoverCount == 0)
+				{
+					return;
+				}
+
+				recoveries = new List<ConnectionRecover>(recoverCount);
+
+				while (recoverQueue.TryDequeueLast(out ConnectionRecover cs))
+				{
+					recoverCount--;
+					recoveries.Add(cs);
+				}
 			}
 
 			// Thread local can be used here because this method
 			// is only called from the cluster tend thread.
 			byte[] buf = ThreadLocalData.GetBuffer();
-			ConnectionRecover cs;
 
-			while (recoverQueue.TryDequeueLast(out cs) && cs != default)
+			foreach (ConnectionRecover cs in recoveries)
 			{
-				if (cs.Drain(buf))
+				if (!cs.Drain(buf))
 				{
-					Interlocked.Decrement(ref recoverCount);
-				}
-				else
-				{
-					recoverQueue.EnqueueLast(cs);
-				}
+					bool requeued = false;
 
-				if (cs == last)
-				{
-					break;
+					lock (recoverLock)
+					{
+						if (recoverAccepting &&
+							recoverQueue.Enqueue(cs))
+						{
+							recoverCount++;
+							requeued = true;
+						}
+					}
+
+					if (!requeued)
+					{
+						cs.Abort();
+					}
 				}
 			}
 		}
 
 		private void LoadConfiguration()
 		{
+			lock (metricsLifecycleLock)
+			{
+				LoadConfigurationInternal();
+			}
+		}
+
+		private void LoadConfigurationInternal()
+		{
+			YamlConfigProvider yamlProvider = client.configProvider as YamlConfigProvider;
+			YamlConfigProvider.StagedConfig stagedConfig = null;
+			IConfigProvider candidateProvider;
+			bool publishProvider = false;
+
 			if (client.configProvider == null)
 			{
-				var provider = YamlConfigProvider.CreateConfigProvider(configPath, client);
+				YamlConfigProvider provider =
+					YamlConfigProvider.CreateConfigProvider(configPath, client);
 
 				if (provider == null)
 				{
@@ -1047,7 +1310,29 @@ namespace Aerospike.Client
 					return;
 				}
 
-				client.configProvider = provider;
+				yamlProvider = provider;
+				candidateProvider = provider;
+				publishProvider = true;
+			}
+			else if (yamlProvider != null)
+			{
+				try
+				{
+					if (!yamlProvider.TryStage(out stagedConfig))
+					{
+						return;
+					}
+					candidateProvider =
+						new YamlConfigProvider.CandidateProvider(stagedConfig);
+				}
+				catch (Exception e)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn(e.Message);
+					}
+					return;
+				}
 			}
 			else
 			{
@@ -1066,34 +1351,127 @@ namespace Aerospike.Client
 					}
 					return;
 				}
+				candidateProvider = client.configProvider;
 			}
 
-			configData = client.configProvider.ConfigurationData;
-			client.MergeDefaultPoliciesWithConfig();
+			IConfigurationData candidateConfig = candidateProvider.ConfigurationData;
+			MetricsPolicy candidatePolicy = new MetricsPolicy(metricsPolicyBase, candidateConfig);
+			candidatePolicy.Validate();
+			ClientPolicy basePolicy =
+				client.clientPolicyBase ?? client.GetClientPolicy();
+			ClientPolicy candidateClientPolicy =
+				new(basePolicy, candidateProvider);
+			ValidateClusterConfig(candidateClientPolicy, true);
+			AerospikeClient.MergedPolicyBundle candidatePolicies =
+				client.CreateMergedPolicies(candidateProvider);
 
 			lock (metricsLock)
 			{
-				UpdateClusterConfig(false);
-				this.MetricsPolicy = MergeMetricsPolicyWithConfig(MetricsPolicy);
+				MetricsPolicy previousMetricsPolicy = MetricsPolicy;
 
-				if (MetricsEnabled && MetricsPolicy.restartRequired)
+				if (stagedConfig != null && !yamlProvider.IsCurrent(stagedConfig))
 				{
-					DisableMetricsInternal();
-					EnableMetricsInternal(MetricsPolicy);
 					return;
 				}
 
-				if (configData != null && configData.HasMetrics())
+				candidatePolicy.restartRequired = MetricsPolicy != null &&
+					(candidatePolicy.LatencyColumns != MetricsPolicy.LatencyColumns ||
+					candidatePolicy.LatencyShift != MetricsPolicy.LatencyShift ||
+					candidatePolicy.LatencyUnit != MetricsPolicy.LatencyUnit);
+				bool desiredMetricsEnabled = MetricsEnabled;
+
+				if (candidateConfig != null && candidateConfig.HasMetrics())
 				{
-					if (!MetricsEnabled && configData.dynamicConfig.metrics.enable.Value)
+					desiredMetricsEnabled =
+						candidateConfig.GetMetricsEnabled().Value;
+				}
+				MetricsDeliveryCandidate deliveryCandidate =
+					desiredMetricsEnabled
+						? PrepareMetricsDelivery(
+							candidatePolicy,
+							previousMetricsPolicy)
+						: null;
+
+				if (!MetricsEnabled && desiredMetricsEnabled)
+				{
+					EnableMetricsCandidate(
+						candidatePolicy,
+						true,
+						deliveryCandidate,
+						candidateClientPolicy.AppId,
+						true);
+				}
+				else if (MetricsEnabled && !desiredMetricsEnabled)
+				{
+					DisableMetricsInternal();
+					MetricsPolicy = candidatePolicy;
+				}
+				else if (MetricsEnabled)
+				{
+					if (candidatePolicy.restartRequired)
 					{
-						EnableMetricsInternal(MetricsPolicy);
+						ReconfigureMetricsInternal(
+							candidatePolicy,
+							deliveryCandidate,
+							candidateClientPolicy.AppId,
+							true);
 					}
-					else if (MetricsEnabled && !configData.dynamicConfig.metrics.enable.Value)
+					else
 					{
-						DisableMetricsInternal();
+						QuiesceMetricsDelivery(deliveryCandidate);
+						try
+						{
+							metricsSession?.ApplyPolicy(candidatePolicy);
+							MetricsPolicy = candidatePolicy;
+							PublishMetrics(
+								metricsSession,
+								candidatePolicy,
+								candidateClientPolicy.AppId,
+								true);
+							CommitMetricsDelivery(deliveryCandidate);
+						}
+						catch
+						{
+							metricsSession?.ApplyPolicy(
+								previousMetricsPolicy);
+							MetricsPolicy = previousMetricsPolicy;
+							PublishMetrics(
+								metricsSession,
+								previousMetricsPolicy);
+							AbortMetricsDelivery(
+								deliveryCandidate,
+								true);
+							throw;
+						}
 					}
 				}
+				else
+				{
+					MetricsPolicy = candidatePolicy;
+				}
+
+				if (stagedConfig != null)
+				{
+					yamlProvider.CommitApplied(stagedConfig);
+				}
+				if (publishProvider)
+				{
+					client.configProvider = candidateProvider;
+				}
+
+				client.clientPolicy = candidateClientPolicy;
+				client.PublishMergedPolicies(candidatePolicies);
+				configData = candidateConfig;
+				ApplyClusterConfig(candidateClientPolicy, false);
+			}
+
+			if (stagedConfig != null)
+			{
+				yamlProvider.LogApplied(stagedConfig);
+			}
+			else if (publishProvider)
+			{
+				yamlProvider.LogInitialApplied();
 			}
 		}
 
@@ -1109,22 +1487,31 @@ namespace Aerospike.Client
 		/// <param name="policy"></param>
 		public void EnableMetrics(MetricsPolicy policy)
 		{
-			if (configData != null)
+			RejectMetricsLifecycleFromExporter();
+
+			lock (metricsLifecycleLock)
 			{
-				if (configData.dynamicConfig.metrics.enable.HasValue)
+				if (configData != null)
 				{
-					if (!configData.dynamicConfig.metrics.enable.Value)
+					bool? enabled = configData.GetMetricsEnabled();
+
+					if (enabled.HasValue)
 					{
-						Log.Error("When a config exists, metrics can not be enabled via EnableMetrics unless they" +
-							" are enabled in the config provider.");
-						return;
+						if (!enabled.Value)
+						{
+							Log.Error("When a config exists, metrics can not be enabled via EnableMetrics unless they" +
+								" are enabled in the config provider.");
+							return;
+						}
 					}
 				}
-			}
 
-			lock (metricsLock)
-			{
-				EnableMetricsInternal(policy);
+				lock (metricsLock)
+				{
+					EnableMetricsInternal(policy);
+					metricsPolicyBase = new MetricsPolicy(policy ?? new MetricsPolicy());
+					metricsExporterFailures.Clear();
+				}
 			}
 		}
 
@@ -1134,48 +1521,187 @@ namespace Aerospike.Client
 		private void EnableMetricsInternal(MetricsPolicy policy)
 		{
 			MetricsPolicy mergedMp = MergeMetricsPolicyWithConfig(policy);
+			EnableMetricsCandidate(mergedMp);
+		}
+
+		private void EnableMetricsCandidate(
+			MetricsPolicy mergedMp,
+			bool publish = true,
+			MetricsDeliveryCandidate deliveryCandidate = null,
+			string publicationAppId = null,
+			bool overridePublicationAppId = false)
+		{
+			mergedMp.Validate();
 			IMetricsListener listener = mergedMp.Listener;
-
-			listener ??= new MetricsWriter(mergedMp.ReportDir);
-
-			// In case metrics was enabled before this call, disable the previous metrics listener
-			if (MetricsEnabled)
+			bool wasEnabled = MetricsEnabled;
+			IMetricsListener previousListener = metricsListener;
+			MetricsPolicy previousPolicy = MetricsPolicy;
+			MetricsSession previousSession = metricsSession;
+			MetricsSession candidateSession = wasEnabled
+				? previousSession
+				: new MetricsSession(mergedMp);
+			deliveryCandidate ??=
+				PrepareMetricsDelivery(mergedMp, previousPolicy);
+			QuiesceMetricsDelivery(deliveryCandidate);
+			if (!wasEnabled)
 			{
-				this.metricsListener.OnDisable(this);
+				metricsPullProcessSampler.Reset();
+				metricsReporterProcessSampler.Reset();
+				metricsLegacyProcessSampler.Reset();
 			}
-
-			this.metricsListener = listener;
-			this.MetricsPolicy = mergedMp;
 
 			Node[] nodeArray = nodes;
+			NodeMetrics[] candidateNodeMetrics = new NodeMetrics[nodeArray.Length];
 
-			foreach (Node node in nodeArray)
+			try
 			{
-				node.EnableMetrics(MetricsPolicy);
+				for (int i = 0; i < nodeArray.Length; i++)
+				{
+					candidateNodeMetrics[i] = new NodeMetrics(mergedMp);
+				}
+			}
+			catch
+			{
+				DisposeNodeMetrics(candidateNodeMetrics);
+				AbortMetricsDelivery(deliveryCandidate, true);
+				throw;
 			}
 
-			metricsListener.OnEnable(this, MetricsPolicy);
+			// In case metrics was enabled before this call, disable the previous metrics listener
+			bool paused = wasEnabled && previousSession?.Pause() == true;
+			if (wasEnabled)
+			{
+				try
+				{
+					previousListener?.OnDisable(this);
+				}
+				catch (Exception disableException)
+				{
+					DisposeNodeMetrics(candidateNodeMetrics);
+					try
+					{
+						previousListener?.OnEnable(this, previousPolicy);
+					}
+					catch (Exception rollbackException)
+					{
+						FailClosedMetrics(previousSession);
+						throw new AggregateException(
+							"Metrics listener disable and rollback both failed.",
+							disableException,
+							rollbackException);
+					}
+					if (paused)
+					{
+						previousSession.Resume();
+					}
+					AbortMetricsDelivery(deliveryCandidate, true);
+					throw;
+				}
+			}
+
+			try
+			{
+				listener?.OnEnable(this, mergedMp);
+			}
+			catch (Exception enableException)
+			{
+				List<Exception> failures = [enableException];
+				bool rollbackFailed = false;
+
+				try
+				{
+					listener?.OnDisable(this);
+				}
+				catch (Exception cleanupException)
+				{
+					failures.Add(cleanupException);
+				}
+				DisposeNodeMetrics(candidateNodeMetrics);
+
+				if (wasEnabled)
+				{
+					try
+					{
+						previousListener?.OnEnable(this, previousPolicy);
+					}
+					catch (Exception rollbackException)
+					{
+						failures.Add(rollbackException);
+						rollbackFailed = true;
+						FailClosedMetrics(previousSession);
+					}
+				}
+				if (!rollbackFailed && paused)
+				{
+					previousSession.Resume();
+				}
+				AbortMetricsDelivery(
+					deliveryCandidate,
+					!rollbackFailed);
+				throw failures.Count == 1
+					? enableException
+					: new AggregateException(
+						"Metrics listener activation cleanup or rollback failed.",
+						failures);
+			}
+
+			for (int i = 0; i < nodeArray.Length; i++)
+			{
+				nodeArray[i].ReplaceMetrics(candidateNodeMetrics[i]);
+			}
+
+			candidateSession.ApplyPolicy(mergedMp);
+			metricsListener = listener;
+			MetricsPolicy = mergedMp;
+			metricsSession = candidateSession;
+			CommitMetricsDelivery(deliveryCandidate);
+			if (publish)
+			{
+				PublishMetrics(
+					candidateSession,
+					mergedMp,
+					publicationAppId,
+					overridePublicationAppId);
+			}
 			MetricsEnabled = true;
+			if (!wasEnabled)
+			{
+				metricsFrozenCpuPercent = 0;
+				metricsFrozenMemoryBytes = 0;
+				metricsFrozenLegacyCpuPercent = 0;
+				metricsFrozenLegacyMemoryBytes = 0;
+			}
+			if (paused)
+			{
+				candidateSession.Resume();
+			}
 			MetricsPolicy.restartRequired = false;
 		}
 
 		public void DisableMetrics()
 		{
-			if (configData != null)
+			RejectMetricsLifecycleFromExporter();
+
+			lock (metricsLifecycleLock)
 			{
-				if (configData.dynamicConfig.metrics.enable.HasValue)
+				if (configData != null)
 				{
-					if (configData.dynamicConfig.metrics.enable.Value)
+					bool? enabled = configData.GetMetricsEnabled();
+
+					if (enabled.HasValue)
 					{
-						Log.Error("Metrics can not be disabled via DisableMetrics() when they are enabled via config.");
-						return;
+						if (enabled.Value)
+						{
+							Log.Error("Metrics can not be disabled via DisableMetrics() when they are enabled via config.");
+							return;
+						}
 					}
 				}
-			}
 
-			lock (metricsLock)
-			{
-				DisableMetricsInternal();
+				lock (metricsLock)
+				{
+					DisableMetricsInternal();
+				}
 			}
 		}
 
@@ -1186,12 +1712,628 @@ namespace Aerospike.Client
 		{
 			if (MetricsEnabled)
 			{
-				MetricsEnabled = false;
-				metricsListener?.OnDisable(this);
+				MetricsSession session = metricsSession;
+				metricsStopping = true;
+				bool paused = session?.Pause() == true;
+				MetricsReporter reporter = metricsReporter;
+				if (reporter != null)
+				{
+					RunOutsideMetricsLock(reporter.Quiesce);
+				}
+
+				try
+				{
+					metricsListener?.OnDisable(this);
+				}
+				catch (Exception disableException)
+				{
+					try
+					{
+						metricsListener?.OnEnable(this, MetricsPolicy);
+					}
+					catch (Exception rollbackException)
+					{
+						if (reporter != null)
+						{
+							RunOutsideMetricsLock(reporter.Stop);
+						}
+						metricsReporter = null;
+						MetricsWriter failedWriter = metricsFileWriter;
+						metricsFileWriter = null;
+						if (failedWriter != null)
+						{
+							RunOutsideMetricsLock(failedWriter.Dispose);
+						}
+						FailClosedMetrics(session);
+						throw new AggregateException(
+							"Metrics listener disable and rollback both failed.",
+							disableException,
+							rollbackException);
+					}
+					metricsStopping = false;
+					if (reporter != null)
+					{
+						ScheduleMetricsReporterResume(reporter);
+					}
+					if (paused)
+					{
+						session.Resume();
+					}
+					throw;
+				}
+
+				foreach (Node node in nodes)
+				{
+					if (!node.Active)
+					{
+						TransferNodeDeparture(node);
+					}
+				}
+				session?.Freeze();
+				metricsFrozenLegacyNodes.Clear();
+				foreach (Node node in nodes)
+				{
+					if (node.Active)
+					{
+						metricsFrozenLegacyNodes[node] =
+							BuildLegacyFileNodeSnapshot(node, true);
+					}
+				}
+				MetricsSnapshot finalSnapshot = BuildMetricsSnapshot(
+					true,
+					true,
+					reporter?.IncludeLegacyFile == true);
+				metricsFrozenCpuPercent = finalSnapshot.Cluster.CpuPercent;
+				metricsFrozenMemoryBytes = finalSnapshot.Cluster.MemoryBytes;
+				metricsFrozenLegacyCpuPercent =
+					finalSnapshot.LegacyFile.CpuPercent;
+				metricsFrozenLegacyMemoryBytes =
+					finalSnapshot.LegacyFile.MemoryBytes;
+
+				if (reporter != null)
+				{
+					RunOutsideMetricsLock(() =>
+					{
+						reporter.ExportFinal(finalSnapshot);
+						reporter.Stop();
+					});
+				}
+
+				metricsReporter = null;
+				MetricsWriter finalWriter = metricsFileWriter;
+				metricsFileWriter = null;
+				if (finalWriter != null)
+				{
+					RunOutsideMetricsLock(finalWriter.Dispose);
+				}
+
 				foreach (Node node in nodes)
 				{
 					node.DisableMetrics();
 				}
+				metricsSession = null;
+				MetricsEnabled = false;
+				metricsStopping = false;
+			}
+		}
+
+		private void ReconfigureMetricsInternal(
+			MetricsPolicy policy,
+			MetricsDeliveryCandidate deliveryCandidate = null,
+			string publicationAppId = null,
+			bool overridePublicationAppId = false)
+		{
+			policy.Validate();
+			MetricsPolicy previousPolicy = MetricsPolicy;
+			IMetricsListener listener = metricsListener;
+			MetricsSession session = metricsSession;
+			deliveryCandidate ??=
+				PrepareMetricsDelivery(policy, previousPolicy);
+			Node[] nodeArray = nodes;
+			NodeMetrics[] nodeMetrics =
+				new NodeMetrics[nodeArray.Length];
+			Histograms[] candidateHistograms =
+				new Histograms[nodeArray.Length];
+			Histograms[] previousHistograms =
+				new Histograms[nodeArray.Length];
+
+			try
+			{
+				for (int i = 0; i < nodeArray.Length; i++)
+				{
+					nodeMetrics[i] = nodeArray[i].GetMetrics();
+					if (nodeMetrics[i] != null)
+					{
+						candidateHistograms[i] =
+							NodeMetrics.CreateHistograms(policy);
+					}
+				}
+			}
+			catch
+			{
+				DisposeHistograms(candidateHistograms);
+				AbortMetricsDelivery(deliveryCandidate, false);
+				throw;
+			}
+			QuiesceMetricsDelivery(deliveryCandidate);
+
+			try
+			{
+				listener?.OnDisable(this);
+				listener?.OnEnable(this, policy);
+			}
+			catch (Exception reconfigureException)
+			{
+				List<Exception> failures = [reconfigureException];
+
+				try
+				{
+					listener?.OnDisable(this);
+				}
+				catch (Exception cleanupException)
+				{
+					failures.Add(cleanupException);
+				}
+				DisposeHistograms(candidateHistograms);
+				try
+				{
+					listener?.OnEnable(this, previousPolicy);
+				}
+				catch (Exception rollbackException)
+				{
+					failures.Add(rollbackException);
+					FailClosedMetrics(session);
+				}
+				AbortMetricsDelivery(
+					deliveryCandidate,
+					MetricsEnabled);
+				throw failures.Count == 1
+					? reconfigureException
+					: new AggregateException(
+						"Metrics listener reconfiguration cleanup or rollback failed.",
+						failures);
+			}
+
+			try
+			{
+				session?.ApplyPolicy(policy);
+				for (int i = 0; i < nodeMetrics.Length; i++)
+				{
+					if (nodeMetrics[i] != null)
+					{
+						previousHistograms[i] =
+							nodeMetrics[i].ReplaceHistograms(
+								candidateHistograms[i]);
+						candidateHistograms[i] = null;
+					}
+				}
+				MetricsPolicy = policy;
+				PublishMetrics(
+					session,
+					policy,
+					publicationAppId,
+					overridePublicationAppId);
+				CommitMetricsDelivery(deliveryCandidate);
+				policy.restartRequired = false;
+			}
+			catch (Exception applyException)
+			{
+				DisposeHistograms(candidateHistograms);
+				try
+				{
+					session?.ApplyPolicy(previousPolicy);
+					for (int i = 0; i < nodeMetrics.Length; i++)
+					{
+						if (previousHistograms[i] != null)
+						{
+							nodeMetrics[i].ReplaceHistograms(
+								previousHistograms[i]);
+							previousHistograms[i] = null;
+						}
+					}
+					listener?.OnDisable(this);
+					listener?.OnEnable(this, previousPolicy);
+					PublishMetrics(session, previousPolicy);
+				}
+				catch (Exception rollbackException)
+				{
+					FailClosedMetrics(session);
+					AbortMetricsDelivery(deliveryCandidate, false);
+					throw new AggregateException(
+						"Metrics reconfiguration and rollback both failed.",
+							applyException,
+						rollbackException);
+				}
+				AbortMetricsDelivery(deliveryCandidate, true);
+				throw;
+			}
+		}
+
+		private static void DisposeHistograms(
+			Histograms[] histograms)
+		{
+			foreach (Histograms histogram in histograms)
+			{
+				histogram?.Dispose();
+			}
+		}
+
+		private static void DisposeNodeMetrics(NodeMetrics[] metrics)
+		{
+			foreach (NodeMetrics item in metrics)
+			{
+				item?.Dispose();
+			}
+		}
+
+		private void FailClosedMetrics(MetricsSession session)
+		{
+			MetricsEnabled = false;
+			metricsStopping = false;
+			metricsSession = null;
+			if (metricsReporter != null)
+			{
+				RunOutsideMetricsLock(metricsReporter.Stop);
+			}
+			metricsReporter = null;
+			MetricsWriter failedWriter = metricsFileWriter;
+			metricsFileWriter = null;
+			if (failedWriter != null)
+			{
+				RunOutsideMetricsLock(failedWriter.Dispose);
+			}
+
+			foreach (Node node in nodes)
+			{
+				node.DisableMetrics();
+			}
+			session?.Freeze();
+		}
+
+		private void PublishMetrics(
+			MetricsSession session,
+			MetricsPolicy policy,
+			string publicationAppId = null,
+			bool overridePublicationAppId = false)
+		{
+			if (session == null)
+			{
+				return;
+			}
+
+			if (!ReferenceEquals(metricsPublication?.Session, session))
+			{
+				metricsFrozenLegacyNodes.Clear();
+			}
+
+			Dictionary<string, string> labels = policy?.labels == null
+				? new Dictionary<string, string>()
+				: new Dictionary<string, string>(policy.labels);
+			string legacyAppId = overridePublicationAppId
+				? publicationAppId
+				: appId;
+
+			if (string.IsNullOrEmpty(legacyAppId) && user?.Length > 0)
+			{
+				legacyAppId =
+					ByteUtil.Utf8ToString(user, 0, user.Length);
+			}
+			string metricsAppId = legacyAppId;
+			if (string.IsNullOrEmpty(metricsAppId))
+			{
+				metricsAppId = "not-set";
+			}
+
+			metricsPublication = new MetricsReadPublication(
+				session,
+				session.RuntimeConfig,
+				new ReadOnlyDictionary<string, string>(labels),
+				metricsAppId,
+				legacyAppId ?? string.Empty);
+		}
+
+		private MetricsDeliveryCandidate PrepareMetricsDelivery(
+			MetricsPolicy policy,
+			MetricsPolicy previousPolicy)
+		{
+			MetricsExporterMode mode = policy.ResolveExporterMode();
+			List<IMetricsExporter> targets = new();
+			MetricsWriter previousWriter = metricsFileWriter;
+			MetricsWriter nextWriter = null;
+			bool includeLegacyFile = false;
+
+			if (mode == MetricsExporterMode.File &&
+				!string.IsNullOrEmpty(policy.ReportDir))
+			{
+				bool reuseWriter =
+					previousWriter != null &&
+					previousPolicy != null &&
+					previousPolicy.ResolveExporterMode() == MetricsExporterMode.File &&
+					previousPolicy.ReportDir == policy.ReportDir &&
+					previousPolicy.ReportSizeLimit == policy.ReportSizeLimit &&
+					previousPolicy.LatencyUnit == policy.LatencyUnit &&
+					previousPolicy.LatencyColumns == policy.LatencyColumns &&
+					previousPolicy.LatencyShift == policy.LatencyShift;
+
+				nextWriter = reuseWriter
+					? previousWriter
+					: metricsWriterFactory(
+						policy.ReportDir,
+						policy.ReportSizeLimit,
+						policy.LatencyColumns,
+						policy.LatencyShift);
+				targets.Add(nextWriter);
+				includeLegacyFile = true;
+			}
+			else if (mode == MetricsExporterMode.Custom)
+			{
+				targets.AddRange(policy.Exporters);
+				includeLegacyFile = targets.Any(
+					exporter => exporter is MetricsWriter);
+			}
+
+			MetricsReporter previousReporter = metricsReporter;
+			MetricsReporter nextReporter = previousReporter;
+			MetricsReporterConfig config = targets.Count == 0
+				? null
+				: new MetricsReporterConfig(
+					policy.ExportInterval,
+					targets,
+					includeLegacyFile);
+			bool deliveryUnchanged =
+				previousPolicy != null &&
+				MetricsDeliveryEquals(previousPolicy, policy);
+
+			if (deliveryUnchanged &&
+				((targets.Count == 0 && previousReporter == null) ||
+				(targets.Count > 0 && previousReporter != null &&
+					(mode != MetricsExporterMode.File ||
+						ReferenceEquals(previousWriter, nextWriter)))))
+			{
+				return new MetricsDeliveryCandidate(
+					previousReporter,
+					previousWriter,
+					previousReporter,
+					previousWriter,
+					config,
+					false,
+					false,
+					false);
+			}
+
+			if (targets.Count == 0)
+			{
+				return new MetricsDeliveryCandidate(
+					previousReporter,
+					previousWriter,
+					null,
+					null,
+					null,
+					false,
+					false,
+					false);
+			}
+
+			if (previousReporter == null)
+			{
+				metricsReporterProcessSampler.Reset();
+				metricsLegacyProcessSampler.Reset();
+				nextReporter = new MetricsReporter(
+					config,
+					includeLegacy => BuildMetricsSnapshot(
+						null,
+						true,
+						includeLegacy),
+					AcknowledgeMetricsSnapshot,
+					metricsExporterFailures);
+
+				try
+				{
+					RunOutsideMetricsLock(
+						() => metricsReporterStarter(nextReporter));
+				}
+				catch
+				{
+					nextReporter.DisposeNotStarted();
+					if (nextWriter != null &&
+						!ReferenceEquals(nextWriter, previousWriter))
+					{
+						RunOutsideMetricsLock(nextWriter.Dispose);
+					}
+					throw;
+				}
+			}
+			return new MetricsDeliveryCandidate(
+				previousReporter,
+				previousWriter,
+				nextReporter,
+				nextWriter,
+				config,
+				previousReporter != null,
+				previousReporter == null,
+				nextWriter != null &&
+					!ReferenceEquals(nextWriter, previousWriter));
+		}
+
+		private void QuiesceMetricsDelivery(
+			MetricsDeliveryCandidate candidate)
+		{
+			if (candidate?.PreviousReporter != null)
+			{
+				RunOutsideMetricsLock(candidate.PreviousReporter.Quiesce);
+			}
+		}
+
+		private void CommitMetricsDelivery(
+			MetricsDeliveryCandidate candidate)
+		{
+			if (candidate.ReconfigureReporter)
+			{
+				candidate.Reporter.Reconfigure(candidate.Config);
+			}
+
+			metricsReporter = candidate.Reporter;
+			metricsFileWriter = candidate.Writer;
+			candidate.OwnsReporter = false;
+			candidate.OwnsWriter = false;
+
+			if (candidate.PreviousReporter != null &&
+				!ReferenceEquals(
+					candidate.PreviousReporter,
+					candidate.Reporter))
+			{
+				CleanupMetricsDelivery(
+					candidate.PreviousReporter.Stop,
+					"previous metrics reporter");
+			}
+			if (candidate.PreviousWriter != null &&
+				!ReferenceEquals(
+					candidate.PreviousWriter,
+					candidate.Writer))
+			{
+				CleanupMetricsDelivery(
+					candidate.PreviousWriter.Dispose,
+					"previous metrics writer");
+			}
+			if (candidate.Reporter != null)
+			{
+				ScheduleMetricsReporterResume(candidate.Reporter);
+			}
+		}
+
+		private void AbortMetricsDelivery(
+			MetricsDeliveryCandidate candidate,
+			bool resumePrevious)
+		{
+			if (candidate == null)
+			{
+				return;
+			}
+			if (candidate.OwnsReporter)
+			{
+				CleanupMetricsDelivery(
+					candidate.Reporter.Stop,
+					"candidate metrics reporter");
+				candidate.OwnsReporter = false;
+			}
+			if (candidate.OwnsWriter)
+			{
+				CleanupMetricsDelivery(
+					candidate.Writer.Dispose,
+					"candidate metrics writer");
+				candidate.OwnsWriter = false;
+			}
+			if (resumePrevious && candidate.PreviousReporter != null)
+			{
+				ScheduleMetricsReporterResume(candidate.PreviousReporter);
+			}
+		}
+
+		private void CleanupMetricsDelivery(
+			Action cleanup,
+			string description)
+		{
+			try
+			{
+				RunOutsideMetricsLock(cleanup);
+			}
+			catch (Exception e)
+			{
+				Log.Warn(
+					"Failed to stop or dispose " +
+					description +
+					": " +
+					Util.GetErrorMessage(e));
+			}
+		}
+
+		private static bool MetricsDeliveryEquals(
+			MetricsPolicy left,
+			MetricsPolicy right)
+		{
+			if (left.ResolveExporterMode() != right.ResolveExporterMode() ||
+				left.ExportInterval != right.ExportInterval ||
+				left.ReportDir != right.ReportDir ||
+				left.ReportSizeLimit != right.ReportSizeLimit ||
+				left.LatencyUnit != right.LatencyUnit ||
+				left.LatencyColumns != right.LatencyColumns ||
+				left.LatencyShift != right.LatencyShift)
+			{
+				return false;
+			}
+
+			if (left.Exporters.Count != right.Exporters.Count)
+			{
+				return false;
+			}
+
+			for (int i = 0; i < left.Exporters.Count; i++)
+			{
+				if (!ReferenceEquals(left.Exporters[i], right.Exporters[i]))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
+		private void AcknowledgeMetricsSnapshot(MetricsSnapshot snapshot)
+		{
+			metricsDepartureStore.Acknowledge(snapshot.DepartureToken);
+		}
+
+		private void RunOutsideMetricsLock(Action action)
+		{
+			if (action == null)
+			{
+				return;
+			}
+
+			if (!Monitor.IsEntered(metricsLock))
+			{
+				action();
+				return;
+			}
+
+			Monitor.Exit(metricsLock);
+			try
+			{
+				action();
+			}
+			finally
+			{
+				Monitor.Enter(metricsLock);
+			}
+		}
+
+		private void ScheduleMetricsReporterResume(MetricsReporter reporter)
+		{
+			ThreadPool.QueueUserWorkItem(_ =>
+			{
+				lock (metricsLifecycleLock)
+				{
+					bool current;
+
+					lock (metricsLock)
+					{
+						current = ReferenceEquals(metricsReporter, reporter);
+					}
+
+					if (current)
+					{
+						reporter.Resume();
+					}
+				}
+			});
+		}
+
+		private void RejectMetricsLifecycleFromExporter()
+		{
+			if (metricsReporter?.InCallback == true)
+			{
+				throw new AerospikeException(
+					ResultCode.PARAMETER_ERROR,
+					"Metrics lifecycle methods can not be called from this client's exporter callback.");
 			}
 		}
 
@@ -1203,7 +2345,8 @@ namespace Aerospike.Client
 		protected virtual void UpdateClientPolicy()
 		{
 			var client = GetAerospikeClient();
-			client.clientPolicy = new ClientPolicy(client.GetClientPolicy(), client.configProvider);
+			ClientPolicy policy = client.clientPolicyBase ?? client.GetClientPolicy();
+			client.clientPolicy = new ClientPolicy(policy, client.configProvider);
 		}
 
 		/// <summary>
@@ -1218,28 +2361,41 @@ namespace Aerospike.Client
 			{
 				configData = client?.configProvider?.ConfigurationData ?? null; // Needed to turn on metrics at init
 			}
-			var clientPolicy = client.GetClientPolicy();
+			ClientPolicy clientPolicy = client.GetClientPolicy();
+			ValidateClusterConfig(clientPolicy, init);
+			ApplyClusterConfig(clientPolicy, init);
+		}
+
+		private void ValidateClusterConfig(
+			ClientPolicy clientPolicy,
+			bool validateConfigInterval)
+		{
 			if (clientPolicy.tendInterval < TEND_INTERVAL_MIN_MS)
 			{
 				throw new AerospikeException("Invalid tendInterval: " + clientPolicy.tendInterval + ". min: " + TEND_INTERVAL_MIN_MS);
 			}
 
-			if (configInterval < clientPolicy.tendInterval)
+			if (validateConfigInterval &&
+				configInterval < clientPolicy.tendInterval)
 			{
 				throw new AerospikeException("Dynamic config interval " + configInterval +
 					" ms must be greater than or equal to tend interval " + clientPolicy.tendInterval);
 			}
 
+			if (clientPolicy.maxSocketIdle < 0)
+			{
+				throw new AerospikeException("Invalid maxSocketIdle: " + clientPolicy.maxSocketIdle);
+			}
+		}
+
+		private void ApplyClusterConfig(ClientPolicy clientPolicy, bool init)
+		{
 			appId = clientPolicy.AppId;
 			connectionTimeout = clientPolicy.timeout;
 			errorRateWindow = clientPolicy.errorRateWindow;
 			maxErrorRate = clientPolicy.maxErrorRate;
 			failIfNotConnected = clientPolicy.failIfNotConnected;
 			loginTimeout = clientPolicy.loginTimeout;
-			if (clientPolicy.maxSocketIdle < 0)
-			{
-				throw new AerospikeException("Invalid maxSocketIdle: " + clientPolicy.maxSocketIdle);
-			}
 
 			if (clientPolicy.maxSocketIdle == 0)
 			{
@@ -1508,10 +2664,756 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddCommandCount()
 		{
-			if (MetricsEnabled)
+			if (MetricsOperationalEnabled)
 			{
 				Interlocked.Increment(ref commandCount);
 			}
+		}
+
+		internal CommandMetricsHandle BeginMetricsCommand(
+			ApiMetricsContext context,
+			string ns,
+			Latency.LatencyType latencyType,
+			bool countCommand)
+		{
+			if (context.IsFor(this))
+			{
+				return context.BeginCommand(ns, latencyType, countCommand);
+			}
+
+			MetricsSession session = metricsSession;
+			return session == null
+				? default
+				: session.BeginCommand(ns, latencyType, countCommand);
+		}
+
+		internal QueryMetricsHandle BeginQueryMetrics(ApiMetricsContext context)
+		{
+			if (context.IsFor(this))
+			{
+				return context.BeginQueryMetrics();
+			}
+
+			MetricsSession session = metricsSession;
+			return session?.BeginQueryMetrics() ?? default;
+		}
+
+		internal CommandCountMetricsHandle AddMetricsCommandCount()
+		{
+			if (apiMetricsContext.IsFor(this))
+			{
+				return apiMetricsContext.CommandCountMetrics;
+			}
+
+			return metricsSession?.BeginApiCoordinator() ?? default;
+		}
+
+		internal void RecordApiUsage(ApiExecutionMode mode)
+		{
+			if (!apiMetricsContext.IsFor(this))
+			{
+				metricsSession?.AddUsage(mode);
+			}
+		}
+
+		internal ApiMetricsContext CaptureApiMetricsContext()
+		{
+			return apiMetricsContext.IsFor(this) ? apiMetricsContext : default;
+		}
+
+		internal ApiMetricsCall BeginPointApiMetrics(
+			string ns,
+			Latency.LatencyType latencyType,
+			ApiExecutionMode mode)
+		{
+			if (apiMetricsDelegation && apiMetricsContext.IsFor(this))
+			{
+				return default;
+			}
+
+			ApiMetricsContext previous = apiMetricsContext;
+			bool previousDelegation = apiMetricsDelegation;
+			MetricsSession session = metricsSession;
+			MetricsRuntimeConfig operationalConfig = null;
+			CommandMetricsHandle pointMetrics =
+				session?.BeginApiCommand(
+					ns,
+					latencyType,
+					mode,
+					out operationalConfig) ?? default;
+			ApiMetricsContext owned = new(
+				this,
+				operationalConfig == null ? null : session,
+				operationalConfig,
+				pointMetrics);
+			apiMetricsContext = owned;
+			apiMetricsDelegation = false;
+			return new ApiMetricsCall(this, previous, previousDelegation, owned, true);
+		}
+
+		internal ApiMetricsCall BeginCoordinatorApiMetrics(
+			ApiExecutionMode mode,
+			bool inheritChildSampling = false)
+		{
+			if (apiMetricsDelegation && apiMetricsContext.IsFor(this))
+			{
+				return default;
+			}
+
+			ApiMetricsContext previous = apiMetricsContext;
+			bool previousDelegation = apiMetricsDelegation;
+			MetricsSession session = metricsSession;
+			MetricsRuntimeConfig operationalConfig = null;
+			CommandCountMetricsHandle commandCount =
+				session?.BeginApiCoordinator(
+					mode,
+					out operationalConfig) ?? default;
+			MetricsSession operationalSession = operationalConfig == null ? null : session;
+			ApiMetricsContext owned =
+				new(
+					this,
+					operationalSession,
+					operationalConfig,
+					commandCount,
+					inheritChildSampling);
+			apiMetricsContext = owned;
+			apiMetricsDelegation = false;
+			return new ApiMetricsCall(this, previous, previousDelegation, owned, false);
+		}
+
+		internal void RecordEmptyBatchMetrics(ApiExecutionMode mode)
+		{
+			AddMetricsCommandCount();
+			RecordApiUsage(mode);
+		}
+
+		internal ApiMetricsCall BeginApiMetricsDelegation()
+		{
+			ApiMetricsContext previous = apiMetricsContext;
+			bool previousDelegation = apiMetricsDelegation;
+			apiMetricsDelegation = true;
+			return new ApiMetricsCall(
+				this,
+				previous,
+				previousDelegation,
+				default,
+				false);
+		}
+
+		internal void EndApiMetricsCall(
+			ApiMetricsContext previous,
+			bool previousDelegation,
+			ApiMetricsContext owned,
+			bool abandonPoint)
+		{
+			if (abandonPoint)
+			{
+				owned.AbandonPointOwner();
+			}
+			apiMetricsContext = previous;
+			apiMetricsDelegation = previousDelegation;
+		}
+
+		/// <summary>
+		/// Return an immutable metrics snapshot. This method is available before metrics are
+		/// enabled, while collection is active, and after collection is disabled.
+		/// </summary>
+		public MetricsSnapshot GetMetricsSnapshot()
+		{
+			return BuildMetricsSnapshot();
+		}
+
+		internal MetricsSnapshot BuildMetricsSnapshot(
+			bool? metricsEnabledOverride = null,
+			bool reporterSnapshot = false,
+			bool includeLegacyFile = false)
+		{
+			lock (metricsLock)
+			{
+				return BuildMetricsSnapshotLocked(
+					metricsEnabledOverride,
+					reporterSnapshot,
+					includeLegacyFile);
+			}
+		}
+
+		private MetricsSnapshot BuildMetricsSnapshotLocked(
+			bool? metricsEnabledOverride,
+			bool reporterSnapshot,
+			bool includeLegacyFile)
+		{
+			MetricsSessionView view = ReadMetrics(
+				reporterSnapshot
+					? metricsReporterProcessSampler
+					: metricsPullProcessSampler);
+
+			if (view == null)
+			{
+				return BuildUncollectedMetricsSnapshot();
+			}
+
+			MetricsRuntimeView runtime = view.Runtime;
+			Dictionary<string, MetricsRuntimeNodeView> runtimeNodes =
+				runtime.Nodes.ToDictionary(node => node.Name, StringComparer.Ordinal);
+			List<NodeMetricsSnapshot> nodes = new(runtimeNodes.Count);
+
+			foreach (KeyValuePair<string, MetricsRuntimeNodeView> entry in
+				runtimeNodes.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+			{
+				MetricsNodeView nodeView;
+
+				if (!view.Nodes.TryGetValue(entry.Key, out nodeView))
+				{
+					nodeView = new MetricsNodeView(
+						entry.Key,
+						0,
+						0,
+						0,
+						0,
+						0,
+						0,
+						0,
+						new ReadOnlyDictionary<string, MetricsNamespaceView>(
+							new Dictionary<string, MetricsNamespaceView>(
+								StringComparer.Ordinal)));
+				}
+				nodes.Add(BuildNodeMetricsSnapshot(
+					nodeView,
+					entry.Value,
+					view.OperationalEnabled));
+			}
+
+			MetricsDepartureCapture departureCapture =
+				metricsDepartureStore.Capture(view.Config);
+			List<NodeMetricsSnapshot> departedNodes =
+				new(departureCapture.Nodes.Count);
+
+			foreach (MetricsDepartedNodeCapture departed in departureCapture.Nodes)
+			{
+				departedNodes.Add(BuildNodeMetricsSnapshot(
+					departed.View,
+					new MetricsRuntimeNodeView(
+						departed.Name,
+						departed.Address,
+						departed.Port,
+						0,
+						0,
+						departed.ErrorRate),
+					view.OperationalEnabled));
+			}
+
+			ClusterMetricsSnapshot clusterSnapshot = new(
+				runtime.ConnectionsInUse,
+				runtime.ConnectionsInPool,
+				runtime.ActiveNodes,
+				runtime.RecoverQueueSize,
+				view.ConnectionsOpened,
+				view.ConnectionsClosed,
+				view.InvalidNodes,
+				view.OperationalEnabled ? view.CommandCount : 0,
+				view.OperationalEnabled ? view.CommandRetries : 0,
+				view.OperationalEnabled ? view.ClientTimeouts : 0,
+				view.OperationalEnabled ? view.ServerTimeouts : 0,
+				view.OperationalEnabled ? view.BatchPartialFailures : 0,
+				view.OperationalEnabled ? view.ConnectionOpenFailures : 0,
+				view.OperationalEnabled ? view.ConnectionTlsFailures : 0,
+				view.OperationalEnabled ? view.ConnectionAuthFailures : 0,
+				view.OperationalEnabled ? view.RecoverEnqueued : 0,
+				view.OperationalEnabled ? view.RecoverCompleted : 0,
+				view.OperationalEnabled ? view.RecoverAborted : 0,
+				view.OperationalEnabled ? view.TimeoutImmediate : 0,
+				view.OperationalEnabled ? view.QueryRecordsQueued : 0,
+				view.OperationalEnabled ? view.QueryServersConcurrent : 0,
+				view.OperationalEnabled ? view.QueryAbandoned : 0,
+				view.OperationalEnabled ? runtime.CpuPercent : 0,
+				view.OperationalEnabled ? runtime.MemoryBytes : 0,
+				view.OperationalEnabled ? view.TendDuration : null);
+			UsageMetricsSnapshot usageSnapshot = view.UsageEnabled
+				? new UsageMetricsSnapshot(
+					view.ApiBlocking,
+					view.ApiDeferred,
+					view.ApiBackground)
+				: UsageMetricsSnapshot.Empty;
+
+			return new MetricsSnapshot(
+				new DateTimeOffset(DateTime.SpecifyKind(runtime.Timestamp, DateTimeKind.Utc)),
+				metricsEnabledOverride ?? MetricsEnabled,
+				view.OperationalEnabled,
+				view.UsageEnabled,
+				runtime.ClientType,
+				runtime.ClientVersion,
+				runtime.ClusterName,
+				runtime.AppId,
+				runtime.Labels,
+				view.LatencyUnit,
+				view.LatencyColumns,
+				view.LatencyShift,
+				clusterSnapshot,
+				usageSnapshot,
+				nodes,
+				departedNodes,
+				departureCapture.PossiblyTruncated,
+				BuildLegacyFileSnapshot(
+					departureCapture.Nodes
+						.Where(node => node.Legacy != null)
+						.Select(node => node.Legacy)),
+				departureCapture.Token);
+		}
+
+		private MetricsSnapshot BuildUncollectedMetricsSnapshot()
+		{
+			while (true)
+			{
+				long topologyVersion = Volatile.Read(ref metricsTopologyVersion);
+
+				if ((topologyVersion & 1) != 0)
+				{
+					Thread.Yield();
+					continue;
+				}
+
+				Node[] nodeArray = nodes;
+				List<NodeMetricsSnapshot> nodeSnapshots = new(nodeArray.Length);
+				int connectionsInPool = 0;
+				int connectionsInUse = 0;
+
+				foreach (Node node in nodeArray
+					.Where(node => node.Active)
+					.OrderBy(node => node.Name, StringComparer.Ordinal))
+				{
+					ConnectionStats sync = node.GetConnectionStats();
+					ConnectionStats async = node is AsyncNode asyncNode
+						? asyncNode.GetAsyncConnectionStats()
+						: new ConnectionStats(0, 0, 0, 0);
+					int inPool = sync.inPool + async.inPool;
+					int inUse = sync.inUse + async.inUse;
+
+					connectionsInPool += inPool;
+					connectionsInUse += inUse;
+					nodeSnapshots.Add(new NodeMetricsSnapshot(
+						node.Name,
+						node.address.Address.ToString(),
+						node.address.Port,
+						node.GetErrorRate(),
+						new ConnectionMetricsSnapshot(inUse, inPool),
+						Array.Empty<NamespaceMetricsSnapshot>()));
+				}
+
+				if (!ReferenceEquals(nodes, nodeArray) ||
+					Volatile.Read(ref metricsTopologyVersion) != topologyVersion)
+				{
+					continue;
+				}
+
+				Dictionary<string, string> labels = MetricsPolicy?.labels == null
+					? new Dictionary<string, string>(StringComparer.Ordinal)
+					: new Dictionary<string, string>(
+						MetricsPolicy.labels,
+						StringComparer.Ordinal);
+				string metricsAppId = appId;
+
+				if (string.IsNullOrEmpty(metricsAppId) && user?.Length > 0)
+				{
+					metricsAppId = ByteUtil.Utf8ToString(user, 0, user.Length);
+				}
+				if (string.IsNullOrEmpty(metricsAppId))
+				{
+					metricsAppId = "not-set";
+				}
+
+				MetricsPolicy policy = MetricsPolicy ?? new MetricsPolicy();
+				return new MetricsSnapshot(
+					DateTimeOffset.UtcNow,
+					false,
+					false,
+					false,
+					"csharp",
+					client.clientVersion,
+					clusterName ?? string.Empty,
+					metricsAppId,
+					labels,
+					policy.LatencyUnit,
+					policy.LatencyColumns,
+					policy.LatencyShift,
+					new ClusterMetricsSnapshot(
+						connectionsInUse,
+						connectionsInPool,
+						nodeSnapshots.Count,
+						GetRecoverQueueSize()),
+					UsageMetricsSnapshot.Empty,
+					nodeSnapshots,
+					Array.Empty<NodeMetricsSnapshot>(),
+					false,
+					BuildLegacyFileSnapshot(
+						Array.Empty<LegacyMetricsFileNodeSnapshot>()));
+			}
+		}
+
+		private LegacyMetricsFileSnapshot BuildLegacyFileSnapshot(
+			IEnumerable<LegacyMetricsFileNodeSnapshot> departedNodes)
+		{
+			double cpuPercent;
+			long memoryBytes;
+			if (!MetricsEnabled &&
+				metricsPublication?.Session?.AcceptsWrites == false)
+			{
+				cpuPercent = metricsFrozenLegacyCpuPercent;
+				memoryBytes = metricsFrozenLegacyMemoryBytes;
+			}
+			else
+			{
+				metricsLegacyProcessSampler.Read(
+					out cpuPercent,
+					out memoryBytes);
+			}
+			ThreadPool.GetMaxThreads(out int workerThreadsMax, out int completionPortThreadsMax);
+			ThreadPool.GetAvailableThreads(out int workerThreads, out int completionPortThreads);
+			List<LegacyMetricsFileNodeSnapshot> nodeSnapshots = new(nodes.Length);
+
+			foreach (Node node in nodes.Where(
+				node => !node.MetricsDepartureTransferred))
+			{
+				nodeSnapshots.Add(
+					metricsFrozenLegacyNodes.TryGetValue(
+						node,
+						out LegacyMetricsFileNodeSnapshot frozen)
+							? frozen
+							: BuildLegacyFileNodeSnapshot(node));
+			}
+
+			MetricsReadPublication publication = metricsPublication;
+			string legacyAppId = publication?.LegacyAppId ?? appId;
+			if (publication == null &&
+				legacyAppId == null &&
+				user?.Length > 0)
+			{
+				legacyAppId =
+					ByteUtil.Utf8ToString(user, 0, user.Length);
+			}
+			IReadOnlyDictionary<string, string> legacyLabels =
+				publication?.Labels ?? MetricsPolicy?.labels;
+
+			return new LegacyMetricsFileSnapshot(
+				clusterName ?? string.Empty,
+				client.clientVersion,
+				legacyAppId ?? string.Empty,
+				legacyLabels,
+				cpuPercent,
+				memoryBytes,
+				GetRecoverQueueSize(),
+				InvalidNodeCount,
+				GetCommandCount(),
+				GetRetryCount(),
+				GetDelayQueueTimeoutCount(),
+				workerThreadsMax - workerThreads,
+				completionPortThreadsMax - completionPortThreads,
+				nodeSnapshots,
+				departedNodes);
+		}
+
+		private LegacyMetricsFileNodeSnapshot BuildLegacyFileNodeSnapshot(
+			Node node,
+			bool detachMetrics = false)
+		{
+			ConnectionStats syncConnections = node.GetConnectionStats();
+			ConnectionStats asyncConnections = node is AsyncNode asyncNode
+				? asyncNode.GetAsyncConnectionStats()
+				: new ConnectionStats(0, 0, 0, 0);
+			List<LegacyMetricsFileNamespaceSnapshot> namespaces;
+
+			if (detachMetrics)
+			{
+				namespaces = node.DetachMetricsAndCapture(
+					metrics => BuildLegacyFileNamespaces(node, metrics)) ??
+					new List<LegacyMetricsFileNamespaceSnapshot>();
+			}
+			else
+			{
+				using NodeMetricsLease metricsLease = node.AcquireMetrics();
+				namespaces = BuildLegacyFileNamespaces(
+					node,
+					metricsLease.Metrics);
+			}
+
+			Host host = node.Host;
+			return new LegacyMetricsFileNodeSnapshot(
+				node.Name,
+				host.name,
+				host.port,
+				syncConnections,
+				asyncConnections,
+				namespaces,
+				MetricsPolicy?.LatencyUnit ?? MetricsLatencyUnit.Milliseconds,
+				MetricsPolicy?.LatencyColumns ?? 7,
+				MetricsPolicy?.LatencyShift ?? 1);
+		}
+
+		private static List<LegacyMetricsFileNamespaceSnapshot>
+			BuildLegacyFileNamespaces(
+				Node node,
+				NodeMetrics nodeMetrics)
+		{
+			List<LegacyMetricsFileNamespaceSnapshot> namespaces = new();
+			Histograms histograms = nodeMetrics?.Histograms;
+			ConcurrentHashMap<string, LatencyBuckets[]> map = histograms?.histoMap;
+
+			if (map == null)
+			{
+				return namespaces;
+			}
+
+			foreach (string ns in map.Keys)
+			{
+				LatencyBuckets[] latencyBuckets = histograms.GetBuckets(ns);
+				List<IReadOnlyList<long>> latency = new(Latency.GetMax());
+
+				for (int i = 0; i < Latency.GetMax(); i++)
+				{
+					LatencyBuckets buckets = latencyBuckets[i];
+					long[] copy = new long[buckets.GetMax()];
+
+					for (int j = 0; j < copy.Length; j++)
+					{
+						copy[j] = buckets.GetBucket(j);
+					}
+					latency.Add(Array.AsReadOnly(copy));
+				}
+
+				namespaces.Add(new LegacyMetricsFileNamespaceSnapshot(
+					ns,
+					node.GetErrorCountByNS(ns),
+					node.GetTimeoutCountbyNS(ns),
+					node.GetKeyBusyCountByNS(ns),
+					nodeMetrics.BytesInCounter?.GetCountByNS(ns) ?? 0,
+					nodeMetrics.BytesOutCounter?.GetCountByNS(ns) ?? 0,
+					latency));
+			}
+			return namespaces;
+		}
+
+		private static NodeMetricsSnapshot BuildNodeMetricsSnapshot(
+			MetricsNodeView node,
+			MetricsRuntimeNodeView runtime,
+			bool operationalEnabled)
+		{
+			List<NamespaceMetricsSnapshot> namespaces = new(node.Namespaces.Count);
+
+			if (operationalEnabled)
+			{
+				foreach (KeyValuePair<string, MetricsNamespaceView> entry in
+					node.Namespaces.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+				{
+					MetricsNamespaceView ns = entry.Value;
+					namespaces.Add(new NamespaceMetricsSnapshot(
+						ns.Namespace,
+						ns.Errors,
+						ns.Timeouts,
+						ns.KeyBusy,
+						ns.RecordTooBig,
+						ns.DeviceOverload,
+						ns.BytesIn,
+						ns.BytesOut,
+						new LatencyMetricsSnapshot(
+							GetLatency(ns, Latency.LatencyType.CONN),
+							GetLatency(ns, Latency.LatencyType.READ),
+							GetLatency(ns, Latency.LatencyType.WRITE),
+							GetLatency(ns, Latency.LatencyType.BATCH),
+							GetLatency(ns, Latency.LatencyType.QUERY))));
+				}
+			}
+
+			return new NodeMetricsSnapshot(
+				node.Name,
+				runtime?.Address ?? string.Empty,
+				runtime?.Port ?? 0,
+				runtime?.ErrorRate ?? 0,
+				new ConnectionMetricsSnapshot(
+					runtime?.ConnectionsInUse ?? 0,
+					runtime?.ConnectionsInPool ?? 0,
+					node.Opened,
+					node.Closed,
+					operationalEnabled ? node.PoolExhausted : 0,
+					operationalEnabled ? node.ClosedError : 0,
+					operationalEnabled ? node.ClosedIdle : 0,
+					operationalEnabled ? node.ClosedPoolShrink : 0,
+					operationalEnabled ? node.ClosedNodeRemoved : 0),
+				namespaces);
+		}
+
+		private static IReadOnlyList<long> GetLatency(
+			MetricsNamespaceView ns,
+			Latency.LatencyType type)
+		{
+			return ns.Latency.TryGetValue(type, out IReadOnlyList<long> buckets)
+				? buckets
+				: Array.Empty<long>();
+		}
+
+		internal MetricsSessionView ReadMetrics(MetricsProcessSampler processSampler = null)
+		{
+			while (true)
+			{
+				MetricsReadPublication publication = metricsPublication;
+
+				if (publication == null)
+				{
+					return null;
+				}
+
+				long topologyVersion = Volatile.Read(ref metricsTopologyVersion);
+
+				if ((topologyVersion & 1L) != 0)
+				{
+					Thread.Yield();
+					continue;
+				}
+
+				Node[] nodeArray = nodes;
+				List<MetricsRuntimeNodeView> nodeViews = new(nodeArray.Length);
+				int activeNodes = 0;
+				int connectionsInPool = 0;
+				int connectionsInUse = 0;
+
+				foreach (Node node in nodeArray)
+				{
+					if (!node.Active)
+					{
+						continue;
+					}
+
+					ConnectionStats sync = node.GetConnectionStats();
+					ConnectionStats async = node is AsyncNode asyncNode
+						? asyncNode.GetAsyncConnectionStats()
+						: new ConnectionStats(0, 0, 0, 0);
+					int inPool = sync.inPool + async.inPool;
+					int inUse = sync.inUse + async.inUse;
+
+					activeNodes++;
+					connectionsInPool += inPool;
+					connectionsInUse += inUse;
+					nodeViews.Add(new MetricsRuntimeNodeView(
+						node.Name,
+						node.address.Address.ToString(),
+						node.address.Port,
+						inPool,
+						inUse,
+						node.GetErrorRate()));
+				}
+
+				double cpuPercent = 0;
+				long memoryBytes = 0;
+
+				if (publication.Config.OperationalEnabled)
+				{
+					if (publication.Session.AcceptsWrites ||
+						ReferenceEquals(
+							processSampler,
+							metricsReporterProcessSampler))
+					{
+						(processSampler ?? metricsPullProcessSampler).Read(
+							out cpuPercent,
+							out memoryBytes);
+					}
+					else
+					{
+						cpuPercent = metricsFrozenCpuPercent;
+						memoryBytes = metricsFrozenMemoryBytes;
+					}
+				}
+
+				MetricsSessionView view =
+					publication.Session.Read(publication.Config);
+
+				if (view == null ||
+					!ReferenceEquals(metricsPublication, publication) ||
+					!ReferenceEquals(nodes, nodeArray) ||
+					Volatile.Read(ref metricsTopologyVersion) != topologyVersion)
+				{
+					continue;
+				}
+
+				MetricsRuntimeView runtime = new(
+					DateTime.UtcNow,
+					"csharp",
+					client.clientVersion,
+					clusterName ?? string.Empty,
+					publication.AppId,
+					publication.Labels,
+					cpuPercent,
+					memoryBytes,
+					activeNodes,
+					InvalidNodeCount,
+					GetRecoverQueueSize(),
+					connectionsInPool,
+					connectionsInUse,
+					Array.AsReadOnly(nodeViews.ToArray()));
+
+				if (!ReferenceEquals(metricsPublication, publication) ||
+					!ReferenceEquals(nodes, nodeArray))
+				{
+					continue;
+				}
+				return view with
+				{
+					Runtime = runtime,
+					Config = publication.Config
+				};
+			}
+		}
+
+		internal ConnectionMetricsHandle StartConnectionMetrics()
+		{
+			MetricsSession session = metricsSession;
+
+			if (session != null &&
+				session.TryStartConnection(
+					out long startTimestamp,
+					out MetricsRuntimeConfig runtimeConfig))
+			{
+				return new ConnectionMetricsHandle(
+					session,
+					runtimeConfig,
+					startTimestamp);
+			}
+			return default;
+		}
+
+		internal void RecordConnectionClosed(Node node, ConnectionCloseReason reason)
+		{
+			MetricsSession session = metricsSession;
+
+			if (session?.AcceptsWrites == true)
+			{
+				session.AddConnectionClosed(node, reason);
+			}
+		}
+
+		internal void RecordPoolExhausted(Node node)
+		{
+			MetricsSession session = metricsSession;
+
+			if (session?.AcceptsWrites == true)
+			{
+				session.AddPoolExhausted(node);
+			}
+		}
+
+		internal void RecordConnectionFailure(ConnectionFailurePhase phase, bool opening)
+		{
+			metricsSession?.AddConnectionFailure(phase, opening);
+		}
+
+		internal RecoverMetricsHandle BeginRecoverMetrics()
+		{
+			MetricsSession session = metricsSession;
+			return session?.TryStartRecover() == true
+				? new RecoverMetricsHandle(session)
+				: default;
+		}
+
+		internal void RecordImmediateTimeout()
+		{
+			metricsSession?.AddImmediateTimeout();
 		}
 
 		/// <summary>
@@ -1573,7 +3475,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public int GetRecoverQueueSize()
 		{
-			return recoverCount;
+			return Volatile.Read(ref recoverCount);
 		}
 
 		/// <summary>
@@ -1592,6 +3494,8 @@ namespace Aerospike.Client
 
 		public void Close()
 		{
+			RejectMetricsLifecycleFromExporter();
+
 			if (Log.DebugEnabled())
 			{
 				Log.Debug(context, "Close cluster " + clusterName);
@@ -1600,18 +3504,74 @@ namespace Aerospike.Client
 			tendValid = false;
 			cancel.Cancel();
 
-			lock (metricsLock)
+			// Stop admission and take ownership of every queued recovery before
+			// aborting outside the gate.
+			List<ConnectionRecover> recoveries = new();
+
+			lock (recoverLock)
 			{
-				try
+				recoverAccepting = false;
+
+				while (recoverQueue.TryDequeueLast(out ConnectionRecover recover) &&
+					recover != null)
 				{
-					if (MetricsEnabled)
-					{
-						DisableMetricsInternal();
-					}
+					recoveries.Add(recover);
 				}
-				catch (Exception e)
+				recoverCount = 0;
+			}
+
+			foreach (ConnectionRecover recover in recoveries)
+			{
+				recover.Abort();
+			}
+
+			if (tendThread != null &&
+				tendThread != Thread.CurrentThread &&
+				tendThread.IsAlive)
+			{
+				tendThread.Join();
+			}
+
+			lock (metricsLifecycleLock)
+			{
+				lock (metricsLock)
 				{
-					Log.Warn("DisableMetrics failed: " + Util.GetErrorMessage(e));
+					try
+					{
+						Node[] currentNodes = nodes;
+						foreach (Node node in currentNodes)
+						{
+							if (!node.Active)
+							{
+								TransferNodeDeparture(node);
+							}
+						}
+
+						if (MetricsEnabled)
+						{
+							DisableMetricsInternal();
+						}
+					}
+					catch (Exception e)
+					{
+						Log.Warn("DisableMetrics failed: " + Util.GetErrorMessage(e));
+						FailClosedMetrics(metricsSession);
+					}
+
+					if (metricsReporter != null)
+					{
+						RunOutsideMetricsLock(metricsReporter.Stop);
+					}
+					metricsReporter = null;
+					MetricsWriter finalWriter = metricsFileWriter;
+					metricsFileWriter = null;
+					if (finalWriter != null)
+					{
+						RunOutsideMetricsLock(finalWriter.Dispose);
+					}
+					metricsListener = null;
+					metricsPolicyBase = new MetricsPolicy();
+					MetricsPolicy = new MetricsPolicy();
 				}
 			}
 

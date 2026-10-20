@@ -13,6 +13,10 @@
     <Platforms>AnyCPU</Platforms>
     <IsTestProject>true</IsTestProject>
     <EnableMSTestRunner>true</EnableMSTestRunner>
+    <TestingPlatformDotnetTestSupport>false</TestingPlatformDotnetTestSupport>
+    <SignAssembly>True</SignAssembly>
+    <DelaySign>True</DelaySign>
+    <AssemblyOriginatorKeyFile>../AerospikePublicKey.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="MSTest" Version="4.4.0" />
@@ -24,6 +28,20 @@
     <EmbeddedResource Include="LuaResources\sum_example.lua" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
+    <Compile Remove="Compatibility\**\*.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
+    <ProjectReference Include="Compatibility\released-8.5.0\Released850Implementer\Released850Implementer.csproj"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <Target Name="CopyReleased850CompatibilityFixture" AfterTargets="Publish">
+    <ItemGroup>
+      <Released850CompatibilityFixture Include="Compatibility\released-8.5.0\Released850Implementer\bin\$(Configuration)\net8.0\Released850Implementer.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(Released850CompatibilityFixture)"
+          DestinationFolder="$(PublishDir)Compatibility\released-8.5.0\Released850Implementer\"
+          SkipUnchangedFiles="true"
+          Condition="'@(Released850CompatibilityFixture)' != ''" />
+  </Target>
 </Project>

@@ -49,6 +49,7 @@ namespace Aerospike.Client
 		protected internal string clientVersion;
 
 		protected internal ClientPolicy clientPolicy;
+		internal ClientPolicy clientPolicyBase;
 
 		/// <summary>
 		/// Default read policy that is used when read command policy is null.
@@ -130,6 +131,39 @@ namespace Aerospike.Client
 
 		internal protected IConfigProvider configProvider;
 
+		internal sealed class MergedPolicyBundle
+		{
+			internal readonly Policy Read;
+			internal readonly WritePolicy Write;
+			internal readonly ScanPolicy Scan;
+			internal readonly QueryPolicy Query;
+			internal readonly BatchPolicy BatchRead;
+			internal readonly BatchPolicy BatchWriteParent;
+			internal readonly BatchWritePolicy BatchWrite;
+			internal readonly BatchDeletePolicy BatchDelete;
+			internal readonly BatchUDFPolicy BatchUdf;
+			internal readonly TxnVerifyPolicy TxnVerify;
+			internal readonly TxnRollPolicy TxnRoll;
+			internal readonly WritePolicy OperateRead;
+
+			internal MergedPolicyBundle(AerospikeClient client, IConfigProvider provider)
+			{
+				Read = new Policy(client.readPolicyDefault, provider);
+				Write = new WritePolicy(client.writePolicyDefault, provider);
+				Scan = new ScanPolicy(client.scanPolicyDefault, provider);
+				Query = new QueryPolicy(client.queryPolicyDefault, provider);
+				BatchRead = BatchPolicy.MergeRead(client.batchPolicyDefault, provider);
+				BatchWriteParent =
+					BatchPolicy.MergeWrite(client.batchParentPolicyWriteDefault, provider);
+				BatchWrite = new BatchWritePolicy(client.batchWritePolicyDefault, provider);
+				BatchDelete = new BatchDeletePolicy(client.batchDeletePolicyDefault, provider);
+				BatchUdf = new BatchUDFPolicy(client.batchUDFPolicyDefault, provider);
+				TxnVerify = new TxnVerifyPolicy(client.txnVerifyPolicyDefault, provider);
+				TxnRoll = new TxnRollPolicy(client.txnRollPolicyDefault, provider);
+				OperateRead = new WritePolicy(client.operatePolicyReadDefault, provider);
+			}
+		}
+
 		//-------------------------------------------------------
 		// Constructors
 		//-------------------------------------------------------
@@ -207,6 +241,7 @@ namespace Aerospike.Client
 		public AerospikeClient(ClientPolicy policy, params Host[] hosts)
 		{
 			policy ??= new ClientPolicy();
+			clientPolicyBase = new ClientPolicy(policy);
 			clientPolicy = policy;
 			this.readPolicyDefault = policy.readPolicyDefault;
 			this.writePolicyDefault = policy.writePolicyDefault;
@@ -247,7 +282,8 @@ namespace Aerospike.Client
 
 			if (configProvider != null)
 			{
-				policy = new ClientPolicy(policy, configProvider);
+				policy = new ClientPolicy(clientPolicyBase, configProvider);
+				clientPolicy = policy;
 				MergeDefaultPoliciesWithConfig();
 			}
 
@@ -257,6 +293,7 @@ namespace Aerospike.Client
 			cluster = new Cluster(this, policy, configPath, hosts);
 			cluster.UpdateClusterConfig(true);
 			cluster.StartTendThread(policy);
+			(configProvider as YamlConfigProvider)?.LogInitialApplied();
 		}
 
 		/// <summary>
@@ -267,6 +304,8 @@ namespace Aerospike.Client
 		{
 			if (policy != null)
 			{
+				clientPolicyBase = new ClientPolicy(policy);
+				clientPolicy = policy;
 				this.readPolicyDefault = policy.readPolicyDefault;
 				this.writePolicyDefault = policy.writePolicyDefault;
 				this.scanPolicyDefault = policy.scanPolicyDefault;
@@ -463,18 +502,28 @@ namespace Aerospike.Client
 		/// </summary>
 		public void MergeDefaultPoliciesWithConfig()
 		{
-			mergedReadPolicyDefault = new Policy(readPolicyDefault, configProvider);
-			mergedWritePolicyDefault = new WritePolicy(writePolicyDefault, configProvider);
-			mergedScanPolicyDefault = new ScanPolicy(scanPolicyDefault, configProvider);
-			mergedQueryPolicyDefault = new QueryPolicy(queryPolicyDefault, configProvider);
-			mergedBatchPolicyDefault = BatchPolicy.MergeRead(batchPolicyDefault, configProvider);
-			mergedBatchParentPolicyWriteDefault = BatchPolicy.MergeWrite(batchParentPolicyWriteDefault, configProvider);
-			mergedBatchWritePolicyDefault = new BatchWritePolicy(batchWritePolicyDefault, configProvider);
-			mergedBatchDeletePolicyDefault = new BatchDeletePolicy(batchDeletePolicyDefault, configProvider);
-			mergedBatchUDFPolicyDefault = new BatchUDFPolicy(batchUDFPolicyDefault, configProvider);
-			mergedTxnVerifyPolicyDefault = new TxnVerifyPolicy(txnVerifyPolicyDefault, configProvider);
-			mergedTxnRollPolicyDefault = new TxnRollPolicy(txnRollPolicyDefault, configProvider);
-			mergedOperatePolicyReadDefault = new WritePolicy(operatePolicyReadDefault, configProvider);
+			PublishMergedPolicies(CreateMergedPolicies(configProvider));
+		}
+
+		internal MergedPolicyBundle CreateMergedPolicies(IConfigProvider provider)
+		{
+			return new MergedPolicyBundle(this, provider);
+		}
+
+		internal void PublishMergedPolicies(MergedPolicyBundle bundle)
+		{
+			mergedReadPolicyDefault = bundle.Read;
+			mergedWritePolicyDefault = bundle.Write;
+			mergedScanPolicyDefault = bundle.Scan;
+			mergedQueryPolicyDefault = bundle.Query;
+			mergedBatchPolicyDefault = bundle.BatchRead;
+			mergedBatchParentPolicyWriteDefault = bundle.BatchWriteParent;
+			mergedBatchWritePolicyDefault = bundle.BatchWrite;
+			mergedBatchDeletePolicyDefault = bundle.BatchDelete;
+			mergedBatchUDFPolicyDefault = bundle.BatchUdf;
+			mergedTxnVerifyPolicyDefault = bundle.TxnVerify;
+			mergedTxnRollPolicyDefault = bundle.TxnRoll;
+			mergedOperatePolicyReadDefault = bundle.OperateRead;
 		}
 
 		//-------------------------------------------------------
@@ -563,6 +612,15 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Return an immutable client metrics snapshot. The snapshot is available before metrics
+		/// are enabled, while collection is active, and after collection is disabled.
+		/// </summary>
+		public MetricsSnapshot GetMetricsSnapshot()
+		{
+			return cluster.GetMetricsSnapshot();
+		}
+
+		/// <summary>
 		/// Return operating cluster statistics snapshot.
 		/// </summary>
 		public ClusterStats GetClusterStats()
@@ -587,6 +645,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.Commit">if verify commit fails</exception>
 		public CommitStatus.CommitStatusType Commit(Txn txn)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			TxnRoll tr = new(cluster, txn);
 
 			try
@@ -626,6 +686,8 @@ namespace Aerospike.Client
 		/// <returns>statis of the abort</returns>
 		public AbortStatus.AbortStatusType Abort(Txn txn)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			TxnRoll tr = new(cluster, txn);
 
 			switch (txn.State)
@@ -664,6 +726,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if write fails</exception>
 		public void Put(WritePolicy policy, Key key, params Bin[] bins)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -703,6 +767,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if append fails</exception>
 		public void Append(WritePolicy policy, Key key, params Bin[] bins)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -737,6 +803,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if prepend fails</exception>
 		public void Prepend(WritePolicy policy, Key key, params Bin[] bins)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -770,6 +838,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if add fails</exception>
 		public void Add(WritePolicy policy, Key key, params Bin[] bins)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -803,6 +873,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if delete fails</exception>
 		public bool Delete(WritePolicy policy, Key key)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -840,8 +912,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
 		public BatchResults Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, Key[] keys)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Blocking);
 				return new BatchResults([], true);
 			}
 
@@ -932,6 +1007,8 @@ namespace Aerospike.Client
 		/// </param>
 		public void Truncate(InfoPolicy policy, string ns, string set, DateTime? beforeLastUpdate)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Background);
 			policy ??= infoPolicyDefault;
 
 			// Send truncate command to one node. That node will distribute the command to other nodes.
@@ -981,6 +1058,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if touch fails</exception>
 		public void Touch(WritePolicy policy, Key key)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -1010,6 +1089,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if touch fails</exception>
 		public bool Touched(WritePolicy policy, Key key)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -1045,6 +1126,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool Exists(Policy policy, Key key)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.READ, ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedReadPolicyDefault;
@@ -1075,8 +1158,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchExists">which contains results for keys that did complete</exception>
 		public bool[] Exists(BatchPolicy policy, Key[] keys)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Blocking);
 				return [];
 			}
 
@@ -1104,7 +1190,7 @@ namespace Aerospike.Client
 					BatchNode batchNode = new BatchNode(node, keys);
 					IBatchCommand command = new BatchExistsArrayCommand(
 						cluster, batchNode, policy, keys, existsArray, status);
-					BatchExecutor.Execute(command, status);
+					BatchExecutor.Execute(cluster, command, status);
 					return existsArray;
 				}
 
@@ -1150,6 +1236,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record Get(Policy policy, Key key)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.READ, ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedReadPolicyDefault;
@@ -1178,6 +1266,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record Get(Policy policy, Key key, params string[] binNames)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.READ, ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedReadPolicyDefault;
@@ -1204,6 +1294,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public Record GetHeader(Policy policy, Key key)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.READ, ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedReadPolicyDefault;
@@ -1242,8 +1334,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public bool Get(BatchPolicy policy, List<BatchRead> records)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (records.Count == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Blocking);
 				return true;
 			}
 
@@ -1294,8 +1389,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
 		public Record[] Get(BatchPolicy policy, Key[] keys)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Blocking);
 				return [];
 			}
 
@@ -1324,7 +1422,7 @@ namespace Aerospike.Client
 					IBatchCommand command = new BatchGetArrayCommand(
 						cluster, batchNode, policy, keys, null, null, records,
 						Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
-					BatchExecutor.Execute(command, status);
+					BatchExecutor.Execute(cluster, command, status);
 					return records;
 				}
 
@@ -1372,8 +1470,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
 		public Record[] Get(BatchPolicy policy, Key[] keys, params string[] binNames)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Blocking);
 				return [];
 			}
 
@@ -1404,7 +1505,7 @@ namespace Aerospike.Client
 					BatchNode batchNode = new BatchNode(node, keys);
 					IBatchCommand command = new BatchGetArrayCommand(
 						cluster, batchNode, policy, keys, binNames, null, records, readAttr, false, status);
-					BatchExecutor.Execute(command, status);
+					BatchExecutor.Execute(cluster, command, status);
 					return records;
 				}
 
@@ -1451,8 +1552,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
 		public Record[] Get(BatchPolicy policy, Key[] keys, params Operation[] ops)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Blocking);
 				return new Record[0];
 			}
 
@@ -1480,7 +1584,7 @@ namespace Aerospike.Client
 					BatchNode batchNode = new BatchNode(node, keys);
 					IBatchCommand command = new BatchGetArrayCommand(
 						cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
-					BatchExecutor.Execute(command, status);
+					BatchExecutor.Execute(cluster, command, status);
 					return records;
 				}
 
@@ -1521,8 +1625,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchRecords">which contains results for keys that did complete</exception>
 		public Record[] GetHeader(BatchPolicy policy, Key[] keys)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Blocking);
 				return [];
 			}
 
@@ -1551,7 +1658,7 @@ namespace Aerospike.Client
 					IBatchCommand command = new BatchGetArrayCommand(
 						cluster, batchNode, policy, keys, null, null, records,
 						Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
-					BatchExecutor.Execute(command, status);
+					BatchExecutor.Execute(cluster, command, status);
 					return records;
 				}
 
@@ -1598,6 +1705,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if main read or join reads fail</exception>
 		public Record Join(BatchPolicy policy, Key key, string[] binNames, params Join[] joins)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking, true);
+			using ApiMetricsCall delegation = cluster.BeginApiMetricsDelegation();
 			string[] names = new string[binNames.Length + joins.Length];
 			int count = 0;
 
@@ -1626,6 +1736,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if main read or join reads fail</exception>
 		public Record Join(BatchPolicy policy, Key key, params Join[] joins)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking, true);
+			using ApiMetricsCall delegation = cluster.BeginApiMetricsDelegation();
 			Record record = Get(policy, key);
 			JoinRecords(policy, record, joins);
 			return record;
@@ -1653,6 +1766,21 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Record Operate(WritePolicy policy, Key key, params Operation[] operations)
 		{
+			Latency.LatencyType latencyType = Latency.LatencyType.READ;
+
+			if (operations != null)
+			{
+				foreach (Operation operation in operations)
+				{
+					if (operation != null && Operation.IsWrite(operation.type))
+					{
+						latencyType = Latency.LatencyType.WRITE;
+						break;
+					}
+				}
+			}
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, latencyType, ApiExecutionMode.Blocking);
 			OperateArgs args = new OperateArgs(policy, mergedWritePolicyDefault, mergedOperatePolicyReadDefault, operations);
 			policy = args.writePolicy;
 			if (configProvider != null)
@@ -1713,8 +1841,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public bool Operate(BatchPolicy policy, List<BatchRecord> records)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (records.Count == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Blocking);
 				return true;
 			}
 
@@ -1877,8 +2008,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException.BatchRecordArray">which contains results for keys that did complete</exception>
 		public BatchResults Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, Key[] keys, params Operation[] ops)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Blocking);
 				return new BatchResults(new BatchRecord[0], true);
 			}
 
@@ -1979,6 +2113,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if scan fails</exception>
 		public void ScanAll(ScanPolicy policy, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedScanPolicyDefault;
@@ -2012,6 +2148,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if scan fails</exception>
 		public void ScanNode(ScanPolicy policy, string nodeName, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
+			using ApiMetricsCall delegation = cluster.BeginApiMetricsDelegation();
 			Node node = cluster.GetNode(nodeName);
 			ScanNode(policy, node, ns, setName, callback, binNames);
 		}
@@ -2034,6 +2173,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if scan fails</exception>
 		public void ScanNode(ScanPolicy policy, Node node, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedScanPolicyDefault;
@@ -2063,6 +2204,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if scan fails</exception>
 		public void ScanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, string ns, string setName, ScanCallback callback, params string[] binNames)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedScanPolicyDefault;
@@ -2094,6 +2237,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if register fails</exception>
 		public RegisterTask Register(Policy policy, string clientPath, string serverPath, Language language)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Background);
+
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -2121,6 +2267,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if register fails</exception>
 		public RegisterTask Register(Policy policy, Assembly resourceAssembly, string resourcePath, string serverPath, Language language)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Background);
+
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -2171,6 +2320,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if register fails</exception>
 		public RegisterTask RegisterUdfString(Policy policy, string code, string serverPath, Language language)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Background);
+
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -2193,6 +2345,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if remove fails</exception>
 		public void RemoveUdf(InfoPolicy policy, string serverPath)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			policy ??= infoPolicyDefault;
 
 			// Send UDF command to one node. That node will distribute the UDF command to other nodes.
@@ -2229,6 +2383,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public object Execute(WritePolicy policy, Key key, string packageName, string functionName, params Value[] args)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -2295,8 +2451,11 @@ namespace Aerospike.Client
 			params Value[] functionArgs
 		)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Blocking);
 				return new BatchResults([], true);
 			}
 
@@ -2386,6 +2545,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public ExecuteTask Execute(WritePolicy policy, Statement statement, string packageName, string functionName, params Value[] functionArgs)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Background);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -2428,6 +2589,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public ExecuteTask Execute(WritePolicy policy, Statement statement, params Operation[] operations)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Background);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -2489,6 +2652,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public RecordSet Query(QueryPolicy policy, Statement statement)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedQueryPolicyDefault;
@@ -2532,6 +2697,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public void Query(QueryPolicy policy, Statement statement, QueryListener listener)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedQueryPolicyDefault;
@@ -2586,6 +2753,8 @@ namespace Aerospike.Client
 			QueryListener listener
 		)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedQueryPolicyDefault;
@@ -2627,6 +2796,8 @@ namespace Aerospike.Client
 			PartitionFilter partitionFilter
 		)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedQueryPolicyDefault;
@@ -2720,6 +2891,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public ResultSet QueryAggregate(QueryPolicy policy, Statement statement)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Blocking);
 			if (policy == null)
 			{
 				policy = mergedQueryPolicyDefault;
@@ -2872,6 +3045,9 @@ namespace Aerospike.Client
 			params CTX[] ctx
 		)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Background);
+
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -2986,6 +3162,9 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if index drop fails</exception>
 		public IndexTask DropIndex(Policy policy, string ns, string setName, string indexName)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Background);
+
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -3037,6 +3216,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public void SetXDRFilter(InfoPolicy policy, string datacenter, string ns, Expression filter)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			policy ??= infoPolicyDefault;
 
 			// Send XDR command to one node. That node will distribute the XDR command to other nodes.
@@ -3066,6 +3247,8 @@ namespace Aerospike.Client
 		/// <param name="roles">variable arguments array of role names.  Predefined roles are listed in Role.cs</param>		
 		public void CreateUser(AdminPolicy policy, string user, string password, IList<string> roles)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			string hash = AdminCommand.HashPassword(password);
 			AdminCommand command = new AdminCommand();
 			command.CreateUser(cluster, policy, user, hash, roles);
@@ -3081,6 +3264,8 @@ namespace Aerospike.Client
 		/// <param name="roles">variable arguments array of role names.  Predefined roles are listed in Role.cs</param>		
 		public void CreatePKIUser(AdminPolicy policy, string user, IList<string> roles)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand command = new();
 			command.CreatePKIUser(cluster, policy, user, roles);
 		}
@@ -3092,6 +3277,8 @@ namespace Aerospike.Client
 		/// <param name="user">user name</param>
 		public void DropUser(AdminPolicy policy, string user)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand command = new AdminCommand();
 			command.DropUser(cluster, policy, user);
 		}
@@ -3104,6 +3291,8 @@ namespace Aerospike.Client
 		/// <param name="password">user password in clear-text format</param>
 		public void ChangePassword(AdminPolicy policy, string user, string password)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			if (cluster.user == null)
 			{
 				throw new AerospikeException("Invalid user");
@@ -3152,6 +3341,8 @@ namespace Aerospike.Client
 		/// <param name="roles">role names.  Predefined roles are listed in Role.cs</param>
 		public void GrantRoles(AdminPolicy policy, string user, IList<string> roles)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand command = new AdminCommand();
 			command.GrantRoles(cluster, policy, user, roles);
 		}
@@ -3164,6 +3355,8 @@ namespace Aerospike.Client
 		/// <param name="roles">role names.  Predefined roles are listed in Role.cs</param>
 		public void RevokeRoles(AdminPolicy policy, string user, IList<string> roles)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand command = new AdminCommand();
 			command.RevokeRoles(cluster, policy, user, roles);
 		}
@@ -3177,6 +3370,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand command = new AdminCommand();
 			command.CreateRole(cluster, policy, roleName, privileges);
 		}
@@ -3194,6 +3389,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public void CreateRole(AdminPolicy policy, string roleName, IList<Privilege> privileges, IList<string> whitelist)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand command = new AdminCommand();
 			command.CreateRole(cluster, policy, roleName, privileges, whitelist, 0, 0);
 		}
@@ -3222,6 +3419,8 @@ namespace Aerospike.Client
 			int writeQuota
 		)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand command = new AdminCommand();
 			command.CreateRole(cluster, policy, roleName, privileges, whitelist, readQuota, writeQuota);
 		}
@@ -3234,6 +3433,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public void DropRole(AdminPolicy policy, string roleName)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand command = new AdminCommand();
 			command.DropRole(cluster, policy, roleName);
 		}
@@ -3247,6 +3448,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public void GrantPrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand command = new AdminCommand();
 			command.GrantPrivileges(cluster, policy, roleName, privileges);
 		}
@@ -3260,6 +3463,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public void RevokePrivileges(AdminPolicy policy, string roleName, IList<Privilege> privileges)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand command = new AdminCommand();
 			command.RevokePrivileges(cluster, policy, roleName, privileges);
 		}
@@ -3276,6 +3481,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public void SetWhitelist(AdminPolicy policy, string roleName, IList<string> whitelist)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand command = new AdminCommand();
 			command.SetWhitelist(cluster, policy, roleName, whitelist);
 		}
@@ -3291,6 +3498,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public void SetQuotas(AdminPolicy policy, string roleName, int readQuota, int writeQuota)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand command = new AdminCommand();
 			command.setQuotas(cluster, policy, roleName, readQuota, writeQuota);
 		}
@@ -3302,6 +3511,8 @@ namespace Aerospike.Client
 		/// <param name="user">user name filter</param>
 		public User QueryUser(AdminPolicy policy, string user)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand.UserCommand command = new AdminCommand.UserCommand(1);
 			return command.QueryUser(cluster, policy, user);
 		}
@@ -3312,6 +3523,8 @@ namespace Aerospike.Client
 		/// <param name="policy">admin configuration parameters, pass in null for defaults</param>
 		public List<User> QueryUsers(AdminPolicy policy)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand.UserCommand command = new AdminCommand.UserCommand(100);
 			return command.QueryUsers(cluster, policy);
 		}
@@ -3324,6 +3537,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public Role QueryRole(AdminPolicy policy, string roleName)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand.RoleCommand command = new AdminCommand.RoleCommand(1);
 			return command.QueryRole(cluster, policy, roleName);
 		}
@@ -3335,6 +3550,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public List<Role> QueryRoles(AdminPolicy policy)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			AdminCommand.RoleCommand command = new AdminCommand.RoleCommand(100);
 			return command.QueryRoles(cluster, policy);
 		}

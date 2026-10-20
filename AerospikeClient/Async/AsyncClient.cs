@@ -149,6 +149,7 @@ namespace Aerospike.Client
 			cluster = new AsyncCluster(this, policy, configPath, hosts);
 			base.cluster = this.cluster;
 			base.clientPolicy = this.clientPolicy;
+			(configProvider as YamlConfigProvider)?.LogInitialApplied();
 		}
 
 		protected internal override AsyncClientPolicy GetClientPolicy()
@@ -189,6 +190,8 @@ namespace Aerospike.Client
 		/// <param name="txn">transaction</param>
 		public void Commit(CommitListener listener, Txn txn)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Deferred);
 			AsyncTxnRoll atr = new(
 				cluster, mergedTxnVerifyPolicyDefault, mergedTxnRollPolicyDefault, txn
 				);
@@ -242,6 +245,8 @@ namespace Aerospike.Client
 		/// <param name="txn">transaction</param>
 		public void Abort(AbortListener listener, Txn txn)
 		{
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Deferred);
 			AsyncTxnRoll atr = new(cluster, null, mergedTxnRollPolicyDefault, txn);
 
 			switch (txn.State)
@@ -304,6 +309,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Put(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -365,6 +372,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Append(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -420,6 +429,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Prepend(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -473,6 +484,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Add(WritePolicy policy, WriteListener listener, Key key, params Bin[] bins)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -517,6 +530,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Delete(WritePolicy policy, DeleteListener listener, Key key)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -569,8 +584,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, BatchRecordArrayListener listener, Key[] keys)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess(new BatchRecord[0], true);
 				return;
 			}
@@ -645,8 +663,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, BatchRecordSequenceListener listener, Key[] keys)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess();
 				return;
 			}
@@ -728,6 +749,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Touch(WritePolicy policy, WriteListener listener, Key key)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -773,6 +796,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Touched(WritePolicy policy, ExistsListener listener, Key key)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -817,6 +842,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Exists(Policy policy, ExistsListener listener, Key key)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.READ, ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedReadPolicyDefault;
@@ -863,8 +890,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Exists(BatchPolicy policy, ExistsArrayListener listener, Key[] keys)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess(keys, []);
 				return;
 			}
@@ -915,8 +945,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Exists(BatchPolicy policy, ExistsSequenceListener listener, Key[] keys)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess();
 				return;
 			}
@@ -986,6 +1019,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(Policy policy, RecordListener listener, Key key)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.READ, ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedReadPolicyDefault;
@@ -1030,6 +1065,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(Policy policy, RecordListener listener, Key key, params string[] binNames)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.READ, ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedReadPolicyDefault;
@@ -1071,6 +1108,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void GetHeader(Policy policy, RecordListener listener, Key key)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.READ, ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedReadPolicyDefault;
@@ -1130,8 +1169,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public void Get(BatchPolicy policy, BatchListListener listener, List<BatchRead> records)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (records.Count == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess(records);
 				return;
 			}
@@ -1184,8 +1226,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if read fails</exception>
 		public void Get(BatchPolicy policy, BatchSequenceListener listener, List<BatchRead> records)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (records.Count == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess();
 				return;
 			}
@@ -1261,8 +1306,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess(keys, []);
 				return;
 			}
@@ -1317,8 +1365,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess();
 				return;
 			}
@@ -1397,8 +1448,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, params string[] binNames)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess(keys, []);
 				return;
 			}
@@ -1456,8 +1510,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params string[] binNames)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess();
 				return;
 			}
@@ -1540,8 +1597,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, params Operation[] ops)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess(keys, []);
 				return;
 			}
@@ -1597,8 +1657,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, params Operation[] ops)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess();
 				return;
 			}
@@ -1669,8 +1732,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void GetHeader(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess(keys, []);
 				return;
 			}
@@ -1725,8 +1791,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void GetHeader(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess();
 				return;
 			}
@@ -1813,6 +1882,21 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(WritePolicy policy, RecordListener listener, Key key, params Operation[] ops)
 		{
+			Latency.LatencyType latencyType = Latency.LatencyType.READ;
+
+			if (ops != null)
+			{
+				foreach (Operation operation in ops)
+				{
+					if (operation != null && Operation.IsWrite(operation.type))
+					{
+						latencyType = Latency.LatencyType.WRITE;
+						break;
+					}
+				}
+			}
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, latencyType, ApiExecutionMode.Deferred);
 			OperateArgs args = new OperateArgs(policy, mergedWritePolicyDefault, mergedOperatePolicyReadDefault, ops);
 			policy = args.writePolicy;
 			if (configProvider != null)
@@ -1880,8 +1964,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(BatchPolicy policy, BatchOperateListListener listener, List<BatchRecord> records)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (records.Count == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess(records, false);
 				return;
 			}
@@ -2036,8 +2123,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(BatchPolicy policy, BatchRecordSequenceListener listener, List<BatchRecord> records)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (records.Count == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess();
 				return;
 			}
@@ -2220,8 +2310,11 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void Operate(BatchPolicy batchPolicy, BatchWritePolicy writePolicy, BatchRecordArrayListener listener, Key[] keys, params Operation[] ops)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess(new BatchRecord[0], true);
 				return;
 			}
@@ -2317,8 +2410,11 @@ namespace Aerospike.Client
 			params Operation[] ops
 		)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess();
 				return;
 			}
@@ -2399,6 +2495,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void ScanAll(ScanPolicy policy, RecordSequenceListener listener, string ns, string setName, params string[] binNames)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedScanPolicyDefault;
@@ -2431,6 +2529,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if queue is full</exception>
 		public void ScanPartitions(ScanPolicy policy, RecordSequenceListener listener, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedScanPolicyDefault;
@@ -2488,6 +2588,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if command fails</exception>
 		public void Execute(WritePolicy policy, ExecuteListener listener, Key key, string packageName, string functionName, params Value[] functionArgs)
 		{
+			using ApiMetricsCall metrics = cluster.BeginPointApiMetrics(
+				key?.ns, Latency.LatencyType.WRITE, ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedWritePolicyDefault;
@@ -2550,8 +2652,11 @@ namespace Aerospike.Client
 			string functionName,
 			params Value[] functionArgs)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess(new BatchRecord[0], true);
 				return;
 			}
@@ -2638,8 +2743,11 @@ namespace Aerospike.Client
 			string functionName,
 			params Value[] functionArgs)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (keys.Length == 0)
 			{
+				cluster.RecordEmptyBatchMetrics(ApiExecutionMode.Deferred);
 				listener.OnSuccess();
 				return;
 			}
@@ -2715,6 +2823,8 @@ namespace Aerospike.Client
 		/// <exception cref="AerospikeException">if query fails</exception>
 		public void Query(QueryPolicy policy, RecordSequenceListener listener, Statement statement)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedQueryPolicyDefault;
@@ -2765,6 +2875,8 @@ namespace Aerospike.Client
 			PartitionFilter partitionFilter
 		)
 		{
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedQueryPolicyDefault;

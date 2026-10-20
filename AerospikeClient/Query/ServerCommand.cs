@@ -23,7 +23,7 @@ namespace Aerospike.Client
 		private readonly ulong taskId;
 
 		public ServerCommand(Cluster cluster, Node node, WritePolicy policy, Statement statement, ulong taskId)
-			: base(cluster, policy, node, false)
+			: base(cluster, policy, node, statement.ns, false)
 		{
 			this.statement = statement;
 			this.taskId = taskId;
