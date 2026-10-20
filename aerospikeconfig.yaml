@@ -26,6 +26,10 @@ dynamic:
     durable_delete: true
   metrics:
     enabled: true
+    export_interval: 30s
+    exporter: file
+    report_dir: .
+    report_size_limit: 0
     labels:
       region: us-west
       zone: usw1-az3

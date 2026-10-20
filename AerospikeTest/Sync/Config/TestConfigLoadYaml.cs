@@ -149,6 +149,10 @@ namespace Aerospike.Test
 			Assert.AreEqual((ulong)100, data.dynamicConfig.metrics.extended.operational.sampler.range.Value);
 			Assert.AreEqual((ulong)25, data.dynamicConfig.metrics.extended.operational.sampler.threshold.Value);
 			Assert.IsTrue(data.dynamicConfig.metrics.extended.usage.enabled.Value);
+			Assert.AreEqual("500ms", data.dynamicConfig.metrics.export_interval);
+			Assert.AreEqual("custom", data.dynamicConfig.metrics.exporter);
+			Assert.AreEqual("metrics-output", data.dynamicConfig.metrics.report_dir);
+			Assert.AreEqual("2mb", data.dynamicConfig.metrics.report_size_limit);
 		}
 
 		[TestMethod]

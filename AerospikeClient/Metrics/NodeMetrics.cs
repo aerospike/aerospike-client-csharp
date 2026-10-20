@@ -55,12 +55,26 @@ namespace Aerospike.Client
 
 		internal void Reshape(MetricsPolicy policy)
 		{
-			Histograms replacement = new Histograms(policy.LatencyColumns, policy.LatencyShift);
+			ReplaceHistograms(CreateHistograms(policy));
+		}
 
+		internal static Histograms CreateHistograms(
+			MetricsPolicy policy)
+		{
+			return new Histograms(
+				policy.LatencyColumns,
+				policy.LatencyShift);
+		}
+
+		internal Histograms ReplaceHistograms(
+			Histograms replacement)
+		{
 			// Do not dispose the previous map here. A command that captured it before
 			// the swap may still be recording latency. It becomes collectible when
 			// those in-flight readers release it.
+			Histograms previous = Histograms;
 			Histograms = replacement;
+			return previous;
 		}
 
 		private void Dispose(bool disposing)
@@ -103,6 +117,11 @@ namespace Aerospike.Client
 		{
 			while (true)
 			{
+				if (Volatile.Read(ref retired) != 0)
+				{
+					return default;
+				}
+
 				int current = Volatile.Read(ref readers);
 
 				if (current == 0)
@@ -115,7 +134,13 @@ namespace Aerospike.Client
 					current + 1,
 					current) == current)
 				{
-					return new NodeMetricsLease(this, Metrics);
+					if (Volatile.Read(ref retired) == 0)
+					{
+						return new NodeMetricsLease(this, Metrics);
+					}
+
+					Release();
+					return default;
 				}
 			}
 		}
@@ -123,6 +148,29 @@ namespace Aerospike.Client
 		internal void Retire()
 		{
 			if (Interlocked.Exchange(ref retired, 1) == 0)
+			{
+				Release();
+			}
+		}
+
+		internal T RetireAndCapture<T>(Func<NodeMetrics, T> capture)
+		{
+			if (Interlocked.Exchange(ref retired, 1) != 0)
+			{
+				return default;
+			}
+
+			SpinWait spinner = new();
+			while (Volatile.Read(ref readers) != 1)
+			{
+				spinner.SpinOnce();
+			}
+
+			try
+			{
+				return capture(Metrics);
+			}
+			finally
 			{
 				Release();
 			}

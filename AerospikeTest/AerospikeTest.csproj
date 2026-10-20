@@ -28,6 +28,11 @@
     <EmbeddedResource Include="LuaResources\sum_example.lua" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Remove="Compatibility\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
+    <ProjectReference Include="Compatibility\released-8.5.0\Released850Implementer\Released850Implementer.csproj"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

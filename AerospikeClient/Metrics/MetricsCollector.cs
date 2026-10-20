@@ -51,6 +51,55 @@ namespace Aerospike.Client
 		}
 	}
 
+	internal sealed class MetricsProcessSampler
+	{
+		private readonly object sync = new();
+		private readonly bool legacyMemory;
+		private DateTime timestamp;
+		private TimeSpan cpu;
+
+		internal MetricsProcessSampler(bool legacyMemory = false)
+		{
+			this.legacyMemory = legacyMemory;
+			using Process process = Process.GetCurrentProcess();
+			timestamp = DateTime.UtcNow;
+			cpu = process.TotalProcessorTime;
+		}
+
+		internal void Read(out double cpuPercent, out long memoryBytes)
+		{
+			lock (sync)
+			{
+				using Process process = Process.GetCurrentProcess();
+				DateTime currentTimestamp = DateTime.UtcNow;
+				TimeSpan currentCpu = process.TotalProcessorTime;
+				double elapsedMs = (currentTimestamp - timestamp).TotalMilliseconds;
+
+				cpuPercent = elapsedMs <= 0
+					? 0
+					: (currentCpu - cpu).TotalMilliseconds /
+						(Environment.ProcessorCount * elapsedMs) * 100;
+				memoryBytes = legacyMemory
+					? process.WorkingSet64 +
+						process.VirtualMemorySize64 +
+						process.PagedMemorySize64
+					: process.WorkingSet64;
+				timestamp = currentTimestamp;
+				cpu = currentCpu;
+			}
+		}
+
+		internal void Reset()
+		{
+			lock (sync)
+			{
+				using Process process = Process.GetCurrentProcess();
+				timestamp = DateTime.UtcNow;
+				cpu = process.TotalProcessorTime;
+			}
+		}
+	}
+
 	internal interface IMetricsRandom
 	{
 		ulong NextUInt64();
@@ -98,6 +147,21 @@ namespace Aerospike.Client
 			return Unit == policy.LatencyUnit &&
 				Columns == policy.LatencyColumns &&
 				Shift == policy.LatencyShift;
+		}
+
+		internal bool Matches(MetricsHistogramShape other)
+		{
+			return other != null &&
+				Unit == other.Unit &&
+				Columns == other.Columns &&
+				Shift == other.Shift;
+		}
+
+		internal bool ShouldReplaceWith(MetricsHistogramShape replacement)
+		{
+			return replacement.Generation > Generation ||
+				(replacement.Generation == Generation &&
+					!Matches(replacement));
 		}
 
 		private static ulong[] CreateLimits(int columns, int shift)
@@ -210,12 +274,12 @@ namespace Aerospike.Client
 	{
 		private sealed class HistogramBank
 		{
-			internal readonly long ShapeGeneration;
+			internal readonly MetricsHistogramShape Shape;
 			internal readonly MetricsHistogram[] Histograms;
 
 			internal HistogramBank(MetricsHistogramShape shape)
 			{
-				ShapeGeneration = shape.Generation;
+				Shape = shape;
 				Histograms = new MetricsHistogram[Latency.GetMax()];
 
 				for (int i = 0; i < Histograms.Length; i++)
@@ -234,16 +298,26 @@ namespace Aerospike.Client
 		private long bytesOut;
 		private volatile HistogramBank histogramBank;
 		private readonly object configLock = new();
+		private Action changed;
 
-		internal MetricsNamespaceCollector(MetricsHistogramShape shape)
+		internal MetricsNamespaceCollector(
+			MetricsHistogramShape shape,
+			Action changed = null)
 		{
 			histogramBank = new HistogramBank(shape);
+			this.changed = changed;
+		}
+
+		internal void SetChangedObserver(Action observer)
+		{
+			Volatile.Write(ref changed, observer);
 		}
 
 		internal void AddBytes(long inCount, long outCount)
 		{
 			Interlocked.Add(ref bytesIn, inCount);
 			Interlocked.Add(ref bytesOut, outCount);
+			Volatile.Read(ref changed)?.Invoke();
 		}
 
 		internal void AddLatency(
@@ -255,6 +329,7 @@ namespace Aerospike.Client
 			{
 				HistogramBank current = EnsureShapeBank(expected);
 				current.Histograms[(int)type].AddNanoseconds(elapsedNanoseconds);
+				Volatile.Read(ref changed)?.Invoke();
 			}
 		}
 
@@ -267,7 +342,7 @@ namespace Aerospike.Client
 		{
 			HistogramBank current = histogramBank;
 
-			if (current.ShapeGeneration >= shape.Generation)
+			if (!current.Shape.ShouldReplaceWith(shape))
 			{
 				return current;
 			}
@@ -276,7 +351,7 @@ namespace Aerospike.Client
 			{
 				current = histogramBank;
 
-				if (current.ShapeGeneration < shape.Generation)
+				if (current.Shape.ShouldReplaceWith(shape))
 				{
 					current = new HistogramBank(shape);
 					histogramBank = current;
@@ -287,6 +362,11 @@ namespace Aerospike.Client
 
 		internal void AddFailure(MetricsFailure failure)
 		{
+			if (failure == MetricsFailure.None)
+			{
+				return;
+			}
+
 			switch (failure)
 			{
 				case MetricsFailure.Timeout:
@@ -309,12 +389,20 @@ namespace Aerospike.Client
 					Interlocked.Increment(ref errors);
 					break;
 			}
+			Volatile.Read(ref changed)?.Invoke();
 		}
 
 		internal MetricsNamespaceView Read(string ns, MetricsRuntimeConfig config)
 		{
+			return Read(ns, config.Shape);
+		}
+
+		internal MetricsNamespaceView Read(
+			string ns,
+			MetricsHistogramShape expected)
+		{
 			Dictionary<LatencyType, long[]> latency = new();
-			HistogramBank bank = EnsureShapeBank(config.Shape);
+			HistogramBank bank = EnsureShapeBank(expected);
 			MetricsHistogram[] current = bank.Histograms;
 
 			for (int i = 0; i < current.Length; i++)
@@ -372,11 +460,19 @@ namespace Aerospike.Client
 		private long closedPoolShrink;
 		private long closedNodeRemoved;
 		private readonly object configLock = new();
+		private Action changed;
 
 		internal MetricsNodeCollector(MetricsRuntimeConfig config)
 		{
 			shape = config.Shape;
 		}
+
+		internal MetricsNodeCollector(MetricsHistogramShape shape)
+		{
+			this.shape = shape;
+		}
+
+		internal MetricsHistogramShape CurrentShape => shape;
 
 		internal MetricsNamespaceCollector GetNamespace(
 			string ns,
@@ -384,24 +480,39 @@ namespace Aerospike.Client
 		{
 			MetricsHistogramShape current = shape;
 			MetricsHistogramShape target =
-				current.Generation >= expected.Generation ? current : expected;
+				current.ShouldReplaceWith(expected)
+					? expected
+					: current;
 			MetricsNamespaceCollector collector = namespaces.GetOrAdd(
 				ns ?? string.Empty,
-				_ => new MetricsNamespaceCollector(target));
+				_ => new MetricsNamespaceCollector(
+					target,
+					Volatile.Read(ref changed)));
+			collector.SetChangedObserver(Volatile.Read(ref changed));
 			collector.EnsureShape(target);
 			return collector;
 		}
 
+		internal void SetChangedObserver(Action observer)
+		{
+			Volatile.Write(ref changed, observer);
+
+			foreach (MetricsNamespaceCollector collector in namespaces.Values)
+			{
+				collector.SetChangedObserver(observer);
+			}
+		}
+
 		internal void EnsureShape(MetricsHistogramShape replacement)
 		{
-			if (shape.Generation >= replacement.Generation)
+			if (!shape.ShouldReplaceWith(replacement))
 			{
 				return;
 			}
 
 			lock (configLock)
 			{
-				if (shape.Generation >= replacement.Generation)
+				if (!shape.ShouldReplaceWith(replacement))
 				{
 					return;
 				}
@@ -415,11 +526,13 @@ namespace Aerospike.Client
 					collector.EnsureShape(replacement);
 				}
 			}
+
 		}
 
 		internal void AddOpened()
 		{
 			Interlocked.Increment(ref opened);
+			Volatile.Read(ref changed)?.Invoke();
 		}
 
 		internal void AddClosed(
@@ -428,39 +541,46 @@ namespace Aerospike.Client
 		{
 			Interlocked.Increment(ref closed);
 
-			if (!operationalEnabled)
+			if (operationalEnabled)
 			{
-				return;
+				switch (reason)
+				{
+					case ConnectionCloseReason.Error:
+						Interlocked.Increment(ref closedError);
+						break;
+
+					case ConnectionCloseReason.Idle:
+						Interlocked.Increment(ref closedIdle);
+						break;
+
+					case ConnectionCloseReason.PoolShrink:
+						Interlocked.Increment(ref closedPoolShrink);
+						break;
+
+					case ConnectionCloseReason.NodeRemoved:
+						Interlocked.Increment(ref closedNodeRemoved);
+						break;
+				}
 			}
-
-			switch (reason)
-			{
-				case ConnectionCloseReason.Error:
-					Interlocked.Increment(ref closedError);
-					break;
-
-				case ConnectionCloseReason.Idle:
-					Interlocked.Increment(ref closedIdle);
-					break;
-
-				case ConnectionCloseReason.PoolShrink:
-					Interlocked.Increment(ref closedPoolShrink);
-					break;
-
-				case ConnectionCloseReason.NodeRemoved:
-					Interlocked.Increment(ref closedNodeRemoved);
-					break;
-			}
+			Volatile.Read(ref changed)?.Invoke();
 		}
 
 		internal void AddPoolExhausted()
 		{
 			Interlocked.Increment(ref poolExhausted);
+			Volatile.Read(ref changed)?.Invoke();
 		}
 
 		internal MetricsNodeView Read(string name, MetricsRuntimeConfig expected)
 		{
-			EnsureShape(expected.Shape);
+			return Read(name, expected.Shape);
+		}
+
+		internal MetricsNodeView Read(
+			string name,
+			MetricsHistogramShape expected)
+		{
+			EnsureShape(expected);
 			Dictionary<string, MetricsNamespaceView> namespaceViews = new();
 
 			foreach (KeyValuePair<string, MetricsNamespaceCollector> entry in namespaces)
@@ -482,6 +602,13 @@ namespace Aerospike.Client
 
 		internal void Merge(MetricsNodeView source, MetricsRuntimeConfig expected)
 		{
+			Merge(source, expected.Shape);
+		}
+
+		internal void Merge(
+			MetricsNodeView source,
+			MetricsHistogramShape expected)
+		{
 			Interlocked.Add(ref opened, source.Opened);
 			Interlocked.Add(ref closed, source.Closed);
 			Interlocked.Add(ref poolExhausted, source.PoolExhausted);
@@ -492,8 +619,9 @@ namespace Aerospike.Client
 
 			foreach (KeyValuePair<string, MetricsNamespaceView> entry in source.Namespaces)
 			{
-				GetNamespace(entry.Key, expected.Shape).Merge(entry.Value, expected.Shape);
+				GetNamespace(entry.Key, expected).Merge(entry.Value, expected);
 			}
+			Volatile.Read(ref changed)?.Invoke();
 		}
 	}
 
@@ -1204,19 +1332,18 @@ namespace Aerospike.Client
 
 		private sealed class HistogramState
 		{
-			internal readonly long ShapeGeneration;
+			internal readonly MetricsHistogramShape Shape;
 			internal readonly MetricsHistogram Histogram;
 
 			internal HistogramState(MetricsHistogramShape shape)
 			{
-				ShapeGeneration = shape.Generation;
+				Shape = shape;
 				Histogram = new MetricsHistogram(shape);
 			}
 		}
 
 		private static long nextSessionId;
-		private readonly ConcurrentDictionary<Node, MetricsNodeCollector> nodes = new();
-		private readonly ConcurrentDictionary<Node, MetricsNodeCollector> removedNodes =
+		private readonly ConcurrentDictionary<Node, MetricsNodeCollector> nodes =
 			new(ReferenceEqualityComparer.Instance);
 		private readonly MetricsNodeCollector removedNodeCollector;
 		private volatile MetricsRuntimeConfig config;
@@ -1887,24 +2014,39 @@ namespace Aerospike.Client
 
 		private MetricsNodeCollector GetNode(Node node, MetricsRuntimeConfig expected)
 		{
-			if (!node.Active)
+			MetricsNodeDeparture departure = node.MetricsDeparture;
+
+			if (departure != null &&
+				ReferenceEquals(departure.Session, this))
+			{
+				departure.Collector.EnsureShape(expected.Shape);
+				return departure.Collector;
+			}
+
+			if (nodes.TryGetValue(node, out MetricsNodeCollector collector))
+			{
+				collector.EnsureShape(expected.Shape);
+				return collector;
+			}
+
+			if (!node.Active && !node.MetricsWasAdmitted)
 			{
 				removedNodeCollector.EnsureShape(expected.Shape);
 				return removedNodeCollector;
 			}
 
-			MetricsNodeCollector collector =
-				nodes.GetOrAdd(node, _ => new MetricsNodeCollector(expected));
+			collector = nodes.GetOrAdd(
+				node,
+				_ => new MetricsNodeCollector(expected));
 			collector.EnsureShape(expected.Shape);
 
-			if (!node.Active)
+			departure = node.MetricsDeparture;
+			if (departure != null &&
+				ReferenceEquals(departure.Session, this))
 			{
-				if (nodes.TryRemove(node, out MetricsNodeCollector removed))
-				{
-					removedNodes.TryAdd(node, removed);
-				}
-				removedNodeCollector.EnsureShape(expected.Shape);
-				return removedNodeCollector;
+				nodes.TryRemove(node, out _);
+				departure.Collector.EnsureShape(expected.Shape);
+				return departure.Collector;
 			}
 			return collector;
 		}
@@ -1951,10 +2093,37 @@ namespace Aerospike.Client
 
 		internal void RemoveNode(Node node)
 		{
-			if (nodes.TryRemove(node, out MetricsNodeCollector removed))
+			BeginNodeDeparture(node);
+		}
+
+		internal MetricsNodeDeparture BeginNodeDeparture(Node node)
+		{
+			return BeginNodeDeparture(node, null);
+		}
+
+		internal MetricsNodeDeparture BeginNodeDeparture(
+			Node node,
+			Action collectorResolved)
+		{
+			MetricsNodeDeparture current = node.MetricsDeparture;
+			if (current != null &&
+				ReferenceEquals(current.Session, this))
 			{
-				removedNodes.TryAdd(node, removed);
+				return current;
 			}
+
+			MetricsRuntimeConfig currentConfig = config;
+			MetricsNodeCollector removed = nodes.GetOrAdd(
+				node,
+				_ => new MetricsNodeCollector(currentConfig));
+			collectorResolved?.Invoke();
+			current = new MetricsNodeDeparture(this, removed);
+			node.InstallMetricsDeparture(current);
+			nodes.TryRemove(node, out _);
+			removedNodeCollector.Merge(
+				removed.Read(string.Empty, currentConfig),
+				currentConfig);
+			return current;
 		}
 
 		internal void AddUsage(ApiExecutionMode mode)
@@ -2068,12 +2237,6 @@ namespace Aerospike.Client
 					removedNodeCollector.Read(string.Empty, current),
 					current);
 
-				foreach (MetricsNodeCollector collector in removedNodes.Values)
-				{
-					removedAggregate.Merge(
-						collector.Read(string.Empty, current),
-						current);
-				}
 				MetricsNodeView removedNodeView =
 					removedAggregate.Read(string.Empty, current);
 				IReadOnlyList<long> tendBuckets =
@@ -2132,7 +2295,7 @@ namespace Aerospike.Client
 		{
 			HistogramState current = tendDuration;
 
-			if (current.ShapeGeneration >= expected.Shape.Generation)
+			if (!current.Shape.ShouldReplaceWith(expected.Shape))
 			{
 				return current;
 			}
@@ -2141,7 +2304,7 @@ namespace Aerospike.Client
 			{
 				current = tendDuration;
 
-				if (current.ShapeGeneration < expected.Shape.Generation)
+				if (current.Shape.ShouldReplaceWith(expected.Shape))
 				{
 					current = new HistogramState(expected.Shape);
 					tendDuration = current;
@@ -2202,6 +2365,20 @@ namespace Aerospike.Client
 		long ClosedNodeRemoved,
 		IReadOnlyDictionary<string, MetricsNamespaceView> Namespaces);
 
+	internal sealed class MetricsNodeDeparture
+	{
+		internal readonly MetricsSession Session;
+		internal readonly MetricsNodeCollector Collector;
+
+		internal MetricsNodeDeparture(
+			MetricsSession session,
+			MetricsNodeCollector collector)
+		{
+			Session = session;
+			Collector = collector;
+		}
+	}
+
 	internal sealed record MetricsSessionView(
 		long SessionId,
 		DateTimeOffset StartedAt,
@@ -2241,6 +2418,7 @@ namespace Aerospike.Client
 		MetricsNodeView RemovedNodes)
 	{
 		internal MetricsRuntimeView Runtime { get; init; }
+		internal MetricsRuntimeConfig Config { get; init; }
 	}
 
 	internal sealed record MetricsRuntimeNodeView(

@@ -340,6 +340,9 @@ namespace Aerospike.Test
 
 			slot.Retire();
 			Assert.IsNotNull(metrics.BytesInCounter);
+			NodeMetricsLease retiredLease = slot.Acquire();
+			Assert.IsNull(retiredLease.Metrics);
+			retiredLease.Dispose();
 
 			lease.Dispose();
 			Assert.IsNull(metrics.BytesInCounter);
@@ -654,6 +657,46 @@ namespace Aerospike.Test
 			MetricsSessionView view = session.Read();
 			Assert.AreEqual(0, view.Nodes.Count);
 			Assert.AreEqual(1L, view.RemovedNodes.Opened);
+		}
+
+		[TestMethod]
+		public void MetricsFirstNodeWriteCannotRaceDepartureOwnership()
+		{
+			Node node = client.Cluster.Nodes[0];
+			MetricsSession session = new(
+				CreateInternalPolicy(),
+				new TestMetricsClock(),
+				new TestMetricsRandom());
+			using ManualResetEventSlim collectorResolved = new(false);
+			using ManualResetEventSlim installDeparture = new(false);
+
+			try
+			{
+				Task<MetricsNodeDeparture> departureTask = Task.Run(() =>
+					session.BeginNodeDeparture(
+						node,
+						() =>
+						{
+							collectorResolved.Set();
+							installDeparture.Wait();
+						}));
+
+				Assert.IsTrue(collectorResolved.Wait(TimeSpan.FromSeconds(5)));
+				session.AddConnectionOpened(node);
+				installDeparture.Set();
+				MetricsNodeDeparture departure = departureTask.GetAwaiter().GetResult();
+
+				Assert.AreEqual(
+					1L,
+					departure.Collector.Read(
+						node.Name,
+						session.RuntimeConfig).Opened);
+			}
+			finally
+			{
+				installDeparture.Set();
+				node.InstallMetricsDeparture(null);
+			}
 		}
 
 		[TestMethod]

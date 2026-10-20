@@ -348,6 +348,10 @@ namespace Aerospike.Test
 			dynamic:
 			  metrics:
 			    enabled: false
+			    export_interval: 500ms
+			    exporter: custom
+			    report_dir: metrics-output
+			    report_size_limit: 2mb
 			    extended:
 			      operational:
 			        enabled: true

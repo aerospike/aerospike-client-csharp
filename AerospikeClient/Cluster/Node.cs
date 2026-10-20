@@ -57,6 +57,8 @@ namespace Aerospike.Client
 		private DateTime? sessionExpiration;
 		internal volatile Dictionary<string, int> racks;
 		private volatile NodeMetricsSlot metricsSlot;
+		private MetricsNodeDeparture metricsDeparture;
+		private int metricsDepartureTransferred;
 		private ConnectionMetricsHandle admissionMetrics;
 		private readonly object admissionMetricsLock = new();
 		private List<(ConnectionMetricsHandle Handle, string Namespace)>
@@ -1134,6 +1136,43 @@ namespace Aerospike.Client
 			return metricsSlot?.Acquire() ?? default;
 		}
 
+		internal T DetachMetricsAndCapture<T>(Func<NodeMetrics, T> capture)
+		{
+			NodeMetricsSlot slot =
+				Interlocked.Exchange(ref metricsSlot, null);
+			metricsEnabled = false;
+			return slot == null
+				? default
+				: slot.RetireAndCapture(capture);
+		}
+
+		internal MetricsNodeDeparture MetricsDeparture =>
+			Volatile.Read(ref metricsDeparture);
+
+		internal bool MetricsWasAdmitted =>
+			Volatile.Read(ref wasAdmitted) != 0;
+
+		internal void InstallMetricsDeparture(MetricsNodeDeparture departure)
+		{
+			Volatile.Write(ref metricsDeparture, departure);
+		}
+
+		internal bool TryBeginMetricsDepartureTransfer()
+		{
+			return Interlocked.CompareExchange(
+				ref metricsDepartureTransferred,
+				1,
+				0) == 0;
+		}
+
+		internal bool MetricsDepartureTransferred =>
+			Volatile.Read(ref metricsDepartureTransferred) != 0;
+
+		internal void ResetMetricsDepartureTransfer()
+		{
+			Volatile.Write(ref metricsDepartureTransferred, 0);
+		}
+
 		/// <summary>
 		/// Add elapsed time in milliseconds to latency buckets corresponding to latency type.
 		/// </summary>
@@ -1515,6 +1554,12 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Close()
 		{
+			CloseForDeparture();
+			DisposeAfterDeparture();
+		}
+
+		internal void CloseForDeparture()
+		{
 			int previous = Interlocked.Exchange(ref admissionState, 2);
 
 			if (previous == 0)
@@ -1528,6 +1573,10 @@ namespace Aerospike.Client
 			}
 			active = false;
 			CloseConnections();
+		}
+
+		internal void DisposeAfterDeparture()
+		{
 			Dispose();
 		}
 

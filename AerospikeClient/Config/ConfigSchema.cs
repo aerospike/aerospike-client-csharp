@@ -282,6 +282,14 @@ namespace Aerospike.Client.Config
 		public Dictionary<string, string> labels { get; set; }
 		[ConfigIntroducedIn("1.2.0")]
 		public MetricsExtendedConfig extended { get; set; } = new();
+		[ConfigIntroducedIn("1.2.0")]
+		public string export_interval { get; set; }
+		[ConfigIntroducedIn("1.2.0")]
+		public string exporter { get; set; }
+		[ConfigIntroducedIn("1.2.0")]
+		public string report_dir { get; set; }
+		[ConfigIntroducedIn("1.2.0")]
+		public string report_size_limit { get; set; }
 	}
 
 	public class MetricsExtendedConfig

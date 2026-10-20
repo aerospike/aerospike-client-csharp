@@ -612,6 +612,15 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Return an immutable client metrics snapshot. The snapshot is available before metrics
+		/// are enabled, while collection is active, and after collection is disabled.
+		/// </summary>
+		public MetricsSnapshot GetMetricsSnapshot()
+		{
+			return cluster.GetMetricsSnapshot();
+		}
+
+		/// <summary>
 		/// Return operating cluster statistics snapshot.
 		/// </summary>
 		public ClusterStats GetClusterStats()
