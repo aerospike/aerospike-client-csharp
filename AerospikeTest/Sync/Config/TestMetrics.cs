@@ -666,6 +666,83 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void MetricsSemanticValidatorRejectionCountsInvalidNodeOnceThroughTend()
+		{
+			using MetricsInfoTestServer server =
+				new(ScriptedInfo("metrics-other-cluster"));
+			using AerospikeClient scripted = CreateScriptedClient(server);
+			Cluster cluster = scripted.Cluster;
+			scripted.EnableMetrics(ScriptedMetricsPolicy());
+			MetricsSnapshot before = scripted.GetMetricsSnapshot();
+			int legacyBefore = cluster.InvalidNodeCount;
+			int requestsBefore = server.Requests.Count;
+
+			TendMethod.Invoke(cluster, new object[] { false });
+
+			MetricsSnapshot after = scripted.GetMetricsSnapshot();
+			// The validator reached semantic validation: metadata was returned
+			// and only the cluster-name comparison rejected the node.
+			string[] requests = server.Requests.Skip(requestsBefore).ToArray();
+			Assert.AreEqual(1, requests.Length);
+			StringAssert.Contains(requests[0], "cluster-name");
+			Assert.AreEqual(0, cluster.Nodes.Length);
+			Assert.AreEqual(0, after.Nodes.Count);
+			Assert.AreEqual(
+				before.Cluster.InvalidNodes + 1,
+				after.Cluster.InvalidNodes);
+			Assert.AreEqual(legacyBefore + 1, cluster.InvalidNodeCount);
+			Assert.AreEqual(
+				before.Compatibility.InvalidNodeCount + 1,
+				after.Compatibility.InvalidNodeCount);
+			Assert.AreEqual(
+				before.Cluster.Validation.OpenFailures,
+				after.Cluster.Validation.OpenFailures);
+			Assert.AreEqual(
+				before.Cluster.Validation.TlsHandshakeFailures,
+				after.Cluster.Validation.TlsHandshakeFailures);
+			Assert.AreEqual(
+				before.Cluster.Validation.AuthFailures,
+				after.Cluster.Validation.AuthFailures);
+			Assert.AreEqual(
+				before.Cluster.ConnectionsOpened,
+				after.Cluster.ConnectionsOpened);
+		}
+
+		[TestMethod]
+		public void MetricsValidatorTransportCloseIsOpenFailureAndInvalidNode()
+		{
+			using MetricsInfoTestServer server = new(
+				ScriptedInfo("metrics-expected-cluster"),
+				MetricsInfoTestServer.Mode.CloseOnAccept);
+			using AerospikeClient scripted = CreateScriptedClient(server);
+			Cluster cluster = scripted.Cluster;
+			scripted.EnableMetrics(ScriptedMetricsPolicy());
+			MetricsSnapshot before = scripted.GetMetricsSnapshot();
+			int legacyBefore = cluster.InvalidNodeCount;
+			int acceptedBefore = server.AcceptedConnections;
+
+			TendMethod.Invoke(cluster, new object[] { false });
+
+			MetricsSnapshot after = scripted.GetMetricsSnapshot();
+			Assert.AreEqual(acceptedBefore + 1, server.AcceptedConnections);
+			Assert.AreEqual(0, server.Requests.Count);
+			Assert.AreEqual(0, cluster.Nodes.Length);
+			Assert.AreEqual(
+				before.Cluster.Validation.OpenFailures + 1,
+				after.Cluster.Validation.OpenFailures);
+			Assert.AreEqual(
+				before.Cluster.Validation.TlsHandshakeFailures,
+				after.Cluster.Validation.TlsHandshakeFailures);
+			Assert.AreEqual(
+				before.Cluster.Validation.AuthFailures,
+				after.Cluster.Validation.AuthFailures);
+			Assert.AreEqual(
+				before.Cluster.InvalidNodes + 1,
+				after.Cluster.InvalidNodes);
+			Assert.AreEqual(legacyBefore + 1, cluster.InvalidNodeCount);
+		}
+
+		[TestMethod]
 		public void MetricsHeterogeneousBatchAttributesDistinctNamespaces()
 		{
 			Node node = client.Cluster.Nodes[0];
@@ -2322,6 +2399,61 @@ namespace Aerospike.Test
 				}
 				client.DisableMetrics();
 			}
+		}
+
+		private static readonly MethodInfo TendMethod = typeof(Cluster).GetMethod(
+			"Tend",
+			BindingFlags.Instance | BindingFlags.NonPublic);
+
+		private static Dictionary<string, string> ScriptedInfo(string clusterName)
+		{
+			// Server build below 8.1 keeps the validator from sending user-agent.
+			return new Dictionary<string, string>(StringComparer.Ordinal)
+			{
+				["node"] = "BB9METRICS00001",
+				["partition-generation"] = "1",
+				["build"] = "7.0.0.0",
+				["cluster-name"] = clusterName
+			};
+		}
+
+		private static MetricsPolicy ScriptedMetricsPolicy()
+		{
+			return new MetricsPolicy
+			{
+				Exporter = MetricsExporterMode.None,
+				OperationalEnabled = true,
+				Sampler = MetricsSampler.FromProbability(1)
+			};
+		}
+
+		/// <summary>
+		/// Client seeded only with the scripted server. The construction tend runs
+		/// with metrics disabled; the background tend thread is then stopped so
+		/// the test drives Tend(false) synchronously.
+		/// </summary>
+		private static AerospikeClient CreateScriptedClient(
+			MetricsInfoTestServer server)
+		{
+			ClientPolicy policy = new()
+			{
+				clusterName = "metrics-expected-cluster",
+				failIfNotConnected = false,
+				tendInterval = 5_000,
+				timeout = 5_000
+			};
+			AerospikeClient scripted = new(
+				policy,
+				new Host("127.0.0.1", server.Port));
+			Cluster cluster = scripted.Cluster;
+			Thread tendThread = (Thread)typeof(Cluster).GetField(
+				"tendThread",
+				BindingFlags.Instance | BindingFlags.NonPublic).GetValue(cluster);
+
+			cluster.tendValid = false;
+			cluster.InterruptTendSleep();
+			Assert.IsTrue(tendThread.Join(TimeSpan.FromSeconds(30)));
+			return scripted;
 		}
 
 		private static Node CreateLifecycleNode(
