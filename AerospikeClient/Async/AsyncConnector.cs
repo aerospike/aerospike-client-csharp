@@ -170,7 +170,7 @@ namespace Aerospike.Client
 			this.watch = Stopwatch.StartNew();
 			node.IncrAsyncConnTotal();
 			bool reservationOwned = true;
-			this.connectionMetrics = cluster.StartConnectionMetrics();
+			this.connectionMetrics = cluster.StartConnectionMetrics(node);
 			AsyncTimeoutQueue.Instance.Add(this, cluster.connectionTimeout);
 
 			try
@@ -210,6 +210,8 @@ namespace Aerospike.Client
 				AdminCommand command = new AdminCommand(dataBuffer, 0);
 				int dataLength = command.SetAuthenticate(cluster, sessionToken);
 				conn.Send(dataBuffer, 0, dataLength);
+				// Authentication handshakes are outside command-attempt byte
+				// capture. Retain these writes for legacy compatibility only.
 				if (node.AreMetricsEnabled())
 				{
 					node.AddBytesOut(null, dataLength);
@@ -222,6 +224,7 @@ namespace Aerospike.Client
 		public void SendComplete()
 		{
 			conn.Receive(dataBuffer, 0, 8);
+			// See the authentication compatibility note above.
 			if (node.AreMetricsEnabled())
 			{
 				node.AddBytesIn(null, 8);
@@ -243,6 +246,7 @@ namespace Aerospike.Client
 
 				inHeader = false;
 				conn.Receive(dataBuffer, 0, length);
+				// See the authentication compatibility note above.
 				if (node.AreMetricsEnabled())
 				{
 					node.AddBytesIn(null, length);

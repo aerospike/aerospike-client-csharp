@@ -27,7 +27,7 @@ namespace Aerospike.Client
 	{
 		public static readonly object END = new object();
 
-		private readonly QueryAggregateExecutor executor;
+		private readonly IQueryExecutor executor;
 		private readonly BlockingCollection<object> queue;
 		private readonly CancellationToken cancelToken;
 		private readonly object queueMetricsLock = new();
@@ -41,6 +41,11 @@ namespace Aerospike.Client
 		/// Initialize result set with underlying producer/consumer queue.
 		/// </summary>
 		public ResultSet(QueryAggregateExecutor executor, int capacity, CancellationToken cancelToken)
+			: this((IQueryExecutor)executor, capacity, cancelToken)
+		{
+		}
+
+		internal ResultSet(IQueryExecutor executor, int capacity, CancellationToken cancelToken)
 		{
 			this.executor = executor;
 			this.queue = new BlockingCollection<object>(capacity);
@@ -82,7 +87,16 @@ namespace Aerospike.Client
 			if (row == END)
 			{
 				valid = false;
-				executor.CheckForException();
+				try
+				{
+					executor.CheckForException();
+					((IQueryMetrics)executor).CompleteSuccess();
+				}
+				catch
+				{
+					((IQueryMetrics)executor).CompleteFailure();
+					throw;
+				}
 				return false;
 			}
 			return true;
@@ -124,10 +138,10 @@ namespace Aerospike.Client
 			}
 			valid = false;
 
-			if (row != END &&
-				executor.StopThreads(new AerospikeException.QueryTerminated()))
+			if (row != END)
 			{
 				((IQueryMetrics)executor).RecordAbandoned();
+				executor.StopThreads(new AerospikeException.QueryTerminated());
 			}
 
 			while (queue.TryTake(out object queued))

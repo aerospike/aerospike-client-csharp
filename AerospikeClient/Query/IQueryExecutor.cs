@@ -26,5 +26,7 @@ namespace Aerospike.Client
 	{
 		void RecordQueued(int delta);
 		void RecordAbandoned();
+		void CompleteSuccess();
+		void CompleteFailure();
 	}
 }

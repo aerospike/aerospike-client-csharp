@@ -82,7 +82,19 @@ namespace Aerospike.Client
 			if (record == END)
 			{
 				valid = false;
-				if (executor != null) executor.CheckForException();
+				if (executor != null)
+				{
+					try
+					{
+						executor.CheckForException();
+						CompleteSuccess();
+					}
+					catch
+					{
+						CompleteFailure();
+						throw;
+					}
+				}
 				return false;
 			}
 			return true;
@@ -126,10 +138,10 @@ namespace Aerospike.Client
 			}
 			valid = false;
 
-			if (record != END && executor != null &&
-				executor.StopThreads(new AerospikeException.QueryTerminated()))
+			if (record != END && executor != null)
 			{
 				RecordAbandoned();
+				executor.StopThreads(new AerospikeException.QueryTerminated());
 			}
 
 			// Drain every discarded item, including queues whose producers already
@@ -282,6 +294,22 @@ namespace Aerospike.Client
 			if (executor is IQueryMetrics metrics)
 			{
 				metrics.RecordAbandoned();
+			}
+		}
+
+		private void CompleteSuccess()
+		{
+			if (executor is IQueryMetrics metrics)
+			{
+				metrics.CompleteSuccess();
+			}
+		}
+
+		private void CompleteFailure()
+		{
+			if (executor is IQueryMetrics metrics)
+			{
+				metrics.CompleteFailure();
 			}
 		}
 

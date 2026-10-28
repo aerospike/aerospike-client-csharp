@@ -19,13 +19,87 @@ using Aerospike.Client;
 using Aerospike.Client.Config;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.Loader;
 
 namespace Aerospike.Test
 {
 	[TestClass]
 	public class TestMetricsExport : TestSync
 	{
+		[TestMethod]
+		public void MetricsSnapshotPublicScopesHaveExactShape()
+		{
+			AssertPublicShape<ClusterMetricsSnapshot>(
+				(nameof(ClusterMetricsSnapshot.ConnectionsInUse), typeof(int)),
+				(nameof(ClusterMetricsSnapshot.ConnectionsInPool), typeof(int)),
+				(nameof(ClusterMetricsSnapshot.ActiveNodes), typeof(int)),
+				(nameof(ClusterMetricsSnapshot.RecoverQueueSize), typeof(int)),
+				(nameof(ClusterMetricsSnapshot.ConnectionsOpened), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.ConnectionsClosed), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.InvalidNodes), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.CommandCount), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.CommandRetries), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.ClientTimeouts), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.ServerTimeouts), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.BatchPartialFailures), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.Latency), typeof(ClusterLatencyMetricsSnapshot)),
+				(nameof(ClusterMetricsSnapshot.Validation), typeof(ValidationMetricsSnapshot)),
+				(nameof(ClusterMetricsSnapshot.RecoverEnqueued), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.RecoverCompleted), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.RecoverAborted), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.TimeoutImmediate), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.QueryRecordsQueued), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.QueryServersConcurrent), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.QueryAbandoned), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.CpuPercent), typeof(double)),
+				(nameof(ClusterMetricsSnapshot.MemoryBytes), typeof(long)),
+				(nameof(ClusterMetricsSnapshot.TendDuration), typeof(IReadOnlyList<long>)));
+			AssertPublicShape<ValidationMetricsSnapshot>(
+				(nameof(ValidationMetricsSnapshot.OpenFailures), typeof(long)),
+				(nameof(ValidationMetricsSnapshot.TlsHandshakeFailures), typeof(long)),
+				(nameof(ValidationMetricsSnapshot.AuthFailures), typeof(long)));
+			AssertPublicShape<NodeMetricsSnapshot>(
+				(nameof(NodeMetricsSnapshot.Name), typeof(string)),
+				(nameof(NodeMetricsSnapshot.Address), typeof(string)),
+				(nameof(NodeMetricsSnapshot.Port), typeof(int)),
+				(nameof(NodeMetricsSnapshot.ErrorRate), typeof(int)),
+				(nameof(NodeMetricsSnapshot.Connections), typeof(ConnectionMetricsSnapshot)),
+				(nameof(NodeMetricsSnapshot.Latency), typeof(NodeLatencyMetricsSnapshot)),
+				(nameof(NodeMetricsSnapshot.Namespaces), typeof(IReadOnlyList<NamespaceMetricsSnapshot>)));
+			AssertPublicShape<ConnectionMetricsSnapshot>(
+				(nameof(ConnectionMetricsSnapshot.InUse), typeof(int)),
+				(nameof(ConnectionMetricsSnapshot.InPool), typeof(int)),
+				(nameof(ConnectionMetricsSnapshot.Opened), typeof(long)),
+				(nameof(ConnectionMetricsSnapshot.Closed), typeof(long)),
+				(nameof(ConnectionMetricsSnapshot.PoolExhausted), typeof(long)),
+				(nameof(ConnectionMetricsSnapshot.OpenFailures), typeof(long)),
+				(nameof(ConnectionMetricsSnapshot.TlsHandshakeFailures), typeof(long)),
+				(nameof(ConnectionMetricsSnapshot.AuthFailures), typeof(long)));
+			AssertPublicShape<NamespaceMetricsSnapshot>(
+				(nameof(NamespaceMetricsSnapshot.Name), typeof(string)),
+				(nameof(NamespaceMetricsSnapshot.Errors), typeof(long)),
+				(nameof(NamespaceMetricsSnapshot.ClientTimeouts), typeof(long)),
+				(nameof(NamespaceMetricsSnapshot.ServerTimeouts), typeof(long)),
+				(nameof(NamespaceMetricsSnapshot.Timeouts), typeof(long)),
+				(nameof(NamespaceMetricsSnapshot.KeyBusy), typeof(long)),
+				(nameof(NamespaceMetricsSnapshot.RecordTooBig), typeof(long)),
+				(nameof(NamespaceMetricsSnapshot.DeviceOverload), typeof(long)),
+				(nameof(NamespaceMetricsSnapshot.BytesIn), typeof(long)),
+				(nameof(NamespaceMetricsSnapshot.BytesOut), typeof(long)),
+				(nameof(NamespaceMetricsSnapshot.Latency), typeof(NamespaceLatencyMetricsSnapshot)));
+			AssertPublicShape<ClusterLatencyMetricsSnapshot>(
+				(nameof(ClusterLatencyMetricsSnapshot.Read), typeof(IReadOnlyList<long>)),
+				(nameof(ClusterLatencyMetricsSnapshot.Write), typeof(IReadOnlyList<long>)),
+				(nameof(ClusterLatencyMetricsSnapshot.Batch), typeof(IReadOnlyList<long>)),
+				(nameof(ClusterLatencyMetricsSnapshot.Query), typeof(IReadOnlyList<long>)));
+			AssertPublicShape<NodeLatencyMetricsSnapshot>(
+				(nameof(NodeLatencyMetricsSnapshot.Connection), typeof(IReadOnlyList<long>)));
+			AssertPublicShape<NamespaceLatencyMetricsSnapshot>(
+				(nameof(NamespaceLatencyMetricsSnapshot.Read), typeof(IReadOnlyList<long>)),
+				(nameof(NamespaceLatencyMetricsSnapshot.Write), typeof(IReadOnlyList<long>)),
+				(nameof(NamespaceLatencyMetricsSnapshot.Batch), typeof(IReadOnlyList<long>)),
+				(nameof(NamespaceLatencyMetricsSnapshot.Query), typeof(IReadOnlyList<long>)));
+		}
+
 		[TestMethod]
 		public void MetricsSnapshotIsAlwaysAvailable()
 		{
@@ -37,9 +111,15 @@ namespace Aerospike.Test
 			MetricsSnapshot before = client.GetMetricsSnapshot();
 			Assert.IsFalse(before.MetricsEnabled);
 			Assert.IsNotNull(before.Cluster);
+			Assert.IsNotNull(before.Cluster.Latency);
+			Assert.IsNotNull(before.Cluster.Validation);
 			Assert.IsNotNull(before.Usage);
 			Assert.IsNotNull(before.Nodes);
 			Assert.AreEqual(client.Nodes.Length, before.Nodes.Count);
+			Assert.IsTrue(before.Nodes.All(node =>
+				node.Latency != null &&
+				node.Connections != null &&
+				node.Namespaces != null));
 
 			MetricsPolicy policy = new()
 			{
@@ -104,6 +184,9 @@ namespace Aerospike.Test
 				Assert.AreEqual(retainedBlocking, retained.Usage.ApiBlocking);
 				Assert.IsTrue(current.Cluster.CommandCount > retainedCommands);
 				Assert.IsTrue(current.Usage.ApiBlocking > retainedBlocking);
+				Assert.IsTrue(
+					current.Cluster.Latency.Write.Sum() >
+					retained.Cluster.Latency.Write.Sum());
 				CollectionAssert.AreEqual(
 					current.Nodes.Select(node => node.Name)
 						.OrderBy(name => name, StringComparer.Ordinal)
@@ -241,11 +324,11 @@ namespace Aerospike.Test
 						current => current.Name == node.Name);
 			MetricsSnapshot frozen =
 				scope.Client.GetMetricsSnapshot();
-			Assert.IsFalse(frozen.LegacyFile.Nodes.Any(
+			Assert.IsFalse(frozen.Compatibility.Nodes.Any(
 				current => current.Name == node.Name));
 			Assert.AreEqual(
 				1,
-				frozen.LegacyFile.NodesDeparted.Count(
+				frozen.Compatibility.NodesDeparted.Count(
 					current => current.Name == node.Name));
 
 			MethodInfo transfer = typeof(Cluster).GetMethod(
@@ -283,14 +366,14 @@ namespace Aerospike.Test
 
 			MetricsSnapshot final = exporter.LastSnapshot;
 			MetricsSnapshot pulled = client.GetMetricsSnapshot();
-			Assert.IsNotNull(final.LegacyFile);
-			Assert.IsNotNull(pulled.LegacyFile);
+			Assert.IsNotNull(final.Compatibility);
+			Assert.IsNotNull(pulled.Compatibility);
 			Assert.AreEqual(
-				final.LegacyFile.CpuPercent,
-				pulled.LegacyFile.CpuPercent);
+				final.Compatibility.CpuPercent,
+				pulled.Compatibility.CpuPercent);
 			Assert.AreEqual(
-				final.LegacyFile.MemoryBytes,
-				pulled.LegacyFile.MemoryBytes);
+				final.Compatibility.MemoryBytes,
+				pulled.Compatibility.MemoryBytes);
 		}
 
 		[TestMethod]
@@ -545,10 +628,10 @@ namespace Aerospike.Test
 				active.Labels["region"]);
 			Assert.AreEqual(
 				"active-app",
-				active.LegacyFile.AppId);
+				active.Compatibility.AppId);
 			Assert.AreEqual(
 				"active-region",
-				active.LegacyFile.Labels["region"]);
+				active.Compatibility.Labels["region"]);
 
 			scope.RewriteYaml(MetricsIdentityYaml(
 				"disabled-app",
@@ -562,21 +645,26 @@ namespace Aerospike.Test
 				frozen.Labels["region"]);
 			Assert.AreEqual(
 				"active-app",
-				frozen.LegacyFile.AppId);
+				frozen.Compatibility.AppId);
 			Assert.AreEqual(
 				"active-region",
-				frozen.LegacyFile.Labels["region"]);
+				frozen.Compatibility.Labels["region"]);
 		}
 
 		[TestMethod]
 		public void MetricsEnableRollsBackReporterStartFailure()
 		{
-			FieldInfo starter = typeof(Cluster).GetField(
-				"metricsReporterStarter",
+			FieldInfo managerField = typeof(Cluster).GetField(
+				"metricsManager",
+				BindingFlags.Instance | BindingFlags.NonPublic);
+			MetricsManager manager =
+				(MetricsManager)managerField.GetValue(client.Cluster);
+			FieldInfo starter = typeof(MetricsManager).GetField(
+				"ReporterStarter",
 				BindingFlags.Instance | BindingFlags.NonPublic);
 			Assert.IsNotNull(starter);
-			object original = starter.GetValue(client.Cluster);
-			starter.SetValue(client.Cluster, null);
+			object original = starter.GetValue(manager);
+			starter.SetValue(manager, null);
 			MetricsPolicy policy = new()
 			{
 				Exporter = MetricsExporterMode.Custom
@@ -592,19 +680,24 @@ namespace Aerospike.Test
 			}
 			finally
 			{
-				starter.SetValue(client.Cluster, original);
+				starter.SetValue(manager, original);
 			}
 		}
 
 		[TestMethod]
 		public void MetricsEnableRollsBackWriterConstructionFailure()
 		{
-			FieldInfo factory = typeof(Cluster).GetField(
-				"metricsWriterFactory",
+			FieldInfo managerField = typeof(Cluster).GetField(
+				"metricsManager",
+				BindingFlags.Instance | BindingFlags.NonPublic);
+			MetricsManager manager =
+				(MetricsManager)managerField.GetValue(client.Cluster);
+			FieldInfo factory = typeof(MetricsManager).GetField(
+				"WriterFactory",
 				BindingFlags.Instance | BindingFlags.NonPublic);
 			Assert.IsNotNull(factory);
-			object original = factory.GetValue(client.Cluster);
-			factory.SetValue(client.Cluster, null);
+			object original = factory.GetValue(manager);
+			factory.SetValue(manager, null);
 
 			try
 			{
@@ -621,7 +714,7 @@ namespace Aerospike.Test
 			}
 			finally
 			{
-				factory.SetValue(client.Cluster, original);
+				factory.SetValue(manager, original);
 			}
 		}
 
@@ -649,12 +742,17 @@ namespace Aerospike.Test
 			IConfigurationData previousData = provider.ConfigurationData;
 			MetricsPolicy previousPolicy =
 				scope.Client.Cluster.MetricsPolicy;
-			FieldInfo starter = typeof(Cluster).GetField(
-				"metricsReporterStarter",
+			FieldInfo managerField = typeof(Cluster).GetField(
+				"metricsManager",
+				BindingFlags.Instance | BindingFlags.NonPublic);
+			MetricsManager manager =
+				(MetricsManager)managerField.GetValue(scope.Client.Cluster);
+			FieldInfo starter = typeof(MetricsManager).GetField(
+				"ReporterStarter",
 				BindingFlags.Instance | BindingFlags.NonPublic);
 			Assert.IsNotNull(starter);
-			object original = starter.GetValue(scope.Client.Cluster);
-			starter.SetValue(scope.Client.Cluster, null);
+			object original = starter.GetValue(manager);
+			starter.SetValue(manager, null);
 
 			try
 			{
@@ -674,7 +772,7 @@ namespace Aerospike.Test
 			}
 			finally
 			{
-				starter.SetValue(scope.Client.Cluster, original);
+				starter.SetValue(manager, original);
 			}
 		}
 
@@ -773,7 +871,7 @@ namespace Aerospike.Test
 				client.EnableMetrics(policy);
 				client.DisableMetrics();
 
-				Assert.IsNotNull(capture.Snapshot?.LegacyFile);
+				Assert.IsNotNull(capture.Snapshot?.Compatibility);
 				Assert.AreEqual(
 					2,
 					File.ReadAllLines(
@@ -833,6 +931,258 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void MetricsDisableFreezesManualWriterCompatibilityPayload()
+		{
+			string reportDir = Path.Combine(
+				Path.GetTempPath(),
+				$"as-metrics-frozen-writer-{Guid.NewGuid():N}");
+			Directory.CreateDirectory(reportDir);
+
+			try
+			{
+				client.EnableMetrics(new MetricsPolicy
+				{
+					Exporter = MetricsExporterMode.None
+				});
+				client.DisableMetrics();
+				Node node = client.Cluster.Nodes[0];
+				long retryCount = client.GetClusterStats().RetryCount;
+				long errorCount = node.GetErrorCount();
+
+				using MetricsWriter writer = new(reportDir);
+				writer.Export(client.GetMetricsSnapshot());
+
+				client.Cluster.AddRetry();
+				client.Cluster.AddDelayQueueTimeout();
+				node.AddError(SuiteHelpers.ns);
+
+				Assert.AreEqual(
+					retryCount + 1,
+					client.GetClusterStats().RetryCount);
+				Assert.AreEqual(errorCount + 1, node.GetErrorCount());
+				writer.Export(client.GetMetricsSnapshot());
+
+				string[] lines = File.ReadAllLines(
+					Directory.GetFiles(reportDir, "metrics-*.log").Single());
+				Assert.AreEqual(3, lines.Length);
+				Assert.AreEqual(
+					RemoveTimestamp(lines[1]),
+					RemoveTimestamp(lines[2]));
+			}
+			finally
+			{
+				if (client.Cluster.MetricsEnabled)
+				{
+					client.DisableMetrics();
+				}
+				if (Directory.Exists(reportDir))
+				{
+					Directory.Delete(reportDir, true);
+				}
+			}
+		}
+
+		[TestMethod]
+		public void MetricsCompatibilityCountersUseCanonicalStoreCapture()
+		{
+			client.EnableMetrics(new MetricsPolicy
+			{
+				Exporter = MetricsExporterMode.None,
+				OperationalEnabled = true,
+				Sampler = MetricsSampler.FromProbability(1)
+			});
+
+			try
+			{
+				MetricsCompatibilitySnapshot before =
+					client.GetMetricsSnapshot().Compatibility;
+
+				client.Cluster.AddCommandCount();
+				client.Cluster.AddRetry();
+				client.Cluster.AddDelayQueueTimeout();
+
+				MetricsCompatibilitySnapshot after =
+					client.GetMetricsSnapshot().Compatibility;
+				Assert.AreEqual(before.CommandCount, after.CommandCount);
+				Assert.AreEqual(before.RetryCount, after.RetryCount);
+				Assert.AreEqual(
+					before.DelayQueueTimeoutCount + 1,
+					after.DelayQueueTimeoutCount);
+			}
+			finally
+			{
+				client.DisableMetrics();
+			}
+		}
+
+		[TestMethod]
+		public void MetricsExternalConnectionLatencyUsesNodeAndLegacyConnScopes()
+		{
+			client.EnableMetrics(new MetricsPolicy
+			{
+				Exporter = MetricsExporterMode.None,
+				OperationalEnabled = true
+			});
+
+			try
+			{
+				Node node = client.Cluster.Nodes[0];
+				node.GetMetrics().AddLatency(
+					"must-not-be-a-namespace",
+					Latency.LatencyType.CONN,
+					1);
+
+				MetricsSnapshot snapshot = client.GetMetricsSnapshot();
+				NodeMetricsSnapshot canonical = snapshot.Nodes.Single(
+					item => item.Name == node.Name);
+				MetricsNodeCompatibilitySnapshot compatibility =
+					snapshot.Compatibility.Nodes.Single(
+						item => item.Name == node.Name);
+				MetricsNamespaceCompatibilitySnapshot legacy =
+					compatibility.Namespaces.Single(
+						item => item.Name == string.Empty);
+
+				Assert.AreEqual(1L, canonical.Latency.Connection.Sum());
+				Assert.IsFalse(canonical.Namespaces.Any(
+					item => item.Name == "must-not-be-a-namespace"));
+				Assert.AreEqual(
+					1L,
+					legacy.Latency[(int)Latency.LatencyType.CONN].Sum());
+				Assert.IsFalse(compatibility.Namespaces.Any(item =>
+					item.Name != string.Empty &&
+					item.Latency[(int)Latency.LatencyType.CONN].Sum() != 0));
+
+				ConnectionMetricsHandle connection =
+					client.Cluster.StartConnectionMetrics(node);
+				connection.Complete(node, null);
+				MetricsSnapshot afterConnection =
+					client.GetMetricsSnapshot();
+				NodeMetricsSnapshot canonicalAfterConnection =
+					afterConnection.Nodes.Single(
+						item => item.Name == node.Name);
+				Assert.AreEqual(
+					2L,
+					canonicalAfterConnection.Latency.Connection.Sum(),
+					"A successful connection must add exactly one sample.");
+			}
+			finally
+			{
+				client.DisableMetrics();
+			}
+		}
+
+		[TestMethod]
+		public void MetricsSnapshotCopiesExternalMutationsOnceForBothPayloads()
+		{
+			client.EnableMetrics(new MetricsPolicy
+			{
+				Exporter = MetricsExporterMode.None,
+				OperationalEnabled = true
+			});
+
+			try
+			{
+				Node node = client.Cluster.Nodes[0];
+				NodeMetrics metrics = node.GetMetrics();
+				const string ns = "external-copy";
+				Task writer = Task.Run(() =>
+				{
+					for (int i = 0; i < 500; i++)
+					{
+						metrics.BytesInCounter.Increment(ns);
+						metrics.AddLatency(
+							ns,
+							Latency.LatencyType.READ,
+							1);
+						metrics.AddLatency(
+							ns,
+							Latency.LatencyType.CONN,
+							1);
+					}
+				});
+
+				for (int i = 0; i < 25; i++)
+				{
+					MetricsSnapshot snapshot = client.GetMetricsSnapshot();
+					NodeMetricsSnapshot canonical = snapshot.Nodes.Single(
+						item => item.Name == node.Name);
+					MetricsNodeCompatibilitySnapshot compatibility =
+						snapshot.Compatibility.Nodes.Single(
+							item => item.Name == node.Name);
+					NamespaceMetricsSnapshot canonicalNs =
+						canonical.Namespaces.SingleOrDefault(
+							item => item.Name == ns);
+					MetricsNamespaceCompatibilitySnapshot legacyNs =
+						compatibility.Namespaces.SingleOrDefault(
+							item => item.Name == ns);
+
+					Assert.AreEqual(
+						canonicalNs?.BytesIn ?? 0,
+						legacyNs?.BytesIn ?? 0);
+					Assert.AreEqual(
+						canonicalNs?.Latency.Read.Sum() ?? 0,
+						legacyNs?.Latency[
+							(int)Latency.LatencyType.READ].Sum() ?? 0);
+					Assert.AreEqual(
+						canonical.Latency.Connection.Sum(),
+						compatibility.Namespaces
+							.Where(item => item.Name == string.Empty)
+							.SelectMany(item =>
+								item.Latency[
+									(int)Latency.LatencyType.CONN])
+							.Sum());
+				}
+				writer.GetAwaiter().GetResult();
+
+				MetricsSnapshot copied = client.GetMetricsSnapshot();
+				NodeMetricsSnapshot copiedNode = copied.Nodes.Single(
+					item => item.Name == node.Name);
+				MetricsNodeCompatibilitySnapshot copiedCompatibility =
+					copied.Compatibility.Nodes.Single(
+						item => item.Name == node.Name);
+				long copiedBytes = copiedNode.Namespaces.Single(
+					item => item.Name == ns).BytesIn;
+				long copiedConnections =
+					copiedNode.Latency.Connection.Sum();
+				long copiedLegacyBytes =
+					copiedCompatibility.Namespaces.Single(
+						item => item.Name == ns).BytesIn;
+				long copiedLegacyConnections =
+					copiedCompatibility.Namespaces.Single(
+						item => item.Name == string.Empty)
+						.Latency[(int)Latency.LatencyType.CONN].Sum();
+
+				metrics.BytesInCounter.Increment(ns, 10);
+				metrics.AddLatency(ns, Latency.LatencyType.CONN, 1);
+
+				Assert.AreEqual(
+					copiedBytes,
+					copiedNode.Namespaces.Single(
+						item => item.Name == ns).BytesIn);
+				Assert.AreEqual(
+					copiedConnections,
+					copiedNode.Latency.Connection.Sum());
+				Assert.AreEqual(
+					copiedLegacyBytes,
+					copiedCompatibility.Namespaces.Single(
+						item => item.Name == ns).BytesIn);
+				Assert.AreEqual(
+					copiedLegacyConnections,
+					copiedCompatibility.Namespaces.Single(
+						item => item.Name == string.Empty)
+							.Latency[(int)Latency.LatencyType.CONN].Sum());
+				Assert.AreEqual(500L, copiedBytes);
+				Assert.AreEqual(500L, copiedConnections);
+				Assert.AreEqual(500L, copiedLegacyBytes);
+				Assert.AreEqual(500L, copiedLegacyConnections);
+			}
+			finally
+			{
+				client.DisableMetrics();
+			}
+		}
+
+		[TestMethod]
 		public void MetricsShapeReloadPreservesLegacyByteCounters()
 		{
 			using ConfigClientScope scope = ConfigClientScope.Create("""
@@ -874,6 +1224,164 @@ namespace Aerospike.Test
 			Assert.AreEqual(
 				5,
 				scope.Client.Cluster.MetricsPolicy.LatencyColumns);
+		}
+
+		[TestMethod]
+		public void NodeMetricsRemainMutableAndIdentityStableUntilDisable()
+		{
+			client.DisableMetrics();
+			MetricsPolicy policy = new()
+			{
+				Exporter = MetricsExporterMode.None,
+				LatencyColumns = 3
+			};
+			client.EnableMetrics(policy);
+			Node node = client.Cluster.Nodes[0];
+			NodeMetrics metrics = node.GetMetrics();
+
+			Assert.IsNotNull(metrics);
+			metrics.BytesInCounter.Increment(SuiteHelpers.ns, 17);
+			metrics.AddLatency(
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				1);
+			Histograms original = metrics.Histograms;
+
+			node.ReshapeMetrics(new MetricsPolicy(policy)
+			{
+				LatencyColumns = 5
+			});
+
+			Assert.AreSame(metrics, node.GetMetrics());
+			Assert.AreNotSame(original, metrics.Histograms);
+			Assert.AreEqual(
+				17L,
+				metrics.BytesInCounter.GetCountByNS(SuiteHelpers.ns));
+			metrics.AddLatency(
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				1);
+
+			client.DisableMetrics();
+
+			Assert.IsNull(node.GetMetrics());
+			Assert.IsNull(metrics.BytesInCounter);
+			Assert.IsNull(metrics.BytesOutCounter);
+			Assert.IsNull(metrics.Histograms);
+		}
+
+		[TestMethod]
+		public void ExplicitMetricsReconfigurePreservesNodeBucketIdentity()
+		{
+			client.DisableMetrics();
+			MetricsPolicy originalPolicy = new()
+			{
+				Exporter = MetricsExporterMode.None,
+				LatencyColumns = 3
+			};
+			client.EnableMetrics(originalPolicy);
+			Node node = client.Cluster.Nodes[0];
+			NodeMetrics metrics = node.GetMetrics();
+			Histograms originalHistograms = metrics.Histograms;
+			metrics.BytesInCounter.Increment(SuiteHelpers.ns, 23);
+
+			client.EnableMetrics(new MetricsPolicy(originalPolicy)
+			{
+				ExportInterval = TimeSpan.FromSeconds(2)
+			});
+
+			Assert.AreSame(metrics, node.GetMetrics());
+			Assert.AreSame(originalHistograms, metrics.Histograms);
+			Assert.AreEqual(
+				23L,
+				metrics.BytesInCounter.GetCountByNS(SuiteHelpers.ns));
+
+			client.EnableMetrics(new MetricsPolicy(originalPolicy)
+			{
+				LatencyColumns = 5
+			});
+
+			Assert.AreSame(metrics, node.GetMetrics());
+			Assert.AreNotSame(originalHistograms, metrics.Histograms);
+			Assert.AreEqual(
+				23L,
+				metrics.BytesInCounter.GetCountByNS(SuiteHelpers.ns));
+			client.DisableMetrics();
+		}
+
+		[TestMethod]
+		public void PublicNodeMetricsMutationsFeedSnapshotsAndLegacyOutput()
+		{
+			client.DisableMetrics();
+			string reportDir = Path.Combine(
+				Path.GetTempPath(),
+				$"as-metrics-public-{Guid.NewGuid():N}");
+			client.EnableMetrics(new MetricsPolicy
+			{
+				Exporter = MetricsExporterMode.None,
+				LatencyColumns = 3
+			});
+
+			try
+			{
+				Node node = client.Cluster.Nodes[0];
+				NodeMetrics metrics = node.GetMetrics();
+				const string bytesNamespace = "metrics-bytes-only";
+				const string latencyNamespace = "metrics-latency-only";
+				const string counterNamespace = "metrics-counter-only";
+				metrics.BytesInCounter.Increment(bytesNamespace, 31);
+				metrics.BytesOutCounter.Increment(bytesNamespace, 37);
+				metrics.AddLatency(
+					latencyNamespace,
+					Latency.LatencyType.READ,
+					1);
+				node.AddError(counterNamespace);
+
+				MetricsSnapshot snapshot = client.GetMetricsSnapshot();
+				NodeMetricsSnapshot operational = snapshot.Nodes.Single(
+					current => current.Name == node.Name);
+				NamespaceMetricsSnapshot bytes = operational.Namespaces.Single(
+					current => current.Name == bytesNamespace);
+				NamespaceMetricsSnapshot latency = operational.Namespaces.Single(
+					current => current.Name == latencyNamespace);
+				Assert.AreEqual(31L, bytes.BytesIn);
+				Assert.AreEqual(37L, bytes.BytesOut);
+				Assert.AreEqual(1L, latency.Latency.Read.Sum());
+
+				MetricsNodeCompatibilitySnapshot compatibility =
+					snapshot.Compatibility.Nodes.Single(
+						current => current.Name == node.Name);
+				CollectionAssert.IsSubsetOf(
+					new[]
+					{
+						bytesNamespace,
+						latencyNamespace,
+						counterNamespace
+					},
+					compatibility.Namespaces
+						.Select(current => current.Name)
+						.ToArray());
+				Assert.AreEqual(
+					1L,
+					compatibility.Namespaces.Single(
+						current => current.Name == counterNamespace).Errors);
+
+				using MetricsWriter writer = new(reportDir);
+				writer.Export(snapshot);
+				string output = File.ReadAllText(
+					Directory.GetFiles(reportDir, "metrics-*.log").Single());
+				StringAssert.Contains(output, bytesNamespace);
+				StringAssert.Contains(output, latencyNamespace);
+				StringAssert.Contains(output, counterNamespace);
+			}
+			finally
+			{
+				client.DisableMetrics();
+				if (Directory.Exists(reportDir))
+				{
+					Directory.Delete(reportDir, true);
+				}
+			}
 		}
 
 		[TestMethod]
@@ -937,14 +1445,20 @@ namespace Aerospike.Test
 		{
 			ManualMetricsScheduler scheduler = new();
 			DeterministicExporter first = new();
+			DeterministicExporter current = first;
 			MetricsReporter reporter = new(
-				new MetricsReporterConfig(
-					TimeSpan.FromMilliseconds(100),
-					[first],
-					false),
-				_ => client.GetMetricsSnapshot(),
-				_ => first.Acknowledged++,
-				new MetricsExporterFailureRegistry(),
+				new MetricsReporterConfig(TimeSpan.FromMilliseconds(100)),
+				() =>
+				{
+					current.Export(client.GetMetricsSnapshot());
+					current.Acknowledged++;
+				},
+				snapshot =>
+				{
+					current.Export(snapshot);
+					current.Acknowledged++;
+					return true;
+				},
 				scheduler);
 
 			reporter.Start();
@@ -977,16 +1491,13 @@ namespace Aerospike.Test
 				first.OnExport = null;
 
 				reporter.Reconfigure(new MetricsReporterConfig(
-					TimeSpan.FromMilliseconds(200),
-					[first],
-					false));
+					TimeSpan.FromMilliseconds(200)));
 				waitVersion = scheduler.WaitFor(200, waitVersion);
 
 				DeterministicExporter second = new();
+				current = second;
 				reporter.Reconfigure(new MetricsReporterConfig(
-					TimeSpan.FromMilliseconds(200),
-					[second],
-					false));
+					TimeSpan.FromMilliseconds(200)));
 				scheduler.Advance(200);
 				second.WaitForCount(1);
 				waitVersion = scheduler.WaitFor(200, waitVersion);
@@ -999,9 +1510,7 @@ namespace Aerospike.Test
 				second.WaitForCount(2);
 
 				reporter.Reconfigure(new MetricsReporterConfig(
-					TimeSpan.FromDays(100),
-					[second],
-					false));
+					TimeSpan.FromDays(100)));
 				scheduler.WaitFor(int.MaxValue, waitVersion);
 				Assert.AreEqual(1, second.MaximumConcurrent);
 			}
@@ -1012,22 +1521,24 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void MetricsReporterDeterministicallySuspendsAndBypassesFinal()
+		public void MetricsReporterInvokesManagerOwnedFinalCallback()
 		{
 			ManualMetricsScheduler scheduler = new();
-			DeterministicExporter exporter = new()
-			{
-				FailuresRemaining = 3
-			};
+			DeterministicExporter exporter = new();
 			int acknowledged = 0;
 			MetricsReporter reporter = new(
-				new MetricsReporterConfig(
-					TimeSpan.FromMilliseconds(10),
-					[exporter],
-					false),
-				_ => client.GetMetricsSnapshot(),
-				_ => acknowledged++,
-				new MetricsExporterFailureRegistry(),
+				new MetricsReporterConfig(TimeSpan.FromMilliseconds(10)),
+				() =>
+				{
+					exporter.Export(client.GetMetricsSnapshot());
+					acknowledged++;
+				},
+				snapshot =>
+				{
+					exporter.Export(snapshot);
+					acknowledged++;
+					return true;
+				},
 				scheduler);
 
 			reporter.Start();
@@ -1035,33 +1546,20 @@ namespace Aerospike.Test
 			{
 				reporter.Resume();
 				int waitVersion = scheduler.WaitFor(10, 0);
-				for (int i = 1; i <= 3; i++)
-				{
-					scheduler.Advance(10);
-					exporter.WaitForCount(i);
-					waitVersion = scheduler.WaitFor(10, waitVersion);
-				}
+				scheduler.Advance(10);
+				exporter.WaitForCount(1);
+				waitVersion = scheduler.WaitFor(10, waitVersion);
 
 				Assert.IsTrue(
 					reporter.ExportFinal(client.GetMetricsSnapshot()));
-				Assert.AreEqual(4, exporter.Count);
-				Assert.AreEqual(1, acknowledged);
+				Assert.AreEqual(2, exporter.Count);
+				Assert.AreEqual(2, acknowledged);
 				waitVersion = scheduler.WaitFor(10, waitVersion);
-
-				for (int i = 0; i < 3; i++)
-				{
-					scheduler.Advance(10);
-					waitVersion = scheduler.WaitFor(10, waitVersion);
-					Assert.AreEqual(
-						4,
-						exporter.Count,
-						"Suspended cycles must not call the exporter.");
-				}
 
 				scheduler.Advance(10);
-				exporter.WaitForCount(5);
+				exporter.WaitForCount(3);
 				waitVersion = scheduler.WaitFor(10, waitVersion);
-				Assert.AreEqual(2, acknowledged);
+				Assert.AreEqual(3, acknowledged);
 				Assert.AreEqual(1, exporter.MaximumConcurrent);
 			}
 			finally
@@ -1243,185 +1741,257 @@ namespace Aerospike.Test
 				map.TargetMethods[index].DeclaringType);
 		}
 
-		[TestMethod]
-		public void MetricsSnapshotDefaultDispatchSupportsReleased850Binary()
+		private static void AssertPublicShape<T>(
+			params (string Name, Type Type)[] expected)
 		{
-			string fixturePath = FindReleased850CompatibilityFixture();
-			Assert.IsTrue(
-				fixturePath != null,
-				"Released 8.5.0 compatibility fixture was not built.");
+			Type type = typeof(T);
+			Assert.IsTrue(type.IsSealed, $"{type.Name} must be immutable and sealed.");
+			PropertyInfo[] properties = type.GetProperties(
+				BindingFlags.Instance | BindingFlags.Public);
+			CollectionAssert.AreEquivalent(
+				expected.Select(item => item.Name).ToArray(),
+				properties.Select(property => property.Name).ToArray(),
+				$"Unexpected public properties on {type.Name}.");
 
-			ReleasedCompatibilityLoadContext context = new();
-			Assembly fixture = context.LoadFromAssemblyPath(fixturePath);
-			Type legacyType = fixture.GetType(
-				"Aerospike.Compatibility.Released850.LegacyClient",
-				true);
-			Assert.IsFalse(legacyType.GetMethods(
-				BindingFlags.Instance |
-				BindingFlags.Public |
-				BindingFlags.NonPublic)
-				.Any(method =>
-					method.Name.EndsWith(
-						nameof(IAerospikeClient.GetMetricsSnapshot))));
-
-			object instance = Activator.CreateInstance(legacyType);
-			Assert.IsInstanceOfType<IAerospikeClient>(instance);
-			IAerospikeClient legacy = (IAerospikeClient)instance;
-			AssertThrows<NullReferenceException>(() =>
-				legacy.GetMetricsSnapshot());
-
-			InterfaceMapping map = legacyType.GetInterfaceMap(
-				typeof(IAerospikeClient));
-			int index = Array.FindIndex(
-				map.InterfaceMethods,
-				method => method.Name ==
-					nameof(IAerospikeClient.GetMetricsSnapshot));
-			Assert.IsTrue(index >= 0);
-			Assert.AreEqual(
-				typeof(IAerospikeClient),
-				map.TargetMethods[index].DeclaringType);
-		}
-
-		private static string FindReleased850CompatibilityFixture()
-		{
-			string publishedFixture = Path.Combine(
-				AppContext.BaseDirectory,
-				"Compatibility",
-				"released-8.5.0",
-				"Released850Implementer",
-				"Released850Implementer.dll");
-
-			if (File.Exists(publishedFixture))
+			foreach ((string name, Type expectedType) in expected)
 			{
-				return publishedFixture;
+				PropertyInfo property = properties.Single(
+					current => current.Name == name);
+				Assert.AreEqual(
+					expectedType,
+					property.PropertyType,
+					$"Unexpected type for {type.Name}.{name}.");
+				Assert.IsNull(
+					property.SetMethod,
+					$"{type.Name}.{name} must not have a public setter.");
 			}
+		}
 
-			string configuration = new DirectoryInfo(
-				AppContext.BaseDirectory).Parent.Name;
-			string fixtureBin = Path.GetFullPath(Path.Combine(
-				AppContext.BaseDirectory,
-				"..",
-				"..",
-				"..",
-				"Compatibility",
-				"released-8.5.0",
-				"Released850Implementer",
-				"bin"));
-
-			return new[] { configuration, "Debug_Unix", "Debug" }
-				.Distinct()
-				.Select(candidate => Path.Combine(
-					fixtureBin,
-					candidate,
-					"net8.0",
-					"Released850Implementer.dll"))
-				.FirstOrDefault(File.Exists);
+		private static MetricsNodeGeneration AddDeparture(
+			MetricsStore store,
+			MetricsRuntimeConfig config,
+			MetricsNodeNameState state,
+			string name,
+			string address,
+			int port,
+			int errorRate,
+			MetricsNodeCollector collector,
+			MetricsNodeCompatibilitySnapshot compatibility)
+		{
+			MetricsNodeGeneration generation =
+				new(store, name, config)
+				{
+					Collector = collector
+				};
+			state.Add(generation);
+			store.RecordNodeDeparture(
+				name,
+				address,
+				port,
+				errorRate,
+				state,
+				compatibility);
+			return generation;
 		}
 
 		[TestMethod]
-		public void MetricsDepartureAcknowledgePreservesCallbackWrites()
+		public void MetricsStoreDepartureAcknowledgePreservesLateWrites()
 		{
 			MetricsPolicy policy = new();
 			MetricsRuntimeConfig config = new(policy);
 			MetricsNodeCollector collector = new(config);
 			collector.AddOpened();
-			MetricsDepartureStore store = new();
-			store.Add(
+			MetricsStore store = new(policy);
+			MetricsNodeNameState state = new();
+			AddDeparture(
+				store,
+				config,
+				state,
 				"N1",
 				"127.0.0.1",
 				3000,
 				0,
-				new MetricsNodeDeparture(null, collector),
+				collector,
 				CreateLegacyNode("N1", policy));
 
-			MetricsDepartureCapture first = store.Capture(config);
+			MetricsDepartureCapture first = store.CaptureDepartures(config);
 			Assert.AreEqual(1, first.Nodes.Count);
 			Assert.AreEqual(1L, first.Nodes[0].View.Opened);
 
-			collector.AddClosed(ConnectionCloseReason.NodeRemoved, true);
-			store.Acknowledge(first.Token);
+			collector.AddClosed();
+			store.AcknowledgeDepartures(first.Token);
 
-			MetricsDepartureCapture second = store.Capture(config);
+			MetricsDepartureCapture second = store.CaptureDepartures(config);
 			Assert.AreEqual(1, second.Nodes.Count);
 			Assert.AreEqual(0L, second.Nodes[0].View.Opened);
 			Assert.AreEqual(1L, second.Nodes[0].View.Closed);
 			Assert.IsNotNull(
-				second.Nodes[0].Legacy,
+				second.Nodes[0].Compatibility,
 				"Late canonical values must retain their cumulative legacy payload.");
 
-			store.Acknowledge(second.Token);
-			Assert.AreEqual(0, store.Capture(config).Nodes.Count);
+			store.AcknowledgeDepartures(second.Token);
+			Assert.AreEqual(0, store.CaptureDepartures(config).Nodes.Count);
 
 			collector.AddOpened();
-			MetricsDepartureCapture third = store.Capture(config);
+			MetricsDepartureCapture third = store.CaptureDepartures(config);
 			Assert.AreEqual(1L, third.Nodes.Single().View.Opened);
-			store.Acknowledge(third.Token);
-			Assert.AreEqual(0, store.Capture(config).Nodes.Count);
+			store.AcknowledgeDepartures(third.Token);
+			Assert.AreEqual(0, store.CaptureDepartures(config).Nodes.Count);
 
-			collector.AddClosed(ConnectionCloseReason.Error, true);
-			MetricsDepartureCapture fourth = store.Capture(config);
+			collector.AddClosed();
+			MetricsDepartureCapture fourth = store.CaptureDepartures(config);
 			Assert.AreEqual(0L, fourth.Nodes.Single().View.Opened);
 			Assert.AreEqual(1L, fourth.Nodes.Single().View.Closed);
-			Assert.AreEqual(1L, fourth.Nodes.Single().View.ClosedError);
 		}
 
 		[TestMethod]
-		public void MetricsDepartureStoreCapsNamesAndSignalsTruncation()
+		public void MetricsStoreCapsDepartedNamesAndSignalsTruncation()
 		{
 			MetricsPolicy policy = new();
 			MetricsRuntimeConfig config = new(policy);
-			MetricsDepartureStore store = new();
-
-			for (int i = 0; i < 257; i++)
-			{
-				MetricsNodeCollector collector = new(config);
-				store.Add(
-					"N" + i,
-					"127.0.0.1",
-					3000,
-					0,
-					new MetricsNodeDeparture(null, collector),
-					CreateLegacyNode("N" + i, policy));
-			}
-
-			MetricsDepartureCapture capture = store.Capture(config);
-			Assert.AreEqual(256, capture.Nodes.Count);
-			Assert.IsTrue(capture.PossiblyTruncated);
-
-			store.Acknowledge(capture.Token);
-			MetricsDepartureCapture after = store.Capture(config);
-			Assert.IsFalse(after.PossiblyTruncated);
-		}
-
-		[TestMethod]
-		public void MetricsDepartureStoreAggregatesRepeatedNameContributions()
-		{
-			MetricsPolicy policy = new();
-			MetricsRuntimeConfig config = new(policy);
-			MetricsDepartureStore store = new();
+			MetricsStore store = new(policy);
+			MetricsNodeNameState firstState = null;
 
 			for (int i = 0; i < 257; i++)
 			{
 				MetricsNodeCollector collector = new(config);
 				collector.AddOpened();
-				store.Add(
+				MetricsNodeNameState state = new();
+				firstState ??= state;
+				AddDeparture(
+					store,
+					config,
+					state,
+					"N" + i,
+					"127.0.0.1",
+					3000,
+					0,
+					collector,
+					CreateLegacyNode("N" + i, policy));
+			}
+
+			MetricsDepartureCapture capture = store.CaptureDepartures(config);
+			Assert.AreEqual(256, capture.Nodes.Count);
+			Assert.IsTrue(capture.PossiblyTruncated);
+
+			store.AcknowledgeDepartures(capture.Token);
+			MetricsDepartureCapture after = store.CaptureDepartures(config);
+			Assert.IsFalse(after.PossiblyTruncated);
+
+			MetricsNodeCollector replacement = new(config);
+			replacement.AddOpened();
+			AddDeparture(
+				store,
+				config,
+				new MetricsNodeNameState(),
+				"N257",
+				"127.0.0.1",
+				3000,
+				0,
+				replacement,
+				CreateLegacyNode("N257", policy));
+			MetricsDepartureCapture recovered =
+				store.CaptureDepartures(config);
+			Assert.IsTrue(recovered.Nodes.Any(node => node.Name == "N257"));
+			Assert.IsNotNull(firstState);
+			Assert.AreEqual(
+				1L,
+				firstState.Read("N0", config).Opened,
+				"Acknowledgement must release retention capacity, not cumulative name state.");
+		}
+
+		[TestMethod]
+		public void MetricsStoreAggregatesRepeatedDepartureNames()
+		{
+			MetricsPolicy policy = new();
+			MetricsRuntimeConfig config = new(policy);
+			MetricsStore store = new(policy);
+			MetricsNodeNameState state = new();
+
+			for (int i = 0; i < 257; i++)
+			{
+				MetricsNodeCollector collector = new(config);
+				collector.AddOpened();
+				AddDeparture(
+					store,
+					config,
+					state,
 					"N1",
 					"127.0.0.1",
 					3000,
 					0,
-					new MetricsNodeDeparture(null, collector),
+					collector,
 					CreateLegacyNode("N1", policy));
 			}
 
-			MetricsDepartureCapture capture = store.Capture(config);
+			MetricsDepartureCapture capture = store.CaptureDepartures(config);
 			Assert.AreEqual(1, capture.Nodes.Count);
 			Assert.AreEqual(257L, capture.Nodes.Single().View.Opened);
 			Assert.IsFalse(capture.PossiblyTruncated);
 
-			store.Acknowledge(capture.Token);
-			MetricsDepartureCapture after = store.Capture(config);
+			store.AcknowledgeDepartures(capture.Token);
+			MetricsDepartureCapture after = store.CaptureDepartures(config);
 			Assert.AreEqual(0, after.Nodes.Count);
 			Assert.IsFalse(after.PossiblyTruncated);
+		}
+
+		[TestMethod]
+		public void MetricsStoreRejoinHidesDepartureAndRejectsStaleWatermark()
+		{
+			MetricsPolicy policy = new();
+			MetricsRuntimeConfig config = new(policy);
+			MetricsStore store = new(policy);
+			MetricsNodeNameState state = new();
+			MetricsNodeCollector firstCollector = new(config);
+			firstCollector.AddOpened();
+			AddDeparture(
+				store,
+				config,
+				state,
+				"N1",
+				"127.0.0.1",
+				3000,
+				0,
+				firstCollector,
+				CreateLegacyNode("N1", policy));
+			MetricsDepartureCapture departed =
+				store.CaptureDepartures(config);
+
+			MetricsNodeCollector secondCollector = new(config);
+			secondCollector.AddOpened();
+			MetricsNodeGeneration second = AddDeparture(
+				store,
+				config,
+				state,
+				"N1",
+				"127.0.0.2",
+				3000,
+				0,
+				secondCollector,
+				CreateLegacyNode("N1", policy));
+			state.Admit(second);
+			store.AcknowledgeDepartures(departed.Token);
+
+			Assert.AreEqual(
+				0,
+				store.CaptureDepartures(config).Nodes.Count,
+				"An active same-name generation must hide departed output.");
+			Assert.AreEqual(2L, state.Read("N1", config).Opened);
+
+			state.Depart(second);
+			store.RecordNodeDeparture(
+				"N1",
+				"127.0.0.2",
+				3000,
+				0,
+				state,
+				CreateLegacyNode("N1", policy));
+			store.AcknowledgeDepartures(departed.Token);
+
+			MetricsDepartureCapture repeated =
+				store.CaptureDepartures(config);
+			Assert.AreEqual(1, repeated.Nodes.Count);
+			Assert.AreEqual(2L, repeated.Nodes.Single().View.Opened);
 		}
 
 		[TestMethod]
@@ -1450,7 +2020,7 @@ namespace Aerospike.Test
 				Latency.LatencyType.READ,
 				5_000_000,
 				original.Shape);
-			LegacyMetricsFileNamespaceSnapshot legacyNs = new(
+			MetricsNamespaceCompatibilitySnapshot compatibilityNs = new(
 				"test",
 				1,
 				0,
@@ -1460,20 +2030,23 @@ namespace Aerospike.Test
 				Enumerable.Range(0, Latency.GetMax())
 					.Select(_ => (IReadOnlyList<long>)
 						Array.AsReadOnly(new[] { 1L, 2L, 3L })));
-			MetricsDepartureStore store = new();
-			store.Add(
+			MetricsStore store = new(originalPolicy);
+			AddDeparture(
+				store,
+				original,
+				new MetricsNodeNameState(),
 				"N1",
 				"127.0.0.1",
 				3000,
 				0,
-				new MetricsNodeDeparture(null, collector),
-				new LegacyMetricsFileNodeSnapshot(
+				collector,
+				new MetricsNodeCompatibilitySnapshot(
 					"N1",
 					"127.0.0.1",
 					3000,
 					new ConnectionStats(0, 0, 0, 0),
 					new ConnectionStats(0, 0, 0, 0),
-					[legacyNs],
+					[compatibilityNs],
 					originalPolicy.LatencyUnit,
 					originalPolicy.LatencyColumns,
 					originalPolicy.LatencyShift));
@@ -1485,7 +2058,8 @@ namespace Aerospike.Test
 				LatencyUnit = MetricsLatencyUnit.Microseconds
 			};
 			MetricsDepartureCapture capture =
-				store.Capture(new MetricsRuntimeConfig(replacementPolicy));
+				store.CaptureDepartures(
+					new MetricsRuntimeConfig(replacementPolicy));
 			MetricsDepartedNodeCapture departed = capture.Nodes.Single();
 			MetricsNamespaceView canonical =
 				departed.View.Namespaces["test"];
@@ -1496,10 +2070,10 @@ namespace Aerospike.Test
 					buckets.All(value => value == 0)));
 			Assert.AreEqual(
 				MetricsLatencyUnit.Microseconds,
-				departed.Legacy.LatencyUnit);
-			Assert.AreEqual(5, departed.Legacy.LatencyColumns);
-			Assert.AreEqual(2, departed.Legacy.LatencyShift);
-			Assert.IsTrue(departed.Legacy.Namespaces.Single().Latency.All(
+				departed.Compatibility.LatencyUnit);
+			Assert.AreEqual(5, departed.Compatibility.LatencyColumns);
+			Assert.AreEqual(2, departed.Compatibility.LatencyShift);
+			Assert.IsTrue(departed.Compatibility.Namespaces.Single().Latency.All(
 				buckets => buckets.Count == 5 &&
 					buckets.All(value => value == 0)));
 		}
@@ -1523,27 +2097,35 @@ namespace Aerospike.Test
 			MetricsNodeCollector currentCollector = new(currentConfig);
 			oldCollector.AddOpened();
 			currentCollector.AddOpened();
-			MetricsDepartureStore store = new();
+			MetricsStore store = new(currentPolicy);
+			MetricsNodeNameState state = new();
 
-			store.Add(
+			AddDeparture(
+				store,
+				oldConfig,
+				state,
 				"N1",
 				"127.0.0.1",
 				3000,
 				0,
-				new MetricsNodeDeparture(null, oldCollector),
+				oldCollector,
 				CreateLegacyNodeWithNamespace("N1", oldPolicy, 2, 1));
-			store.Add(
+			AddDeparture(
+				store,
+				currentConfig,
+				state,
 				"N1",
 				"127.0.0.2",
 				3000,
 				0,
-				new MetricsNodeDeparture(null, currentCollector),
+				currentCollector,
 				CreateLegacyNodeWithNamespace("N1", currentPolicy, 3, 2));
 
-			LegacyMetricsFileNodeSnapshot legacy =
-				store.Capture(currentConfig).Nodes.Single().Legacy;
-			LegacyMetricsFileNamespaceSnapshot ns =
-				legacy.Namespaces.Single();
+			MetricsNodeCompatibilitySnapshot compatibility =
+				store.CaptureDepartures(
+					currentConfig).Nodes.Single().Compatibility;
+			MetricsNamespaceCompatibilitySnapshot ns =
+				compatibility.Namespaces.Single();
 
 			Assert.AreEqual(5L, ns.Errors);
 			Assert.IsTrue(ns.Latency.All(
@@ -1575,7 +2157,7 @@ namespace Aerospike.Test
 					Array.AsReadOnly([10L, 11L, 12L]),
 					Array.AsReadOnly([13L, 14L, 15L])
 				]);
-				LegacyMetricsFileNamespaceSnapshot ns = new(
+				MetricsNamespaceCompatibilitySnapshot ns = new(
 					"test",
 					9,
 					10,
@@ -1583,7 +2165,7 @@ namespace Aerospike.Test
 					12,
 					13,
 					latency);
-				LegacyMetricsFileNodeSnapshot active = new(
+				MetricsNodeCompatibilitySnapshot active = new(
 					"N1",
 					"127.0.0.1",
 					3000,
@@ -1593,17 +2175,17 @@ namespace Aerospike.Test
 					MetricsLatencyUnit.Milliseconds,
 					3,
 					1);
-				LegacyMetricsFileNodeSnapshot departed = new(
+				MetricsNodeCompatibilitySnapshot departed = new(
 					"N2",
 					"127.0.0.2",
 					3001,
 					new ConnectionStats(16, 17, 18, 19),
 					new ConnectionStats(20, 21, 22, 23),
-					Array.Empty<LegacyMetricsFileNamespaceSnapshot>(),
+					Array.Empty<MetricsNamespaceCompatibilitySnapshot>(),
 					MetricsLatencyUnit.Milliseconds,
 					3,
 					1);
-				LegacyMetricsFileSnapshot legacy = new(
+				MetricsCompatibilitySnapshot compatibility = new(
 					"cluster",
 					"9.9.9",
 					"app",
@@ -1619,6 +2201,22 @@ namespace Aerospike.Test
 					11,
 					[active],
 					[departed]);
+				NodeMetricsSnapshot activeNode = new(
+					"N1",
+					"127.0.0.1",
+					3000,
+					0,
+					ConnectionMetricsSnapshot.Empty,
+					NodeLatencyMetricsSnapshot.Empty,
+					Array.Empty<NamespaceMetricsSnapshot>());
+				NodeMetricsSnapshot departedNode = new(
+					"N2",
+					"127.0.0.2",
+					3001,
+					0,
+					ConnectionMetricsSnapshot.Empty,
+					NodeLatencyMetricsSnapshot.Empty,
+					Array.Empty<NamespaceMetricsSnapshot>());
 				MetricsSnapshot snapshot = new(
 					DateTimeOffset.UtcNow,
 					true,
@@ -1634,10 +2232,10 @@ namespace Aerospike.Test
 					1,
 					null,
 					null,
-					Array.Empty<NodeMetricsSnapshot>(),
-					Array.Empty<NodeMetricsSnapshot>(),
+					[activeNode],
+					[departedNode],
 					false,
-					legacy);
+					compatibility);
 
 				using MetricsWriter writer = new(reportDir);
 				writer.Export(snapshot);
@@ -1723,29 +2321,29 @@ namespace Aerospike.Test
 			il.Emit(OpCodes.Ret);
 		}
 
-		private static LegacyMetricsFileNodeSnapshot CreateLegacyNode(
+		private static MetricsNodeCompatibilitySnapshot CreateLegacyNode(
 			string name,
 			MetricsPolicy policy)
 		{
-			return new LegacyMetricsFileNodeSnapshot(
+			return new MetricsNodeCompatibilitySnapshot(
 				name,
 				"127.0.0.1",
 				3000,
 				new ConnectionStats(0, 0, 0, 0),
 				new ConnectionStats(0, 0, 0, 0),
-				Array.Empty<LegacyMetricsFileNamespaceSnapshot>(),
+				Array.Empty<MetricsNamespaceCompatibilitySnapshot>(),
 				policy.LatencyUnit,
 				policy.LatencyColumns,
 				policy.LatencyShift);
 		}
 
-		private static LegacyMetricsFileNodeSnapshot CreateLegacyNodeWithNamespace(
+		private static MetricsNodeCompatibilitySnapshot CreateLegacyNodeWithNamespace(
 			string name,
 			MetricsPolicy policy,
 			long errors,
 			long latencyValue)
 		{
-			LegacyMetricsFileNamespaceSnapshot ns = new(
+			MetricsNamespaceCompatibilitySnapshot ns = new(
 				"test",
 				errors,
 				0,
@@ -1757,7 +2355,7 @@ namespace Aerospike.Test
 						Enumerable.Repeat(
 							latencyValue,
 							policy.LatencyColumns).ToArray())));
-			return new LegacyMetricsFileNodeSnapshot(
+			return new MetricsNodeCompatibilitySnapshot(
 				name,
 				"127.0.0.1",
 				3000,
@@ -1954,21 +2552,6 @@ namespace Aerospike.Test
 					ref maximumConcurrent,
 					active,
 					observed) != observed);
-			}
-		}
-
-		private sealed class ReleasedCompatibilityLoadContext
-			: AssemblyLoadContext
-		{
-			protected override Assembly Load(
-				AssemblyName assemblyName)
-			{
-				if (assemblyName.Name ==
-					typeof(IAerospikeClient).Assembly.GetName().Name)
-				{
-					return typeof(IAerospikeClient).Assembly;
-				}
-				return null;
 			}
 		}
 

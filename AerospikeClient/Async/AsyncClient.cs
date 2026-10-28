@@ -190,8 +190,10 @@ namespace Aerospike.Client
 		/// <param name="txn">transaction</param>
 		public void Commit(CommitListener listener, Txn txn)
 		{
-			cluster.AddMetricsCommandCount();
-			cluster.RecordApiUsage(ApiExecutionMode.Deferred);
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(
+					ApiMetricsOperation.CountOnly,
+					ApiExecutionMode.Deferred);
 			AsyncTxnRoll atr = new(
 				cluster, mergedTxnVerifyPolicyDefault, mergedTxnRollPolicyDefault, txn
 				);
@@ -245,8 +247,10 @@ namespace Aerospike.Client
 		/// <param name="txn">transaction</param>
 		public void Abort(AbortListener listener, Txn txn)
 		{
-			cluster.AddMetricsCommandCount();
-			cluster.RecordApiUsage(ApiExecutionMode.Deferred);
+			using ApiMetricsCall metrics =
+				cluster.BeginCoordinatorApiMetrics(
+					ApiMetricsOperation.CountOnly,
+					ApiExecutionMode.Deferred);
 			AsyncTxnRoll atr = new(cluster, null, mergedTxnRollPolicyDefault, txn);
 
 			switch (txn.State)
@@ -2496,7 +2500,9 @@ namespace Aerospike.Client
 		public void ScanAll(ScanPolicy policy, RecordSequenceListener listener, string ns, string setName, params string[] binNames)
 		{
 			using ApiMetricsCall metrics =
-				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
+				cluster.BeginCoordinatorApiMetrics(
+					ApiMetricsOperation.Query,
+					ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedScanPolicyDefault;
@@ -2530,7 +2536,9 @@ namespace Aerospike.Client
 		public void ScanPartitions(ScanPolicy policy, RecordSequenceListener listener, PartitionFilter partitionFilter, string ns, string setName, params string[] binNames)
 		{
 			using ApiMetricsCall metrics =
-				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
+				cluster.BeginCoordinatorApiMetrics(
+					ApiMetricsOperation.Query,
+					ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedScanPolicyDefault;
@@ -2824,7 +2832,9 @@ namespace Aerospike.Client
 		public void Query(QueryPolicy policy, RecordSequenceListener listener, Statement statement)
 		{
 			using ApiMetricsCall metrics =
-				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
+				cluster.BeginCoordinatorApiMetrics(
+					ApiMetricsOperation.Query,
+					ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedQueryPolicyDefault;
@@ -2876,7 +2886,9 @@ namespace Aerospike.Client
 		)
 		{
 			using ApiMetricsCall metrics =
-				cluster.BeginCoordinatorApiMetrics(ApiExecutionMode.Deferred);
+				cluster.BeginCoordinatorApiMetrics(
+					ApiMetricsOperation.Query,
+					ApiExecutionMode.Deferred);
 			if (policy == null)
 			{
 				policy = mergedQueryPolicyDefault;

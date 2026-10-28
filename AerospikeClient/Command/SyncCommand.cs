@@ -28,14 +28,15 @@ namespace Aerospike.Client
 		internal DateTime deadline;
 		internal string ns;
 		private CommandMetricsHandle commandMetrics;
+		private MetricsRpcAttempt commandMetricsAttempt;
 		private Node commandMetricsNode;
 		private bool commandMetricsStarted;
-		private bool commandMetricsDelegated;
 		private bool commandMetricsClientTimeout;
 		private bool queryServerMetrics;
 		private QueryMetricsHandle queryMetrics;
 		private readonly bool collectCommandMetrics;
-		private ApiMetricsContext apiMetricsContext;
+		private MetricsCallContext apiMetricsContext;
+		private IReadOnlyList<string> metricsNamespaces;
 
 		/// <summary>
 		/// Default constructor.
@@ -74,7 +75,7 @@ namespace Aerospike.Client
 			apiMetricsContext = cluster.CaptureApiMetricsContext();
 		}
 
-		internal void SetApiMetricsContext(ApiMetricsContext context)
+		internal void SetApiMetricsContext(MetricsCallContext context)
 		{
 			apiMetricsContext = context;
 		}
@@ -95,22 +96,16 @@ namespace Aerospike.Client
 			try
 			{
 				ExecuteCommandCore();
-				if (!commandMetricsDelegated)
-				{
-					commandMetrics.CompleteSuccess(commandMetricsNode);
-				}
+				apiMetricsContext.MarkSuccessfulWork();
 			}
-			catch (AerospikeException ae)
+			catch (AerospikeException)
 			{
-				commandMetrics.CompleteFailure(commandMetricsNode, ae, commandMetricsClientTimeout);
+				apiMetricsContext.CompleteFailure();
 				throw;
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
-				commandMetrics.CompleteFailure(
-					commandMetricsNode,
-					new AerospikeException(e),
-					commandMetricsClientTimeout);
+				apiMetricsContext.CompleteFailure();
 				throw;
 			}
 			finally
@@ -123,7 +118,6 @@ namespace Aerospike.Client
 		{
 			Node node;
 			AerospikeException exception = null;
-			ValueStopwatch metricsWatch = new();
 			bool metricsEnabled = cluster.MetricsOperationalEnabled;
 			LatencyType latencyType = metricsEnabled ? GetLatencyType() : LatencyType.NONE;
 			bool isClientTimeout;
@@ -132,11 +126,13 @@ namespace Aerospike.Client
 			while (true)
 			{
 				commandMetricsClientTimeout = false;
+				commandMetricsAttempt = null;
 
 				try
 				{
 					node = GetNode();
 					commandMetricsNode = node;
+					commandMetricsAttempt = commandMetrics.BeginAttempt();
 				}
 				catch (AerospikeException ae)
 				{
@@ -149,10 +145,6 @@ namespace Aerospike.Client
 				try
 				{
 					node.ValidateErrorCount();
-					if (latencyType != LatencyType.NONE)
-					{
-						metricsWatch = ValueStopwatch.StartNew();
-					}
 					Connection conn = node.GetConnection(
 						socketTimeout,
 						policy.TimeoutDelay,
@@ -167,22 +159,16 @@ namespace Aerospike.Client
 						conn.Write(dataBuffer, dataOffset);
 						commandSentCounter++;
 
-						if (metricsEnabled)
-						{
-							node.AddBytesOut(ns, dataOffset);
-						}
-						commandMetrics.AddBytes(node, 0, dataOffset);
+						commandMetricsAttempt?.AddBytes(0, dataOffset);
 
 						// Parse results.
 						ParseResult(node, conn);
+						RecordResultMetrics(node);
 
 						// Put connection back in pool.
 						node.PutConnection(conn);
 
-						if (latencyType != LatencyType.NONE)
-						{
-							node.AddLatency(ns, latencyType, metricsWatch.Elapsed.TotalMilliseconds);
-						}
+						commandMetricsAttempt?.TrySucceed(node);
 
 						// Command has completed successfully.  Exit method.
 						return;
@@ -207,7 +193,6 @@ namespace Aerospike.Client
 							isClientTimeout = false;
 							commandMetricsClientTimeout = false;
 							node.IncrErrorRate();
-							node.AddTimeout(ns);
 						}
 						else if (ae.Result == ResultCode.DEVICE_OVERLOAD)
 						{
@@ -216,7 +201,6 @@ namespace Aerospike.Client
 							isClientTimeout = false;
 							commandMetricsClientTimeout = false;
 							node.IncrErrorRate();
-							node.AddError(ns);
 						}
 						else if (ae.Result == ResultCode.KEY_BUSY)
 						{
@@ -224,11 +208,10 @@ namespace Aerospike.Client
 							isClientTimeout = false;
 							commandMetricsClientTimeout = false;
 							node.IncrErrorRate();
-							node.AddKeyBusy(ns);
 						}
 						else
 						{
-							node.AddError(ns);
+							commandMetricsAttempt?.TryFail(node, ae, false);
 							throw;
 						}
 					}
@@ -242,12 +225,11 @@ namespace Aerospike.Client
 						else
 						{
 							cluster.RecordImmediateTimeout();
-							node.CloseConnection(conn, ConnectionCloseReason.Error);
+							node.CloseConnection(conn);
 						}
 						exception = new AerospikeException.Timeout(policy, true);
 						isClientTimeout = true;
 						commandMetricsClientTimeout = true;
-						node.AddTimeout(ns);
 					}
 					catch (SocketException se)
 					{
@@ -260,32 +242,32 @@ namespace Aerospike.Client
 							exception = new AerospikeException.Timeout(policy, true);
 							isClientTimeout = true;
 							commandMetricsClientTimeout = true;
-							node.AddTimeout(ns);
 						}
 						else
 						{
 							exception = new AerospikeException.Connection(se);
 							isClientTimeout = false;
 							commandMetricsClientTimeout = false;
-							node.AddError(ns);
 						}
 					}
 					catch (IOException ioe)
 					{
 						// IO errors are considered temporary anomalies.  Retry.
 						// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
-						node.CloseConnection(conn, ConnectionCloseReason.Error);
+						node.CloseConnection(conn);
 						exception = new AerospikeException.Connection(ioe);
 						isClientTimeout = false;
 						commandMetricsClientTimeout = false;
-						node.AddError(ns);
 					}
 					catch (Exception)
 					{
 						// All other exceptions are considered fatal.  Do not retry.
 						// Close socket to flush out possible garbage.  Do not put back in pool.
 						node.CloseConnectionOnError(conn);
-						node.AddError(ns);
+						commandMetricsAttempt?.TryFail(
+							node,
+							new AerospikeException("Command failed"),
+							false);
 						throw;
 					}
 				}
@@ -298,14 +280,12 @@ namespace Aerospike.Client
 						exception = new AerospikeException.Timeout(policy, true);
 						isClientTimeout = true;
 						commandMetricsClientTimeout = true;
-						node.AddTimeout(ns);
 					}
 					else
 					{
 						exception = new AerospikeException.Connection(se);
 						isClientTimeout = false;
 						commandMetricsClientTimeout = false;
-						node.AddError(ns);
 					}
 				}
 				catch (IOException ioe)
@@ -315,7 +295,6 @@ namespace Aerospike.Client
 					exception = new AerospikeException.Connection(ioe);
 					isClientTimeout = false;
 					commandMetricsClientTimeout = false;
-					node.AddError(ns);
 				}
 				catch (Connection.ReadTimeout)
 				{
@@ -323,7 +302,6 @@ namespace Aerospike.Client
 					exception = new AerospikeException.Timeout(policy, true);
 					isClientTimeout = true;
 					commandMetricsClientTimeout = true;
-					node.AddTimeout(ns);
 				}
 				catch (AerospikeException.Connection ce)
 				{
@@ -331,7 +309,6 @@ namespace Aerospike.Client
 					exception = ce;
 					isClientTimeout = false;
 					commandMetricsClientTimeout = false;
-					node.AddError(ns);
 				}
 				catch (AerospikeException.Backoff be)
 				{
@@ -339,7 +316,6 @@ namespace Aerospike.Client
 					exception = be;
 					isClientTimeout = false;
 					commandMetricsClientTimeout = false;
-					node.AddError(ns);
 				}
 				catch (AerospikeException ae)
 				{
@@ -347,14 +323,22 @@ namespace Aerospike.Client
 					ae.Policy = policy;
 					ae.Iteration = iteration;
 					ae.SetInDoubt(IsWrite(), commandSentCounter);
-					node.AddError(ns);
+					commandMetricsAttempt?.TryFail(node, ae, false);
 					throw;
 				}
-				catch (Exception)
+				catch (Exception e)
 				{
-					node.AddError(ns);
+					commandMetricsAttempt?.TryFail(
+						node,
+						new AerospikeException(e),
+						false);
 					throw;
 				}
+
+				commandMetricsAttempt?.TryFail(
+					node,
+					exception,
+					commandMetricsClientTimeout);
 
 				// Check maxRetries.
 				if (iteration > maxRetries)
@@ -425,7 +409,7 @@ namespace Aerospike.Client
 			}
 			commandMetricsStarted = true;
 
-			if (!collectCommandMetrics)
+			if (!collectCommandMetrics && !apiMetricsContext.CompatibilityOnly)
 			{
 				return;
 			}
@@ -441,6 +425,7 @@ namespace Aerospike.Client
 			commandMetrics = cluster.BeginMetricsCommand(
 				apiMetricsContext,
 				ns,
+				metricsNamespaces,
 				type,
 				countCommand);
 
@@ -518,10 +503,6 @@ namespace Aerospike.Client
 				throw;
 			}
 			bytesIn += receiveSize;
-			if (node.AreMetricsEnabled())
-			{
-				node.AddBytesIn(ns, bytesIn);
-			}
 			AddCommandMetricsBytes(node, bytesIn, 0);
 			conn.UpdateLastUsed();
 
@@ -559,12 +540,37 @@ namespace Aerospike.Client
 
 		private protected void AddCommandMetricsBytes(Node node, long bytesIn, long bytesOut)
 		{
-			commandMetrics.AddBytes(node, bytesIn, bytesOut);
+			commandMetricsAttempt?.AddBytes(bytesIn, bytesOut);
 		}
 
-		private protected CommandMetricsHandle ForkCommandMetrics(string childNamespace)
+		private protected CommandMetricsHandle ForkCommandMetrics(
+			string childNamespace,
+			IReadOnlyList<string> childNamespaces = null)
 		{
-			return commandMetrics.ForkRpc(childNamespace);
+			return commandMetrics.ForkRpc(
+				childNamespace,
+				childNamespaces);
+		}
+
+		private protected void SetMetricsNamespaces(
+			IReadOnlyList<string> namespaces)
+		{
+			metricsNamespaces = namespaces;
+		}
+
+		private protected void RecordBatchRecordFailure(
+			Node node,
+			string recordNamespace,
+			int recordResultCode)
+		{
+			commandMetricsAttempt?.RecordBatchRecordFailure(
+				node,
+				recordNamespace,
+				recordResultCode);
+		}
+
+		private protected virtual void RecordResultMetrics(Node node)
+		{
 		}
 
 		private protected void SetCommandMetrics(CommandMetricsHandle handle)
@@ -575,7 +581,6 @@ namespace Aerospike.Client
 
 		private protected void DelegateCommandMetrics()
 		{
-			commandMetricsDelegated = true;
 			CompleteQueryServerMetrics();
 		}
 

@@ -15,7 +15,6 @@
  * the License.
  */
 
-using System.Diagnostics;
 using System.Text;
 using static Aerospike.Client.Latency;
 
@@ -41,8 +40,7 @@ namespace Aerospike.Client
 		private int latencyShift;
 		private bool enabled;
 		private bool disposed;
-		private DateTime prevTime;
-		private TimeSpan prevCpuUsage;
+		private Cluster listenerCluster;
 
 		/// <summary>
 		/// Initialize metrics writer.
@@ -71,8 +69,6 @@ namespace Aerospike.Client
 			this.latencyUnit = MetricsLatencyUnit.Milliseconds;
 			this.latencyColumns = latencyColumns;
 			this.latencyShift = latencyShift;
-			this.prevTime = DateTime.UtcNow;
-			this.prevCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
 			ValidateSize(reportSizeLimit);
 		}
 
@@ -92,6 +88,7 @@ namespace Aerospike.Client
 				this.latencyUnit = policy.LatencyUnit;
 				this.latencyColumns = policy.LatencyColumns;
 				this.latencyShift = policy.LatencyShift;
+				this.listenerCluster = cluster;
 
 				try
 				{
@@ -101,6 +98,7 @@ namespace Aerospike.Client
 				catch (Exception e)
 				{
 					enabled = false;
+					listenerCluster = null;
 
 					try
 					{
@@ -132,7 +130,7 @@ namespace Aerospike.Client
 				ThrowIfDisposed();
 				if (enabled)
 				{
-					WriteCluster(cluster);
+					WriteCluster(cluster.GetMetricsSnapshot());
 				}
 			}
 		}
@@ -147,10 +145,31 @@ namespace Aerospike.Client
 				ThrowIfDisposed();
 				if (enabled)
 				{
-					sb.Append(DateTime.Now.ToString(timestampFormat));
-					sb.Append(" node");
-					WriteNode(node);
-					WriteLine();
+					MetricsSnapshot snapshot =
+						listenerCluster?.GetMetricsSnapshot();
+					NodeMetricsSnapshot nodeSnapshot = snapshot?.Nodes
+						.FirstOrDefault(current => current.Name == node.Name);
+					MetricsNodeCompatibilitySnapshot compatibility =
+						snapshot?.Compatibility.Nodes.FirstOrDefault(
+							current => current.Name == node.Name);
+					nodeSnapshot ??= compatibility == null
+						? null
+						: new NodeMetricsSnapshot(
+							compatibility.Name,
+							compatibility.Address,
+							compatibility.Port,
+							0,
+							ConnectionMetricsSnapshot.Empty,
+							NodeLatencyMetricsSnapshot.Empty,
+							Array.Empty<NamespaceMetricsSnapshot>());
+
+					if (nodeSnapshot != null)
+					{
+						sb.Append(DateTime.Now.ToString(timestampFormat));
+						sb.Append(" node");
+						WriteNode(nodeSnapshot, compatibility);
+						WriteLine();
+					}
 				}
 			}
 		}
@@ -169,7 +188,7 @@ namespace Aerospike.Client
 						enabled = false;
 						if (writer.BaseStream.CanWrite)
 						{
-							WriteCluster(cluster);
+							WriteCluster(cluster.GetMetricsSnapshot());
 						}
 					}
 					catch (Exception e)
@@ -179,6 +198,7 @@ namespace Aerospike.Client
 					finally
 					{
 						CloseWriter();
+						listenerCluster = null;
 					}
 				}
 			}
@@ -196,13 +216,6 @@ namespace Aerospike.Client
 					ResultCode.PARAMETER_ERROR,
 					"Metrics snapshot is required.");
 			}
-			if (snapshot.LegacyFile == null)
-			{
-				throw new AerospikeException(
-					ResultCode.PARAMETER_ERROR,
-					"Metrics snapshot does not contain the legacy file payload.");
-			}
-
 			lock (sync)
 			{
 				ThrowIfDisposed();
@@ -251,6 +264,7 @@ namespace Aerospike.Client
 				}
 				disposed = true;
 				enabled = false;
+				listenerCluster = null;
 				CloseWriter();
 			}
 		}
@@ -301,140 +315,92 @@ namespace Aerospike.Client
 			WriteLine();
 		}
 
-		private void WriteCluster(Cluster cluster)
-		{
-			MetricsPolicy policy = cluster.MetricsPolicy;
-			string clusterName = cluster.clusterName;
-			clusterName ??= "";
-
-			GetCpuMemoryUsage(out double cpu, out long mem);
-
-			sb.Append(DateTime.Now.ToString(timestampFormat));
-			sb.Append(" cluster[");
-			sb.Append(clusterName);
-			sb.Append(',');
-			sb.Append("c#");
-			sb.Append(',');
-			sb.Append(cluster.client.clientVersion);
-			sb.Append(',');
-			if (cluster.appId != null)
-			{
-				sb.Append(cluster.appId);
-			}
-			else
-			{
-				byte[] userBytes = cluster.user;
-				if (userBytes != null && userBytes.Length > 0)
-				{
-					string user = ByteUtil.Utf8ToString(userBytes, 0, userBytes.Length);
-					sb.Append(user);
-				}
-			}
-			sb.Append(',');
-			if (policy.labels != null)
-			{
-				sb.Append('[');
-				foreach (string key in policy.labels.Keys)
-				{
-					sb.Append('[').Append(key).Append(',').Append(policy.labels[key]).Append("],");
-				}
-				sb.Remove(sb.Length - 1, 1); // Remove last comma
-				sb.Append(']');
-			}
-			sb.Append(',');
-			sb.Append((int)cpu);
-			sb.Append(',');
-			sb.Append(mem);
-			sb.Append(',');
-			sb.Append(cluster.GetRecoverQueueSize());
-			sb.Append(',');
-			sb.Append(cluster.InvalidNodeCount); // Cumulative. Not reset on each interval.
-			sb.Append(',');
-			sb.Append(cluster.GetCommandCount());  // Cumulative. Not reset on each interval.
-			sb.Append(',');
-			sb.Append(cluster.GetRetryCount()); // Cumulative. Not reset on each interval.
-			sb.Append(',');
-			sb.Append(cluster.GetDelayQueueTimeoutCount()); // Cumulative. Not reset on each interval.
-			sb.Append(',');
-
-			ThreadPool.GetMaxThreads(out int workerThreadsMax, out int completionPortThreadsMax);
-			ThreadPool.GetAvailableThreads(out int workerThreads, out int completionPortThreads);
-
-			var threadsInUse = workerThreadsMax - workerThreads;
-			var completionPortsInUse = completionPortThreadsMax - completionPortThreads;
-
-			sb.Append(threadsInUse);
-			sb.Append(',');
-			sb.Append(completionPortsInUse);
-			sb.Append(",[");
-
-			Node[] nodes = cluster.Nodes;
-
-			for (int i = 0; i < nodes.Length; i++)
-			{
-				Node node = nodes[i];
-
-				if (i > 0)
-				{
-					sb.Append(',');
-				}
-				WriteNode(node);
-			}
-			sb.Append(']');
-			WriteLine();
-		}
-
 		private void WriteCluster(MetricsSnapshot snapshot)
 		{
-			LegacyMetricsFileSnapshot legacy = snapshot.LegacyFile;
+			MetricsCompatibilitySnapshot compatibility =
+				snapshot.Compatibility;
 
 			sb.Append(DateTime.Now.ToString(timestampFormat));
 			sb.Append(" cluster[");
-			sb.Append(legacy.ClusterName);
+			sb.Append(snapshot.ClusterName);
 			sb.Append(",c#,");
-			sb.Append(legacy.ClientVersion);
+			sb.Append(snapshot.ClientVersion);
 			sb.Append(',');
-			sb.Append(legacy.AppId);
+			sb.Append(compatibility.AppId);
 			sb.Append(',');
-			WriteLabels(legacy.Labels);
+			WriteLabels(snapshot.Labels);
 			sb.Append(',');
-			sb.Append((int)legacy.CpuPercent);
+			sb.Append((int)compatibility.CpuPercent);
 			sb.Append(',');
-			sb.Append(legacy.MemoryBytes);
+			sb.Append(compatibility.MemoryBytes);
 			sb.Append(',');
-			sb.Append(legacy.RecoverQueueSize);
+			sb.Append(compatibility.RecoverQueueSize);
 			sb.Append(',');
-			sb.Append(legacy.InvalidNodeCount);
+			sb.Append(compatibility.InvalidNodeCount);
 			sb.Append(',');
-			sb.Append(legacy.CommandCount);
+			sb.Append(compatibility.CommandCount);
 			sb.Append(',');
-			sb.Append(legacy.RetryCount);
+			sb.Append(compatibility.RetryCount);
 			sb.Append(',');
-			sb.Append(legacy.DelayQueueTimeoutCount);
+			sb.Append(compatibility.DelayQueueTimeoutCount);
 			sb.Append(',');
-			sb.Append(legacy.AsyncThreadsInUse);
+			sb.Append(compatibility.AsyncThreadsInUse);
 			sb.Append(',');
-			sb.Append(legacy.AsyncCompletionPortsInUse);
+			sb.Append(compatibility.AsyncCompletionPortsInUse);
 			sb.Append(",[");
 
-			for (int i = 0; i < legacy.Nodes.Count; i++)
+			Dictionary<string, NodeMetricsSnapshot> activeNodes =
+				snapshot.Nodes.ToDictionary(
+					node => node.Name,
+					StringComparer.Ordinal);
+
+			for (int i = 0; i < compatibility.Nodes.Count; i++)
 			{
 				if (i > 0)
 				{
 					sb.Append(',');
 				}
-				WriteNode(legacy.Nodes[i]);
+				MetricsNodeCompatibilitySnapshot nodeCompatibility =
+					compatibility.Nodes[i];
+				activeNodes.TryGetValue(
+					nodeCompatibility.Name,
+					out NodeMetricsSnapshot node);
+				node ??= CompatibilityNode(nodeCompatibility);
+				WriteNode(node, nodeCompatibility);
 			}
 			sb.Append(']');
 			WriteLine();
 
-			foreach (LegacyMetricsFileNodeSnapshot departed in legacy.NodesDeparted)
+			Dictionary<string, NodeMetricsSnapshot> departedNodes =
+				snapshot.NodesDeparted.ToDictionary(
+					node => node.Name,
+					StringComparer.Ordinal);
+
+			foreach (MetricsNodeCompatibilitySnapshot nodeCompatibility in
+				compatibility.NodesDeparted)
 			{
 				sb.Append(DateTime.Now.ToString(timestampFormat));
 				sb.Append(" node");
-				WriteNode(departed);
+				departedNodes.TryGetValue(
+					nodeCompatibility.Name,
+					out NodeMetricsSnapshot departed);
+				departed ??= CompatibilityNode(nodeCompatibility);
+				WriteNode(departed, nodeCompatibility);
 				WriteLine();
 			}
+		}
+
+		private static NodeMetricsSnapshot CompatibilityNode(
+			MetricsNodeCompatibilitySnapshot compatibility)
+		{
+			return new NodeMetricsSnapshot(
+				compatibility.Name,
+				compatibility.Address,
+				compatibility.Port,
+				0,
+				ConnectionMetricsSnapshot.Empty,
+				NodeLatencyMetricsSnapshot.Empty,
+				Array.Empty<NamespaceMetricsSnapshot>());
 		}
 
 		private void WriteLabels(IReadOnlyDictionary<string, string> labels)
@@ -458,7 +424,9 @@ namespace Aerospike.Client
 			sb.Append(']');
 		}
 
-		private void WriteNode(LegacyMetricsFileNodeSnapshot node)
+		private void WriteNode(
+			NodeMetricsSnapshot node,
+			MetricsNodeCompatibilitySnapshot compatibility)
 		{
 			sb.Append('[');
 			sb.Append(node.Name);
@@ -467,14 +435,19 @@ namespace Aerospike.Client
 			sb.Append(',');
 			sb.Append(node.Port);
 			sb.Append(',');
-			WriteConn(node.SyncConnections);
+			WriteConn(
+				compatibility?.SyncConnections ??
+					new ConnectionStats(0, 0, 0, 0));
 			sb.Append(',');
-			WriteConn(node.AsyncConnections);
+			WriteConn(
+				compatibility?.AsyncConnections ??
+					new ConnectionStats(0, 0, 0, 0));
 			sb.Append(",[");
 
-			if (node.Namespaces.Count > 0)
+			if (compatibility?.Namespaces.Count > 0)
 			{
-				foreach (LegacyMetricsFileNamespaceSnapshot ns in node.Namespaces)
+				foreach (MetricsNamespaceCompatibilitySnapshot ns in
+					compatibility.Namespaces)
 				{
 					WriteNamespace(ns);
 				}
@@ -484,7 +457,7 @@ namespace Aerospike.Client
 			sb.Append("]]");
 		}
 
-		private void WriteNamespace(LegacyMetricsFileNamespaceSnapshot ns)
+		private void WriteNamespace(MetricsNamespaceCompatibilitySnapshot ns)
 		{
 			sb.Append(ns.Name);
 			sb.Append(',');
@@ -522,147 +495,6 @@ namespace Aerospike.Client
 			sb.Append("]],[");
 		}
 
-		private void WriteNode(NodeMetricsSnapshot node)
-		{
-			sb.Append('[');
-			sb.Append(node.Name);
-			sb.Append(',');
-			sb.Append(node.Address);
-			sb.Append(',');
-			sb.Append(node.Port);
-			sb.Append(',');
-			WriteConn(node.Connections);
-			sb.Append(',');
-			WriteConn(ConnectionMetricsSnapshot.Empty);
-			sb.Append(",[");
-
-			if (node.Namespaces.Count > 0)
-			{
-				foreach (NamespaceMetricsSnapshot ns in node.Namespaces)
-				{
-					sb.Append(ns.Name);
-					sb.Append(',');
-					sb.Append(ns.Errors);
-					sb.Append(',');
-					sb.Append(ns.Timeouts);
-					sb.Append(',');
-					sb.Append(ns.KeyBusy);
-					sb.Append(',');
-					sb.Append(ns.BytesIn);
-					sb.Append(',');
-					sb.Append(ns.BytesOut);
-					sb.Append(",[");
-					WriteLatency(LatencyType.CONN, ns.Latency.Connection, false);
-					WriteLatency(LatencyType.READ, ns.Latency.Read, true);
-					WriteLatency(LatencyType.WRITE, ns.Latency.Write, true);
-					WriteLatency(LatencyType.BATCH, ns.Latency.Batch, true);
-					WriteLatency(LatencyType.QUERY, ns.Latency.Query, true);
-					sb.Append("]],[");
-				}
-				sb.Remove(sb.Length - 2, 2);
-			}
-			sb.Append("]]");
-			sb.Append("]]");
-		}
-
-		private void WriteLatency(
-			LatencyType type,
-			IReadOnlyList<long> buckets,
-			bool prependComma)
-		{
-			if (prependComma)
-			{
-				sb.Append(',');
-			}
-			sb.Append(LatencyTypeToString(type));
-			sb.Append('[');
-
-			for (int i = 0; i < buckets.Count; i++)
-			{
-				if (i > 0)
-				{
-					sb.Append(',');
-				}
-				sb.Append(buckets[i]);
-			}
-			sb.Append(']');
-		}
-
-		private void WriteNode(Node node)
-		{
-			sb.Append('[');
-			sb.Append(node.Name);
-			sb.Append(',');
-
-			Host host = node.Host;
-
-			sb.Append(host.name);
-			sb.Append(',');
-			sb.Append(host.port);
-			sb.Append(',');
-
-			WriteConn(node.GetConnectionStats());
-			sb.Append(',');
-			var asyncStats = new ConnectionStats(0, 0, 0, 0);
-			if (node is AsyncNode async)
-			{
-				asyncStats = async.GetAsyncConnectionStats();
-			}
-			WriteConn(asyncStats);
-			sb.Append(",[");
-
-			using NodeMetricsLease metricsLease = node.AcquireMetrics();
-			NodeMetrics nodeMetrics = metricsLease.Metrics;
-			Histograms hGrams = nodeMetrics?.Histograms;
-			ConcurrentHashMap<string, LatencyBuckets[]> hMap = hGrams?.histoMap;
-			int max = Latency.GetMax();
-
-			if (hMap != null)
-			{
-				foreach (string ns in hMap.Keys)
-				{
-					sb.Append(ns).Append(',');
-					sb.Append(node.GetErrorCountByNS(ns));
-					sb.Append(',');
-					sb.Append(node.GetTimeoutCountbyNS(ns));
-					sb.Append(',');
-					sb.Append(node.GetKeyBusyCountByNS(ns));
-					sb.Append(',');
-					sb.Append(nodeMetrics.BytesInCounter?.GetCountByNS(ns) ?? 0);
-					sb.Append(',');
-					sb.Append(nodeMetrics.BytesOutCounter?.GetCountByNS(ns) ?? 0);
-					sb.Append(",[");
-					LatencyBuckets[] latencyBuckets = hGrams.GetBuckets(ns);
-					for (int i = 0; i < max; i++)
-					{
-						if (i > 0)
-						{
-							sb.Append(',');
-						}
-
-						sb.Append(LatencyTypeToString((LatencyType)i));
-						sb.Append('[');
-
-						LatencyBuckets buckets = latencyBuckets[i];
-						int bucketMax = buckets.GetMax();
-						for (int j = 0; j < bucketMax; j++)
-						{
-							if (j > 0)
-							{
-								sb.Append(',');
-							}
-							sb.Append(buckets.GetBucket(j)); // Cumulative. Not reset on each interval.
-						}
-						sb.Append(']');
-					}
-					sb.Append("]],[");
-				}
-				sb.Remove(sb.Length - 2, 2); // Remove ,[
-			}
-			sb.Append("]]");
-			sb.Append("]]");
-		}
-
 		private void WriteConn(ConnectionStats cs)
 		{
 			sb.Append(cs.inUse);
@@ -672,17 +504,6 @@ namespace Aerospike.Client
 			sb.Append(cs.opened); // Cumulative. Not reset on each interval.
 			sb.Append(',');
 			sb.Append(cs.closed); // Cumulative. Not reset on each interval.
-		}
-
-		private void WriteConn(ConnectionMetricsSnapshot cs)
-		{
-			sb.Append(cs.InUse);
-			sb.Append(',');
-			sb.Append(cs.InPool);
-			sb.Append(',');
-			sb.Append(cs.Opened);
-			sb.Append(',');
-			sb.Append(cs.Closed);
 		}
 
 		private void WriteLine()
@@ -717,23 +538,6 @@ namespace Aerospike.Client
 
 				throw new AerospikeException(ioe);
 			}
-		}
-
-		private void GetCpuMemoryUsage(out double cpu, out long memory)
-		{
-			Process currentProcess = System.Diagnostics.Process.GetCurrentProcess();
-			memory = currentProcess.WorkingSet64 + currentProcess.VirtualMemorySize64 + currentProcess.PagedMemorySize64;
-
-			var currentTime = DateTime.UtcNow;
-			var currentCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
-
-			var cpuUsedMs = (currentCpuUsage - prevCpuUsage).TotalMilliseconds;
-			var totalMsPassed = (currentTime - prevTime).TotalMilliseconds;
-
-			cpu = cpuUsedMs / (Environment.ProcessorCount * totalMsPassed) * 100;
-
-			prevTime = currentTime;
-			prevCpuUsage = currentCpuUsage;
 		}
 
 		private static void ValidateSize(long reportSizeLimit)

@@ -76,20 +76,54 @@ namespace Aerospike.Client
 		/// <param name="name">name of variable to retrieve</param>
 		public static string Request(InfoPolicy policy, Node node, string name)
 		{
+			string result = Request(
+				policy,
+				node,
+				name,
+				out MetricsCallContext context,
+				out MetricsRpcAttempt attempt);
+			attempt?.TrySucceed(node);
+			context.MarkSuccessfulWork();
+			return result;
+		}
+
+		internal static string Request(
+			InfoPolicy policy,
+			Node node,
+			string name,
+			out MetricsCallContext context,
+			out MetricsRpcAttempt attempt)
+		{
 			int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;
-			Connection conn = node.GetConnection(timeout);
+			context =
+				node.cluster.CaptureApiMetricsContext();
+			attempt =
+				node.cluster.BeginCompatibilityAttempt(context);
+			Connection conn = null;
 
 			try
 			{
-				Info info = new(node, conn, name);
+				conn = node.GetConnection(timeout);
+				Info info = new(node, conn, name, attempt);
 				string result = info.ParseSingleResponse(name);
 				node.PutConnection(conn);
+				conn = null;
 				return result;
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
-				// Garbage may be in socket.  Do not put back into pool.
-				node.CloseConnectionOnError(conn);
+				if (conn != null)
+				{
+					// Garbage may be in socket.  Do not put back into pool.
+					node.CloseConnectionOnError(conn);
+				}
+				AerospikeException exception =
+					e as AerospikeException ?? new AerospikeException(e);
+				attempt?.TryFail(
+					node,
+					exception,
+					exception is AerospikeException.Timeout timeoutException &&
+						timeoutException.client);
 				throw;
 			}
 		}
@@ -381,6 +415,15 @@ namespace Aerospike.Client
 		/// <param name="conn">connection to server node</param>
 		/// <param name="command">command sent to server</param>
 		internal Info(Node node, Connection conn, string command)
+			: this(node, conn, command, (MetricsRpcAttempt)null)
+		{
+		}
+
+		internal Info(
+			Node node,
+			Connection conn,
+			string command,
+			MetricsRpcAttempt attempt)
 		{
 			buffer = ThreadLocalData.GetBuffer();
 
@@ -397,7 +440,7 @@ namespace Aerospike.Client
 			offset += ByteUtil.StringToUtf8(command, buffer, offset);
 			buffer[offset++] = (byte)'\n';
 
-			SendCommand(node, conn);
+			SendCommand(node, conn, attempt);
 		}
 
 		/// <summary>
@@ -570,8 +613,12 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="node"></param>
 		/// <param name="conn">socket connection to server node</param>
+		/// <param name="attempt">optional parent API metrics attempt</param>
 		/// <exception cref="AerospikeException">if socket send or receive fails</exception>
-		private void SendCommand(Node node, Connection conn)
+		private void SendCommand(
+			Node node,
+			Connection conn,
+			MetricsRpcAttempt attempt = null)
 		{
 			try
 			{
@@ -583,7 +630,11 @@ namespace Aerospike.Client
 
 				// Write.
 				conn.Write(buffer, offset);
-				if (node != null && node.AreMetricsEnabled())
+				if (attempt != null)
+				{
+					attempt.AddBytes(0, offset);
+				}
+				else if (node != null && node.AreMetricsEnabled())
 				{
 					node.AddBytesOut(null, offset);
 				}
@@ -597,7 +648,11 @@ namespace Aerospike.Client
 				ResizeBuffer(length);
 				conn.ReadFully(buffer, length);
 				bytesIn += length;
-				if (node != null && node.AreMetricsEnabled())
+				if (attempt != null)
+				{
+					attempt.AddBytes(bytesIn, 0);
+				}
+				else if (node != null && node.AreMetricsEnabled())
 				{
 					node.AddBytesIn(null, bytesIn);
 				}

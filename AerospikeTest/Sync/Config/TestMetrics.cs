@@ -52,7 +52,7 @@ namespace Aerospike.Test
 			TestMetricsRandom random = new(4, 5);
 			MetricsPolicy policy = CreateInternalPolicy();
 			policy.Sampler = new MetricsSampler { Range = 10, Threshold = 5 };
-			MetricsSession session = new(policy, clock, random);
+			MetricsStore session = new(policy, clock, random);
 
 			CommandMetricsHandle sampled = session.BeginCommand(
 				SuiteHelpers.ns,
@@ -66,7 +66,7 @@ namespace Aerospike.Test
 			Assert.IsTrue(sampled.Enabled);
 			Assert.IsFalse(rejected.Enabled);
 			Assert.AreEqual(2, random.CallCount);
-			Assert.AreEqual(1, clock.TimestampCallCount);
+			Assert.AreEqual(0, clock.TimestampCallCount);
 			Assert.AreEqual(1L, session.Read().CommandCount);
 			Assert.AreEqual(0, session.Read().Nodes.Count);
 		}
@@ -78,7 +78,7 @@ namespace Aerospike.Test
 			TestMetricsRandom random = new();
 			MetricsPolicy policy = CreateInternalPolicy();
 			policy.Sampler = new MetricsSampler { Range = 1, Threshold = 0 };
-			MetricsSession session = new(policy, clock, random);
+			MetricsStore session = new(policy, clock, random);
 
 			CommandMetricsHandle handle = session.BeginCommand(
 				SuiteHelpers.ns,
@@ -126,7 +126,7 @@ namespace Aerospike.Test
 			TestMetricsRandom random = new(0, 9);
 			MetricsPolicy policy = CreateInternalPolicy();
 			policy.Sampler = new MetricsSampler { Range = 10, Threshold = 5 };
-			MetricsSession session = new(policy, clock, random);
+			MetricsStore session = new(policy, clock, random);
 
 			Assert.IsTrue(session.CountCommand());
 			Assert.IsTrue(session.BeginSampledCommand(
@@ -137,7 +137,7 @@ namespace Aerospike.Test
 				Latency.LatencyType.BATCH).Enabled);
 
 			Assert.AreEqual(1, random.CallCount);
-			Assert.AreEqual(2, clock.TimestampCallCount);
+			Assert.AreEqual(0, clock.TimestampCallCount);
 			Assert.AreEqual(1L, session.Read().CommandCount);
 		}
 
@@ -149,7 +149,7 @@ namespace Aerospike.Test
 			MetricsPolicy policy = CreateInternalPolicy();
 			policy.LatencyUnit = MetricsLatencyUnit.Microseconds;
 			policy.LatencyColumns = 4;
-			MetricsSession session = new(policy, clock, new TestMetricsRandom(0));
+			MetricsStore session = new(policy, clock, new TestMetricsRandom(0));
 			CommandMetricsHandle handle = session.BeginCommand(
 				SuiteHelpers.ns,
 				Latency.LatencyType.READ,
@@ -197,7 +197,7 @@ namespace Aerospike.Test
 		{
 			Node node = client.Cluster.Nodes[0];
 			MetricsPolicy policy = CreateInternalPolicy();
-			MetricsSession session = new(
+			MetricsStore session = new(
 				policy,
 				new TestMetricsClock { ElapsedNanoseconds = 1_000_000 },
 				new TestMetricsRandom(0));
@@ -206,7 +206,7 @@ namespace Aerospike.Test
 				Latency.LatencyType.READ,
 				true);
 			handle.CompleteSuccess(node);
-			MetricsSessionView before = session.Read();
+			MetricsStoreSnapshot before = session.Read();
 
 			MetricsPolicy replacement = new(policy)
 			{
@@ -214,7 +214,7 @@ namespace Aerospike.Test
 				labels = new Dictionary<string, string> { ["region"] = "test" }
 			};
 			session.ApplyPolicy(replacement);
-			MetricsSessionView after = session.Read();
+			MetricsStoreSnapshot after = session.Read();
 
 			Assert.AreEqual(before.ConfigGeneration + 1, after.ConfigGeneration);
 			Assert.AreEqual(before.ShapeGeneration, after.ShapeGeneration);
@@ -256,7 +256,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void MetricsConnectionFailurePhasesAreRecordedOnce()
 		{
-			MetricsSession session = new(
+			MetricsStore session = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom());
@@ -268,17 +268,133 @@ namespace Aerospike.Test
 			handle.Fail(ConnectionFailurePhase.Auth);
 			handle.Fail(ConnectionFailurePhase.Tls);
 
-			MetricsSessionView view = session.Read();
+			MetricsStoreSnapshot view = session.Read();
 			Assert.AreEqual(1L, view.ConnectionOpenFailures);
 			Assert.AreEqual(1L, view.ConnectionAuthFailures);
 			Assert.AreEqual(0L, view.ConnectionTlsFailures);
 		}
 
 		[TestMethod]
+		public void MetricsConnectionOriginsUseValidationAndNodeScopes()
+		{
+			Node node = client.Cluster.Nodes[0];
+			TestMetricsClock clock = new();
+			MetricsStore store = new(
+				CreateInternalPolicy(),
+				clock,
+				new TestMetricsRandom());
+
+			ConnectionMetricsHandle validation =
+				new(store, store.StartConnection());
+			validation.Fail(ConnectionFailurePhase.Auth);
+
+			ConnectionMetricsHandle nodeFailure = new(
+				store,
+				store.RuntimeConfig,
+				store.StartConnection(),
+				ConnectionMetricsOrigin.NodePool,
+				node);
+			nodeFailure.Fail(ConnectionFailurePhase.Tls);
+
+			ConnectionMetricsHandle nodeSuccess = new(
+				store,
+				store.RuntimeConfig,
+				store.StartConnection(),
+				ConnectionMetricsOrigin.NodePool,
+				node);
+			nodeSuccess.Complete(node, null);
+
+			MetricsStoreSnapshot view = store.Read();
+			MetricsNodeView nodeView = view.Nodes[node.Name];
+			Assert.AreEqual(1L, view.ConnectionOpenFailures);
+			Assert.AreEqual(1L, view.ConnectionAuthFailures);
+			Assert.AreEqual(0L, view.ConnectionTlsFailures);
+			Assert.AreEqual(1L, nodeView.OpenFailures);
+			Assert.AreEqual(1L, nodeView.TlsHandshakeFailures);
+			Assert.AreEqual(0L, nodeView.AuthFailures);
+			Assert.AreEqual(1L, nodeView.ConnectionLatency.Sum());
+			Assert.IsFalse(nodeView.Namespaces.Values.Any(
+				ns => ns.Latency[Latency.LatencyType.CONN].Sum() != 0));
+		}
+
+		[TestMethod]
+		public void MetricsHeterogeneousBatchAttributesDistinctNamespaces()
+		{
+			Node node = client.Cluster.Nodes[0];
+			MetricsStore store = new(
+				CreateInternalPolicy(),
+				new TestMetricsClock(),
+				new TestMetricsRandom(0, 0));
+			string first = SuiteHelpers.ns;
+			string second = first + "-other";
+			IReadOnlyList<string> namespaces = [first, second, first];
+			BatchNode batch = new(
+				node,
+				[
+					new Key(first, SuiteHelpers.set, "metrics-batch-a"),
+					new Key(second, SuiteHelpers.set, "metrics-batch-b"),
+					new Key(first, SuiteHelpers.set, "metrics-batch-c")
+				]);
+			Assert.IsNull(batch.ns);
+			CollectionAssert.AreEquivalent(
+				new[] { first, second },
+				batch.MetricsNamespaces.ToArray());
+			CommandMetricsHandle success = store.BeginCommand(
+				null,
+				namespaces,
+				Latency.LatencyType.BATCH,
+				true);
+			MetricsRpcAttempt successfulAttempt = success.BeginAttempt();
+			successfulAttempt.AddBytes(12, 34);
+			successfulAttempt.RecordBatchRecordFailure(
+				node,
+				first,
+				ResultCode.PARAMETER_ERROR);
+			successfulAttempt.RecordBatchRecordFailure(
+				node,
+				second,
+				ResultCode.DEVICE_OVERLOAD);
+			Assert.IsTrue(successfulAttempt.TrySucceed(node));
+
+			CommandMetricsHandle failure = store.BeginCommand(
+				null,
+				namespaces,
+				Latency.LatencyType.BATCH,
+				true);
+			Assert.IsTrue(failure.BeginAttempt().TryFail(
+				node,
+				new AerospikeException(ResultCode.TIMEOUT),
+				true));
+
+			MetricsStoreSnapshot view = store.Read();
+			MetricsNodeView nodeView = view.Nodes[node.Name];
+			MetricsNamespaceView firstView = nodeView.Namespaces[first];
+			MetricsNamespaceView secondView = nodeView.Namespaces[second];
+			MetricsNamespaceView unattributed = nodeView.Namespaces[string.Empty];
+
+			Assert.AreEqual(1L, firstView.Errors);
+			Assert.AreEqual(1L, secondView.DeviceOverload);
+			Assert.AreEqual(1L, firstView.ClientTimeouts);
+			Assert.AreEqual(1L, secondView.ClientTimeouts);
+			Assert.AreEqual(1L, view.ClientTimeouts);
+			Assert.AreEqual(
+				1L,
+				firstView.Latency[Latency.LatencyType.BATCH].Sum());
+			Assert.AreEqual(
+				1L,
+				secondView.Latency[Latency.LatencyType.BATCH].Sum());
+			Assert.AreEqual(12L, unattributed.BytesIn);
+			Assert.AreEqual(34L, unattributed.BytesOut);
+			Assert.AreEqual(
+				0L,
+				unattributed.Latency[Latency.LatencyType.BATCH].Sum());
+		}
+
+		[TestMethod]
 		public void MetricsAsyncOpeningTimeoutAndReadyAreExclusive()
 		{
 			AsyncCluster cluster = GetAsyncCluster();
-			MetricsSession timeoutSession = new(
+			MetricsStore timeoutSession = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom());
@@ -289,12 +405,12 @@ namespace Aerospike.Test
 			Assert.IsFalse(timeoutFirst.CheckTimeout());
 			timeoutFirst.Ready();
 
-			MetricsSessionView timeoutView = timeoutSession.Read();
+			MetricsStoreSnapshot timeoutView = timeoutSession.Read();
 			Assert.AreEqual(1L, timeoutView.ConnectionOpenFailures);
 			Assert.AreEqual(0L, timeoutView.ConnectionsOpened);
 			Assert.AreEqual(0, timeoutFirst.WriteCount);
 
-			MetricsSession readySession = new(
+			MetricsStore readySession = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom());
@@ -304,7 +420,7 @@ namespace Aerospike.Test
 			readyFirst.Ready();
 			readyFirst.Ready();
 
-			MetricsSessionView readyView = readySession.Read();
+			MetricsStoreSnapshot readyView = readySession.Read();
 			Assert.AreEqual(0L, readyView.ConnectionOpenFailures);
 			Assert.AreEqual(1L, readyView.ConnectionsOpened);
 			Assert.AreEqual(1, readyFirst.WriteCount);
@@ -313,7 +429,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void MetricsRecoveryCountsAdmissionAndTerminalOnce()
 		{
-			MetricsSession session = new(
+			MetricsStore session = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom());
@@ -325,7 +441,7 @@ namespace Aerospike.Test
 			handle.Abort();
 			handle.Abort();
 
-			MetricsSessionView view = session.Read();
+			MetricsStoreSnapshot view = session.Read();
 			Assert.AreEqual(1L, view.RecoverEnqueued);
 			Assert.AreEqual(0L, view.RecoverCompleted);
 			Assert.AreEqual(1L, view.RecoverAborted);
@@ -352,33 +468,44 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void MetricsPointOwnershipTransfersExactlyOnce()
+		public void MetricsCallSamplingPropagatesWithoutChildDecision()
 		{
 			Node node = client.Cluster.Nodes[0];
-			MetricsSession session = new(
-				CreateInternalPolicy(),
+			TestMetricsRandom random = new(0, 9);
+			MetricsPolicy policy = CreateInternalPolicy();
+			policy.Sampler = new MetricsSampler { Range = 10, Threshold = 5 };
+			MetricsStore session = new(
+				policy,
 				new TestMetricsClock { ElapsedNanoseconds = 1_000_000 },
-				new TestMetricsRandom(0));
-			CommandMetricsHandle point = session.BeginApiCommand(
-				SuiteHelpers.ns,
-				Latency.LatencyType.READ);
-			ApiMetricsContext context =
-				new(client.Cluster, session, session.RuntimeConfig, point);
+				random);
+			Assert.IsTrue(session.BeginApiCall(
+				ApiMetricsOperation.Read,
+				ApiExecutionMode.Blocking,
+				out bool sampled));
+			MetricsCallContext context =
+				new(
+					client.Cluster,
+					session,
+					ApiMetricsOperation.Read,
+					ApiExecutionMode.Blocking,
+					sampled);
 
-			CommandMetricsHandle command = context.BeginCommand(
+			CommandMetricsHandle first = context.BeginCommand(
 				SuiteHelpers.ns,
 				Latency.LatencyType.READ,
 				true);
-			Assert.IsTrue(command.Enabled);
-			Assert.IsFalse(context.BeginCommand(
+			CommandMetricsHandle second = context.BeginCommand(
 				SuiteHelpers.ns,
 				Latency.LatencyType.READ,
-				true).Enabled);
+				true);
 
-			context.AbandonPointOwner();
-			command.CompleteSuccess(node);
+			Assert.IsTrue(first.Enabled);
+			Assert.IsTrue(second.Enabled);
+			Assert.AreEqual(1, random.CallCount);
+			first.BeginAttempt().TrySucceed(node);
+			second.BeginAttempt().TrySucceed(node);
 			Assert.AreEqual(
-				1L,
+				2L,
 				GetNamespace(session.Read(), node)
 					.Latency[Latency.LatencyType.READ].Sum());
 		}
@@ -386,7 +513,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void MetricsBatchPartialFailureRecordsOnFirstTransition()
 		{
-			MetricsSession session = new(
+			MetricsStore session = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom(0));
@@ -404,7 +531,7 @@ namespace Aerospike.Test
 		{
 			MetricsPolicy rejectedPolicy = CreateInternalPolicy();
 			rejectedPolicy.Sampler = new MetricsSampler { Range = 1, Threshold = 0 };
-			MetricsSession rejected = new(
+			MetricsStore rejected = new(
 				rejectedPolicy,
 				new TestMetricsClock(),
 				new TestMetricsRandom());
@@ -413,7 +540,7 @@ namespace Aerospike.Test
 			rejectedStatus.SetRowError();
 			Assert.AreEqual(0L, rejected.Read().BatchPartialFailures);
 
-			MetricsSession sampled = new(
+			MetricsStore sampled = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom(0));
@@ -427,7 +554,7 @@ namespace Aerospike.Test
 		public void MetricsCommandClassifiesTerminalFailures()
 		{
 			Node node = client.Cluster.Nodes[0];
-			MetricsSession session = new(
+			MetricsStore session = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom(0, 0, 0, 0, 0, 0));
@@ -439,7 +566,7 @@ namespace Aerospike.Test
 			CompleteFailure(session, node, new AerospikeException(ResultCode.DEVICE_OVERLOAD), false);
 			CompleteFailure(session, node, new AerospikeException(ResultCode.PARAMETER_ERROR), false);
 
-			MetricsSessionView view = session.Read();
+			MetricsStoreSnapshot view = session.Read();
 			MetricsNamespaceView ns = GetNamespace(view, node);
 			Assert.AreEqual(1L, view.ClientTimeouts);
 			Assert.AreEqual(1L, view.ServerTimeouts);
@@ -451,10 +578,414 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void MetricsApiSamplingHasOneDecisionAndNoChildReroll()
+		{
+			TestMetricsClock clock = new();
+			TestMetricsRandom random = new(4, 9);
+			MetricsPolicy policy = CreateInternalPolicy();
+			policy.Sampler = new MetricsSampler { Range = 10, Threshold = 5 };
+			MetricsStore store = new(policy, clock, random);
+
+			Assert.IsTrue(store.BeginApiCall(
+				ApiMetricsOperation.Batch,
+				ApiExecutionMode.Blocking,
+				out bool sampled));
+			MetricsCallContext call = new(
+				client.Cluster,
+				store,
+				ApiMetricsOperation.Batch,
+				ApiExecutionMode.Blocking,
+				sampled);
+
+			CommandMetricsHandle first = call.BeginCommand(
+				SuiteHelpers.ns,
+				Latency.LatencyType.BATCH,
+				false);
+			CommandMetricsHandle retry = first.ForkRpc();
+
+			Assert.IsTrue(first.Enabled);
+			Assert.IsTrue(retry.Enabled);
+			Assert.AreEqual(1, random.CallCount);
+		}
+
+		[TestMethod]
+		public void MetricsZeroFullDisabledAndUninstrumentedAvoidRandom()
+		{
+			foreach ((ulong threshold, bool expected) in new[]
+			{
+				(0UL, false),
+				(10UL, true)
+			})
+			{
+				TestMetricsRandom random = new(7);
+				MetricsPolicy policy = CreateInternalPolicy();
+				policy.Sampler = new MetricsSampler { Range = 10, Threshold = threshold };
+				MetricsStore store = new(policy, new TestMetricsClock(), random);
+
+				Assert.IsTrue(store.BeginApiCall(
+					ApiMetricsOperation.Read,
+					ApiExecutionMode.Blocking,
+					out bool sampled));
+				Assert.AreEqual(expected, sampled);
+				Assert.AreEqual(0, random.CallCount);
+				Assert.IsFalse(store.BeginApiCall(
+					ApiMetricsOperation.Uninstrumented,
+					ApiExecutionMode.Blocking,
+					out _));
+				Assert.AreEqual(0, random.CallCount);
+
+				if (!expected)
+				{
+					Assert.IsTrue(store.BeginApiCall(
+						ApiMetricsOperation.Query,
+						ApiExecutionMode.Blocking,
+						out bool querySampled));
+					MetricsCallContext query = new(
+						client.Cluster,
+						store,
+						ApiMetricsOperation.Query,
+						ApiExecutionMode.Blocking,
+						querySampled);
+					query.CompleteAbandoned();
+					Assert.AreEqual(0L, store.Read().QueryAbandoned);
+				}
+			}
+
+			TestMetricsRandom disabledRandom = new(0);
+			MetricsPolicy disabledPolicy = CreateInternalPolicy();
+			disabledPolicy.OperationalEnabled = false;
+			MetricsStore disabled = new(
+				disabledPolicy,
+				new TestMetricsClock(),
+				disabledRandom);
+			Assert.IsFalse(disabled.BeginApiCall(
+				ApiMetricsOperation.Query,
+				ApiExecutionMode.Blocking,
+				out bool disabledSampled));
+			Assert.IsFalse(disabledSampled);
+			Assert.AreEqual(0, disabledRandom.CallCount);
+		}
+
+		[TestMethod]
+		public void MetricsRpcAttemptsRecordEachFailureAndSuccessOnlyLatency()
+		{
+			Node node = client.Cluster.Nodes[0];
+			MetricsStore store = new(
+				CreateInternalPolicy(),
+				new TestMetricsClock { ElapsedNanoseconds = 1_000_000 },
+				new TestMetricsRandom(0));
+			Assert.IsTrue(store.BeginApiCall(
+				ApiMetricsOperation.Read,
+				ApiExecutionMode.Blocking,
+				out bool sampled));
+			MetricsCallContext call = new(
+				client.Cluster,
+				store,
+				ApiMetricsOperation.Read,
+				ApiExecutionMode.Blocking,
+				sampled);
+			CommandMetricsHandle command = call.BeginCommand(
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				false);
+
+			command.BeginAttempt().TryFail(
+				node,
+				new AerospikeException.Timeout(new Policy(), true),
+				true);
+			command.AddRetry();
+			command.BeginAttempt().TryFail(
+				node,
+				new AerospikeException(ResultCode.PARAMETER_ERROR),
+				false);
+			command.AddRetry();
+			command.BeginAttempt().TrySucceed(node);
+			call.CompleteSuccess();
+
+			MetricsStoreSnapshot view = store.Read();
+			MetricsNamespaceView ns = GetNamespace(view, node);
+			Assert.AreEqual(1L, ns.Timeouts);
+			Assert.AreEqual(1L, ns.ClientTimeouts);
+			Assert.AreEqual(0L, ns.ServerTimeouts);
+			Assert.AreEqual(1L, ns.Errors);
+			Assert.AreEqual(1L, ns.Latency[Latency.LatencyType.READ].Sum());
+			Assert.AreEqual(
+				1L,
+				view.CallLatency[Latency.LatencyType.READ].Sum());
+			Assert.AreEqual(1L, view.ClientTimeouts);
+			Assert.AreEqual(2L, view.CommandRetries);
+		}
+
+		[TestMethod]
+		public void MetricsRpcAttemptTerminalRaceCommitsOnce()
+		{
+			Node node = client.Cluster.Nodes[0];
+			MetricsStore store = new(
+				CreateInternalPolicy(),
+				new TestMetricsClock { ElapsedNanoseconds = 1_000_000 },
+				new TestMetricsRandom(0));
+			CommandMetricsHandle command = store.BeginCommand(
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				true);
+			MetricsRpcAttempt attempt = command.BeginAttempt();
+
+			Parallel.Invoke(
+				() => attempt.TryFail(
+					node,
+					new AerospikeException.Timeout(new Policy(), true),
+					true),
+				() => attempt.TrySucceed(node),
+				() => attempt.TryFail(
+					node,
+					new AerospikeException(ResultCode.PARAMETER_ERROR),
+					false));
+
+			MetricsStoreSnapshot view = store.Read();
+			MetricsNamespaceView ns = GetNamespace(view, node);
+			long terminals =
+				ns.Timeouts +
+				ns.Errors +
+				ns.Latency[Latency.LatencyType.READ].Sum();
+			Assert.AreEqual(1L, terminals);
+			Assert.IsTrue(view.ClientTimeouts == 0 || view.ClientTimeouts == 1);
+		}
+
+		[TestMethod]
+		public void MetricsBatchRecordFailureAfterAttemptTerminalIsIgnored()
+		{
+			Node node = client.Cluster.Nodes[0];
+			MetricsStore store = new(
+				CreateInternalPolicy(),
+				new TestMetricsClock { ElapsedNanoseconds = 1_000_000 },
+				new TestMetricsRandom(0));
+			CommandMetricsHandle command = store.BeginCommand(
+				SuiteHelpers.ns,
+				Latency.LatencyType.BATCH,
+				true);
+			MetricsRpcAttempt attempt = command.BeginAttempt();
+
+			Assert.IsTrue(attempt.TrySucceed(node));
+			attempt.RecordBatchRecordFailure(
+				node,
+				SuiteHelpers.ns,
+				ResultCode.KEY_BUSY);
+
+			MetricsNamespaceView ns = GetNamespace(store.Read(), node);
+			Assert.AreEqual(0L, ns.KeyBusy);
+			Assert.AreEqual(0L, ns.Errors);
+			Assert.AreEqual(
+				1L,
+				ns.Latency[Latency.LatencyType.BATCH].Sum());
+		}
+
+		[TestMethod]
+		public void MetricsBatchExpectedMissIsSuccessEquivalent()
+		{
+			Node node = client.Cluster.Nodes[0];
+			MetricsStore store = new(
+				CreateInternalPolicy(),
+				new TestMetricsClock { ElapsedNanoseconds = 1_000_000 },
+				new TestMetricsRandom(0));
+			CommandMetricsHandle command = store.BeginCommand(
+				SuiteHelpers.ns,
+				Latency.LatencyType.BATCH,
+				true);
+			MetricsRpcAttempt attempt = command.BeginAttempt();
+
+			attempt.RecordBatchRecordFailure(
+				node,
+				SuiteHelpers.ns,
+				ResultCode.KEY_NOT_FOUND_ERROR);
+			Assert.IsTrue(attempt.TrySucceed(node));
+
+			MetricsNamespaceView ns = GetNamespace(store.Read(), node);
+			Assert.AreEqual(0L, ns.Errors);
+			Assert.AreEqual(0L, ns.KeyBusy);
+			Assert.AreEqual(0L, ns.DeviceOverload);
+			Assert.AreEqual(
+				1L,
+				ns.Latency[Latency.LatencyType.BATCH].Sum());
+		}
+
+		[TestMethod]
+		public void MetricsStaleAttemptKeepsLifetimeFailureOnly()
+		{
+			Node node = client.Cluster.Nodes[0];
+			MetricsStore store = new(
+				CreateInternalPolicy(),
+				new TestMetricsClock(),
+				new TestMetricsRandom(0));
+			MetricsRpcAttempt attempt = store.BeginCommand(
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				true).BeginAttempt();
+
+			store.StartSession();
+			Assert.IsTrue(attempt.TryFail(
+				node,
+				new AerospikeException(ResultCode.PARAMETER_ERROR),
+				false));
+			Assert.IsFalse(attempt.TryFail(
+				node,
+				new AerospikeException(ResultCode.PARAMETER_ERROR),
+				false));
+
+			Assert.AreEqual(0, store.Read().Nodes.Count);
+			Assert.AreEqual(1L, store.GetCompatibilityError(node));
+		}
+
+		[TestMethod]
+		public void MetricsCountOnlySuppressesOperationalAttemptMetrics()
+		{
+			Node node = client.Cluster.Nodes[0];
+			MetricsStore store = new(
+				CreateInternalPolicy(),
+				new TestMetricsClock(),
+				new TestMetricsRandom(0));
+			Assert.IsTrue(store.BeginApiCall(
+				ApiMetricsOperation.CountOnly,
+				ApiExecutionMode.Blocking,
+				out bool sampled));
+			MetricsCallContext call = new(
+				client.Cluster,
+				store,
+				ApiMetricsOperation.CountOnly,
+				ApiExecutionMode.Blocking,
+				sampled);
+			CommandMetricsHandle command = call.BeginCommand(
+				SuiteHelpers.ns,
+				Latency.LatencyType.WRITE,
+				false);
+
+			command.BeginAttempt().TryFail(
+				node,
+				new AerospikeException(ResultCode.PARAMETER_ERROR),
+				false);
+			command.AddRetry();
+
+			MetricsStoreSnapshot view = store.Read();
+			Assert.AreEqual(1L, view.CommandCount);
+			Assert.AreEqual(1L, view.CommandRetries);
+			Assert.AreEqual(0, view.Nodes.Count);
+			Assert.AreEqual(1L, store.GetCompatibilityError(node));
+		}
+
+		[TestMethod]
+		public void MetricsBlockingSetupFailureDoesNotRecordSuccessLatency()
+		{
+			client.DisableMetrics();
+			client.EnableMetrics(new MetricsPolicy
+			{
+				Exporter = MetricsExporterMode.None,
+				OperationalEnabled = true,
+				Sampler = MetricsSampler.FromProbability(1)
+			});
+
+			try
+			{
+				AssertThrows<Exception>(() => client.Exists(null, null));
+
+				MetricsSnapshot failed = client.GetMetricsSnapshot();
+				Assert.AreEqual(1L, failed.Cluster.CommandCount);
+				Assert.AreEqual(0L, failed.Cluster.Latency.Read.Sum());
+
+				client.Exists(
+					null,
+					new Key(SuiteHelpers.ns, SuiteHelpers.set, "metrics-setup"));
+
+				MetricsSnapshot succeeded = client.GetMetricsSnapshot();
+				Assert.AreEqual(2L, succeeded.Cluster.CommandCount);
+				Assert.AreEqual(1L, succeeded.Cluster.Latency.Read.Sum());
+			}
+			finally
+			{
+				client.DisableMetrics();
+			}
+		}
+
+		[TestMethod]
+		public void MetricsCountOnlyRegisterFailureUsesCompatibilityAttempt()
+		{
+			client.DisableMetrics();
+			client.EnableMetrics(new MetricsPolicy
+			{
+				Exporter = MetricsExporterMode.None,
+				OperationalEnabled = true,
+				Sampler = MetricsSampler.FromProbability(1)
+			});
+			Node node = client.Cluster.Nodes[0];
+			long errors = node.GetErrorCount();
+
+			try
+			{
+				AssertThrows<AerospikeException>(() =>
+					client.RegisterUdfString(
+						null,
+						"this is not valid lua !!!",
+						"metrics-invalid.lua",
+						Language.LUA));
+
+				MetricsSnapshot snapshot = client.GetMetricsSnapshot();
+				Assert.AreEqual(1L, snapshot.Cluster.CommandCount);
+				Assert.AreEqual(0L, snapshot.Cluster.CommandRetries);
+				Assert.IsFalse(snapshot.Nodes.Any(
+					item => item.Namespaces.Count != 0));
+				Assert.AreEqual(errors + 1, node.GetErrorCount());
+			}
+			finally
+			{
+				client.DisableMetrics();
+			}
+		}
+
+		[TestMethod]
+		public void MetricsRecordSetOwnsNaturalFailureAndDisposalTerminal()
+		{
+			TestQueryExecutor natural = new();
+			using (RecordSet set = new(natural, 4, CancellationToken.None))
+			{
+				set.Put(RecordSet.END);
+				Assert.IsFalse(set.Next());
+			}
+			Assert.AreEqual(1, natural.SuccessCount);
+			Assert.AreEqual(0, natural.AbandonedCount);
+
+			TestQueryExecutor failed = new()
+			{
+				Failure = new AerospikeException(ResultCode.PARAMETER_ERROR)
+			};
+			using (RecordSet set = new(failed, 4, CancellationToken.None))
+			{
+				set.Put(RecordSet.END);
+				AssertThrows<AerospikeException>(() => set.Next());
+			}
+			Assert.AreEqual(1, failed.FailureCount);
+
+			TestQueryExecutor abandoned = new();
+			RecordSet abandonedSet = new(abandoned, 4, CancellationToken.None);
+			abandonedSet.Close();
+			abandonedSet.Dispose();
+			Assert.AreEqual(1, abandoned.AbandonedCount);
+			Assert.AreEqual(0, abandoned.SuccessCount);
+
+			TestQueryExecutor aggregate = new();
+			using (ResultSet set = new(
+				aggregate,
+				4,
+				CancellationToken.None))
+			{
+				set.Put(ResultSet.END);
+				Assert.IsFalse(set.Next());
+			}
+			Assert.AreEqual(1, aggregate.SuccessCount);
+		}
+
+		[TestMethod]
 		public void MetricsFrozenSessionRejectsTerminalWrites()
 		{
 			Node node = client.Cluster.Nodes[0];
-			MetricsSession session = new(
+			MetricsStore session = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom(0));
@@ -467,7 +998,7 @@ namespace Aerospike.Test
 			session.Freeze();
 			handle.CompleteSuccess(node);
 
-			MetricsSessionView view = session.Read();
+			MetricsStoreSnapshot view = session.Read();
 			Assert.IsFalse(view.Active);
 			Assert.AreEqual(1L, view.CommandCount);
 			Assert.AreEqual(0, view.Nodes.Count);
@@ -476,7 +1007,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void MetricsFreezePreservesAlreadyAdmittedWrite()
 		{
-			MetricsSession session = new(
+			MetricsStore session = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom());
@@ -506,7 +1037,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void MetricsPauseWaitsForAdmittedBegin()
 		{
-			MetricsSession session = new(
+			MetricsStore session = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom());
@@ -536,7 +1067,7 @@ namespace Aerospike.Test
 		{
 			Node node = client.Cluster.Nodes[0];
 			MetricsPolicy policy = CreateInternalPolicy();
-			MetricsSession session = new(
+			MetricsStore session = new(
 				policy,
 				new TestMetricsClock { ElapsedNanoseconds = 1_000_000 },
 				new TestMetricsRandom(0));
@@ -552,7 +1083,7 @@ namespace Aerospike.Test
 			});
 			handle.CompleteSuccess(node);
 
-			MetricsSessionView view = session.Read();
+			MetricsStoreSnapshot view = session.Read();
 			MetricsNamespaceView ns = GetNamespace(view, node);
 			Assert.AreEqual(1L, view.CommandCount);
 			Assert.AreEqual(7L, ns.BytesIn);
@@ -565,7 +1096,7 @@ namespace Aerospike.Test
 		{
 			Node node = client.Cluster.Nodes[0];
 			MetricsPolicy policy = CreateInternalPolicy();
-			MetricsSession session = new(
+			MetricsStore session = new(
 				policy,
 				new TestMetricsClock { ElapsedNanoseconds = 1_000_000 },
 				new TestMetricsRandom());
@@ -591,21 +1122,20 @@ namespace Aerospike.Test
 			success.Complete(node, SuiteHelpers.ns);
 			failure.Fail(ConnectionFailurePhase.Auth);
 
-			MetricsSessionView view = session.Read();
+			MetricsStoreSnapshot view = session.Read();
 			Assert.AreEqual(1L, view.ConnectionsOpened);
 			Assert.AreEqual(1L, view.ConnectionOpenFailures);
 			Assert.AreEqual(1L, view.ConnectionAuthFailures);
 			Assert.AreEqual(
 				1L,
-				GetNamespace(view, node)
-					.Latency[Latency.LatencyType.CONN].Sum());
+				view.Nodes[node.Name].ConnectionLatency.Sum());
 		}
 
 		[TestMethod]
 		public void MetricsInFlightRecoveryCompletesAfterOperationalDisable()
 		{
 			MetricsPolicy policy = CreateInternalPolicy();
-			MetricsSession session = new(
+			MetricsStore session = new(
 				policy,
 				new TestMetricsClock(),
 				new TestMetricsRandom());
@@ -619,7 +1149,7 @@ namespace Aerospike.Test
 			});
 			handle.Complete();
 
-			MetricsSessionView view = session.Read();
+			MetricsStoreSnapshot view = session.Read();
 			Assert.AreEqual(1L, view.RecoverEnqueued);
 			Assert.AreEqual(1L, view.RecoverCompleted);
 		}
@@ -628,7 +1158,7 @@ namespace Aerospike.Test
 		public void MetricsInFlightTendCompletesAfterOperationalDisable()
 		{
 			MetricsPolicy policy = CreateInternalPolicy();
-			MetricsSession session = new(
+			MetricsStore session = new(
 				policy,
 				new TestMetricsClock { ElapsedNanoseconds = 1_000_000 },
 				new TestMetricsRandom());
@@ -647,23 +1177,83 @@ namespace Aerospike.Test
 		public void MetricsRemovedNodeRetainsCollectedHistory()
 		{
 			Node node = client.Cluster.Nodes[0];
-			MetricsSession session = new(
+			MetricsStore session = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom());
 			session.AddConnectionOpened(node);
 			session.RemoveNode(node);
 
-			MetricsSessionView view = session.Read();
+			MetricsStoreSnapshot view = session.Read();
 			Assert.AreEqual(0, view.Nodes.Count);
 			Assert.AreEqual(1L, view.RemovedNodes.Opened);
+		}
+
+		[TestMethod]
+		public void MetricsNodeNameStatePreservesCumulativeRejoinAndLateWrites()
+		{
+			MetricsRuntimeConfig config = new(CreateInternalPolicy());
+			MetricsStore store = new(CreateInternalPolicy());
+			MetricsNodeNameState state = new();
+			MetricsNodeGeneration first =
+				new(store, "N1", config);
+			MetricsNodeGeneration second =
+				new(store, "N1", config);
+
+			state.Add(first);
+			state.Admit(first);
+			first.Collector.AddOpened();
+			state.Depart(first);
+
+			state.Add(second);
+			state.Admit(second);
+			second.Collector.AddOpened();
+			first.Collector.AddClosed();
+
+			MetricsNodeView active = state.Read("N1", config);
+			Assert.IsTrue(state.IsActive);
+			Assert.AreEqual(2L, active.Opened);
+			Assert.AreEqual(1L, active.Closed);
+
+			state.Depart(second);
+			Assert.IsFalse(state.IsActive);
+			MetricsNodeView departed = state.Read("N1", config);
+			Assert.AreEqual(2L, departed.Opened);
+			Assert.AreEqual(1L, departed.Closed);
+		}
+
+		[TestMethod]
+		public void MetricsDisposedGenerationHidesPublicCountsButRetainsHistory()
+		{
+			MetricsRuntimeConfig config = new(CreateInternalPolicy());
+			MetricsStore store = new(CreateInternalPolicy());
+			MetricsNodeGeneration generation =
+				new(store, "N1", config);
+
+			generation.AddError(SuiteHelpers.ns);
+			generation.AddTimeout(SuiteHelpers.ns);
+			generation.AddKeyBusy(SuiteHelpers.ns);
+			generation.Collector.AddOpened();
+
+			Assert.AreEqual(1L, generation.GetErrorCount());
+			Assert.AreEqual(1L, generation.GetTimeoutCount());
+			Assert.AreEqual(1L, generation.GetKeyBusyCount());
+
+			generation.InvalidatePublicReads();
+
+			Assert.AreEqual(0L, generation.GetErrorCount());
+			Assert.AreEqual(0L, generation.GetTimeoutCount());
+			Assert.AreEqual(0L, generation.GetKeyBusyCount());
+			Assert.AreEqual(
+				1L,
+				generation.Collector.Read("N1", config).Opened);
 		}
 
 		[TestMethod]
 		public void MetricsFirstNodeWriteCannotRaceDepartureOwnership()
 		{
 			Node node = client.Cluster.Nodes[0];
-			MetricsSession session = new(
+			MetricsStore session = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom());
@@ -703,7 +1293,7 @@ namespace Aerospike.Test
 		public void MetricsRecordNotFoundCommitsSuccessEquivalentData()
 		{
 			Node node = client.Cluster.Nodes[0];
-			MetricsSession session = new(
+			MetricsStore session = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom(0));
@@ -747,7 +1337,7 @@ namespace Aerospike.Test
 		public void MetricsReadViewsAreImmutableAndSessionIdentified()
 		{
 			Node node = client.Cluster.Nodes[0];
-			MetricsSession first = new(
+			MetricsStore first = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom(0));
@@ -756,7 +1346,7 @@ namespace Aerospike.Test
 				Latency.LatencyType.READ,
 				true);
 			handle.CompleteSuccess(node);
-			MetricsSessionView view = first.Read();
+			MetricsStoreSnapshot view = first.Read();
 			MetricsNamespaceView ns = GetNamespace(view, node);
 
 			AssertThrows<NotSupportedException>(() =>
@@ -764,7 +1354,7 @@ namespace Aerospike.Test
 			AssertThrows<NotSupportedException>(() =>
 				((IList<long>)ns.Latency[Latency.LatencyType.READ])[0] = 99);
 
-			MetricsSession second = new(
+			MetricsStore second = new(
 				CreateInternalPolicy(),
 				new TestMetricsClock(),
 				new TestMetricsRandom());
@@ -778,13 +1368,13 @@ namespace Aerospike.Test
 			TestMetricsClock clock = new();
 			MetricsPolicy policy = CreateInternalPolicy();
 			policy.OperationalEnabled = false;
-			MetricsSession session = new(policy, clock, new TestMetricsRandom());
+			MetricsStore session = new(policy, clock, new TestMetricsRandom());
 			ConnectionMetricsHandle handle =
 				new(session, session.StartConnection());
 
 			handle.Complete(node, null);
 
-			MetricsSessionView view = session.Read();
+			MetricsStoreSnapshot view = session.Read();
 			Assert.AreEqual(0, clock.TimestampCallCount);
 			Assert.AreEqual(1L, view.ConnectionsOpened);
 			Assert.AreEqual(1L, view.Nodes[node.Name].Opened);
@@ -797,18 +1387,17 @@ namespace Aerospike.Test
 			Node node = client.Cluster.Nodes[0];
 			MetricsPolicy policy = CreateInternalPolicy();
 			policy.OperationalEnabled = false;
-			MetricsSession session = new(
+			MetricsStore session = new(
 				policy,
 				new TestMetricsClock(),
 				new TestMetricsRandom());
 
 			session.AddConnectionOpened(node);
-			session.AddConnectionClosed(node, ConnectionCloseReason.Error);
+			session.AddConnectionClosed(node);
 
 			MetricsNodeView nodeView = session.Read().Nodes[node.Name];
 			Assert.AreEqual(1L, nodeView.Opened);
 			Assert.AreEqual(1L, nodeView.Closed);
-			Assert.AreEqual(0L, nodeView.ClosedError);
 		}
 
 		[TestMethod]
@@ -825,7 +1414,7 @@ namespace Aerospike.Test
 				client.Put(null, key, new Bin("m", 1));
 				client.Get(null, key);
 
-				MetricsSessionView view = client.Cluster.ReadMetrics();
+				MetricsStoreSnapshot view = client.Cluster.ReadMetrics();
 				Assert.AreEqual(0L, view.CommandCount);
 				Assert.AreEqual(2L, view.ApiBlocking);
 				Assert.AreEqual(legacyCommandCount, client.Cluster.GetCommandCount());
@@ -886,7 +1475,7 @@ namespace Aerospike.Test
 			{
 				client.Get(null, Array.Empty<Key>());
 
-				MetricsSessionView view = client.Cluster.ReadMetrics();
+				MetricsStoreSnapshot view = client.Cluster.ReadMetrics();
 				Assert.AreEqual(1L, view.CommandCount);
 				Assert.AreEqual(1L, view.ApiBlocking);
 				Assert.AreEqual(0, view.Nodes.Count);
@@ -903,7 +1492,7 @@ namespace Aerospike.Test
 			{
 				await asyncClient.Get(null, CancellationToken.None, Array.Empty<Key>());
 
-				MetricsSessionView view = asyncClient.Cluster.ReadMetrics();
+				MetricsStoreSnapshot view = asyncClient.Cluster.ReadMetrics();
 				Assert.AreEqual(1L, view.CommandCount);
 				Assert.AreEqual(1L, view.ApiDeferred);
 				Assert.AreEqual(0, view.Nodes.Count);
@@ -1215,6 +1804,213 @@ namespace Aerospike.Test
 			}
 		}
 
+		[TestMethod]
+		public void ClusterStatsRemainAlwaysOnAcrossMetricsLifecycle()
+		{
+			client.DisableMetrics();
+			Cluster cluster = client.Cluster;
+			Node node = cluster.Nodes[0];
+			long errors = node.GetErrorCount();
+			long timeouts = node.GetTimeoutCount();
+			long keyBusy = node.GetKeyBusyCount();
+
+			RecordCompatibilityFailure(
+				cluster,
+				node,
+				new AerospikeException(ResultCode.PARAMETER_ERROR),
+				false);
+
+			client.EnableMetrics(new MetricsPolicy
+			{
+				Exporter = MetricsExporterMode.None,
+				Sampler = MetricsSampler.FromProbability(0)
+			});
+			try
+			{
+				RecordCompatibilityFailure(
+					cluster,
+					node,
+					new AerospikeException(ResultCode.KEY_BUSY),
+					false);
+			}
+			finally
+			{
+				client.DisableMetrics();
+			}
+
+			RecordCompatibilityFailure(
+				cluster,
+				node,
+				new AerospikeException(ResultCode.TIMEOUT),
+				true);
+
+			NodeStats stats = client.GetClusterStats().nodes.Single(
+				stat => ReferenceEquals(stat.node, node));
+			Assert.AreEqual(errors + 2, stats.ErrorCount);
+			Assert.AreEqual(timeouts + 1, stats.TimeoutCount);
+			Assert.AreEqual(keyBusy + 1, stats.KeyBusyCount);
+		}
+
+		[TestMethod]
+		public void MetricsLifecycleRejectsStaleCompletionsAfterReenable()
+		{
+			client.DisableMetrics();
+			MetricsPolicy policy = new()
+			{
+				Exporter = MetricsExporterMode.None,
+				OperationalEnabled = true,
+				Sampler = MetricsSampler.FromProbability(1)
+			};
+			client.EnableMetrics(policy);
+			Cluster cluster = client.Cluster;
+			Node node = cluster.Nodes[0];
+			long errors = node.GetErrorCount();
+			ApiMetricsCall call = cluster.BeginPointApiMetrics(
+				ApiMetricsOperation.Read,
+				SuiteHelpers.ns,
+				ApiExecutionMode.Blocking);
+			MetricsCallContext context = cluster.CaptureApiMetricsContext();
+			MetricsRpcAttempt success = cluster.BeginMetricsCommand(
+				context,
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				true).BeginAttempt();
+			MetricsRpcAttempt failure = cluster.BeginMetricsCommand(
+				context,
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				false).BeginAttempt();
+			ConnectionMetricsHandle connection =
+				cluster.StartConnectionMetrics(node);
+
+			client.DisableMetrics();
+			client.EnableMetrics(policy);
+
+			success.AddBytes(41, 43);
+			Assert.IsTrue(success.TrySucceed(node));
+			Assert.IsTrue(failure.TryFail(
+				node,
+				new AerospikeException(ResultCode.PARAMETER_ERROR),
+				false));
+			connection.Complete(node, SuiteHelpers.ns);
+			call.Dispose();
+
+			MetricsSnapshot snapshot = client.GetMetricsSnapshot();
+			NodeMetricsSnapshot current = snapshot.Nodes.Single(
+				item => item.Name == node.Name);
+			Assert.AreEqual(0L, snapshot.Cluster.CommandCount);
+			Assert.AreEqual(0L, current.Connections.Opened);
+			Assert.IsFalse(current.Namespaces.Any(
+				item => item.Name == SuiteHelpers.ns));
+			Assert.AreEqual(0L, snapshot.Cluster.Latency.Read.Sum());
+			Assert.AreEqual(errors + 1, node.GetErrorCount());
+			client.DisableMetrics();
+		}
+
+		[TestMethod]
+		public void MetricsNodeLifecycleAggregatesRejoinAndLateGenerationWrites()
+		{
+			client.DisableMetrics();
+			MetricsPolicy policy = new()
+			{
+				Exporter = MetricsExporterMode.None,
+				OperationalEnabled = true,
+				Sampler = MetricsSampler.FromProbability(1)
+			};
+			client.EnableMetrics(policy);
+			Cluster cluster = client.Cluster;
+			MetricsStore store = cluster.MetricsStore;
+			Node template = cluster.Nodes[0];
+			Node first = CreateLifecycleNode(cluster, template, "metrics-rejoin");
+			Node second = null;
+
+			try
+			{
+				store.AdmitNode(first);
+				first.EnableMetrics(policy);
+				first.CompleteAdmissionMetrics();
+				first.GetMetrics().BytesInCounter.Increment("historical", 5);
+				first.AddError("counter-only");
+
+				CommandMetricsHandle command = store.BeginCommand(
+					"late",
+					Latency.LatencyType.READ,
+					true);
+				MetricsRpcAttempt late = command.BeginAttempt();
+				cluster.TransferNodeDeparture(first);
+				late.AddBytes(7, 0);
+				Assert.IsTrue(late.TrySucceed(first));
+
+				second = CreateLifecycleNode(
+					cluster,
+					template,
+					"metrics-rejoin");
+				store.AdmitNode(second);
+				second.EnableMetrics(policy);
+				second.CompleteAdmissionMetrics();
+				second.GetMetrics().BytesInCounter.Increment("current", 11);
+				second.AddError("counter-only");
+
+				MetricsNodeView active =
+					store.Read().Nodes["metrics-rejoin"];
+				Assert.AreEqual(
+					5L,
+					active.Namespaces["historical"].BytesIn);
+				Assert.AreEqual(7L, active.Namespaces["late"].BytesIn);
+				Assert.AreEqual(11L, active.Namespaces["current"].BytesIn);
+
+				MetricsNodeView compatibility =
+					store.ReadCompatibilityNode(second);
+				Assert.AreEqual(
+					2L,
+					compatibility.Namespaces["counter-only"].Errors);
+				Assert.IsTrue(compatibility.Namespaces.ContainsKey("late"));
+			}
+			finally
+			{
+				if (second != null && second.Active)
+				{
+					cluster.TransferNodeDeparture(second);
+				}
+				client.DisableMetrics();
+			}
+		}
+
+		private static Node CreateLifecycleNode(
+			Cluster cluster,
+			Node template,
+			string name)
+		{
+			NodeValidator validator = new()
+			{
+				name = name,
+				primaryHost = template.Host,
+				primaryAddress = template.NodeAddress,
+				serverVersion = template.serverVersion
+			};
+			return new Node(cluster, validator);
+		}
+
+		private static void RecordCompatibilityFailure(
+			Cluster cluster,
+			Node node,
+			AerospikeException exception,
+			bool clientTimeout)
+		{
+			using ApiMetricsCall call = cluster.BeginPointApiMetrics(
+				ApiMetricsOperation.Read,
+				SuiteHelpers.ns,
+				ApiExecutionMode.Blocking);
+			MetricsCallContext context = cluster.CaptureApiMetricsContext();
+			MetricsRpcAttempt attempt = cluster.BeginMetricsCommand(
+				context,
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				true).BeginAttempt();
+			Assert.IsNotNull(attempt);
+			Assert.IsTrue(attempt.TryFail(node, exception, clientTimeout));
+		}
+
 		private static void WaitForSnapshots(CapturingMetricsListener listener, int minCount)
 		{
 			for (int i = 0; i < 30; i++)
@@ -1248,13 +2044,13 @@ namespace Aerospike.Test
 			return (AsyncCluster)field.GetValue(SuiteHelpers.asyncClient);
 		}
 
-		private static MetricsNamespaceView GetNamespace(MetricsSessionView view, Node node)
+		private static MetricsNamespaceView GetNamespace(MetricsStoreSnapshot view, Node node)
 		{
 			return view.Nodes[node.Name].Namespaces[SuiteHelpers.ns];
 		}
 
 		private static void CompleteFailure(
-			MetricsSession session,
+			MetricsStore session,
 			Node node,
 			AerospikeException exception,
 			bool clientTimeout)
@@ -1267,7 +2063,7 @@ namespace Aerospike.Test
 		}
 
 		private static void AssertPointMetrics(
-			MetricsSessionView view,
+			MetricsStoreSnapshot view,
 			ApiExecutionMode expectedMode)
 		{
 			Assert.IsNotNull(view);
@@ -1390,7 +2186,7 @@ namespace Aerospike.Test
 
 			internal TestAsyncOpeningCommand(
 				AsyncCluster cluster,
-				MetricsSession session,
+				MetricsStore session,
 				AsyncNode node)
 				: base(
 					cluster,
@@ -1433,6 +2229,43 @@ namespace Aerospike.Test
 			protected internal override void OnSuccess() { }
 
 			protected internal override void OnFailure(AerospikeException ae) { }
+		}
+
+		private sealed class TestQueryExecutor : IQueryExecutor, IQueryMetrics
+		{
+			internal Exception Failure { get; init; }
+			internal int SuccessCount { get; private set; }
+			internal int FailureCount { get; private set; }
+			internal int AbandonedCount { get; private set; }
+
+			public bool StopThreads(Exception cause) => true;
+
+			public void CheckForException()
+			{
+				if (Failure != null)
+				{
+					throw Failure;
+				}
+			}
+
+			void IQueryMetrics.RecordQueued(int delta)
+			{
+			}
+
+			void IQueryMetrics.RecordAbandoned()
+			{
+				AbandonedCount++;
+			}
+
+			void IQueryMetrics.CompleteSuccess()
+			{
+				SuccessCount++;
+			}
+
+			void IQueryMetrics.CompleteFailure()
+			{
+				FailureCount++;
+			}
 		}
 
 		private sealed class TestMetricsClock : IMetricsClock

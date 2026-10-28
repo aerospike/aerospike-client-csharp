@@ -528,6 +528,11 @@ namespace Aerospike.Client
 		public int[] offsets;
 		public int offsetsSize;
 		private bool homogeneousNamespace = true;
+		private readonly HashSet<string> namespaces =
+			new(StringComparer.Ordinal);
+
+		internal IReadOnlyList<string> MetricsNamespaces =>
+			namespaces.OrderBy(value => value, StringComparer.Ordinal).ToArray();
 
 		public BatchNode(Node node, int capacity, int offset, string ns)
 		{
@@ -536,6 +541,7 @@ namespace Aerospike.Client
 			this.offsets = new int[capacity];
 			this.offsets[0] = offset;
 			this.offsetsSize = 1;
+			namespaces.Add(ns ?? string.Empty);
 		}
 
 		public BatchNode(Node node, Key[] keys)
@@ -580,6 +586,8 @@ namespace Aerospike.Client
 
 		private void UpdateNamespace(string candidate)
 		{
+			namespaces.Add(candidate ?? string.Empty);
+
 			if (homogeneousNamespace && !string.Equals(ns, candidate, StringComparison.Ordinal))
 			{
 				homogeneousNamespace = false;

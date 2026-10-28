@@ -539,27 +539,42 @@ namespace Aerospike.Client
 		{
 			WriteSize();
 			int timeout = (policy == null) ? 1000 : policy.timeout;
-			Connection conn = node.GetConnection(timeout);
+			MetricsCallContext context = cluster.CaptureApiMetricsContext();
+			MetricsRpcAttempt attempt =
+				cluster.BeginCompatibilityAttempt(context);
+			Connection conn = null;
 
 			try
 			{
+				conn = node.GetConnection(timeout);
 				conn.Write(dataBuffer, dataOffset);
 				conn.ReadFully(dataBuffer, HEADER_SIZE);
 				conn.UpdateLastUsed();
 				node.PutConnection(conn);
+				conn = null;
+
+				int result = dataBuffer[RESULT_CODE];
+
+				if (result != 0)
+				{
+					throw new AerospikeException(result);
+				}
+				attempt?.TrySucceed(node);
+				context.MarkSuccessfulWork();
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
-				// Garbage may be in socket.  Do not put back into pool.
-				node.CloseConnectionOnError(conn);
+				if (conn != null)
+				{
+					// Garbage may be in socket.  Do not put back into pool.
+					node.CloseConnectionOnError(conn);
+				}
+				attempt?.TryFail(
+					node,
+					e as AerospikeException ?? new AerospikeException(e),
+					e is AerospikeException.Timeout timeoutException &&
+						timeoutException.client);
 				throw;
-			}
-
-			int result = dataBuffer[RESULT_CODE];
-
-			if (result != 0)
-			{
-				throw new AerospikeException(result);
 			}
 		}
 
@@ -569,24 +584,41 @@ namespace Aerospike.Client
 			Node node = cluster.GetRandomNode();
 			int timeout = (policy == null) ? 1000 : policy.timeout;
 			int status = 0;
-			Connection conn = node.GetConnection(timeout);
+			MetricsCallContext context = cluster.CaptureApiMetricsContext();
+			MetricsRpcAttempt attempt =
+				cluster.BeginCompatibilityAttempt(context);
+			Connection conn = null;
 
 			try
 			{
+				conn = node.GetConnection(timeout);
 				conn.Write(dataBuffer, dataOffset);
 				status = ReadBlocks(conn);
 				node.PutConnection(conn);
+				conn = null;
+
+				if (status != QUERY_END && status > 0)
+				{
+					throw new AerospikeException(status, "Query failed.");
+				}
+				attempt?.TrySucceed(node);
+				context.MarkSuccessfulWork();
 			}
 			catch (Exception e)
 			{
-				// Garbage may be in socket.  Do not put back into pool.
-				node.CloseConnectionOnError(conn);
-				throw new AerospikeException(e);
-			}
-
-			if (status != QUERY_END && status > 0)
-			{
-				throw new AerospikeException(status, "Query failed.");
+				if (conn != null)
+				{
+					// Garbage may be in socket.  Do not put back into pool.
+					node.CloseConnectionOnError(conn);
+				}
+				AerospikeException exception =
+					e as AerospikeException ?? new AerospikeException(e);
+				attempt?.TryFail(
+					node,
+					exception,
+					exception is AerospikeException.Timeout timeoutException &&
+						timeoutException.client);
+				throw exception;
 			}
 		}
 

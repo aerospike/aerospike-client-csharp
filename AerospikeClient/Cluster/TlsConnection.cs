@@ -85,7 +85,10 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					cluster.RecordConnectionFailure(ConnectionFailurePhase.Tls, false);
+					cluster.RecordConnectionFailure(
+						node,
+						ConnectionFailurePhase.Tls,
+						false);
 				}
 				Close();
 

@@ -28,7 +28,7 @@ namespace Aerospike.Client
 		private readonly PartitionTracker tracker;
 		private readonly RecordSet recordSet;
 		private readonly QueryMetricsHandle queryMetrics;
-		private readonly ApiMetricsContext apiMetricsContext;
+		private readonly MetricsCallContext apiMetricsContext;
 		private volatile Exception exception;
 		private int maxConcurrentThreads;
 		private int completedCount;
@@ -58,6 +58,7 @@ namespace Aerospike.Client
 			this.tracker = tracker;
 			this.recordSet = new RecordSet(this, policy.recordQueueSize, cancel.Token);
 			this.apiMetricsContext = cluster.CaptureApiMetricsContext();
+			this.apiMetricsContext.TransferToIterator();
 			this.queryMetrics = cluster.BeginQueryMetrics(apiMetricsContext);
 			cluster.AddCommandCount();
 			cluster.AddMetricsCommandCount();
@@ -253,6 +254,10 @@ namespace Aerospike.Client
 				Running) == Running)
 			{
 				exception = cause;
+				if (cause is not AerospikeException.QueryTerminated)
+				{
+					apiMetricsContext.CompleteFailure();
+				}
 				Interlocked.Exchange(ref done, 1);
 
 				// Send stop signal to threads.
@@ -306,7 +311,17 @@ namespace Aerospike.Client
 
 		void IQueryMetrics.RecordAbandoned()
 		{
-			queryMetrics.AddAbandoned();
+			apiMetricsContext.CompleteAbandoned();
+		}
+
+		void IQueryMetrics.CompleteSuccess()
+		{
+			apiMetricsContext.CompleteSuccess();
+		}
+
+		void IQueryMetrics.CompleteFailure()
+		{
+			apiMetricsContext.CompleteFailure();
 		}
 
 		public RecordSet RecordSet

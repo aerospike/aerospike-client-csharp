@@ -242,7 +242,7 @@ namespace Aerospike.Client
 			{
 				openingMetrics.Cancel();
 			}
-			node.CloseConnection(conn, ConnectionCloseReason.Error);
+			node.CloseConnection(conn);
 			state = Command.STATE_COMPLETE;
 		}
 

@@ -29,7 +29,7 @@ namespace Aerospike.Client
 		protected internal readonly CancellationTokenSource cancel;
 		protected volatile Exception exception;
 		private readonly QueryMetricsHandle queryMetrics;
-		private readonly ApiMetricsContext apiMetricsContext;
+		private readonly MetricsCallContext apiMetricsContext;
 		private readonly int maxConcurrentNodes;
 		private int completedCount;
 		private int done;
@@ -44,6 +44,7 @@ namespace Aerospike.Client
 			this.threads = new QueryThread[nodes.Length];
 			this.cancel = new CancellationTokenSource();
 			this.apiMetricsContext = cluster.CaptureApiMetricsContext();
+			this.apiMetricsContext.TransferToIterator();
 			this.queryMetrics = cluster.BeginQueryMetrics(apiMetricsContext);
 
 			// Initialize maximum number of nodes to query in parallel.
@@ -110,6 +111,10 @@ namespace Aerospike.Client
 			if (Interlocked.Exchange(ref done, 1) == 0)
 			{
 				exception = cause;
+				if (cause is not AerospikeException.QueryTerminated)
+				{
+					apiMetricsContext.CompleteFailure();
+				}
 
 				foreach (QueryThread thread in threads)
 				{
@@ -146,7 +151,17 @@ namespace Aerospike.Client
 
 		void IQueryMetrics.RecordAbandoned()
 		{
-			queryMetrics.AddAbandoned();
+			apiMetricsContext.CompleteAbandoned();
+		}
+
+		void IQueryMetrics.CompleteSuccess()
+		{
+			apiMetricsContext.CompleteSuccess();
+		}
+
+		void IQueryMetrics.CompleteFailure()
+		{
+			apiMetricsContext.CompleteFailure();
 		}
 
 		private sealed class QueryThread

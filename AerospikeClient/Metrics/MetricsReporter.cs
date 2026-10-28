@@ -54,54 +54,15 @@ namespace Aerospike.Client
 	internal sealed class MetricsReporterConfig
 	{
 		internal readonly TimeSpan Interval;
-		internal readonly IReadOnlyList<IMetricsExporter> Targets;
-		internal readonly bool IncludeLegacyFile;
 
-		internal MetricsReporterConfig(
-			TimeSpan interval,
-			IEnumerable<IMetricsExporter> targets,
-			bool includeLegacyFile)
+		internal MetricsReporterConfig(TimeSpan interval)
 		{
 			Interval = interval;
-			Targets = Array.AsReadOnly(targets.ToArray());
-			IncludeLegacyFile = includeLegacyFile;
-		}
-	}
-
-	internal sealed class MetricsExporterFailureState
-	{
-		internal int ConsecutiveFailures;
-		internal int SuspendRemaining;
-	}
-
-	internal sealed class MetricsExporterFailureRegistry
-	{
-		private readonly Dictionary<IMetricsExporter, MetricsExporterFailureState> states =
-			new(ReferenceEqualityComparer.Instance);
-
-		internal MetricsExporterFailureState Get(IMetricsExporter exporter)
-		{
-			if (!states.TryGetValue(
-				exporter,
-				out MetricsExporterFailureState state))
-			{
-				state = new MetricsExporterFailureState();
-				states.Add(exporter, state);
-			}
-			return state;
-		}
-
-		internal void Clear()
-		{
-			states.Clear();
 		}
 	}
 
 	internal sealed class MetricsReporter
 	{
-		private const int FailureThreshold = 3;
-		private const int SuspendedCycles = 3;
-
 		[ThreadStatic]
 		private static MetricsReporter callbackReporter;
 
@@ -119,9 +80,8 @@ namespace Aerospike.Client
 
 		private readonly object sync = new();
 		private readonly ManualResetEventSlim idle = new(true);
-		private readonly Func<bool, MetricsSnapshot> snapshotBuilder;
-		private readonly Action<MetricsSnapshot> acknowledge;
-		private readonly MetricsExporterFailureRegistry failureRegistry;
+		private readonly Action exportCycle;
+		private readonly Func<MetricsSnapshot, bool> finalExport;
 		private readonly IMetricsReporterScheduler scheduler;
 		private readonly Thread thread;
 		private MetricsReporterConfig config;
@@ -131,28 +91,16 @@ namespace Aerospike.Client
 		private FinalRequest finalRequest;
 
 		internal bool InCallback => ReferenceEquals(callbackReporter, this);
-		internal bool IncludeLegacyFile
-		{
-			get
-			{
-				lock (sync)
-				{
-					return config.IncludeLegacyFile;
-				}
-			}
-		}
 
 		internal MetricsReporter(
 			MetricsReporterConfig config,
-			Func<bool, MetricsSnapshot> snapshotBuilder,
-			Action<MetricsSnapshot> acknowledge,
-			MetricsExporterFailureRegistry failureRegistry,
+			Action exportCycle,
+			Func<MetricsSnapshot, bool> finalExport,
 			IMetricsReporterScheduler scheduler = null)
 		{
 			this.config = config;
-			this.snapshotBuilder = snapshotBuilder;
-			this.acknowledge = acknowledge;
-			this.failureRegistry = failureRegistry;
+			this.exportCycle = exportCycle;
+			this.finalExport = finalExport;
 			this.scheduler =
 				scheduler ?? new MetricsReporterScheduler();
 			thread = new Thread(Run)
@@ -302,17 +250,12 @@ namespace Aerospike.Client
 				{
 					try
 					{
-						final.AllSucceeded = ExportCycle(
-							final.Snapshot,
-							current.Targets,
-							true);
-						if (final.AllSucceeded)
-						{
-							acknowledge(final.Snapshot);
-						}
+						callbackReporter = this;
+						final.AllSucceeded = finalExport(final.Snapshot);
 					}
 					finally
 					{
+						callbackReporter = null;
 						EndCallback();
 						final.Completed.Set();
 					}
@@ -323,17 +266,8 @@ namespace Aerospike.Client
 				{
 					try
 					{
-						MetricsSnapshot snapshot =
-							snapshotBuilder(current.IncludeLegacyFile);
-						bool allSucceeded = ExportCycle(
-							snapshot,
-							current.Targets,
-							false);
-
-						if (allSucceeded)
-						{
-							acknowledge(snapshot);
-						}
+						callbackReporter = this;
+						exportCycle();
 					}
 					catch (Exception e)
 					{
@@ -342,6 +276,7 @@ namespace Aerospike.Client
 					}
 					finally
 					{
+						callbackReporter = null;
 						EndCallback();
 
 						lock (sync)
@@ -358,59 +293,6 @@ namespace Aerospike.Client
 
 				scheduler.Wait(waitMilliseconds);
 			}
-		}
-
-		private bool ExportCycle(
-			MetricsSnapshot snapshot,
-			IReadOnlyList<IMetricsExporter> targets,
-			bool final)
-		{
-			bool allSucceeded = true;
-
-			foreach (IMetricsExporter exporter in targets)
-			{
-				MetricsExporterFailureState state = failureRegistry.Get(exporter);
-
-				if (!final && state.SuspendRemaining > 0)
-				{
-					state.SuspendRemaining--;
-					allSucceeded = false;
-					continue;
-				}
-
-				try
-				{
-					callbackReporter = this;
-					exporter.Export(snapshot);
-
-					if (!final)
-					{
-						state.ConsecutiveFailures = 0;
-						state.SuspendRemaining = 0;
-					}
-				}
-				catch (Exception e)
-				{
-					allSucceeded = false;
-					Log.Warn("Metrics exporter failed: " + Util.GetErrorMessage(e));
-
-					if (!final)
-					{
-						state.ConsecutiveFailures++;
-
-						if (state.ConsecutiveFailures >= FailureThreshold)
-						{
-							state.ConsecutiveFailures = 0;
-							state.SuspendRemaining = SuspendedCycles;
-						}
-					}
-				}
-				finally
-				{
-					callbackReporter = null;
-				}
-			}
-			return allSucceeded;
 		}
 
 		private void BeginCallback()

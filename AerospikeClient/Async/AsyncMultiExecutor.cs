@@ -19,7 +19,7 @@ namespace Aerospike.Client
 	public abstract class AsyncMultiExecutor
 	{
 		internal readonly AsyncCluster cluster;
-		private readonly ApiMetricsContext apiMetricsContext;
+		private readonly MetricsCallContext apiMetricsContext;
 		private AsyncMultiCommand[] commands;
 		private string ns;
 		private ulong clusterKey;
@@ -204,6 +204,16 @@ namespace Aerospike.Client
 				}
 				OnFailure(ae);
 			}
+		}
+
+		private protected void CompleteApiSuccess()
+		{
+			apiMetricsContext.CompleteSuccess();
+		}
+
+		private protected void CompleteApiFailure()
+		{
+			apiMetricsContext.CompleteFailure();
 		}
 
 		private void ExecuteCommand(AsyncMultiCommand command)

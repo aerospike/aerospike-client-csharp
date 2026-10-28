@@ -1418,6 +1418,7 @@ namespace Aerospike.Client
 		protected internal sealed override void ParseCommand()
 		{
 			ParseResult();
+			RecordBatchRecordFailure(node, key.ns, resultCode);
 			Finish();
 		}
 

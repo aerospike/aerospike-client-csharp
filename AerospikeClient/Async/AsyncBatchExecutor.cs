@@ -26,10 +26,8 @@ namespace Aerospike.Client
 			AsyncCluster cluster,
 			BatchRecordArrayListener listener,
 			BatchRecord[] records)
-			: base(cluster, true)
+			: this(cluster, listener, records, true)
 		{
-			this.listener = listener;
-			this.records = records;
 		}
 
 		internal AsyncBatchRecordArrayExecutor(
@@ -270,6 +268,8 @@ namespace Aerospike.Client
 		private int count;
 		private readonly bool hasResultCode;
 		private readonly CommandCountMetricsHandle commandMetrics;
+		private MetricsCallContext apiMetricsContext;
+		private readonly bool ownsApiCall;
 		private int error;
 		public AsyncCommand[] commands;
 		public AsyncCluster cluster;
@@ -286,6 +286,8 @@ namespace Aerospike.Client
 		{
 			this.hasResultCode = hasResultCode;
 			this.cluster = cluster;
+			apiMetricsContext = cluster.CaptureApiMetricsContext();
+			ownsApiCall = recordUserCall;
 			cluster.AddCommandCount();
 			if (recordUserCall)
 			{
@@ -301,8 +303,14 @@ namespace Aerospike.Client
 
 			foreach (AsyncCommand command in commands)
 			{
+				command.SetApiMetricsContext(apiMetricsContext);
 				command.Execute();
 			}
+		}
+
+		internal void SetApiMetricsContext(MetricsCallContext context)
+		{
+			apiMetricsContext = context;
 		}
 
 		public void Retry(AsyncMultiCommand[] commands)
@@ -357,10 +365,18 @@ namespace Aerospike.Client
 		{
 			if (exception == null)
 			{
+				if (ownsApiCall)
+				{
+					apiMetricsContext.CompleteSuccess();
+				}
 				OnSuccess();
 			}
 			else
 			{
+				if (ownsApiCall)
+				{
+					apiMetricsContext.CompleteFailure();
+				}
 				OnFailure(exception);
 			}
 		}

@@ -115,7 +115,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool NodesDepartedPossiblyTruncated { get; }
 
-		internal LegacyMetricsFileSnapshot LegacyFile { get; }
+		internal MetricsCompatibilitySnapshot Compatibility { get; }
 		internal MetricsDepartureToken DepartureToken { get; }
 
 		internal MetricsSnapshot(
@@ -136,7 +136,7 @@ namespace Aerospike.Client
 			IEnumerable<NodeMetricsSnapshot> nodes,
 			IEnumerable<NodeMetricsSnapshot> nodesDeparted,
 			bool nodesDepartedPossiblyTruncated,
-			LegacyMetricsFileSnapshot legacyFile = null,
+			MetricsCompatibilitySnapshot compatibility = null,
 			MetricsDepartureToken departureToken = null)
 		{
 			Timestamp = timestamp;
@@ -156,7 +156,7 @@ namespace Aerospike.Client
 			Nodes = SnapshotCollections.Copy(nodes);
 			NodesDeparted = SnapshotCollections.Copy(nodesDeparted);
 			NodesDepartedPossiblyTruncated = nodesDepartedPossiblyTruncated;
-			LegacyFile = legacyFile;
+			Compatibility = compatibility ?? MetricsCompatibilitySnapshot.Empty;
 			DepartureToken = departureToken;
 		}
 	}
@@ -192,12 +192,17 @@ namespace Aerospike.Client
 		public long ServerTimeouts { get; }
 		/// <summary>Cumulative sampled batch calls containing a failed record. Zero when operational metrics are disabled.</summary>
 		public long BatchPartialFailures { get; }
-		/// <summary>Cumulative connection open failures. Zero when operational metrics are disabled.</summary>
-		public long ConnectionOpenFailures { get; }
-		/// <summary>Cumulative TLS handshake failures while opening connections. Zero when operational metrics are disabled.</summary>
-		public long ConnectionTlsHandshakeFailures { get; }
-		/// <summary>Cumulative connection authentication failures. Zero when operational metrics are disabled.</summary>
-		public long ConnectionAuthFailures { get; }
+		/// <summary>
+		/// Non-null successful whole-call latency histograms. A sample covers one
+		/// public API call from entry through terminal success. Failed and abandoned
+		/// calls do not contribute latency.
+		/// </summary>
+		public ClusterLatencyMetricsSnapshot Latency { get; }
+		/// <summary>
+		/// Non-null failures that occurred while validating a seed or peer before
+		/// the connection was associated with an admitted node.
+		/// </summary>
+		public ValidationMetricsSnapshot Validation { get; }
 		/// <summary>Cumulative connections admitted to recovery. Zero when operational metrics are disabled.</summary>
 		public long RecoverEnqueued { get; }
 		/// <summary>Cumulative successfully recovered connections. Zero when operational metrics are disabled.</summary>
@@ -232,9 +237,8 @@ namespace Aerospike.Client
 			long clientTimeouts = 0,
 			long serverTimeouts = 0,
 			long batchPartialFailures = 0,
-			long connectionOpenFailures = 0,
-			long connectionTlsHandshakeFailures = 0,
-			long connectionAuthFailures = 0,
+			ClusterLatencyMetricsSnapshot latency = null,
+			ValidationMetricsSnapshot validation = null,
 			long recoverEnqueued = 0,
 			long recoverCompleted = 0,
 			long recoverAborted = 0,
@@ -258,9 +262,8 @@ namespace Aerospike.Client
 			ClientTimeouts = clientTimeouts;
 			ServerTimeouts = serverTimeouts;
 			BatchPartialFailures = batchPartialFailures;
-			ConnectionOpenFailures = connectionOpenFailures;
-			ConnectionTlsHandshakeFailures = connectionTlsHandshakeFailures;
-			ConnectionAuthFailures = connectionAuthFailures;
+			Latency = latency ?? ClusterLatencyMetricsSnapshot.Empty;
+			Validation = validation ?? ValidationMetricsSnapshot.Empty;
 			RecoverEnqueued = recoverEnqueued;
 			RecoverCompleted = recoverCompleted;
 			RecoverAborted = recoverAborted;
@@ -271,6 +274,33 @@ namespace Aerospike.Client
 			CpuPercent = cpuPercent;
 			MemoryBytes = memoryBytes;
 			TendDuration = SnapshotCollections.Copy(tendDuration);
+		}
+	}
+
+	/// <summary>
+	/// Immutable pre-admission connection validation failures.
+	/// Semantic cluster-name, version, and topology rejections are excluded and
+	/// are represented by <see cref="ClusterMetricsSnapshot.InvalidNodes"/>.
+	/// </summary>
+	public sealed class ValidationMetricsSnapshot
+	{
+		internal static readonly ValidationMetricsSnapshot Empty = new();
+
+		/// <summary>Cumulative transport-open failures before node admission.</summary>
+		public long OpenFailures { get; }
+		/// <summary>Cumulative TLS handshake failures before node admission.</summary>
+		public long TlsHandshakeFailures { get; }
+		/// <summary>Cumulative authentication failures before node admission.</summary>
+		public long AuthFailures { get; }
+
+		internal ValidationMetricsSnapshot(
+			long openFailures = 0,
+			long tlsHandshakeFailures = 0,
+			long authFailures = 0)
+		{
+			OpenFailures = openFailures;
+			TlsHandshakeFailures = tlsHandshakeFailures;
+			AuthFailures = authFailures;
 		}
 	}
 
@@ -291,14 +321,12 @@ namespace Aerospike.Client
 		public long Closed { get; }
 		/// <summary>Cumulative pool-exhausted rejections. Zero when operational metrics are disabled.</summary>
 		public long PoolExhausted { get; }
-		/// <summary>Cumulative error-related closes. Zero when operational metrics are disabled.</summary>
-		public long ClosedError { get; }
-		/// <summary>Cumulative idle-timeout closes. Zero when operational metrics are disabled.</summary>
-		public long ClosedIdle { get; }
-		/// <summary>Cumulative pool-shrink closes. Zero when operational metrics are disabled.</summary>
-		public long ClosedPoolShrink { get; }
-		/// <summary>Cumulative node-removal closes. Zero when operational metrics are disabled.</summary>
-		public long ClosedNodeRemoved { get; }
+		/// <summary>Cumulative transport-open failures for this node's connection pool.</summary>
+		public long OpenFailures { get; }
+		/// <summary>Cumulative TLS handshake failures for this node's connection pool.</summary>
+		public long TlsHandshakeFailures { get; }
+		/// <summary>Cumulative authentication failures for this node's connection pool.</summary>
+		public long AuthFailures { get; }
 
 		internal ConnectionMetricsSnapshot(
 			int inUse = 0,
@@ -306,20 +334,18 @@ namespace Aerospike.Client
 			long opened = 0,
 			long closed = 0,
 			long poolExhausted = 0,
-			long closedError = 0,
-			long closedIdle = 0,
-			long closedPoolShrink = 0,
-			long closedNodeRemoved = 0)
+			long openFailures = 0,
+			long tlsHandshakeFailures = 0,
+			long authFailures = 0)
 		{
 			InUse = inUse;
 			InPool = inPool;
 			Opened = opened;
 			Closed = closed;
 			PoolExhausted = poolExhausted;
-			ClosedError = closedError;
-			ClosedIdle = closedIdle;
-			ClosedPoolShrink = closedPoolShrink;
-			ClosedNodeRemoved = closedNodeRemoved;
+			OpenFailures = openFailures;
+			TlsHandshakeFailures = tlsHandshakeFailures;
+			AuthFailures = authFailures;
 		}
 	}
 
@@ -338,6 +364,8 @@ namespace Aerospike.Client
 		public int ErrorRate { get; }
 		/// <summary>Non-null sync-and-async aggregate connection metrics for this node.</summary>
 		public ConnectionMetricsSnapshot Connections { get; }
+		/// <summary>Non-null successful connection-open latency for this node.</summary>
+		public NodeLatencyMetricsSnapshot Latency { get; }
 		/// <summary>Non-null immutable namespace metrics ordered by namespace name. Empty when operational metrics are disabled.</summary>
 		public IReadOnlyList<NamespaceMetricsSnapshot> Namespaces { get; }
 
@@ -347,6 +375,7 @@ namespace Aerospike.Client
 			int port,
 			int errorRate,
 			ConnectionMetricsSnapshot connections,
+			NodeLatencyMetricsSnapshot latency,
 			IEnumerable<NamespaceMetricsSnapshot> namespaces)
 		{
 			Name = name ?? string.Empty;
@@ -354,6 +383,7 @@ namespace Aerospike.Client
 			Port = port;
 			ErrorRate = errorRate;
 			Connections = connections ?? ConnectionMetricsSnapshot.Empty;
+			Latency = latency ?? NodeLatencyMetricsSnapshot.Empty;
 			Namespaces = SnapshotCollections.Copy(namespaces);
 		}
 	}
@@ -365,10 +395,24 @@ namespace Aerospike.Client
 	{
 		/// <summary>Non-null namespace name. Empty means the command had no truthful namespace attribution.</summary>
 		public string Name { get; }
-		/// <summary>Cumulative sampled terminal errors not represented by a dedicated category.</summary>
+		/// <summary>
+		/// Cumulative sampled RPC-attempt and record-level errors not represented
+		/// by a dedicated category. A heterogeneous batch RPC failure is counted
+		/// once in every participating namespace.
+		/// </summary>
 		public long Errors { get; }
-		/// <summary>Cumulative sampled combined client and server timeout count.</summary>
-		public long Timeouts { get; }
+		/// <summary>
+		/// Cumulative sampled client-side timeouts, counted once per failed RPC
+		/// attempt in every participating namespace.
+		/// </summary>
+		public long ClientTimeouts { get; }
+		/// <summary>
+		/// Cumulative sampled server-side timeouts, counted once per failed RPC
+		/// attempt in every participating namespace.
+		/// </summary>
+		public long ServerTimeouts { get; }
+		/// <summary>Derived combined client and server timeout count.</summary>
+		public long Timeouts => ClientTimeouts + ServerTimeouts;
 		/// <summary>Cumulative sampled key-busy results.</summary>
 		public long KeyBusy { get; }
 		/// <summary>Cumulative sampled record-too-big results.</summary>
@@ -379,58 +423,108 @@ namespace Aerospike.Client
 		public long BytesIn { get; }
 		/// <summary>Cumulative bytes sent by successful sampled commands.</summary>
 		public long BytesOut { get; }
-		/// <summary>Non-null cumulative sampled latency histograms in the snapshot latency unit.</summary>
-		public LatencyMetricsSnapshot Latency { get; }
+		/// <summary>
+		/// Non-null successful RPC-attempt latency histograms. For a heterogeneous
+		/// batch RPC, one sample is intentionally attributed to every distinct
+		/// participating namespace, so namespace values are not globally additive.
+		/// </summary>
+		public NamespaceLatencyMetricsSnapshot Latency { get; }
 
 		internal NamespaceMetricsSnapshot(
 			string name,
 			long errors,
-			long timeouts,
+			long clientTimeouts,
+			long serverTimeouts,
 			long keyBusy,
 			long recordTooBig,
 			long deviceOverload,
 			long bytesIn,
 			long bytesOut,
-			LatencyMetricsSnapshot latency)
+			NamespaceLatencyMetricsSnapshot latency)
 		{
 			Name = name ?? string.Empty;
 			Errors = errors;
-			Timeouts = timeouts;
+			ClientTimeouts = clientTimeouts;
+			ServerTimeouts = serverTimeouts;
 			KeyBusy = keyBusy;
 			RecordTooBig = recordTooBig;
 			DeviceOverload = deviceOverload;
 			BytesIn = bytesIn;
 			BytesOut = bytesOut;
-			Latency = latency ?? LatencyMetricsSnapshot.Empty;
+			Latency = latency ?? NamespaceLatencyMetricsSnapshot.Empty;
 		}
 	}
 
 	/// <summary>
-	/// Immutable latency histogram buckets for the shared latency classes.
+	/// Immutable successful whole-call latency histogram buckets.
 	/// </summary>
-	public sealed class LatencyMetricsSnapshot
+	public sealed class ClusterLatencyMetricsSnapshot
 	{
-		internal static readonly LatencyMetricsSnapshot Empty = new();
+		internal static readonly ClusterLatencyMetricsSnapshot Empty = new();
 
-		/// <summary>Non-null cumulative connection-latency buckets. Empty when operational metrics are disabled.</summary>
-		public IReadOnlyList<long> Connection { get; }
-		/// <summary>Non-null cumulative read-latency buckets. Empty when operational metrics are disabled.</summary>
+		/// <summary>Non-null cumulative read-call latency buckets.</summary>
 		public IReadOnlyList<long> Read { get; }
-		/// <summary>Non-null cumulative write-latency buckets. Empty when operational metrics are disabled.</summary>
+		/// <summary>Non-null cumulative write-call latency buckets.</summary>
 		public IReadOnlyList<long> Write { get; }
-		/// <summary>Non-null cumulative batch-latency buckets. Empty when operational metrics are disabled.</summary>
+		/// <summary>Non-null cumulative batch-call latency buckets.</summary>
 		public IReadOnlyList<long> Batch { get; }
-		/// <summary>Non-null cumulative query-latency buckets. Empty when operational metrics are disabled.</summary>
+		/// <summary>Non-null cumulative query-call latency buckets.</summary>
 		public IReadOnlyList<long> Query { get; }
 
-		internal LatencyMetricsSnapshot(
-			IEnumerable<long> connection = null,
+		internal ClusterLatencyMetricsSnapshot(
 			IEnumerable<long> read = null,
 			IEnumerable<long> write = null,
 			IEnumerable<long> batch = null,
 			IEnumerable<long> query = null)
 		{
+			Read = SnapshotCollections.Copy(read);
+			Write = SnapshotCollections.Copy(write);
+			Batch = SnapshotCollections.Copy(batch);
+			Query = SnapshotCollections.Copy(query);
+		}
+	}
+
+	/// <summary>
+	/// Immutable successful connection-open latency histogram buckets for one node.
+	/// </summary>
+	public sealed class NodeLatencyMetricsSnapshot
+	{
+		internal static readonly NodeLatencyMetricsSnapshot Empty = new();
+
+		/// <summary>Non-null cumulative successful connection-open latency buckets.</summary>
+		public IReadOnlyList<long> Connection { get; }
+
+		internal NodeLatencyMetricsSnapshot(IEnumerable<long> connection = null)
+		{
 			Connection = SnapshotCollections.Copy(connection);
+		}
+	}
+
+	/// <summary>
+	/// Immutable successful RPC-attempt latency histogram buckets for one namespace.
+	/// </summary>
+	public sealed class NamespaceLatencyMetricsSnapshot
+	{
+		internal static readonly NamespaceLatencyMetricsSnapshot Empty = new();
+
+		/// <summary>Non-null cumulative read RPC latency buckets.</summary>
+		public IReadOnlyList<long> Read { get; }
+		/// <summary>Non-null cumulative write RPC latency buckets.</summary>
+		public IReadOnlyList<long> Write { get; }
+		/// <summary>
+		/// Non-null cumulative batch RPC latency buckets. A heterogeneous RPC adds
+		/// one sample to every participating namespace.
+		/// </summary>
+		public IReadOnlyList<long> Batch { get; }
+		/// <summary>Non-null cumulative query RPC latency buckets.</summary>
+		public IReadOnlyList<long> Query { get; }
+
+		internal NamespaceLatencyMetricsSnapshot(
+			IEnumerable<long> read = null,
+			IEnumerable<long> write = null,
+			IEnumerable<long> batch = null,
+			IEnumerable<long> query = null)
+		{
 			Read = SnapshotCollections.Copy(read);
 			Write = SnapshotCollections.Copy(write);
 			Batch = SnapshotCollections.Copy(batch);
@@ -482,8 +576,31 @@ namespace Aerospike.Client
 		}
 	}
 
-	internal sealed class LegacyMetricsFileSnapshot
+	/// <summary>
+	/// Immutable compatibility data captured atomically with the public snapshot.
+	/// These fields are intentionally internal because they only support the
+	/// established header(2) file contract.
+	/// </summary>
+	internal sealed class MetricsCompatibilitySnapshot
 	{
+		internal static readonly MetricsCompatibilitySnapshot Empty = new(
+			string.Empty,
+			string.Empty,
+			string.Empty,
+			new ReadOnlyDictionary<string, string>(
+				new Dictionary<string, string>()),
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			Array.Empty<MetricsNodeCompatibilitySnapshot>(),
+			Array.Empty<MetricsNodeCompatibilitySnapshot>());
+
 		internal readonly string ClusterName;
 		internal readonly string ClientVersion;
 		internal readonly string AppId;
@@ -497,10 +614,10 @@ namespace Aerospike.Client
 		internal readonly long DelayQueueTimeoutCount;
 		internal readonly int AsyncThreadsInUse;
 		internal readonly int AsyncCompletionPortsInUse;
-		internal readonly IReadOnlyList<LegacyMetricsFileNodeSnapshot> Nodes;
-		internal readonly IReadOnlyList<LegacyMetricsFileNodeSnapshot> NodesDeparted;
+		internal readonly IReadOnlyList<MetricsNodeCompatibilitySnapshot> Nodes;
+		internal readonly IReadOnlyList<MetricsNodeCompatibilitySnapshot> NodesDeparted;
 
-		internal LegacyMetricsFileSnapshot(
+		internal MetricsCompatibilitySnapshot(
 			string clusterName,
 			string clientVersion,
 			string appId,
@@ -514,8 +631,8 @@ namespace Aerospike.Client
 			long delayQueueTimeoutCount,
 			int asyncThreadsInUse,
 			int asyncCompletionPortsInUse,
-			IEnumerable<LegacyMetricsFileNodeSnapshot> nodes,
-			IEnumerable<LegacyMetricsFileNodeSnapshot> nodesDeparted)
+			IEnumerable<MetricsNodeCompatibilitySnapshot> nodes,
+			IEnumerable<MetricsNodeCompatibilitySnapshot> nodesDeparted)
 		{
 			ClusterName = clusterName ?? string.Empty;
 			ClientVersion = clientVersion ?? string.Empty;
@@ -535,25 +652,25 @@ namespace Aerospike.Client
 		}
 	}
 
-	internal sealed class LegacyMetricsFileNodeSnapshot
+	internal sealed class MetricsNodeCompatibilitySnapshot
 	{
 		internal readonly string Name;
 		internal readonly string Address;
 		internal readonly int Port;
 		internal readonly ConnectionStats SyncConnections;
 		internal readonly ConnectionStats AsyncConnections;
-		internal readonly IReadOnlyList<LegacyMetricsFileNamespaceSnapshot> Namespaces;
+		internal readonly IReadOnlyList<MetricsNamespaceCompatibilitySnapshot> Namespaces;
 		internal readonly MetricsLatencyUnit LatencyUnit;
 		internal readonly int LatencyColumns;
 		internal readonly int LatencyShift;
 
-		internal LegacyMetricsFileNodeSnapshot(
+		internal MetricsNodeCompatibilitySnapshot(
 			string name,
 			string address,
 			int port,
 			ConnectionStats syncConnections,
 			ConnectionStats asyncConnections,
-			IEnumerable<LegacyMetricsFileNamespaceSnapshot> namespaces,
+			IEnumerable<MetricsNamespaceCompatibilitySnapshot> namespaces,
 			MetricsLatencyUnit latencyUnit,
 			int latencyColumns,
 			int latencyShift)
@@ -570,7 +687,7 @@ namespace Aerospike.Client
 		}
 	}
 
-	internal sealed class LegacyMetricsFileNamespaceSnapshot
+	internal sealed class MetricsNamespaceCompatibilitySnapshot
 	{
 		internal readonly string Name;
 		internal readonly long Errors;
@@ -580,7 +697,7 @@ namespace Aerospike.Client
 		internal readonly long BytesOut;
 		internal readonly IReadOnlyList<IReadOnlyList<long>> Latency;
 
-		internal LegacyMetricsFileNamespaceSnapshot(
+		internal MetricsNamespaceCompatibilitySnapshot(
 			string name,
 			long errors,
 			long timeouts,

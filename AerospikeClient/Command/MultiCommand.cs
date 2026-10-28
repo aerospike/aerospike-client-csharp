@@ -152,10 +152,6 @@ namespace Aerospike.Client
 					// Read remaining message bytes in group.
 					conn.ReadFully(buf, size, Command.STATE_READ_DETAIL);
 					bytesIn += size;
-					if (node.AreMetricsEnabled())
-					{
-						node.AddBytesIn(ns, bytesIn);
-					}
 					AddCommandMetricsBytes(node, size + 8L, 0);
 					conn.UpdateLastUsed();
 				}
