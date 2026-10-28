@@ -30,7 +30,7 @@ namespace Aerospike.Client
 			Key key,
 			OperateArgs args,
 			Txn txn
-		) : base(cluster, args.writePolicy, key)
+		) : base(cluster, args.writePolicy, key, false)
 		{
 			this.listener = listener;
 			this.args = args;

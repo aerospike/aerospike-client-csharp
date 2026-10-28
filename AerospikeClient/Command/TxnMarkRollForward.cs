@@ -20,7 +20,7 @@ namespace Aerospike.Client
 	public sealed class TxnMarkRollForward : SyncWriteCommand
 	{
 		public TxnMarkRollForward(Cluster cluster, Txn txn, WritePolicy writePolicy, Key key)
-			: base(cluster, writePolicy, key)
+			: base(cluster, writePolicy, key, false)
 		{
 		}
 

@@ -19,6 +19,7 @@ namespace Aerospike.Client
 	public abstract class AsyncMultiExecutor
 	{
 		internal readonly AsyncCluster cluster;
+		private readonly MetricsCallContext apiMetricsContext;
 		private AsyncMultiCommand[] commands;
 		private string ns;
 		private ulong clusterKey;
@@ -29,21 +30,30 @@ namespace Aerospike.Client
 		public AsyncMultiExecutor(AsyncCluster cluster)
 		{
 			this.cluster = cluster;
+			apiMetricsContext = cluster.CaptureApiMetricsContext();
 		}
 
 		public void Execute(AsyncMultiCommand[] commands, int maxConcurrent)
 		{
+			foreach (AsyncMultiCommand command in commands)
+			{
+				command.SetApiMetricsContext(apiMetricsContext);
+			}
 			this.commands = commands;
 			this.maxConcurrent = (maxConcurrent == 0 || maxConcurrent >= commands.Length) ? commands.Length : maxConcurrent;
 
 			for (int i = 0; i < this.maxConcurrent; i++)
 			{
-				commands[i].Execute();
+				ExecuteCommand(commands[i]);
 			}
 		}
 
 		public void ExecuteValidate(AsyncMultiCommand[] commands, int maxConcurrent, string ns)
 		{
+			foreach (AsyncMultiCommand command in commands)
+			{
+				command.SetApiMetricsContext(apiMetricsContext);
+			}
 			this.commands = commands;
 			this.maxConcurrent = (maxConcurrent == 0 || maxConcurrent >= commands.Length) ? commands.Length : maxConcurrent;
 			this.ns = ns;
@@ -72,7 +82,7 @@ namespace Aerospike.Client
 			public void OnSuccess(ulong key)
 			{
 				parent.clusterKey = key;
-				commands[0].Execute();
+				parent.ExecuteCommand(commands[0]);
 
 				for (int i = 1; i < max; i++)
 				{
@@ -105,7 +115,7 @@ namespace Aerospike.Client
 
 			public void OnSuccess()
 			{
-				command.Execute();
+				parent.ExecuteCommand(command);
 			}
 
 			public void OnFailure(AerospikeException ae)
@@ -160,7 +170,7 @@ namespace Aerospike.Client
 					// Start new command.
 					if (clusterKey == 0)
 					{
-						commands[nextThread].Execute();
+						ExecuteCommand(commands[nextThread]);
 					}
 					else
 					{
@@ -194,6 +204,21 @@ namespace Aerospike.Client
 				}
 				OnFailure(ae);
 			}
+		}
+
+		private protected void CompleteApiSuccess()
+		{
+			apiMetricsContext.CompleteSuccess();
+		}
+
+		private protected void CompleteApiFailure()
+		{
+			apiMetricsContext.CompleteFailure();
+		}
+
+		private void ExecuteCommand(AsyncMultiCommand command)
+		{
+			command.Execute();
 		}
 
 		internal void Reset()

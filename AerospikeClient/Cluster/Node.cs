@@ -56,7 +56,15 @@ namespace Aerospike.Client
 		private byte[] sessionToken;
 		private DateTime? sessionExpiration;
 		internal volatile Dictionary<string, int> racks;
-		private volatile NodeMetrics metrics;
+		private volatile NodeMetricsSlot metricsSlot;
+		private MetricsNodeDeparture metricsDeparture;
+		private int metricsDepartureTransferred;
+		private ConnectionMetricsHandle admissionMetrics;
+		private readonly object admissionMetricsLock = new();
+		private List<(ConnectionMetricsHandle Handle, string Namespace)>
+			pendingConnectionMetrics;
+		private int admissionState;
+		private int wasAdmitted;
 		protected bool metricsEnabled;
 		private readonly Pool<Connection>[] connectionPools;
 		protected uint connectionIter;
@@ -64,9 +72,7 @@ namespace Aerospike.Client
 		protected internal int connsClosed;
 		private volatile int errorRateCount;
 		private volatile int nodeMaxErrorRate;
-		private Counter errorCounter;
-		private Counter timeoutCounter;
-		private Counter keyBusyCounter;
+		private readonly MetricsNodeGeneration metricsGeneration;
 		protected internal int peersGeneration = -1;
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
@@ -96,20 +102,13 @@ namespace Aerospike.Client
 			this.sessionToken = nv.sessionToken;
 			this.sessionExpiration = nv.sessionExpiration;
 			this.features = nv.features;
+			this.admissionMetrics = nv.connectionMetrics;
 			this.rebalanceChanged = cluster.rackAware;
 			this.racks = cluster.rackAware ? new Dictionary<string, int>() : null;
-			this.errorCounter = new Counter();
 			this.errorRateCount = 0;
 			this.nodeMaxErrorRate = cluster.maxErrorRate;
-			this.timeoutCounter = new Counter();
-			this.keyBusyCounter = new Counter();
 			this.serverVersion = nv.serverVersion;
-
-			this.metricsEnabled = cluster.MetricsEnabled;
-			if (cluster.MetricsEnabled)
-			{
-				this.metrics = new NodeMetrics(cluster.MetricsPolicy);
-			}
+			this.metricsGeneration = cluster.RegisterMetricsNode(this);
 
 			connectionPools = new Pool<Connection>[cluster.connPoolsPerNode];
 			int min = cluster.minConnsPerNode / cluster.connPoolsPerNode;
@@ -159,35 +158,69 @@ namespace Aerospike.Client
 			{
 				if (tendConnection.IsClosed())
 				{
-					tendConnection = CreateConnection(cluster.connectionTimeout, null);
+					ConnectionMetricsHandle connectionMetrics =
+						cluster.StartConnectionMetrics(this);
+					bool authenticating = false;
 
-					if (cluster.authEnabled)
+					try
 					{
-						if (ShouldLogin())
-						{
-							Login();
-						}
-						else
-						{
-							byte[] token = sessionToken;
+						tendConnection = CreateConnection(
+							cluster.connectionTimeout,
+							null,
+							connectionMetrics);
 
-							if (token != null)
+						if (cluster.authEnabled)
+						{
+							authenticating = true;
+
+							if (ShouldLogin())
 							{
-								if (!AdminCommand.Authenticate(cluster, tendConnection, token))
+								Login();
+							}
+							else
+							{
+								byte[] token = sessionToken;
+
+								if (token != null)
 								{
-									// Authentication failed. Session token probably expired.
-									// Login again to get new session token.
-									Login();
+									if (!AdminCommand.Authenticate(cluster, tendConnection, token))
+									{
+										// Authentication failed. Session token probably expired.
+										// Login again to get new session token.
+										connectionMetrics.FailPhase(
+											ConnectionFailurePhase.Auth);
+										Login();
+									}
 								}
 							}
+							authenticating = false;
 						}
+						CompleteConnectionMetrics(connectionMetrics, null);
+					}
+					catch
+					{
+						connectionMetrics.Fail(authenticating
+							? ConnectionFailurePhase.Auth
+							: ConnectionFailurePhase.Open);
+						throw;
 					}
 				}
 				else
 				{
 					if (cluster.authEnabled && ShouldLogin())
 					{
-						Login();
+						try
+						{
+							Login();
+						}
+						catch
+						{
+							cluster.RecordConnectionFailure(
+								this,
+								ConnectionFailurePhase.Auth,
+								false);
+							throw;
+						}
 					}
 				}
 
@@ -322,7 +355,18 @@ namespace Aerospike.Client
 				// Login when user authentication is enabled.
 				if (cluster.authEnabled)
 				{
-					Login();
+					try
+					{
+						Login();
+					}
+					catch
+					{
+						cluster.RecordConnectionFailure(
+							this,
+							ConnectionFailurePhase.Auth,
+							false);
+						throw;
+					}
 				}
 
 				// Balance connections.
@@ -599,6 +643,7 @@ namespace Aerospike.Client
 			{
 				IncrErrorRate();
 				Interlocked.Increment(ref connsClosed);
+				cluster.RecordConnectionClosed(this);
 				tendConnection.Close();
 			}
 
@@ -642,17 +687,20 @@ namespace Aerospike.Client
 
 		private Connection CreateConnection(Pool<Connection> pool)
 		{
+			ConnectionMetricsHandle connectionMetrics =
+				cluster.StartConnectionMetrics(this);
 			pool.IncrTotal();
 
 			Connection conn;
 
 			try
 			{
-				conn = CreateConnection(cluster.connectionTimeout, pool);
+				conn = CreateConnection(cluster.connectionTimeout, pool, connectionMetrics);
 			}
 			catch (Exception)
 			{
 				pool.DecrTotal();
+				connectionMetrics.Fail(ConnectionFailurePhase.Open);
 				throw;
 			}
 
@@ -671,10 +719,12 @@ namespace Aerospike.Client
 				catch (Exception)
 				{
 					// Socket not authenticated.  Do not put back into pool.
+					connectionMetrics.Fail(ConnectionFailurePhase.Auth);
 					CloseConnectionOnError(conn);
 					throw;
 				}
 			}
+			CompleteConnectionMetrics(connectionMetrics, null);
 			return conn;
 		}
 
@@ -702,6 +752,14 @@ namespace Aerospike.Client
 		/// <param name="timeoutDelay"></param>	
 		/// <exception cref="AerospikeException">if a connection could not be provided</exception>
 		public Connection GetConnection(int timeoutMillis, int timeoutDelay)
+		{
+			return GetConnection(timeoutMillis, timeoutDelay, null);
+		}
+
+		internal Connection GetConnection(
+			int timeoutMillis,
+			int timeoutDelay,
+			string ns)
 		{
 			uint max = (uint)cluster.connPoolsPerNode;
 			uint initialIndex;
@@ -750,13 +808,17 @@ namespace Aerospike.Client
 				{
 					// Socket not found and queue has available slot.
 					// Create new connection.
+					ConnectionMetricsHandle connectionMetrics =
+						cluster.StartConnectionMetrics(this);
+
 					try
 					{
-						conn = CreateConnection(timeoutMillis, pool);
+						conn = CreateConnection(timeoutMillis, pool, connectionMetrics);
 					}
 					catch (Exception)
 					{
 						pool.DecrTotal();
+						connectionMetrics.Fail(ConnectionFailurePhase.Open);
 						throw;
 					}
 
@@ -780,17 +842,31 @@ namespace Aerospike.Client
 								{
 									// The connection State is always STATE_READ_AUTH_HEADER here which does not reference
 									// isSingle, so just pass in true for isSingle in ConnectionRecover.
-									cluster.RecoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt, true));
+									ConnectionRecover recover =
+										new(
+											conn,
+											this,
+											timeoutDelay,
+											crt,
+											true,
+											cluster.BeginRecoverMetrics(),
+											connectionMetrics,
+											ns,
+											ConnectionFailurePhase.Auth);
+									cluster.RecoverConnection(recover);
 									conn = null;
 								}
 								else
 								{
+									connectionMetrics.Fail(ConnectionFailurePhase.Auth);
+									cluster.RecordImmediateTimeout();
 									CloseConnection(conn);
 								}
 								throw;
 							}
 							catch (SocketException se)
 							{
+								connectionMetrics.Fail(ConnectionFailurePhase.Auth);
 								CloseConnection(conn);
 								if (se.SocketErrorCode == SocketError.TimedOut)
 								{
@@ -799,15 +875,18 @@ namespace Aerospike.Client
 									// timeout, which is what we need.
 									throw new Connection.ReadTimeout(null, 0, 0, (byte)0);
 								}
+								throw;
 							}
 							catch (Exception)
 							{
 								// Socket not authenticated.  Do not put back into pool.
+								connectionMetrics.Fail(ConnectionFailurePhase.Auth);
 								CloseConnectionOnError(conn);
 								throw;
 							}
 						}
 					}
+					CompleteConnectionMetrics(connectionMetrics, ns);
 					return conn;
 				}
 				else
@@ -839,31 +918,47 @@ namespace Aerospike.Client
 					pool = connectionPools[queueIndex];
 				}
 			}
+			cluster.RecordPoolExhausted(this);
 			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
 				"Node " + this + " max connections " + cluster.maxConnsPerNode + " would be exceeded.");
 		}
 
-		private Connection CreateConnection(int timeout, Pool<Connection> pool)
+		private Connection CreateConnection(
+			int timeout,
+			Pool<Connection> pool,
+			ConnectionMetricsHandle connectionMetrics)
 		{
 			try
 			{
 				Connection conn;
-				NodeMetrics nodeMetrics = metrics;
+				using NodeMetricsLease metricsLease = AcquireMetrics();
+				NodeMetrics nodeMetrics = metricsLease.Metrics;
 
-				if (cluster.MetricsEnabled && nodeMetrics != null)
+				if (cluster.MetricsOperationalEnabled && nodeMetrics != null)
 				{
-					ValueStopwatch metricsWatch = ValueStopwatch.StartNew();
-
 					conn = cluster.UseTls() ?
-					new TlsConnection(cluster, host.tlsName, address, timeout, this, pool) :
+					new TlsConnection(
+						cluster,
+						host.tlsName,
+						address,
+						timeout,
+						this,
+						pool,
+						connectionMetrics) :
 					new Connection(address, timeout, this, pool);
 
-					nodeMetrics.AddLatency(null, LatencyType.CONN, metricsWatch.Elapsed.TotalMilliseconds);
 				}
 				else
 				{
 					conn = cluster.UseTls() ?
-					new TlsConnection(cluster, host.tlsName, address, timeout, pool) :
+					new TlsConnection(
+						cluster,
+						host.tlsName,
+						address,
+						timeout,
+						null,
+						pool,
+						connectionMetrics) :
 					new Connection(address, timeout, pool);
 				}
 
@@ -883,14 +978,18 @@ namespace Aerospike.Client
 		/// <param name="conn">socket connection</param>
 		public void PutConnection(Connection conn)
 		{
-			if (active)
+			PutConnectionInternal(conn);
+		}
+
+		internal bool PutConnectionInternal(Connection conn)
+		{
+			if (active && conn.pool.Enqueue(conn))
 			{
-				conn.pool.Enqueue(conn);
+				return true;
 			}
-			else
-			{
-				CloseConnection(conn);
-			}
+
+			CloseConnection(conn);
+			return false;
 		}
 
 		/// <summary>
@@ -909,7 +1008,17 @@ namespace Aerospike.Client
 		{
 			conn.pool.DecrTotal();
 			Interlocked.Increment(ref connsClosed);
+
+			RecordConnectionClosedIfAdmitted();
 			conn.Close();
+		}
+
+		private protected void RecordConnectionClosedIfAdmitted()
+		{
+			if (Volatile.Read(ref wasAdmitted) != 0)
+			{
+				cluster.RecordConnectionClosed(this);
+			}
 		}
 
 		public virtual void BalanceConnections()
@@ -977,21 +1086,100 @@ namespace Aerospike.Client
 
 		public void EnableMetrics(MetricsPolicy policy)
 		{
-			metrics?.Dispose();
-			metrics = new NodeMetrics(policy);
-			this.metricsEnabled = true;
+			ReplaceMetrics(
+				metricsGeneration.Store.CreateNodeMetrics(this, policy));
+		}
+
+		internal void ReshapeMetrics(MetricsPolicy policy)
+		{
+			using NodeMetricsLease lease = AcquireMetrics();
+			lease.Metrics?.Reshape(policy);
 		}
 
 		public NodeMetrics GetMetrics()
 		{
-			return metrics;
+			return metricsSlot?.Metrics;
 		}
 
 		public void DisableMetrics()
 		{
-			this.metricsEnabled = false;
-			metrics?.Dispose();
-			metrics = null;
+			ReplaceMetrics(null);
+		}
+
+		internal void ReplaceMetrics(NodeMetrics replacement)
+		{
+			NodeMetricsSlot replacementSlot =
+				replacement == null ? null : new NodeMetricsSlot(replacement);
+			NodeMetricsSlot previous =
+				Interlocked.Exchange(ref metricsSlot, replacementSlot);
+			this.metricsEnabled = replacement != null;
+
+			if (previous != null &&
+				!ReferenceEquals(previous.Metrics, replacement))
+			{
+				previous.RetireAndCapture(metrics =>
+				{
+					metricsGeneration.DetachMetrics(
+						metrics,
+						metricsGeneration.Store.RuntimeConfig);
+					return true;
+				});
+			}
+			if (replacement != null &&
+				(previous == null ||
+					!ReferenceEquals(previous.Metrics, replacement)))
+			{
+				metricsGeneration.InstallMetrics(replacement);
+			}
+		}
+
+		internal NodeMetricsLease AcquireMetrics()
+		{
+			return metricsSlot?.Acquire() ?? default;
+		}
+
+		internal T DetachMetricsAndCapture<T>(Func<NodeMetrics, T> capture)
+		{
+			NodeMetricsSlot slot =
+				Interlocked.Exchange(ref metricsSlot, null);
+			metricsEnabled = false;
+			return slot == null
+				? default
+				: slot.RetireAndCapture(metrics =>
+				{
+					T result = capture(metrics);
+					metricsGeneration.DetachMetrics(
+						metrics,
+						metricsGeneration.Store.RuntimeConfig);
+					return result;
+				});
+		}
+
+		internal MetricsNodeDeparture MetricsDeparture =>
+			Volatile.Read(ref metricsDeparture);
+
+		internal bool MetricsWasAdmitted =>
+			Volatile.Read(ref wasAdmitted) != 0;
+
+		internal void InstallMetricsDeparture(MetricsNodeDeparture departure)
+		{
+			Volatile.Write(ref metricsDeparture, departure);
+		}
+
+		internal bool TryBeginMetricsDepartureTransfer()
+		{
+			return Interlocked.CompareExchange(
+				ref metricsDepartureTransferred,
+				1,
+				0) == 0;
+		}
+
+		internal bool MetricsDepartureTransferred =>
+			Volatile.Read(ref metricsDepartureTransferred) != 0;
+
+		internal void ResetMetricsDepartureTransfer()
+		{
+			Volatile.Write(ref metricsDepartureTransferred, 0);
 		}
 
 		/// <summary>
@@ -1002,7 +1190,8 @@ namespace Aerospike.Client
 		/// <param name="elapsedMs">elapsed time in milliseconds</param>
 		public void AddLatency(string ns, LatencyType type, double elapsedMs)
 		{
-			metrics?.AddLatency(ns, type, elapsedMs);
+			using NodeMetricsLease lease = AcquireMetrics();
+			lease.Metrics?.AddLatency(ns, type, elapsedMs);
 		}
 
 		public void IncrErrorRate()
@@ -1034,6 +1223,11 @@ namespace Aerospike.Client
 			return cluster.maxErrorRate <= 0 || errorRateCount <= cluster.maxErrorRate;
 		}
 
+		internal int GetErrorRate()
+		{
+			return errorRateCount;
+		}
+
 		public void ValidateErrorCount()
 		{
 			if (!ErrorRateWithinLimit())
@@ -1049,7 +1243,9 @@ namespace Aerospike.Client
 
 		public void AddError(string ns)
 		{
-			errorCounter?.Increment(ns);
+			metricsGeneration.Store.AddCompatibilityError(
+				metricsGeneration,
+				ns);
 		}
 
 		/// <summary>
@@ -1058,7 +1254,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddTimeout(string ns)
 		{
-			timeoutCounter?.Increment(ns);
+			metricsGeneration.Store.AddCompatibilityTimeout(
+				metricsGeneration,
+				ns);
 		}
 
 		/// <summary>
@@ -1066,7 +1264,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddKeyBusy(string ns)
 		{
-			keyBusyCounter?.Increment(ns);
+			metricsGeneration.Store.AddCompatibilityKeyBusy(
+				metricsGeneration,
+				ns);
 		}
 
 		/// <summary>
@@ -1074,7 +1274,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddBytesOut(string ns, long count)
 		{
-			metrics?.BytesOutCounter?.Increment(ns, count);
+			using NodeMetricsLease lease = AcquireMetrics();
+			lease.Metrics?.BytesOutCounter?.Increment(ns, count);
 		}
 
 		/// <summary>
@@ -1082,7 +1283,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public void AddBytesIn(string ns, long count)
 		{
-			metrics?.BytesInCounter?.Increment(ns, count);
+			using NodeMetricsLease lease = AcquireMetrics();
+			lease.Metrics?.BytesInCounter?.Increment(ns, count);
 		}
 
 		/// <summary>
@@ -1090,7 +1292,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetErrorCount()
 		{
-			return errorCounter == null ? 0 : errorCounter.GetTotal();
+			return metricsGeneration.Store.GetCompatibilityError(
+				metricsGeneration);
 		}
 
 		/// <summary>
@@ -1098,7 +1301,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetTimeoutCount()
 		{
-			return timeoutCounter == null ? 0 : timeoutCounter.GetTotal();
+			return metricsGeneration.Store.GetCompatibilityTimeout(
+				metricsGeneration);
 		}
 
 		/// <summary>
@@ -1107,7 +1311,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetTimeoutCountbyNS(string ns)
 		{
-			return timeoutCounter == null ? 0 : timeoutCounter.GetCountByNS(ns);
+			return metricsGeneration.Store.GetCompatibilityTimeout(
+				metricsGeneration,
+				ns);
 		}
 
 		/// <summary>
@@ -1115,7 +1321,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetErrorCountByNS(string ns)
 		{
-			return errorCounter == null ? 0 : errorCounter.GetCountByNS(ns);
+			return metricsGeneration.Store.GetCompatibilityError(
+				metricsGeneration,
+				ns);
 		}
 
 		/// <summary>
@@ -1123,7 +1331,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBytesInTotal()
 		{
-			Counter counter = metrics?.BytesInCounter;
+			using NodeMetricsLease lease = AcquireMetrics();
+			Counter counter = lease.Metrics?.BytesInCounter;
 			return counter == null ? 0 : counter.GetTotal();
 		}
 
@@ -1132,7 +1341,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBytesInByNS(string ns)
 		{
-			Counter counter = metrics?.BytesInCounter;
+			using NodeMetricsLease lease = AcquireMetrics();
+			Counter counter = lease.Metrics?.BytesInCounter;
 			return counter == null ? 0 : counter.GetCountByNS(ns);
 		}
 
@@ -1141,7 +1351,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBytesOutTotal()
 		{
-			Counter counter = metrics?.BytesOutCounter;
+			using NodeMetricsLease lease = AcquireMetrics();
+			Counter counter = lease.Metrics?.BytesOutCounter;
 			return counter == null ? 0 : counter.GetTotal();
 		}
 
@@ -1150,7 +1361,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetBytesOutByNS(string ns)
 		{
-			Counter counter = metrics?.BytesOutCounter;
+			using NodeMetricsLease lease = AcquireMetrics();
+			Counter counter = lease.Metrics?.BytesOutCounter;
 			return counter == null ? 0 : counter.GetCountByNS(ns);
 		}
 
@@ -1159,7 +1371,8 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetKeyBusyCount()
 		{
-			return keyBusyCounter == null ? 0 : keyBusyCounter.GetTotal();
+			return metricsGeneration.Store.GetCompatibilityKeyBusy(
+				metricsGeneration);
 		}
 
 		/// <summary>
@@ -1167,7 +1380,9 @@ namespace Aerospike.Client
 		/// </summary>
 		public long GetKeyBusyCountByNS(string ns)
 		{
-			return keyBusyCounter == null ? 0 : keyBusyCounter.GetCountByNS(ns);
+			return metricsGeneration.Store.GetCompatibilityKeyBusy(
+				metricsGeneration,
+				ns);
 		}
 
 		/// <summary>
@@ -1175,7 +1390,7 @@ namespace Aerospike.Client
 		/// </summary>
 		public bool AreMetricsEnabled()
 		{
-			return cluster.MetricsEnabled;
+			return cluster.MetricsOperationalEnabled;
 		}
 
 		/// <summary>
@@ -1221,6 +1436,75 @@ namespace Aerospike.Client
 			get
 			{
 				return active;
+			}
+		}
+
+		internal void CompleteAdmissionMetrics()
+		{
+			if (Interlocked.CompareExchange(ref admissionState, 1, 0) == 0)
+			{
+				Volatile.Write(ref wasAdmitted, 1);
+				admissionMetrics.Complete(this, null);
+				CompletePendingConnectionMetrics(true);
+			}
+		}
+
+		internal void CancelAdmissionMetrics()
+		{
+			if (Interlocked.CompareExchange(ref admissionState, 2, 0) == 0)
+			{
+				admissionMetrics.Cancel();
+				CompletePendingConnectionMetrics(false);
+			}
+		}
+
+		internal void CompleteConnectionMetrics(
+			ConnectionMetricsHandle handle,
+			string ns)
+		{
+			lock (admissionMetricsLock)
+			{
+				int state = Volatile.Read(ref admissionState);
+
+				if (state == 0)
+				{
+					pendingConnectionMetrics ??= [];
+					pendingConnectionMetrics.Add((handle, ns));
+					return;
+				}
+				if (state == 1)
+				{
+					handle.Complete(this, ns);
+				}
+				else
+				{
+					handle.Cancel();
+				}
+			}
+		}
+
+		private void CompletePendingConnectionMetrics(bool admitted)
+		{
+			lock (admissionMetricsLock)
+			{
+				if (pendingConnectionMetrics == null)
+				{
+					return;
+				}
+
+				foreach ((ConnectionMetricsHandle handle, string ns) in
+					pendingConnectionMetrics)
+				{
+					if (admitted)
+					{
+						handle.Complete(this, ns);
+					}
+					else
+					{
+						handle.Cancel();
+					}
+				}
+				pendingConnectionMetrics = null;
 			}
 		}
 
@@ -1294,8 +1578,29 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Close()
 		{
+			CloseForDeparture();
+			DisposeAfterDeparture();
+		}
+
+		internal void CloseForDeparture()
+		{
+			int previous = Interlocked.Exchange(ref admissionState, 2);
+
+			if (previous == 0)
+			{
+				admissionMetrics.Cancel();
+				CompletePendingConnectionMetrics(false);
+			}
+			else if (previous == 1)
+			{
+				Volatile.Write(ref wasAdmitted, 1);
+			}
 			active = false;
 			CloseConnections();
+		}
+
+		internal void DisposeAfterDeparture()
+		{
 			Dispose();
 		}
 
@@ -1303,7 +1608,12 @@ namespace Aerospike.Client
 		{
 			// Close tend connection after making reference copy.
 			Connection conn = tendConnection;
-			conn?.Close();
+			if (conn != null && !conn.IsClosed())
+			{
+				Interlocked.Increment(ref connsClosed);
+				RecordConnectionClosedIfAdmitted();
+				conn.Close();
+			}
 
 			// Empty connection pools.
 			foreach (Pool<Connection> pool in connectionPools)
@@ -1311,6 +1621,9 @@ namespace Aerospike.Client
 				//Log.Debug("Close node " + this + " connection pool count " + pool.total);
 				while (pool.TryDequeue(out conn))
 				{
+					pool.DecrTotal();
+					Interlocked.Increment(ref connsClosed);
+					RecordConnectionClosedIfAdmitted();
 					conn.Close();
 				}
 			}
@@ -1344,17 +1657,17 @@ namespace Aerospike.Client
 			{
 				if (disposing)
 				{
-					errorCounter?.Dispose();
-					errorCounter = null;
-					timeoutCounter?.Dispose();
-					timeoutCounter = null;
-					keyBusyCounter?.Dispose();
-					keyBusyCounter = null;
-					if (metricsEnabled)
+					metricsGeneration.InvalidatePublicReads();
+					NodeMetricsSlot slot =
+						Interlocked.Exchange(ref metricsSlot, null);
+					metricsEnabled = false;
+					slot?.RetireAndCapture(metrics =>
 					{
-						metrics?.Dispose();
-						metrics = null;
-					}
+						metricsGeneration.DetachMetrics(
+							metrics,
+							metricsGeneration.Store.RuntimeConfig);
+						return true;
+					});
 				}
 
 				disposedValue = true;

@@ -21,4 +21,12 @@ namespace Aerospike.Client
 		bool StopThreads(Exception cause);
 		void CheckForException();
 	}
+
+	internal interface IQueryMetrics
+	{
+		void RecordQueued(int delta);
+		void RecordAbandoned();
+		void CompleteSuccess();
+		void CompleteFailure();
+	}
 }

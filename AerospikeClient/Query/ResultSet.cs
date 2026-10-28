@@ -27,9 +27,13 @@ namespace Aerospike.Client
 	{
 		public static readonly object END = new object();
 
-		private readonly QueryAggregateExecutor executor;
+		private readonly IQueryExecutor executor;
 		private readonly BlockingCollection<object> queue;
 		private readonly CancellationToken cancelToken;
+		private readonly object queueMetricsLock = new();
+		private int countedQueued;
+		private int pendingDequeues;
+		private int closed;
 		private object row;
 		private volatile bool valid = true;
 
@@ -37,6 +41,11 @@ namespace Aerospike.Client
 		/// Initialize result set with underlying producer/consumer queue.
 		/// </summary>
 		public ResultSet(QueryAggregateExecutor executor, int capacity, CancellationToken cancelToken)
+			: this((IQueryExecutor)executor, capacity, cancelToken)
+		{
+		}
+
+		internal ResultSet(IQueryExecutor executor, int capacity, CancellationToken cancelToken)
 		{
 			this.executor = executor;
 			this.queue = new BlockingCollection<object>(capacity);
@@ -63,6 +72,10 @@ namespace Aerospike.Client
 			try
 			{
 				row = queue.Take(cancelToken);
+				if (row != END)
+				{
+					RecordQueued(-1);
+				}
 			}
 			catch (OperationCanceledException)
 			{
@@ -74,7 +87,16 @@ namespace Aerospike.Client
 			if (row == END)
 			{
 				valid = false;
-				executor.CheckForException();
+				try
+				{
+					executor.CheckForException();
+					((IQueryMetrics)executor).CompleteSuccess();
+				}
+				catch
+				{
+					((IQueryMetrics)executor).CompleteFailure();
+					throw;
+				}
 				return false;
 			}
 			return true;
@@ -110,17 +132,26 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Close()
 		{
+			if (Interlocked.CompareExchange(ref closed, 1, 0) != 0)
+			{
+				return;
+			}
 			valid = false;
 
-			// Check if more results are available.
 			if (row != END)
 			{
-				if (queue.TryTake(out row) && row != END)
+				((IQueryMetrics)executor).RecordAbandoned();
+				executor.StopThreads(new AerospikeException.QueryTerminated());
+			}
+
+			while (queue.TryTake(out object queued))
+			{
+				if (queued != END)
 				{
-					// Some query threads may still be running. Stop these threads.
-					executor.StopThreads(new AerospikeException.QueryTerminated());
+					RecordQueued(-1);
 				}
 			}
+			row = END;
 		}
 
 		//-------------------------------------------------------
@@ -167,6 +198,10 @@ namespace Aerospike.Client
 			{
 				// This add will block if queue capacity is reached.
 				queue.Add(obj, cancelToken);
+				if (obj != END)
+				{
+					RecordQueued(1);
+				}
 				return true;
 			}
 			catch (OperationCanceledException)
@@ -187,21 +222,57 @@ namespace Aerospike.Client
 		{
 			valid = false;
 
+			// Discard queued results before sending the end token.
+			while (queue.TryTake(out object tmp))
+			{
+				if (tmp != END)
+				{
+					RecordQueued(-1);
+				}
+			}
+
 			// Send end command to command thread.
-			// It's critical that the end token add succeeds.
 			while (!queue.TryAdd(END))
 			{
-				// Queue must be full. Remove one item to make room.
-				object tmp;
-				if (!queue.TryTake(out tmp))
+				if (queue.TryTake(out object next) && next != END)
 				{
-					// Can't add or take.  Nothing can be done here.
-					if (Log.DebugEnabled())
-					{
-						Log.Debug("ResultSet " + executor.statement.taskId + " both add and take failed on abort");
-					}
-					break;
+					RecordQueued(-1);
 				}
+			}
+		}
+
+		private void RecordQueued(int delta)
+		{
+			int recordedDelta = 0;
+
+			lock (queueMetricsLock)
+			{
+				if (delta > 0)
+				{
+					if (pendingDequeues > 0)
+					{
+						pendingDequeues--;
+					}
+					else
+					{
+						countedQueued++;
+						recordedDelta = 1;
+					}
+				}
+				else if (countedQueued > 0)
+				{
+					countedQueued--;
+					recordedDelta = -1;
+				}
+				else
+				{
+					pendingDequeues++;
+				}
+			}
+
+			if (recordedDelta != 0)
+			{
+				((IQueryMetrics)executor).RecordQueued(recordedDelta);
 			}
 		}
 	}

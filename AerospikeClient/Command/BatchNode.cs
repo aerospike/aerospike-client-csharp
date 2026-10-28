@@ -66,11 +66,11 @@ namespace Aerospike.Client
 
 					if (batchNode == null)
 					{
-						batchNodes.Add(new BatchNode(node, keysPerNode, i));
+						batchNodes.Add(new BatchNode(node, keysPerNode, i, key.ns));
 					}
 					else
 					{
-						batchNode.AddKey(i);
+						batchNode.AddKey(i, key.ns);
 					}
 				}
 				catch (AerospikeException ae)
@@ -164,11 +164,11 @@ namespace Aerospike.Client
 
 					if (batchNode == null)
 					{
-						batchNodes.Add(new BatchNode(node, keysPerNode, offset));
+						batchNodes.Add(new BatchNode(node, keysPerNode, offset, key.ns));
 					}
 					else
 					{
-						batchNode.AddKey(offset);
+						batchNode.AddKey(offset, key.ns);
 					}
 				}
 				catch (AerospikeException ae)
@@ -247,11 +247,11 @@ namespace Aerospike.Client
 
 					if (batchNode == null)
 					{
-						batchNodes.Add(new BatchNode(node, keysPerNode, offset));
+						batchNodes.Add(new BatchNode(node, keysPerNode, offset, key.ns));
 					}
 					else
 					{
-						batchNode.AddKey(offset);
+						batchNode.AddKey(offset, key.ns);
 					}
 				}
 				catch (AerospikeException ae)
@@ -326,11 +326,11 @@ namespace Aerospike.Client
 
 					if (batchNode == null)
 					{
-						batchNodes.Add(new BatchNode(node, keysPerNode, offset));
+						batchNodes.Add(new BatchNode(node, keysPerNode, offset, key.ns));
 					}
 					else
 					{
-						batchNode.AddKey(offset);
+						batchNode.AddKey(offset, key.ns);
 					}
 				}
 				catch (AerospikeException ae)
@@ -396,11 +396,11 @@ namespace Aerospike.Client
 
 					if (batchNode == null)
 					{
-						batchNodes.Add(new BatchNode(node, keysPerNode, i));
+						batchNodes.Add(new BatchNode(node, keysPerNode, i, b.key.ns));
 					}
 					else
 					{
-						batchNode.AddKey(i);
+						batchNode.AddKey(i, b.key.ns);
 					}
 				}
 				catch (AerospikeException ae)
@@ -484,11 +484,11 @@ namespace Aerospike.Client
 
 					if (batchNode == null)
 					{
-						batchNodes.Add(new BatchNode(node, keysPerNode, offset));
+						batchNodes.Add(new BatchNode(node, keysPerNode, offset, b.key.ns));
 					}
 					else
 					{
-						batchNode.AddKey(offset);
+						batchNode.AddKey(offset, b.key.ns);
 					}
 				}
 				catch (AerospikeException ae)
@@ -524,42 +524,55 @@ namespace Aerospike.Client
 		}
 
 		public readonly Node node;
+		public string ns;
 		public int[] offsets;
 		public int offsetsSize;
+		private bool homogeneousNamespace = true;
+		private readonly HashSet<string> namespaces =
+			new(StringComparer.Ordinal);
 
-		public BatchNode(Node node, int capacity, int offset)
+		internal IReadOnlyList<string> MetricsNamespaces =>
+			namespaces.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+
+		public BatchNode(Node node, int capacity, int offset, string ns)
 		{
 			this.node = node;
+			this.ns = ns;
 			this.offsets = new int[capacity];
 			this.offsets[0] = offset;
 			this.offsetsSize = 1;
+			namespaces.Add(ns ?? string.Empty);
 		}
 
 		public BatchNode(Node node, Key[] keys)
 		{
 			this.node = node;
+			this.ns = keys.Length == 0 ? null : keys[0].ns;
 			this.offsets = new int[keys.Length];
 			this.offsetsSize = keys.Length;
 
 			for (int i = 0; i < offsetsSize; i++)
 			{
 				offsets[i] = i;
+				UpdateNamespace(keys[i].ns);
 			}
 		}
 
 		public BatchNode(BatchRecord[] records)
 		{
 			this.node = null;
+			this.ns = records.Length == 0 ? null : records[0].key.ns;
 			this.offsets = new int[records.Length];
 			this.offsetsSize = records.Length;
 
 			for (int i = 0; i < offsetsSize; i++)
 			{
 				offsets[i] = i;
+				UpdateNamespace(records[i].key.ns);
 			}
 		}
 
-		public void AddKey(int offset)
+		public void AddKey(int offset, string ns)
 		{
 			if (offsetsSize >= offsets.Length)
 			{
@@ -568,6 +581,18 @@ namespace Aerospike.Client
 				offsets = copy;
 			}
 			offsets[offsetsSize++] = offset;
+			UpdateNamespace(ns);
+		}
+
+		private void UpdateNamespace(string candidate)
+		{
+			namespaces.Add(candidate ?? string.Empty);
+
+			if (homogeneousNamespace && !string.Equals(ns, candidate, StringComparison.Ordinal))
+			{
+				homogeneousNamespace = false;
+				ns = null;
+			}
 		}
 	}
 

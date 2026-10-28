@@ -129,6 +129,10 @@ namespace Aerospike.Client
 					command.OnError(new AerospikeException.Connection("Connection closed"));
 					return;
 				}
+				if (command is IAsyncByteProgress progress)
+				{
+					progress.OnBytesSent(sent);
+				}
 
 				if (sent < args.Count)
 				{
@@ -169,6 +173,10 @@ namespace Aerospike.Client
 				{
 					command.OnError(new AerospikeException.Connection("Connection closed"));
 					return;
+				}
+				if (command is IAsyncByteProgress progress)
+				{
+					progress.OnBytesReceived(received);
 				}
 
 				if (received < args.Count)

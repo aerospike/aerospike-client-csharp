@@ -59,6 +59,14 @@ namespace Aerospike.Client.Config
 		}
 	}
 
+	public class ConfigurationDatav1_2_0 : ConfigurationDatav1_1_0
+	{
+		public ConfigurationDatav1_2_0()
+		{
+			version = "1.2.0";
+		}
+	}
+
 	public class StaticConfig
 	{
 		public StaticConfig()
@@ -267,9 +275,46 @@ namespace Aerospike.Client.Config
 	public class MetricsConfig
 	{
 		public bool? enable { get; set; }
+		[ConfigIntroducedIn("1.2.0")]
+		public bool? enabled { get; set; }
 		public int? latency_shift { get; set; }
 		public int? latency_columns { get; set; }
 		public Dictionary<string, string> labels { get; set; }
+		[ConfigIntroducedIn("1.2.0")]
+		public MetricsExtendedConfig extended { get; set; } = new();
+		[ConfigIntroducedIn("1.2.0")]
+		public string export_interval { get; set; }
+		[ConfigIntroducedIn("1.2.0")]
+		public string exporter { get; set; }
+		[ConfigIntroducedIn("1.2.0")]
+		public string report_dir { get; set; }
+		[ConfigIntroducedIn("1.2.0")]
+		public string report_size_limit { get; set; }
+	}
 
+	public class MetricsExtendedConfig
+	{
+		public MetricsOperationalConfig operational { get; set; } = new();
+		public MetricsUsageConfig usage { get; set; } = new();
+	}
+
+	public class MetricsOperationalConfig
+	{
+		public bool? enabled { get; set; }
+		public string latency_unit { get; set; }
+		public int? latency_shift { get; set; }
+		public int? latency_columns { get; set; }
+		public MetricsSamplerConfig sampler { get; set; } = new();
+	}
+
+	public class MetricsUsageConfig
+	{
+		public bool? enabled { get; set; }
+	}
+
+	public class MetricsSamplerConfig
+	{
+		public ulong? range { get; set; }
+		public ulong? threshold { get; set; }
 	}
 }

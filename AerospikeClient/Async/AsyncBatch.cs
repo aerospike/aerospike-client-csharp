@@ -68,6 +68,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, false);
+				SetRowError(record.key);
 			}
 		}
 
@@ -142,6 +143,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, false);
+				SetRowError(record.key);
 			}
 			listener.OnRecord(record);
 		}
@@ -223,6 +225,10 @@ namespace Aerospike.Client
 			if (resultCode == 0)
 			{
 				records[batchIndex] = ParseRecord();
+			}
+			else if (resultCode != ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				SetRowError(keys[batchIndex]);
 			}
 		}
 
@@ -309,6 +315,10 @@ namespace Aerospike.Client
 			}
 			else
 			{
+				if (resultCode != ResultCode.KEY_NOT_FOUND_ERROR)
+				{
+					SetRowError(keyOrig);
+				}
 				listener.OnRecord(keyOrig, null);
 			}
 		}
@@ -375,6 +385,12 @@ namespace Aerospike.Client
 		{
 			ParseFieldsRead(keys[batchIndex]);
 			existsArray[batchIndex] = resultCode == 0;
+
+			if (resultCode != ResultCode.OK &&
+				resultCode != ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				SetRowError(keys[batchIndex]);
+			}
 		}
 
 		protected internal override AsyncCommand CloneCommand()
@@ -438,6 +454,12 @@ namespace Aerospike.Client
 		{
 			Key keyOrig = keys[batchIndex];
 			ParseFieldsRead(keyOrig);
+
+			if (resultCode != ResultCode.OK &&
+				resultCode != ResultCode.KEY_NOT_FOUND_ERROR)
+			{
+				SetRowError(keyOrig);
+			}
 			listener.OnExists(keyOrig, resultCode == 0);
 		}
 
@@ -521,13 +543,13 @@ namespace Aerospike.Client
 					record.record = r;
 					record.resultCode = resultCode;
 					record.inDoubt = Command.BatchInDoubt(record.hasWrite, commandSentCounter);
-					parent.SetRowError();
+					SetRowError(record.key);
 					return;
 				}
 			}
 
 			record.SetError(resultCode, Command.BatchInDoubt(record.hasWrite, commandSentCounter));
-			parent.SetRowError();
+			SetRowError(record.key);
 		}
 
 		internal override void SetInDoubt(bool inDoubt)
@@ -646,6 +668,10 @@ namespace Aerospike.Client
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(record.hasWrite, commandSentCounter));
 			}
+			if (resultCode != ResultCode.OK)
+			{
+				SetRowError(record.key);
+			}
 			AsyncBatch.OnRecord(cluster, listener, record, batchIndex);
 		}
 
@@ -751,7 +777,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
-				parent.SetRowError();
+				SetRowError(record.key);
 			}
 		}
 
@@ -856,6 +882,7 @@ namespace Aerospike.Client
 			else
 			{
 				record = new BatchRecord(keyOrig, null, resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
+				SetRowError(keyOrig);
 			}
 			ApplyErrorDetail(record);
 			sent[batchIndex] = true;
@@ -977,13 +1004,13 @@ namespace Aerospike.Client
 					record.record = r;
 					record.resultCode = resultCode;
 					record.inDoubt = Command.BatchInDoubt(attr.hasWrite, commandSentCounter);
-					parent.SetRowError();
+					SetRowError(record.key);
 					return;
 				}
 			}
 
 			record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
-			parent.SetRowError();
+			SetRowError(record.key);
 		}
 
 		internal override void SetInDoubt(bool inDoubt)
@@ -1111,6 +1138,10 @@ namespace Aerospike.Client
 			{
 				record = new BatchRecord(keyOrig, null, resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
+			if (resultCode != ResultCode.OK)
+			{
+				SetRowError(keyOrig);
+			}
 			ApplyErrorDetail(record);
 			sent[batchIndex] = true;
 			AsyncBatch.OnRecord(cluster, listener, record, batchIndex);
@@ -1202,7 +1233,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, false);
-				parent.SetRowError();
+				SetRowError(record.key);
 			}
 		}
 
@@ -1271,7 +1302,7 @@ namespace Aerospike.Client
 			else
 			{
 				record.SetError(resultCode, Command.BatchInDoubt(attr.hasWrite, commandSentCounter));
-				parent.SetRowError();
+				SetRowError(record.key);
 			}
 		}
 
@@ -1304,11 +1335,12 @@ namespace Aerospike.Client
 		internal uint sequenceSC;
 
 		public AsyncBatchCommand(AsyncBatchExecutor parent, AsyncCluster cluster, BatchNode batch, BatchPolicy batchPolicy, bool isOperation)
-			: base(cluster, batchPolicy, (AsyncNode)batch.node, isOperation)
+			: base(cluster, batchPolicy, (AsyncNode)batch.node, batch.ns, isOperation)
 		{
 			this.parent = parent;
 			this.batch = batch;
 			this.batchPolicy = batchPolicy;
+			SetMetricsNamespaces(batch.MetricsNamespaces);
 		}
 
 		public AsyncBatchCommand(AsyncBatchCommand other) : base(other)
@@ -1323,6 +1355,12 @@ namespace Aerospike.Client
 		protected override Latency.LatencyType GetLatencyType()
 		{
 			return Latency.LatencyType.BATCH;
+		}
+
+		protected void SetRowError(Key key)
+		{
+			RecordBatchRecordFailure(batch.node, key.ns, resultCode);
+			parent.SetRowError();
 		}
 
 		protected void ParseFieldsRead(Key key)
@@ -1394,7 +1432,6 @@ namespace Aerospike.Client
 					return false;
 				}
 
-				cluster.AddRetries(batchNodes.Count);
 			}
 			catch (Exception)
 			{
@@ -1415,7 +1452,10 @@ namespace Aerospike.Client
 				AsyncBatchCommand cmd = CreateCommand(batchNode);
 				cmd.sequenceAP = sequenceAP;
 				cmd.sequenceSC = sequenceSC;
-				cmd.SetBatchRetry(this);
+				cmd.SetBatchRetry(
+					this,
+					batchNode.ns,
+					batchNode.MetricsNamespaces);
 				cmds[count++] = cmd;
 			}
 

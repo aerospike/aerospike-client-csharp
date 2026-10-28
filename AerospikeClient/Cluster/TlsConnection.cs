@@ -34,7 +34,7 @@ namespace Aerospike.Client
 		/// Create TLS socket.
 		/// </summary>
 		public TlsConnection(Cluster cluster, string tlsName, IPEndPoint address, int timeoutMillis, Pool<Connection> pool)
-			: this(cluster, tlsName, address, timeoutMillis, null, pool)
+			: this(cluster, tlsName, address, timeoutMillis, null, pool, default, false)
 		{
 		}
 
@@ -42,6 +42,31 @@ namespace Aerospike.Client
 		/// Create TLS socket.
 		/// </summary>
 		public TlsConnection(Cluster cluster, string tlsName, IPEndPoint address, int timeoutMillis, Node node, Pool<Connection> pool)
+			: this(cluster, tlsName, address, timeoutMillis, node, pool, default, false)
+		{
+		}
+
+		internal TlsConnection(
+			Cluster cluster,
+			string tlsName,
+			IPEndPoint address,
+			int timeoutMillis,
+			Node node,
+			Pool<Connection> pool,
+			ConnectionMetricsHandle metrics)
+			: this(cluster, tlsName, address, timeoutMillis, node, pool, metrics, true)
+		{
+		}
+
+		private TlsConnection(
+			Cluster cluster,
+			string tlsName,
+			IPEndPoint address,
+			int timeoutMillis,
+			Node node,
+			Pool<Connection> pool,
+			ConnectionMetricsHandle metrics,
+			bool capturedMetrics)
 			: base(address, timeoutMillis, pool)
 		{
 			this.cluster = cluster;
@@ -54,6 +79,17 @@ namespace Aerospike.Client
 			}
 			catch (Exception)
 			{
+				if (capturedMetrics)
+				{
+					metrics.FailPhase(ConnectionFailurePhase.Tls);
+				}
+				else
+				{
+					cluster.RecordConnectionFailure(
+						node,
+						ConnectionFailurePhase.Tls,
+						false);
+				}
 				Close();
 
 				if (node != null)

@@ -33,8 +33,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Batch and server execute constructor.
 		/// </summary>
-		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, bool isOperation)
-			: base(cluster, policy, null)
+		protected internal MultiCommand(Cluster cluster, Policy policy, Node node, string ns, bool isOperation)
+			: base(cluster, policy, ns)
 		{
 			this.node = node;
 			this.isOperation = isOperation;
@@ -113,7 +113,15 @@ namespace Aerospike.Client
 			while (true)
 			{
 				// Read header
-				conn.ReadFully(protoBuf, 8, Command.STATE_READ_HEADER);
+				try
+				{
+					conn.ReadFully(protoBuf, 8, Command.STATE_READ_HEADER);
+				}
+				catch (ReadTimeout timeout)
+				{
+					AddCommandMetricsBytes(node, timeout.offset, 0);
+					throw;
+				}
 				bytesIn += 8;
 
 				long proto = ByteUtil.BytesToLong(protoBuf, 0);
@@ -121,6 +129,7 @@ namespace Aerospike.Client
 
 				if (size <= 0)
 				{
+					AddCommandMetricsBytes(node, 8, 0);
 					continue;
 				}
 
@@ -143,14 +152,13 @@ namespace Aerospike.Client
 					// Read remaining message bytes in group.
 					conn.ReadFully(buf, size, Command.STATE_READ_DETAIL);
 					bytesIn += size;
-					if (node.AreMetricsEnabled())
-					{
-						node.AddBytesIn(ns, bytesIn);
-					}
+					AddCommandMetricsBytes(node, size + 8L, 0);
 					conn.UpdateLastUsed();
 				}
 				catch (ReadTimeout rt)
 				{
+					AddCommandMetricsBytes(node, 8L + rt.offset, 0);
+
 					if (rt.offset >= 4)
 					{
 						throw;

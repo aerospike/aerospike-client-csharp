@@ -18,7 +18,7 @@ using System.Runtime.ExceptionServices;
 
 namespace Aerospike.Client
 {
-	public sealed class QueryPartitionExecutor : IQueryExecutor
+	public sealed class QueryPartitionExecutor : IQueryExecutor, IQueryMetrics
 	{
 		private readonly Cluster cluster;
 		private readonly QueryPolicy policy;
@@ -27,11 +27,19 @@ namespace Aerospike.Client
 		private readonly CancellationTokenSource cancel;
 		private readonly PartitionTracker tracker;
 		private readonly RecordSet recordSet;
+		private readonly QueryMetricsHandle queryMetrics;
+		private readonly MetricsCallContext apiMetricsContext;
 		private volatile Exception exception;
 		private int maxConcurrentThreads;
 		private int completedCount;
 		private int done;
+		private int lifecycle;
 		private bool threadsComplete;
+		private MultiCommand sequentialCommand;
+
+		private const int Running = 0;
+		private const int CancelledOrFailed = 1;
+		private const int Completed = 2;
 
 		public QueryPartitionExecutor
 		(
@@ -49,7 +57,12 @@ namespace Aerospike.Client
 			this.cancel = new CancellationTokenSource();
 			this.tracker = tracker;
 			this.recordSet = new RecordSet(this, policy.recordQueueSize, cancel.Token);
+			this.apiMetricsContext = cluster.CaptureApiMetricsContext();
+			this.apiMetricsContext.TransferToIterator();
+			this.queryMetrics = cluster.BeginQueryMetrics(apiMetricsContext);
 			cluster.AddCommandCount();
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Blocking);
 			ThreadPool.UnsafeQueueUserWorkItem(this.Run, null);
 		}
 
@@ -80,12 +93,14 @@ namespace Aerospike.Client
 
 				lock (threads)
 				{
-					// RecordSet thread may have aborted query, so check done under lock.
-					if (done == 1)
+					// Cancellation is permanent. Round completion is reset only after
+					// cancellation has been checked under the same lock.
+					if (Volatile.Read(ref lifecycle) != Running)
 					{
 						break;
 					}
 
+					Volatile.Write(ref done, 0);
 					threads.Clear();
 
 					if (parallel)
@@ -93,6 +108,7 @@ namespace Aerospike.Client
 						foreach (NodePartitions nodePartitions in list)
 						{
 							MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, tracker, nodePartitions);
+							command.SetApiMetricsContext(apiMetricsContext);
 							threads.Add(new QueryThread(this, command));
 						}
 
@@ -112,8 +128,41 @@ namespace Aerospike.Client
 					foreach (NodePartitions nodePartitions in list)
 					{
 						MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, tracker, nodePartitions);
-						command.Execute();
+						command.SetApiMetricsContext(apiMetricsContext);
+
+						lock (threads)
+						{
+							if (Volatile.Read(ref lifecycle) != Running)
+							{
+								break;
+							}
+							sequentialCommand = command;
+						}
+
+						try
+						{
+							if (Volatile.Read(ref lifecycle) == Running &&
+								command.IsValid())
+							{
+								command.Execute();
+							}
+						}
+						finally
+						{
+							lock (threads)
+							{
+								if (ReferenceEquals(sequentialCommand, command))
+								{
+									sequentialCommand = null;
+								}
+							}
+						}
 					}
+				}
+
+				if (Volatile.Read(ref lifecycle) != Running)
+				{
+					break;
 				}
 
 				if (exception != null)
@@ -121,13 +170,16 @@ namespace Aerospike.Client
 					break;
 				}
 
-				// Set done to false so RecordSet thread has chance to close early again.
-				Interlocked.Exchange(ref done, 0);
-
 				if (tracker.IsClusterComplete(cluster, policy))
 				{
 					// All partitions received.
-					recordSet.Put(RecordSet.END);
+					if (Interlocked.CompareExchange(
+						ref lifecycle,
+						Completed,
+						Running) == Running)
+					{
+						recordSet.Put(RecordSet.END);
+					}
 					break;
 				}
 
@@ -175,7 +227,9 @@ namespace Aerospike.Client
 				int nextThread = finished + maxConcurrentThreads - 1;
 
 				// Determine if a new thread needs to be started.
-				if (nextThread < threads.Count && done == 0)
+				if (nextThread < threads.Count &&
+					done == 0 &&
+					Volatile.Read(ref lifecycle) == Running)
 				{
 					// Start new thread.
 					ThreadPool.UnsafeQueueUserWorkItem(threads[nextThread].Run, null);
@@ -194,10 +248,17 @@ namespace Aerospike.Client
 
 		public bool StopThreads(Exception cause)
 		{
-			// There is no need to stop threads if all threads have already completed.
-			if (Interlocked.Exchange(ref done, 1) == 0)
+			if (Interlocked.CompareExchange(
+				ref lifecycle,
+				CancelledOrFailed,
+				Running) == Running)
 			{
 				exception = cause;
+				if (cause is not AerospikeException.QueryTerminated)
+				{
+					apiMetricsContext.CompleteFailure();
+				}
+				Interlocked.Exchange(ref done, 1);
 
 				// Send stop signal to threads.
 				// Must synchronize here because this method can be called from the main
@@ -209,6 +270,7 @@ namespace Aerospike.Client
 					{
 						thread.Stop();
 					}
+					sequentialCommand?.Stop();
 				}
 				cancel.Cancel();
 				recordSet.Abort();
@@ -240,6 +302,26 @@ namespace Aerospike.Client
 				};
 				throw wrapper;
 			}
+		}
+
+		void IQueryMetrics.RecordQueued(int delta)
+		{
+			queryMetrics.AddQueued(delta);
+		}
+
+		void IQueryMetrics.RecordAbandoned()
+		{
+			apiMetricsContext.CompleteAbandoned();
+		}
+
+		void IQueryMetrics.CompleteSuccess()
+		{
+			apiMetricsContext.CompleteSuccess();
+		}
+
+		void IQueryMetrics.CompleteFailure()
+		{
+			apiMetricsContext.CompleteFailure();
 		}
 
 		public RecordSet RecordSet

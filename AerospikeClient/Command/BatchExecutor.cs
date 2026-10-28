@@ -19,9 +19,30 @@ namespace Aerospike.Client
 {
 	public sealed class BatchExecutor
 	{
-		public static void Execute(Cluster cluster, BatchPolicy policy, IBatchCommand[] commands, BatchStatus status)
+		public static void Execute(
+			Cluster cluster,
+			BatchPolicy policy,
+			IBatchCommand[] commands,
+			BatchStatus status)
+		{
+			Execute(cluster, policy, commands, status, true);
+		}
+
+		internal static void Execute(
+			Cluster cluster,
+			BatchPolicy policy,
+			IBatchCommand[] commands,
+			BatchStatus status,
+			bool recordUserCall)
 		{
 			cluster.AddCommandCount();
+			CommandCountMetricsHandle commandMetrics = default;
+			if (recordUserCall)
+			{
+				commandMetrics = cluster.AddMetricsCommandCount();
+				cluster.RecordApiUsage(ApiExecutionMode.Blocking);
+			}
+			status.SetCommandMetrics(commandMetrics);
 
 			if (policy.maxConcurrentThreads == 1 || commands.Length <= 1)
 			{
@@ -55,8 +76,34 @@ namespace Aerospike.Client
 			executor.Execute();
 		}
 
+		internal static void Execute(
+			Cluster cluster,
+			IBatchCommand command,
+			BatchStatus status)
+		{
+			Execute(cluster, command, status, true);
+		}
+
 		public static void Execute(IBatchCommand command, BatchStatus status)
 		{
+			command.Execute();
+			status.CheckException();
+		}
+
+		internal static void Execute(
+			Cluster cluster,
+			IBatchCommand command,
+			BatchStatus status,
+			bool recordUserCall)
+		{
+			cluster.AddCommandCount();
+			CommandCountMetricsHandle commandMetrics = default;
+			if (recordUserCall)
+			{
+				commandMetrics = cluster.AddMetricsCommandCount();
+				cluster.RecordApiUsage(ApiExecutionMode.Blocking);
+			}
+			status.SetCommandMetrics(commandMetrics);
 			command.Execute();
 			status.CheckException();
 		}
