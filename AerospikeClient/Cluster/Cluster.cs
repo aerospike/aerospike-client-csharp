@@ -1412,6 +1412,21 @@ namespace Aerospike.Client
 				return;
 			}
 
+			metricsPublication = CreateMetricsPublication(
+				store,
+				store.RuntimeConfig,
+				policy,
+				publicationAppId,
+				overridePublicationAppId);
+		}
+
+		internal MetricsPublication CreateMetricsPublication(
+			MetricsStore store,
+			MetricsRuntimeConfig config,
+			MetricsPolicy policy,
+			string publicationAppId = null,
+			bool overridePublicationAppId = false)
+		{
 			Dictionary<string, string> labels = policy?.labels == null
 				? new Dictionary<string, string>()
 				: new Dictionary<string, string>(policy.labels);
@@ -1430,9 +1445,9 @@ namespace Aerospike.Client
 				metricsAppId = "not-set";
 			}
 
-			metricsPublication = new MetricsPublication(
+			return new MetricsPublication(
 				store,
-				store.RuntimeConfig,
+				config,
 				new ReadOnlyDictionary<string, string>(labels),
 				metricsAppId,
 				compatibilityAppId ?? string.Empty);

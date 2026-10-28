@@ -106,12 +106,12 @@ namespace Aerospike.Client
 
 		internal long GetCompatibilityError(Node node)
 		{
-			return RegisterNode(node).GetErrorCount();
+			return GetReadGeneration(node).GetErrorCount();
 		}
 
 		internal MetricsNodeView ReadCompatibilityNode(Node node)
 		{
-			MetricsNodeGeneration generation = RegisterNode(node);
+			MetricsNodeGeneration generation = GetReadGeneration(node);
 			return nodeNames[generation.Name].ReadCompatibility(
 				generation.Name,
 				config);
@@ -119,7 +119,16 @@ namespace Aerospike.Client
 
 		internal MetricsNodeView ReadCompatibilityGeneration(Node node)
 		{
-			return RegisterNode(node).ReadCompatibility(config);
+			return GetReadGeneration(node).ReadCompatibility(config);
+		}
+
+		// Reads use the registered generation as-is; only an unregistered node
+		// goes through registration, whose shape guard is then a no-op.
+		private MetricsNodeGeneration GetReadGeneration(Node node)
+		{
+			return nodes.TryGetValue(node, out MetricsNodeGeneration generation)
+				? generation
+				: RegisterNode(node);
 		}
 
 		internal void RecordCompatibilityFailure(

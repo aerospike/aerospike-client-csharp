@@ -65,6 +65,15 @@ namespace Aerospike.Client
 					!Matches(replacement));
 		}
 
+		/// <summary>
+		/// True when buckets recorded under this shape are valid buckets for
+		/// <paramref name="expected"/>: same boundaries and not superseded by it.
+		/// </summary>
+		internal bool CanBeReadAs(MetricsHistogramShape expected)
+		{
+			return Matches(expected) && Generation >= expected.Generation;
+		}
+
 		private static ulong[] CreateLimits(int columns, int shift)
 		{
 			ulong[] result = new ulong[columns];
@@ -142,7 +151,7 @@ namespace Aerospike.Client
 
 	internal sealed class MetricsNamespaceCollector
 	{
-		private sealed class HistogramBank
+		internal sealed class HistogramBank
 		{
 			internal readonly MetricsHistogramShape Shape;
 			internal readonly MetricsHistogram[] Histograms;
@@ -156,6 +165,33 @@ namespace Aerospike.Client
 				{
 					Histograms[i] = new MetricsHistogram(shape);
 				}
+			}
+
+			internal HistogramBank(
+				MetricsHistogramShape shape,
+				MetricsHistogram[] histograms)
+			{
+				Shape = shape;
+				Histograms = histograms;
+			}
+		}
+
+		/// <summary>
+		/// Replacement bank allocated before a policy cutover. Commit publishes it;
+		/// the bank it replaced is retained so a rollback can re-adopt its buckets.
+		/// </summary>
+		internal sealed class ShapeUpdate
+		{
+			internal readonly MetricsNamespaceCollector Collector;
+			internal readonly HistogramBank Replacement;
+			internal HistogramBank Previous;
+
+			internal ShapeUpdate(
+				MetricsNamespaceCollector collector,
+				MetricsHistogramShape shape)
+			{
+				Collector = collector;
+				Replacement = new HistogramBank(shape);
 			}
 		}
 
@@ -232,6 +268,57 @@ namespace Aerospike.Client
 			}
 		}
 
+		internal ShapeUpdate PrepareShape(MetricsHistogramShape shape)
+		{
+			return new ShapeUpdate(this, shape);
+		}
+
+		internal void CommitShape(ShapeUpdate update)
+		{
+			lock (configLock)
+			{
+				HistogramBank current = histogramBank;
+
+				if (current.Shape.ShouldReplaceWith(update.Replacement.Shape))
+				{
+					update.Previous = current;
+					histogramBank = update.Replacement;
+				}
+			}
+		}
+
+		/// <summary>
+		/// Move forward to <paramref name="restored"/>, re-adopting the buckets the
+		/// committed update replaced when they were valid for
+		/// <paramref name="previous"/>. Otherwise start an empty bank.
+		/// </summary>
+		internal void RollbackShape(
+			ShapeUpdate update,
+			MetricsHistogramShape previous,
+			MetricsHistogramShape restored)
+		{
+			lock (configLock)
+			{
+				HistogramBank current = histogramBank;
+
+				if (!current.Shape.ShouldReplaceWith(restored))
+				{
+					return;
+				}
+
+				bool reuse = update != null &&
+					ReferenceEquals(update.Collector, this) &&
+					ReferenceEquals(current, update.Replacement) &&
+					update.Previous != null &&
+					update.Previous.Shape.CanBeReadAs(previous) &&
+					update.Previous.Shape.Matches(restored);
+
+				histogramBank = reuse
+					? new HistogramBank(restored, update.Previous.Histograms)
+					: new HistogramBank(restored);
+			}
+		}
+
 		internal void AddFailure(MetricsFailure failure)
 		{
 			if (failure == MetricsFailure.None)
@@ -282,17 +369,25 @@ namespace Aerospike.Client
 			return Read(ns, config.Shape);
 		}
 
+		/// <summary>
+		/// Copy the published bank without reshaping it. A bank that is not valid
+		/// for <paramref name="expected"/> is reported as empty buckets of the
+		/// expected shape, which is what the next write-time cutover would leave.
+		/// </summary>
 		internal MetricsNamespaceView Read(
 			string ns,
 			MetricsHistogramShape expected)
 		{
 			Dictionary<LatencyType, long[]> latency = new();
-			HistogramBank bank = EnsureShapeBank(expected);
+			HistogramBank bank = histogramBank;
 			MetricsHistogram[] current = bank.Histograms;
+			bool valid = bank.Shape.CanBeReadAs(expected);
 
 			for (int i = 0; i < current.Length; i++)
 			{
-				latency[(LatencyType)i] = current[i].CopyBuckets();
+				latency[(LatencyType)i] = valid
+					? current[i].CopyBuckets()
+					: new long[expected.Columns];
 			}
 
 			Dictionary<LatencyType, IReadOnlyList<long>> immutableLatency = new(latency.Count);
@@ -339,37 +434,89 @@ namespace Aerospike.Client
 
 	internal sealed class MetricsNodeCollector
 	{
+		/// <summary>
+		/// Shape and connection histogram published together so a reader never
+		/// pairs one shape with another shape's buckets.
+		/// </summary>
+		internal sealed class ConnectionHistogram
+		{
+			internal readonly MetricsHistogramShape Shape;
+			internal readonly MetricsHistogram Histogram;
+
+			internal ConnectionHistogram(MetricsHistogramShape shape)
+			{
+				Shape = shape;
+				Histogram = new MetricsHistogram(shape);
+			}
+
+			internal ConnectionHistogram(
+				MetricsHistogramShape shape,
+				MetricsHistogram histogram)
+			{
+				Shape = shape;
+				Histogram = histogram;
+			}
+		}
+
+		/// <summary>
+		/// Replacement connection histogram and namespace banks allocated before a
+		/// policy cutover. Namespaces created after preparation are reshaped by
+		/// the write-time guard during commit.
+		/// </summary>
+		internal sealed class ShapeUpdate
+		{
+			internal readonly MetricsNodeCollector Collector;
+			internal readonly ConnectionHistogram Replacement;
+			internal readonly Dictionary<
+				MetricsNamespaceCollector,
+				MetricsNamespaceCollector.ShapeUpdate> Namespaces;
+			internal ConnectionHistogram Previous;
+
+			internal ShapeUpdate(
+				MetricsNodeCollector collector,
+				MetricsHistogramShape shape)
+			{
+				Collector = collector;
+				Replacement = new ConnectionHistogram(shape);
+				Namespaces = new(ReferenceEqualityComparer.Instance);
+
+				foreach (MetricsNamespaceCollector ns in collector.namespaces.Values)
+				{
+					Namespaces[ns] = ns.PrepareShape(shape);
+				}
+			}
+
+			internal MetricsHistogramShape Shape => Replacement.Shape;
+		}
+
 		private readonly ConcurrentDictionary<string, MetricsNamespaceCollector> namespaces = new();
-		private volatile MetricsHistogramShape shape;
 		private long opened;
 		private long closed;
 		private long poolExhausted;
 		private long openFailures;
 		private long tlsHandshakeFailures;
 		private long authFailures;
-		private volatile MetricsHistogram connectionLatency;
+		private volatile ConnectionHistogram connection;
 		private readonly object configLock = new();
 		private Action changed;
 
 		internal MetricsNodeCollector(MetricsRuntimeConfig config)
 		{
-			shape = config.Shape;
-			connectionLatency = new MetricsHistogram(config.Shape);
+			connection = new ConnectionHistogram(config.Shape);
 		}
 
 		internal MetricsNodeCollector(MetricsHistogramShape shape)
 		{
-			this.shape = shape;
-			connectionLatency = new MetricsHistogram(shape);
+			connection = new ConnectionHistogram(shape);
 		}
 
-		internal MetricsHistogramShape CurrentShape => shape;
+		internal MetricsHistogramShape CurrentShape => connection.Shape;
 
 		internal MetricsNamespaceCollector GetNamespace(
 			string ns,
 			MetricsHistogramShape expected)
 		{
-			MetricsHistogramShape current = shape;
+			MetricsHistogramShape current = connection.Shape;
 			MetricsHistogramShape target =
 				current.ShouldReplaceWith(expected)
 					? expected
@@ -396,14 +543,14 @@ namespace Aerospike.Client
 
 		internal void EnsureShape(MetricsHistogramShape replacement)
 		{
-			if (!shape.ShouldReplaceWith(replacement))
+			if (!connection.Shape.ShouldReplaceWith(replacement))
 			{
 				return;
 			}
 
 			lock (configLock)
 			{
-				if (!shape.ShouldReplaceWith(replacement))
+				if (!connection.Shape.ShouldReplaceWith(replacement))
 				{
 					return;
 				}
@@ -411,14 +558,84 @@ namespace Aerospike.Client
 				// Publish the cutover before enumeration. A namespace inserted before
 				// this store is included below; one inserted afterwards observes the
 				// replacement shape in GetNamespace().
-				shape = replacement;
-				connectionLatency = new MetricsHistogram(replacement);
+				connection = new ConnectionHistogram(replacement);
 				foreach (MetricsNamespaceCollector collector in namespaces.Values)
 				{
 					collector.EnsureShape(replacement);
 				}
 			}
 
+		}
+
+		internal ShapeUpdate PrepareShape(MetricsHistogramShape shape)
+		{
+			return new ShapeUpdate(this, shape);
+		}
+
+		internal void CommitShape(ShapeUpdate update)
+		{
+			lock (configLock)
+			{
+				ConnectionHistogram current = connection;
+
+				if (!current.Shape.ShouldReplaceWith(update.Shape))
+				{
+					return;
+				}
+
+				// Same publication order as EnsureShape().
+				update.Previous = current;
+				connection = update.Replacement;
+				foreach (MetricsNamespaceCollector collector in namespaces.Values)
+				{
+					if (update.Namespaces.TryGetValue(
+						collector,
+						out MetricsNamespaceCollector.ShapeUpdate prepared))
+					{
+						collector.CommitShape(prepared);
+					}
+					else
+					{
+						collector.EnsureShape(update.Shape);
+					}
+				}
+			}
+		}
+
+		internal void RollbackShape(
+			ShapeUpdate update,
+			MetricsHistogramShape previous,
+			MetricsHistogramShape restored)
+		{
+			lock (configLock)
+			{
+				ConnectionHistogram current = connection;
+
+				if (!current.Shape.ShouldReplaceWith(restored))
+				{
+					return;
+				}
+
+				bool reuse = update != null &&
+					ReferenceEquals(update.Collector, this) &&
+					ReferenceEquals(current, update.Replacement) &&
+					update.Previous != null &&
+					update.Previous.Shape.CanBeReadAs(previous) &&
+					update.Previous.Shape.Matches(restored);
+
+				connection = reuse
+					? new ConnectionHistogram(restored, update.Previous.Histogram)
+					: new ConnectionHistogram(restored);
+				foreach (MetricsNamespaceCollector collector in namespaces.Values)
+				{
+					MetricsNamespaceCollector.ShapeUpdate prepared = null;
+					if (update != null && ReferenceEquals(update.Collector, this))
+					{
+						update.Namespaces.TryGetValue(collector, out prepared);
+					}
+					collector.RollbackShape(prepared, previous, restored);
+				}
+			}
 		}
 
 		internal void AddOpened()
@@ -464,7 +681,7 @@ namespace Aerospike.Client
 			MetricsHistogramShape expected)
 		{
 			EnsureShape(expected);
-			connectionLatency.AddNanoseconds(elapsedNanoseconds);
+			connection.Histogram.AddNanoseconds(elapsedNanoseconds);
 			Volatile.Read(ref changed)?.Invoke();
 		}
 
@@ -473,11 +690,16 @@ namespace Aerospike.Client
 			return Read(name, expected.Shape);
 		}
 
+		/// <summary>
+		/// Copy the published histograms without reshaping them. Histograms not
+		/// valid for <paramref name="expected"/> are reported as empty buckets of
+		/// the expected shape.
+		/// </summary>
 		internal MetricsNodeView Read(
 			string name,
 			MetricsHistogramShape expected)
 		{
-			EnsureShape(expected);
+			ConnectionHistogram current = connection;
 			Dictionary<string, MetricsNamespaceView> namespaceViews = new();
 
 			foreach (KeyValuePair<string, MetricsNamespaceCollector> entry in namespaces)
@@ -493,7 +715,9 @@ namespace Aerospike.Client
 				Volatile.Read(ref openFailures),
 				Volatile.Read(ref tlsHandshakeFailures),
 				Volatile.Read(ref authFailures),
-				Array.AsReadOnly(connectionLatency.CopyBuckets()),
+				Array.AsReadOnly(current.Shape.CanBeReadAs(expected)
+					? current.Histogram.CopyBuckets()
+					: new long[expected.Columns]),
 				new ReadOnlyDictionary<string, MetricsNamespaceView>(namespaceViews));
 		}
 
@@ -513,7 +737,7 @@ namespace Aerospike.Client
 			Interlocked.Add(ref tlsHandshakeFailures, source.TlsHandshakeFailures);
 			Interlocked.Add(ref authFailures, source.AuthFailures);
 			EnsureShape(expected);
-			connectionLatency.AddBuckets(source.ConnectionLatency);
+			connection.Histogram.AddBuckets(source.ConnectionLatency);
 
 			foreach (KeyValuePair<string, MetricsNamespaceView> entry in source.Namespaces)
 			{

@@ -184,10 +184,10 @@ namespace Aerospike.Client
 
 				if (nodeMetrics != null)
 				{
-					MetricsNodeCollector aggregate = new(shape);
-					aggregate.Merge(collected, shape);
-					aggregate.Merge(nodeMetrics.Read(Name, shape), shape);
-					operational = aggregate.Read(Name, shape);
+					MetricsNodeViewAggregate aggregate = new(shape);
+					aggregate.Add(collected);
+					aggregate.Add(nodeMetrics.Read(Name, shape));
+					operational = aggregate.ToView(Name);
 				}
 
 				return new MetricsNodeCapture(
@@ -337,20 +337,18 @@ namespace Aerospike.Client
 		{
 			lock (sync)
 			{
-				MetricsNodeCollector publicAggregate = new(shape);
-				MetricsNodeCollector compatibilityAggregate = new(shape);
+				MetricsNodeViewAggregate publicAggregate = new(shape);
+				MetricsNodeViewAggregate compatibilityAggregate = new(shape);
 
 				foreach (MetricsNodeGeneration generation in generations)
 				{
 					MetricsNodeCapture capture = generation.Capture(shape);
-					publicAggregate.Merge(capture.Public, shape);
-					compatibilityAggregate.Merge(
-						capture.Compatibility,
-						shape);
+					publicAggregate.Add(capture.Public);
+					compatibilityAggregate.Add(capture.Compatibility);
 				}
 				return new MetricsNodeCapture(
-					publicAggregate.Read(name, shape),
-					compatibilityAggregate.Read(name, shape),
+					publicAggregate.ToView(name),
+					compatibilityAggregate.ToView(name),
 					active.Count != 0);
 			}
 		}

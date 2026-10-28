@@ -128,6 +128,7 @@ namespace Aerospike.Client
 			}
 		}
 
+		// Write-path forward-only guard; snapshots copy tendDuration directly.
 		private HistogramState EnsureTend(MetricsRuntimeConfig expected)
 		{
 			HistogramState current = tendDuration;

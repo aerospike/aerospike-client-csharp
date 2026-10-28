@@ -55,23 +55,45 @@ namespace Aerospike.Client
 				}
 				else
 				{
-					QuiesceDelivery(cluster, deliveryCandidate);
+					MetricsStore currentStore = store;
+					MetricsPublication previousPublication = publication;
+					MetricsStore.PolicyUpdate update;
+					MetricsPublication candidatePublication;
+
 					try
 					{
-						store?.ApplyPolicy(candidatePolicy);
-						cluster.MetricsPolicy = candidatePolicy;
-						cluster.PublishMetrics(
-							store,
+						update = currentStore?.PreparePolicyUpdate(
+							candidatePolicy);
+						candidatePublication = PreparePublication(
+							cluster,
+							currentStore,
+							update,
 							candidatePolicy,
 							publicationAppId,
 							true);
+					}
+					catch
+					{
+						AbortDelivery(cluster, deliveryCandidate, false);
+						throw;
+					}
+					QuiesceDelivery(cluster, deliveryCandidate);
+					try
+					{
+						CommitPolicyUpdate(currentStore, update);
+						cluster.MetricsPolicy = candidatePolicy;
+						Publish(candidatePublication);
 						CommitDelivery(cluster, deliveryCandidate);
 					}
 					catch
 					{
-						store?.ApplyPolicy(previousPolicy);
+						currentStore?.RollbackPolicyUpdate(update);
 						cluster.MetricsPolicy = previousPolicy;
-						cluster.PublishMetrics(store, previousPolicy);
+						RestorePublication(
+							cluster,
+							currentStore,
+							previousPublication,
+							previousPolicy);
 						AbortDelivery(cluster, deliveryCandidate, true);
 						throw;
 					}
@@ -121,6 +143,8 @@ namespace Aerospike.Client
 			Node[] nodeArray = cluster.Nodes;
 			NodeMetrics[] candidateNodeMetrics =
 				new NodeMetrics[nodeArray.Length];
+			MetricsStore.PolicyUpdate update;
+			MetricsPublication candidatePublication;
 
 			try
 			{
@@ -131,6 +155,16 @@ namespace Aerospike.Client
 							nodeArray[i],
 							policy);
 				}
+				update = candidateSession.PreparePolicyUpdate(policy);
+				candidatePublication = publish
+					? PreparePublication(
+						cluster,
+						candidateSession,
+						update,
+						policy,
+						publicationAppId,
+						overridePublicationAppId)
+					: null;
 			}
 			catch
 			{
@@ -217,7 +251,7 @@ namespace Aerospike.Client
 						failures);
 			}
 
-			candidateSession.ApplyPolicy(policy);
+			candidateSession.CommitPolicyUpdate(update);
 			if (!wasEnabled)
 			{
 				candidateSession.StartSession();
@@ -230,14 +264,7 @@ namespace Aerospike.Client
 			cluster.MetricsPolicy = policy;
 			store = candidateSession;
 			CommitDelivery(cluster, deliveryCandidate);
-			if (publish)
-			{
-				cluster.PublishMetrics(
-					candidateSession,
-					policy,
-					publicationAppId,
-					overridePublicationAppId);
-			}
+			Publish(candidatePublication);
 			cluster.MetricsEnabled = true;
 			if (!wasEnabled)
 			{
@@ -364,6 +391,9 @@ namespace Aerospike.Client
 				previousPolicy.LatencyColumns != policy.LatencyColumns ||
 				previousPolicy.LatencyShift != policy.LatencyShift ||
 				previousPolicy.LatencyUnit != policy.LatencyUnit;
+			MetricsPublication previousPublication = publication;
+			MetricsStore.PolicyUpdate update;
+			MetricsPublication candidatePublication;
 
 			try
 			{
@@ -376,6 +406,14 @@ namespace Aerospike.Client
 							NodeMetrics.CreateHistograms(policy);
 					}
 				}
+				update = currentStore?.PreparePolicyUpdate(policy);
+				candidatePublication = PreparePublication(
+					cluster,
+					currentStore,
+					update,
+					policy,
+					publicationAppId,
+					overridePublicationAppId);
 			}
 			catch
 			{
@@ -425,7 +463,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				currentStore?.ApplyPolicy(policy);
+				CommitPolicyUpdate(currentStore, update);
 				for (int i = 0; i < nodeMetrics.Length; i++)
 				{
 					if (shapeChanged && nodeMetrics[i] != null)
@@ -438,11 +476,7 @@ namespace Aerospike.Client
 				}
 				cluster.metricsListener = listener;
 				cluster.MetricsPolicy = policy;
-				cluster.PublishMetrics(
-					currentStore,
-					policy,
-					publicationAppId,
-					overridePublicationAppId);
+				Publish(candidatePublication);
 				CommitDelivery(cluster, deliveryCandidate);
 				policy.restartRequired = false;
 			}
@@ -451,7 +485,7 @@ namespace Aerospike.Client
 				DisposeHistograms(candidateHistograms);
 				try
 				{
-					currentStore?.ApplyPolicy(previousPolicy);
+					currentStore?.RollbackPolicyUpdate(update);
 					for (int i = 0; i < nodeMetrics.Length; i++)
 					{
 						if (previousHistograms[i] != null)
@@ -461,9 +495,15 @@ namespace Aerospike.Client
 							previousHistograms[i] = null;
 						}
 					}
+					cluster.metricsListener = previousListener;
+					cluster.MetricsPolicy = previousPolicy;
 					listener?.OnDisable(cluster);
 					previousListener?.OnEnable(cluster, previousPolicy);
-					cluster.PublishMetrics(currentStore, previousPolicy);
+					RestorePublication(
+						cluster,
+						currentStore,
+						previousPublication,
+						previousPolicy);
 				}
 				catch (Exception rollbackException)
 				{
@@ -490,6 +530,72 @@ namespace Aerospike.Client
 				node.DisableMetrics();
 			}
 			currentStore?.Freeze();
+		}
+
+		private static MetricsPublication PreparePublication(
+			Cluster cluster,
+			MetricsStore target,
+			MetricsStore.PolicyUpdate update,
+			MetricsPolicy policy,
+			string publicationAppId,
+			bool overridePublicationAppId)
+		{
+			return target == null
+				? null
+				: cluster.CreateMetricsPublication(
+					target,
+					update.Replacement,
+					policy,
+					publicationAppId,
+					overridePublicationAppId);
+		}
+
+		private static void CommitPolicyUpdate(
+			MetricsStore target,
+			MetricsStore.PolicyUpdate update)
+		{
+			if (target != null)
+			{
+				target.CommitPolicyUpdate(update);
+			}
+		}
+
+		private void Publish(MetricsPublication candidate)
+		{
+			if (candidate != null)
+			{
+				publication = candidate;
+			}
+		}
+
+		/// <summary>
+		/// Republish the previous publication metadata against the configuration
+		/// the store published on rollback.
+		/// </summary>
+		private void RestorePublication(
+			Cluster cluster,
+			MetricsStore target,
+			MetricsPublication previous,
+			MetricsPolicy previousPolicy)
+		{
+			if (target == null)
+			{
+				return;
+			}
+
+			if (previous != null && ReferenceEquals(previous.Store, target))
+			{
+				publication = new MetricsPublication(
+					target,
+					target.RuntimeConfig,
+					previous.Labels,
+					previous.AppId,
+					previous.CompatibilityAppId);
+			}
+			else
+			{
+				cluster.PublishMetrics(target, previousPolicy);
+			}
 		}
 
 		private static void DisposeHistograms(Histograms[] histograms)

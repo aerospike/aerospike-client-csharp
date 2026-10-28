@@ -1310,6 +1310,405 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void ExplicitMetricsReshapeIsEagerAndReplacesOnlyNodeHistograms()
+		{
+			client.DisableMetrics();
+			MetricsPolicy originalPolicy = new()
+			{
+				Exporter = MetricsExporterMode.None,
+				OperationalEnabled = true,
+				Sampler = MetricsSampler.FromProbability(1),
+				LatencyColumns = 3
+			};
+			client.EnableMetrics(originalPolicy);
+
+			try
+			{
+				Cluster cluster = client.Cluster;
+				MetricsStore store = cluster.MetricsStore;
+				Node node = cluster.Nodes[0];
+				Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "metrics-eager-reshape");
+				client.Put(null, key, new Bin("m", 1));
+				client.Get(null, key);
+				NodeMetrics metrics = node.GetMetrics();
+				Histograms originalHistograms = metrics.Histograms;
+				metrics.BytesInCounter.Increment(SuiteHelpers.ns, 29);
+				long counted = metrics.BytesInCounter.GetCountByNS(SuiteHelpers.ns);
+				MetricsSnapshot before = client.GetMetricsSnapshot();
+				Assert.AreEqual(2L, before.Cluster.CommandCount);
+
+				client.EnableMetrics(new MetricsPolicy(originalPolicy)
+				{
+					LatencyColumns = 5
+				});
+
+				// No snapshot has been taken since the cutover.
+				MetricsHistogramShape shape = store.RuntimeConfig.Shape;
+				Assert.AreEqual(5, shape.Columns);
+				MetricsTestState.AssertShape(store, shape);
+				Assert.AreSame(metrics, node.GetMetrics());
+				Assert.AreNotSame(originalHistograms, metrics.Histograms);
+				Assert.IsTrue(metrics.Histograms.Matches(shape));
+				Assert.AreEqual(
+					counted,
+					metrics.BytesInCounter.GetCountByNS(SuiteHelpers.ns));
+
+				IReadOnlyList<object> identities =
+					MetricsTestState.Identities(store);
+				MetricsSnapshot first = client.GetMetricsSnapshot();
+				MetricsSnapshot second = client.GetMetricsSnapshot();
+				MetricsTestState.AssertSameIdentities(
+					identities,
+					MetricsTestState.Identities(store));
+				long bytesIn = before.Nodes
+					.Single(item => item.Name == node.Name)
+					.Namespaces.Single(item => item.Name == SuiteHelpers.ns)
+					.BytesIn;
+
+				foreach (MetricsSnapshot after in new[] { first, second })
+				{
+					Assert.AreEqual(5, after.LatencyColumns);
+					Assert.AreEqual(2L, after.Cluster.CommandCount);
+					CollectionAssert.AreEqual(
+						new long[5],
+						after.Cluster.Latency.Read.ToArray());
+					Assert.AreEqual(
+						bytesIn,
+						after.Nodes.Single(item => item.Name == node.Name)
+							.Namespaces.Single(item => item.Name == SuiteHelpers.ns)
+							.BytesIn);
+				}
+			}
+			finally
+			{
+				client.DisableMetrics();
+			}
+		}
+
+		[TestMethod]
+		public void MetricsYamlShapeReloadIsEagerAndReplacesOnlyNodeHistograms()
+		{
+			using ConfigClientScope scope = ConfigClientScope.Create("""
+				version: 1.2.0
+				dynamic:
+				  client:
+				    tend_interval: 1000
+				  metrics:
+				    enabled: true
+				    exporter: none
+				    latency_columns: 3
+				    extended:
+				      operational:
+				        enabled: true
+				""");
+			Cluster cluster = scope.Client.Cluster;
+			MetricsStore store = cluster.MetricsStore;
+			Node node = cluster.Nodes[0];
+			NodeMetrics metrics = node.GetMetrics();
+			Histograms originalHistograms = metrics.Histograms;
+			metrics.BytesInCounter.Increment(SuiteHelpers.ns, 37);
+			store.AddLatency(
+				node,
+				"metrics-yaml-reshape",
+				Latency.LatencyType.READ,
+				1_000_000);
+			MetricsHistogramShape previous = store.RuntimeConfig.Shape;
+
+			scope.RewriteYaml("""
+				version: 1.2.0
+				dynamic:
+				  client:
+				    tend_interval: 1000
+				  metrics:
+				    enabled: true
+				    exporter: none
+				    latency_columns: 5
+				    extended:
+				      operational:
+				        enabled: true
+				""");
+
+			MetricsHistogramShape shape = store.RuntimeConfig.Shape;
+			Assert.AreEqual(previous.Generation + 1, shape.Generation);
+			Assert.AreEqual(5, shape.Columns);
+			MetricsTestState.AssertShape(store, shape);
+			Assert.AreSame(metrics, node.GetMetrics());
+			Assert.AreNotSame(originalHistograms, metrics.Histograms);
+			Assert.IsTrue(metrics.Histograms.Matches(shape));
+			Assert.AreEqual(
+				37L,
+				metrics.BytesInCounter.GetCountByNS(SuiteHelpers.ns));
+
+			IReadOnlyList<object> identities = MetricsTestState.Identities(store);
+			scope.Client.GetMetricsSnapshot();
+			cluster.ReadMetrics();
+			MetricsTestState.AssertSameIdentities(
+				identities,
+				MetricsTestState.Identities(store));
+		}
+
+		[TestMethod]
+		public void MetricsReshapePreparationFailureLeavesPublishedStateUntouched()
+		{
+			client.DisableMetrics();
+			MetricsPolicy originalPolicy = new()
+			{
+				Exporter = MetricsExporterMode.None,
+				OperationalEnabled = true,
+				Sampler = MetricsSampler.FromProbability(1),
+				LatencyColumns = 3,
+				Listener = new EmptyMetricsListener()
+			};
+			client.EnableMetrics(originalPolicy);
+			Cluster cluster = client.Cluster;
+			MetricsManager manager = GetMetricsManager(cluster);
+			FieldInfo starter = typeof(MetricsManager).GetField(
+				"ReporterStarter",
+				BindingFlags.Instance | BindingFlags.NonPublic);
+			FieldInfo factory = typeof(MetricsManager).GetField(
+				"WriterFactory",
+				BindingFlags.Instance | BindingFlags.NonPublic);
+			object originalStarter = starter.GetValue(manager);
+			object originalFactory = factory.GetValue(manager);
+
+			try
+			{
+				MetricsStore store = cluster.MetricsStore;
+				Node node = cluster.Nodes[0];
+				store.AddLatency(
+					node,
+					"metrics-prepare-failure",
+					Latency.LatencyType.READ,
+					1_000_000);
+				NodeMetrics metrics = node.GetMetrics();
+				Histograms histograms = metrics.Histograms;
+				metrics.BytesInCounter.Increment(SuiteHelpers.ns, 31);
+				MetricsPolicy policy = cluster.MetricsPolicy;
+				MetricsPublication publication = manager.Publication;
+				MetricsReporter reporter = manager.Reporter;
+				MetricsWriter writer = manager.FileWriter;
+				IReadOnlyList<object> identities = MetricsTestState.Identities(store);
+
+				void AssertUnchanged()
+				{
+					Assert.IsTrue(cluster.MetricsEnabled);
+					Assert.AreSame(policy, cluster.MetricsPolicy);
+					Assert.AreSame(publication, manager.Publication);
+					Assert.AreSame(reporter, manager.Reporter);
+					Assert.AreSame(writer, manager.FileWriter);
+					MetricsTestState.AssertSameIdentities(
+						identities,
+						MetricsTestState.Identities(store));
+					Assert.AreEqual(3, store.RuntimeConfig.Shape.Columns);
+					Assert.AreSame(metrics, node.GetMetrics());
+					Assert.AreSame(histograms, metrics.Histograms);
+					Assert.AreEqual(
+						31L,
+						metrics.BytesInCounter.GetCountByNS(SuiteHelpers.ns));
+					Assert.AreEqual(
+						1L,
+						cluster.ReadMetrics().Nodes[node.Name]
+							.Namespaces["metrics-prepare-failure"]
+							.Latency[Latency.LatencyType.READ].Sum());
+				}
+
+				AssertThrows<InvalidOperationException>(() =>
+					client.EnableMetrics(new MetricsPolicy(originalPolicy)
+					{
+						LatencyColumns = 5,
+						Listener = new ThrowingEnableListener()
+					}));
+				AssertUnchanged();
+
+				starter.SetValue(manager, null);
+				MetricsPolicy custom = new(originalPolicy)
+				{
+					LatencyColumns = 5,
+					Exporter = MetricsExporterMode.Custom
+				};
+				custom.AddExporter(new CountingExporter());
+				AssertThrows<NullReferenceException>(() =>
+					client.EnableMetrics(custom));
+				starter.SetValue(manager, originalStarter);
+				AssertUnchanged();
+
+				factory.SetValue(manager, null);
+				AssertThrows<NullReferenceException>(() =>
+					client.EnableMetrics(new MetricsPolicy(originalPolicy)
+					{
+						LatencyColumns = 5,
+						Exporter = MetricsExporterMode.File,
+						ReportDir = Path.Combine(
+							Path.GetTempPath(),
+							$"unused-{Guid.NewGuid():N}")
+					}));
+				factory.SetValue(manager, originalFactory);
+				AssertUnchanged();
+			}
+			finally
+			{
+				starter.SetValue(manager, originalStarter);
+				factory.SetValue(manager, originalFactory);
+				client.DisableMetrics();
+			}
+		}
+
+		[TestMethod]
+		public void MetricsReshapeCommitFailureRestoresPreviousState()
+		{
+			client.DisableMetrics();
+			MetricsPolicy originalPolicy = new()
+			{
+				Exporter = MetricsExporterMode.Custom,
+				ExportInterval = TimeSpan.FromHours(1),
+				OperationalEnabled = true,
+				Sampler = MetricsSampler.FromProbability(1),
+				LatencyColumns = 3,
+				Listener = new EmptyMetricsListener()
+			};
+			originalPolicy.AddExporter(new CountingExporter());
+			client.EnableMetrics(originalPolicy);
+
+			try
+			{
+				Cluster cluster = client.Cluster;
+				MetricsManager manager = GetMetricsManager(cluster);
+				MetricsStore store = cluster.MetricsStore;
+				Node node = cluster.Nodes[0];
+				store.AddLatency(
+					node,
+					"metrics-commit-failure",
+					Latency.LatencyType.READ,
+					1_000_000);
+				NodeMetrics metrics = node.GetMetrics();
+				Histograms histograms = metrics.Histograms;
+				metrics.BytesInCounter.Increment(SuiteHelpers.ns, 41);
+				MetricsPolicy previousPolicy = cluster.MetricsPolicy;
+				MetricsPublication previousPublication = manager.Publication;
+				MetricsRuntimeConfig previousConfig = store.RuntimeConfig;
+				MetricsReporter reporter = manager.Reporter;
+				Assert.IsNotNull(reporter);
+				MetricsStoreSnapshot before = cluster.ReadMetrics();
+				MetricsPolicy candidate = new(previousPolicy)
+				{
+					LatencyColumns = 5
+				};
+				candidate.restartRequired = true;
+				// Reporter.Reconfigure(null) throws after the store cutover.
+				MetricsManager.DeliveryCandidate failing = new(
+					reporter,
+					manager.FileWriter,
+					reporter,
+					manager.FileWriter,
+					null,
+					previousPolicy.Exporters,
+					true,
+					false,
+					false);
+
+				lock (manager.LifecycleLock)
+				{
+					lock (cluster.metricsLock)
+					{
+						AssertThrows<NullReferenceException>(() =>
+							manager.ApplyConfiguration(
+								cluster,
+								candidate,
+								previousPolicy,
+								true,
+								failing,
+								"metrics-rolled-back-app"));
+					}
+				}
+
+				MetricsRuntimeConfig restored = store.RuntimeConfig;
+				Assert.IsTrue(cluster.MetricsEnabled);
+				Assert.AreSame(previousPolicy, cluster.MetricsPolicy);
+				Assert.AreSame(reporter, manager.Reporter);
+				Assert.IsTrue(restored.Shape.Matches(previousConfig.Shape));
+				Assert.IsTrue(
+					restored.Shape.Generation > previousConfig.Shape.Generation + 1);
+				MetricsTestState.AssertShape(store, restored.Shape);
+				Assert.AreSame(metrics, node.GetMetrics());
+				Assert.AreSame(histograms, metrics.Histograms);
+				Assert.AreEqual(
+					41L,
+					metrics.BytesInCounter.GetCountByNS(SuiteHelpers.ns));
+
+				MetricsPublication publication = manager.Publication;
+				Assert.AreSame(store, publication.Store);
+				Assert.AreSame(restored, publication.Config);
+				Assert.AreEqual(previousPublication.AppId, publication.AppId);
+				Assert.AreEqual(
+					previousPublication.CompatibilityAppId,
+					publication.CompatibilityAppId);
+				Assert.AreSame(previousPublication.Labels, publication.Labels);
+
+				MetricsStoreSnapshot after = cluster.ReadMetrics();
+				CollectionAssert.AreEqual(
+					before.Nodes[node.Name].Namespaces["metrics-commit-failure"]
+						.Latency[Latency.LatencyType.READ].ToArray(),
+					after.Nodes[node.Name].Namespaces["metrics-commit-failure"]
+						.Latency[Latency.LatencyType.READ].ToArray());
+				Assert.AreEqual(3, client.GetMetricsSnapshot().LatencyColumns);
+			}
+			finally
+			{
+				client.DisableMetrics();
+			}
+		}
+
+		[TestMethod]
+		public void MetricsFrozenPullSnapshotsDoNotMutateStore()
+		{
+			client.DisableMetrics();
+			client.EnableMetrics(new MetricsPolicy
+			{
+				Exporter = MetricsExporterMode.None,
+				OperationalEnabled = true,
+				Sampler = MetricsSampler.FromProbability(1),
+				LatencyColumns = 3
+			});
+			Cluster cluster = client.Cluster;
+			MetricsStore store = cluster.MetricsStore;
+			Node node = cluster.Nodes[0];
+			store.AddLatency(
+				node,
+				"metrics-frozen-pull",
+				Latency.LatencyType.READ,
+				1_000_000);
+			client.DisableMetrics();
+			IReadOnlyList<object> identities = MetricsTestState.Identities(store);
+
+			MetricsSnapshot first = client.GetMetricsSnapshot();
+			MetricsSnapshot second = client.GetMetricsSnapshot();
+
+			MetricsTestState.AssertSameIdentities(
+				identities,
+				MetricsTestState.Identities(store));
+			Assert.AreSame(first.Compatibility, second.Compatibility);
+			Assert.AreEqual(first.LatencyColumns, second.LatencyColumns);
+			Assert.AreEqual(first.NodesDeparted.Count, second.NodesDeparted.Count);
+			NodeMetricsSnapshot firstNode = first.NodesDeparted
+				.Concat(first.Nodes)
+				.Single(item => item.Name == node.Name);
+			NodeMetricsSnapshot secondNode = second.NodesDeparted
+				.Concat(second.Nodes)
+				.Single(item => item.Name == node.Name);
+			Assert.AreEqual(
+				firstNode.Namespaces.Count,
+				secondNode.Namespaces.Count);
+		}
+
+		private static MetricsManager GetMetricsManager(Cluster cluster)
+		{
+			FieldInfo field = typeof(Cluster).GetField(
+				"metricsManager",
+				BindingFlags.Instance | BindingFlags.NonPublic);
+			return (MetricsManager)field.GetValue(cluster);
+		}
+
+		[TestMethod]
 		public void PublicNodeMetricsMutationsFeedSnapshotsAndLegacyOutput()
 		{
 			client.DisableMetrics();
@@ -2598,6 +2997,24 @@ namespace Aerospike.Test
 			public void OnEnable(Cluster cluster, MetricsPolicy policy)
 			{
 			}
+
+			public void OnSnapshot(Cluster cluster)
+			{
+			}
+
+			public void OnNodeClose(Node node)
+			{
+			}
+
+			public void OnDisable(Cluster cluster)
+			{
+			}
+		}
+
+		private sealed class ThrowingEnableListener : IMetricsListener
+		{
+			public void OnEnable(Cluster cluster, MetricsPolicy policy) =>
+				throw new InvalidOperationException("Expected metrics listener failure");
 
 			public void OnSnapshot(Cluster cluster)
 			{

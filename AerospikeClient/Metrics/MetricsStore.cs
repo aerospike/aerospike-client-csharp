@@ -31,7 +31,7 @@ namespace Aerospike.Client
 			Paused
 		}
 
-		private sealed class HistogramState
+		internal sealed class HistogramState
 		{
 			internal readonly MetricsHistogramShape Shape;
 			internal readonly MetricsHistogram Histogram;
@@ -40,6 +40,14 @@ namespace Aerospike.Client
 			{
 				Shape = shape;
 				Histogram = new MetricsHistogram(shape);
+			}
+
+			internal HistogramState(
+				MetricsHistogramShape shape,
+				MetricsHistogram histogram)
+			{
+				Shape = shape;
+				Histogram = histogram;
 			}
 		}
 

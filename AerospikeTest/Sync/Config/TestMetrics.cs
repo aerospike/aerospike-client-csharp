@@ -254,6 +254,354 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void MetricsPolicyReshapeIsEagerBeforeFirstRead()
+		{
+			Node node = client.Cluster.Nodes[0];
+			MetricsPolicy policy = CreateInternalPolicy();
+			policy.LatencyColumns = 4;
+			MetricsStore store = new(
+				policy,
+				new TestMetricsClock(),
+				new TestMetricsRandom());
+			store.AddLatency(
+				node,
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				1_000_000);
+			MetricsHistogramShape before = store.RuntimeConfig.Shape;
+			MetricsTestState.AssertShape(store, before);
+
+			store.ApplyPolicy(new MetricsPolicy(policy) { LatencyColumns = 5 });
+
+			MetricsHistogramShape after = store.RuntimeConfig.Shape;
+			Assert.AreNotSame(before, after);
+			Assert.AreEqual(before.Generation + 1, after.Generation);
+			Assert.AreEqual(5, after.Columns);
+			Assert.AreEqual(1, MetricsTestState.Generations(store).Count);
+			MetricsTestState.AssertShape(store, after);
+		}
+
+		[TestMethod]
+		public void MetricsSnapshotReadsDoNotMutateHistogramState()
+		{
+			client.DisableMetrics();
+			Node node = client.Cluster.Nodes[0];
+			MetricsPolicy policy = CreateInternalPolicy();
+			policy.LatencyColumns = 4;
+			MetricsStore store = new(
+				policy,
+				new TestMetricsClock(),
+				new TestMetricsRandom());
+			store.AddLatency(
+				node,
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				1_000_000);
+			store.CompleteTend(store.StartTend(), 0);
+			store.ApplyPolicy(new MetricsPolicy(policy) { LatencyColumns = 5 });
+			store.AddLatency(
+				node,
+				SuiteHelpers.ns,
+				Latency.LatencyType.WRITE,
+				1_000_000);
+			IReadOnlyList<object> identities = MetricsTestState.Identities(store);
+			MetricsHistogramShape shape = store.RuntimeConfig.Shape;
+
+			MetricsStoreSnapshot first = store.Read();
+			MetricsStoreSnapshot second = store.Read(store.RuntimeConfig);
+			store.CaptureDepartures(store.RuntimeConfig);
+			MetricsStoreSnapshot third = store.Read();
+
+			MetricsTestState.AssertSameIdentities(
+				identities,
+				MetricsTestState.Identities(store));
+			MetricsTestState.AssertShape(store, shape);
+			foreach (MetricsStoreSnapshot view in new[] { first, second, third })
+			{
+				Assert.AreEqual(shape.Generation, view.ShapeGeneration);
+				CollectionAssert.AreEqual(
+					new long[] { 1, 0, 0, 0, 0 },
+					GetNamespace(view, node)
+						.Latency[Latency.LatencyType.WRITE].ToArray());
+				CollectionAssert.AreEqual(
+					new long[5],
+					view.TendDuration.ToArray());
+			}
+		}
+
+		[TestMethod]
+		public void MetricsSnapshotMismatchReturnsEmptyShapeWithoutMutation()
+		{
+			MetricsPolicy firstPolicy = CreateInternalPolicy();
+			firstPolicy.LatencyColumns = 4;
+			MetricsRuntimeConfig first = new(firstPolicy);
+			MetricsRuntimeConfig second = new(
+				new MetricsPolicy(firstPolicy) { LatencyColumns = 6 },
+				2,
+				first.Shape);
+			MetricsNodeCollector collector = new(first);
+			collector.AddOpened();
+			collector.AddConnectionLatency(1_000_000, first.Shape);
+			MetricsNamespaceCollector ns =
+				collector.GetNamespace(SuiteHelpers.ns, first.Shape);
+			ns.AddLatency(Latency.LatencyType.READ, 1_000_000, first.Shape);
+			ns.AddFailure(MetricsFailure.Error);
+			object connection = MetricsTestState.Connection(collector);
+			object bank = MetricsTestState.Bank(ns);
+
+			MetricsNodeView stale = collector.Read("node", second);
+
+			Assert.AreSame(first.Shape, collector.CurrentShape);
+			Assert.AreSame(connection, MetricsTestState.Connection(collector));
+			Assert.AreSame(bank, MetricsTestState.Bank(ns));
+			Assert.AreEqual(1L, stale.Opened);
+			CollectionAssert.AreEqual(
+				new long[6],
+				stale.ConnectionLatency.ToArray());
+			MetricsNamespaceView staleNamespace = stale.Namespaces[SuiteHelpers.ns];
+			Assert.AreEqual(1L, staleNamespace.Errors);
+			foreach (IReadOnlyList<long> buckets in staleNamespace.Latency.Values)
+			{
+				CollectionAssert.AreEqual(new long[6], buckets.ToArray());
+			}
+
+			MetricsNodeView current = collector.Read("node", first);
+			Assert.AreEqual(1L, current.ConnectionLatency.Sum());
+			Assert.AreEqual(
+				1L,
+				current.Namespaces[SuiteHelpers.ns]
+					.Latency[Latency.LatencyType.READ].Sum());
+		}
+
+		[TestMethod]
+		public void MetricsShapeChangeResetsOnlyHistogramBuckets()
+		{
+			client.DisableMetrics();
+			Node node = client.Cluster.Nodes[0];
+			MetricsPolicy policy = CreateInternalPolicy();
+			policy.LatencyColumns = 4;
+			MetricsStore store = new(
+				policy,
+				new TestMetricsClock(),
+				new TestMetricsRandom());
+			Assert.IsTrue(store.BeginApiCall(
+				ApiMetricsOperation.Read,
+				ApiExecutionMode.Blocking,
+				out bool sampled));
+			MetricsCallContext call = new(
+				client.Cluster,
+				store,
+				ApiMetricsOperation.Read,
+				ApiExecutionMode.Blocking,
+				sampled);
+			CommandMetricsHandle command = call.BeginCommand(
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				false);
+			command.BeginAttempt().TryFail(
+				node,
+				new AerospikeException.Timeout(new Policy(), true),
+				true);
+			command.AddRetry();
+			MetricsRpcAttempt success = command.BeginAttempt();
+			success.AddBytes(12, 34);
+			Assert.IsTrue(success.TrySucceed(node));
+			call.CompleteSuccess();
+			CompleteFailure(
+				store,
+				node,
+				new AerospikeException(ResultCode.PARAMETER_ERROR),
+				false);
+			new ConnectionMetricsHandle(
+				store,
+				store.RuntimeConfig,
+				store.StartConnection(),
+				ConnectionMetricsOrigin.NodePool,
+				node).Complete(node, null);
+			store.CompleteTend(store.StartTend(), 1);
+			MetricsStoreSnapshot before = store.Read();
+			Assert.AreEqual(1L, before.TendDuration.Sum());
+			Assert.AreEqual(1L, before.CallLatency[Latency.LatencyType.READ].Sum());
+
+			store.ApplyPolicy(new MetricsPolicy(policy) { LatencyColumns = 5 });
+			MetricsStoreSnapshot after = store.Read();
+
+			MetricsNodeView beforeNode = before.Nodes[node.Name];
+			MetricsNodeView afterNode = after.Nodes[node.Name];
+			MetricsNamespaceView beforeNamespace = GetNamespace(before, node);
+			MetricsNamespaceView afterNamespace = GetNamespace(after, node);
+			Assert.AreEqual(before.CommandCount, after.CommandCount);
+			Assert.AreEqual(before.CommandRetries, after.CommandRetries);
+			Assert.AreEqual(before.ClientTimeouts, after.ClientTimeouts);
+			Assert.AreEqual(before.InvalidNodes, after.InvalidNodes);
+			Assert.AreEqual(before.ConnectionsOpened, after.ConnectionsOpened);
+			Assert.AreEqual(beforeNode.Opened, afterNode.Opened);
+			Assert.AreEqual(beforeNamespace.Errors, afterNamespace.Errors);
+			Assert.AreEqual(beforeNamespace.Timeouts, afterNamespace.Timeouts);
+			Assert.AreEqual(
+				beforeNamespace.ClientTimeouts,
+				afterNamespace.ClientTimeouts);
+			Assert.AreEqual(12L, afterNamespace.BytesIn);
+			Assert.AreEqual(34L, afterNamespace.BytesOut);
+			CollectionAssert.AreEqual(new long[5], after.TendDuration.ToArray());
+			CollectionAssert.AreEqual(
+				new long[5],
+				after.CallLatency[Latency.LatencyType.READ].ToArray());
+			CollectionAssert.AreEqual(
+				new long[5],
+				afterNode.ConnectionLatency.ToArray());
+			CollectionAssert.AreEqual(
+				new long[5],
+				afterNamespace.Latency[Latency.LatencyType.READ].ToArray());
+		}
+
+		[TestMethod]
+		public void MetricsInFlightContextsRecordOnceInNewShape()
+		{
+			client.DisableMetrics();
+			Node node = client.Cluster.Nodes[0];
+			MetricsPolicy policy = CreateInternalPolicy();
+			policy.LatencyColumns = 4;
+			MetricsStore store = new(
+				policy,
+				new TestMetricsClock(),
+				new TestMetricsRandom());
+			Assert.IsTrue(store.BeginApiCall(
+				ApiMetricsOperation.Read,
+				ApiExecutionMode.Blocking,
+				out bool sampled));
+			MetricsCallContext call = new(
+				client.Cluster,
+				store,
+				ApiMetricsOperation.Read,
+				ApiExecutionMode.Blocking,
+				sampled);
+			MetricsRpcAttempt attempt = call.BeginCommand(
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				false).BeginAttempt();
+			Assert.IsTrue(store.TryStartConnection(
+				out long connectionStart,
+				out MetricsRuntimeConfig connectionConfig));
+			ConnectionMetricsHandle connection = new(
+				store,
+				connectionConfig,
+				connectionStart,
+				ConnectionMetricsOrigin.NodePool,
+				node);
+			long tendStart = store.StartTend();
+
+			store.ApplyPolicy(new MetricsPolicy(policy) { LatencyColumns = 5 });
+			MetricsHistogramShape shape = store.RuntimeConfig.Shape;
+
+			attempt.AddBytes(3, 4);
+			Assert.IsTrue(attempt.TrySucceed(node));
+			Assert.IsFalse(attempt.TrySucceed(node));
+			connection.Complete(node, null);
+			connection.Complete(node, null);
+			store.CompleteTend(tendStart, 0);
+			call.CompleteSuccess();
+
+			MetricsTestState.AssertShape(store, shape);
+			MetricsStoreSnapshot view = store.Read();
+			MetricsNamespaceView ns = GetNamespace(view, node);
+			Assert.AreEqual(shape.Generation, view.ShapeGeneration);
+			Assert.AreEqual(3L, ns.BytesIn);
+			Assert.AreEqual(4L, ns.BytesOut);
+			CollectionAssert.AreEqual(
+				new long[] { 1, 0, 0, 0, 0 },
+				ns.Latency[Latency.LatencyType.READ].ToArray());
+			CollectionAssert.AreEqual(
+				new long[] { 1, 0, 0, 0, 0 },
+				view.Nodes[node.Name].ConnectionLatency.ToArray());
+			Assert.AreEqual(1L, view.ConnectionsOpened);
+			CollectionAssert.AreEqual(
+				new long[] { 1, 0, 0, 0, 0 },
+				view.TendDuration.ToArray());
+			CollectionAssert.AreEqual(
+				new long[] { 1, 0, 0, 0, 0 },
+				view.CallLatency[Latency.LatencyType.READ].ToArray());
+		}
+
+		[TestMethod]
+		public void MetricsPolicyUpdateRollbackRestoresBucketsForward()
+		{
+			client.DisableMetrics();
+			Node node = client.Cluster.Nodes[0];
+			MetricsPolicy policy = CreateInternalPolicy();
+			policy.LatencyColumns = 4;
+			MetricsStore store = new(
+				policy,
+				new TestMetricsClock(),
+				new TestMetricsRandom());
+			store.AddLatency(
+				node,
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				1_000_000);
+			store.AddFailure(node, SuiteHelpers.ns, MetricsFailure.Error);
+			store.CompleteTend(store.StartTend(), 0);
+			MetricsRuntimeConfig previous = store.RuntimeConfig;
+			IReadOnlyList<object> identities = MetricsTestState.Identities(store);
+			MetricsStoreSnapshot before = store.Read();
+			MetricsPolicy reshaped = new(policy) { LatencyColumns = 5 };
+
+			// Preparation alone publishes nothing.
+			store.PreparePolicyUpdate(reshaped);
+			MetricsTestState.AssertSameIdentities(
+				identities,
+				MetricsTestState.Identities(store));
+
+			MetricsStore.PolicyUpdate update = store.PreparePolicyUpdate(reshaped);
+			store.CommitPolicyUpdate(update);
+			MetricsTestState.AssertShape(store, update.Replacement.Shape);
+			store.AddLatency(
+				node,
+				SuiteHelpers.ns,
+				Latency.LatencyType.READ,
+				1_000_000);
+
+			MetricsRuntimeConfig restored = store.RollbackPolicyUpdate(update);
+
+			Assert.AreSame(restored, store.RuntimeConfig);
+			Assert.AreEqual(
+				update.Replacement.PolicyGeneration + 1,
+				restored.PolicyGeneration);
+			Assert.AreEqual(
+				update.Replacement.Shape.Generation + 1,
+				restored.Shape.Generation);
+			Assert.IsTrue(restored.Shape.Matches(previous.Shape));
+			MetricsTestState.AssertShape(store, restored.Shape);
+
+			// A late write that captured the rolled-back shape cannot revert.
+			MetricsNodeGeneration generation = store.RegisterNode(node);
+			generation.Collector.GetNamespace(
+				SuiteHelpers.ns,
+				update.Replacement.Shape).AddLatency(
+					Latency.LatencyType.WRITE,
+					1_000_000,
+					update.Replacement.Shape);
+			MetricsTestState.AssertShape(store, restored.Shape);
+
+			MetricsStoreSnapshot after = store.Read();
+			MetricsNamespaceView beforeNamespace = GetNamespace(before, node);
+			MetricsNamespaceView afterNamespace = GetNamespace(after, node);
+			Assert.AreEqual(beforeNamespace.Errors, afterNamespace.Errors);
+			CollectionAssert.AreEqual(
+				beforeNamespace.Latency[Latency.LatencyType.READ].ToArray(),
+				afterNamespace.Latency[Latency.LatencyType.READ].ToArray());
+			CollectionAssert.AreEqual(
+				new long[] { 1, 0, 0, 0 },
+				afterNamespace.Latency[Latency.LatencyType.WRITE].ToArray());
+			CollectionAssert.AreEqual(
+				before.TendDuration.ToArray(),
+				after.TendDuration.ToArray());
+			Assert.AreSame(
+				restored,
+				store.RollbackPolicyUpdate(update));
+		}
+
+		[TestMethod]
 		public void MetricsConnectionFailurePhasesAreRecordedOnce()
 		{
 			MetricsStore session = new(

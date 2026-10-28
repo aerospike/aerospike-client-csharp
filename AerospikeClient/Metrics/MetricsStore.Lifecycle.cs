@@ -110,13 +110,213 @@ namespace Aerospike.Client
 			Interlocked.Decrement(ref activeWriters);
 		}
 
+		/// <summary>
+		/// A metrics policy transition prepared against one published
+		/// configuration. Preparation allocates every replacement histogram;
+		/// commit swaps them in and publishes the configuration last; rollback
+		/// re-adopts the replaced buckets under a newer shape generation so late
+		/// writes can never move a collector backwards.
+		/// </summary>
+		internal sealed class PolicyUpdate
+		{
+			internal readonly MetricsRuntimeConfig Previous;
+			internal readonly MetricsRuntimeConfig Replacement;
+			internal readonly MetricsNamespaceCollector.ShapeUpdate Call;
+			internal readonly MetricsNodeCollector.ShapeUpdate RemovedNodes;
+			internal readonly Dictionary<
+				MetricsNodeGeneration,
+				MetricsNodeCollector.ShapeUpdate> Generations;
+			internal readonly HistogramState Tend;
+			internal HistogramState PreviousTend;
+			internal bool Started;
+			internal bool Committed;
+			internal bool RolledBack;
+
+			internal PolicyUpdate(
+				MetricsStore store,
+				MetricsRuntimeConfig previous,
+				MetricsRuntimeConfig replacement)
+			{
+				Previous = previous;
+				Replacement = replacement;
+				Generations = new(ReferenceEqualityComparer.Instance);
+
+				if (!ShapeChanged)
+				{
+					return;
+				}
+
+				MetricsHistogramShape shape = replacement.Shape;
+				Call = store.callCollector.PrepareShape(shape);
+				RemovedNodes = store.removedNodeCollector.PrepareShape(shape);
+				Tend = new HistogramState(shape);
+
+				foreach (MetricsNodeGeneration generation in store.nodes.Values)
+				{
+					Generations[generation] =
+						generation.Collector.PrepareShape(shape);
+				}
+			}
+
+			internal bool ShapeChanged =>
+				!ReferenceEquals(Previous.Shape, Replacement.Shape);
+		}
+
 		internal MetricsRuntimeConfig ApplyPolicy(MetricsPolicy policy)
+		{
+			PolicyUpdate update = PreparePolicyUpdate(policy);
+			CommitPolicyUpdate(update);
+			return update.Replacement;
+		}
+
+		internal PolicyUpdate PreparePolicyUpdate(MetricsPolicy policy)
 		{
 			MetricsRuntimeConfig current = config;
 			MetricsRuntimeConfig replacement =
 				new(policy, current.PolicyGeneration + 1, current.Shape);
-			config = replacement;
-			return replacement;
+			return new PolicyUpdate(this, current, replacement);
+		}
+
+		internal void CommitPolicyUpdate(PolicyUpdate update)
+		{
+			if (!ReferenceEquals(config, update.Previous) || update.Started)
+			{
+				throw new InvalidOperationException(
+					"Metrics policy update does not match the published configuration.");
+			}
+
+			update.Started = true;
+
+			if (update.ShapeChanged)
+			{
+				MetricsHistogramShape shape = update.Replacement.Shape;
+
+				CommitCollector(callCollector, update.Call, shape);
+				CommitCollector(removedNodeCollector, update.RemovedNodes, shape);
+
+				foreach (MetricsNodeGeneration generation in nodes.Values)
+				{
+					update.Generations.TryGetValue(
+						generation,
+						out MetricsNodeCollector.ShapeUpdate prepared);
+					CommitCollector(generation.Collector, prepared, shape);
+				}
+
+				lock (tendLock)
+				{
+					HistogramState current = tendDuration;
+
+					if (current.Shape.ShouldReplaceWith(shape))
+					{
+						update.PreviousTend = current;
+						tendDuration = update.Tend;
+					}
+				}
+			}
+
+			// Publish last: a reader that observes the new configuration also
+			// observes the matching histogram shapes.
+			config = update.Replacement;
+			update.Committed = true;
+		}
+
+		internal MetricsRuntimeConfig RollbackPolicyUpdate(PolicyUpdate update)
+		{
+			MetricsRuntimeConfig current = config;
+
+			// A commit that failed before publishing may still have swapped some
+			// collectors, so a started update is rolled back from either config.
+			if (update == null ||
+				!update.Started ||
+				update.RolledBack ||
+				(!ReferenceEquals(current, update.Replacement) &&
+					!ReferenceEquals(current, update.Previous)))
+			{
+				return current;
+			}
+
+			MetricsHistogramShape previous = update.Previous.Shape;
+			MetricsHistogramShape restoredShape = update.ShapeChanged
+				? new MetricsHistogramShape(
+					update.Replacement.Shape.Generation + 1,
+					previous.Unit,
+					previous.Columns,
+					previous.Shift)
+				: current.Shape;
+			MetricsRuntimeConfig restored = update.Previous.Reissue(
+				update.Replacement.PolicyGeneration + 1,
+				restoredShape);
+
+			if (update.ShapeChanged)
+			{
+				callCollector.RollbackShape(update.Call, previous, restoredShape);
+				removedNodeCollector.RollbackShape(
+					update.RemovedNodes,
+					previous,
+					restoredShape);
+
+				foreach (MetricsNodeGeneration generation in nodes.Values)
+				{
+					update.Generations.TryGetValue(
+						generation,
+						out MetricsNodeCollector.ShapeUpdate prepared);
+					generation.Collector.RollbackShape(
+						prepared,
+						previous,
+						restoredShape);
+				}
+
+				lock (tendLock)
+				{
+					HistogramState tend = tendDuration;
+
+					if (tend.Shape.ShouldReplaceWith(restoredShape))
+					{
+						bool reuse = ReferenceEquals(tend, update.Tend) &&
+							update.PreviousTend != null &&
+							update.PreviousTend.Shape.CanBeReadAs(previous);
+						tendDuration = reuse
+							? new HistogramState(
+								restoredShape,
+								update.PreviousTend.Histogram)
+							: new HistogramState(restoredShape);
+					}
+				}
+			}
+
+			config = restored;
+			update.RolledBack = true;
+			return restored;
+		}
+
+		private static void CommitCollector(
+			MetricsNamespaceCollector collector,
+			MetricsNamespaceCollector.ShapeUpdate prepared,
+			MetricsHistogramShape shape)
+		{
+			if (prepared != null && ReferenceEquals(prepared.Collector, collector))
+			{
+				collector.CommitShape(prepared);
+			}
+			else
+			{
+				collector.EnsureShape(shape);
+			}
+		}
+
+		private static void CommitCollector(
+			MetricsNodeCollector collector,
+			MetricsNodeCollector.ShapeUpdate prepared,
+			MetricsHistogramShape shape)
+		{
+			if (prepared != null && ReferenceEquals(prepared.Collector, collector))
+			{
+				collector.CommitShape(prepared);
+			}
+			else
+			{
+				collector.EnsureShape(shape);
+			}
 		}
 
 		internal void Freeze()

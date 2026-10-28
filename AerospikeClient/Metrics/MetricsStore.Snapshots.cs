@@ -39,7 +39,7 @@ namespace Aerospike.Client
 				Dictionary<string, MetricsNodeView> nodeViews = new();
 				Dictionary<string, MetricsNodeView> compatibilityViews = new();
 				Dictionary<string, MetricsNodeCapture> nodeCaptures = new();
-				MetricsNodeCollector removedAggregate = new(current);
+				MetricsNodeViewAggregate removedAggregate = new(current.Shape);
 
 				foreach (KeyValuePair<string, MetricsNodeNameState> entry in nodeNames)
 				{
@@ -60,18 +60,17 @@ namespace Aerospike.Client
 					}
 					else
 					{
-						removedAggregate.Merge(nodeView, current);
+						removedAggregate.Add(nodeView);
 					}
 				}
 
-				removedAggregate.Merge(
-					removedNodeCollector.Read(string.Empty, current),
-					current);
+				removedAggregate.Add(
+					removedNodeCollector.Read(string.Empty, current));
 
 				MetricsNodeView removedNodeView =
-					removedAggregate.Read(string.Empty, current);
+					removedAggregate.ToView(string.Empty);
 				IReadOnlyList<long> tendBuckets =
-					Array.AsReadOnly(EnsureTend(current).Histogram.CopyBuckets());
+					Array.AsReadOnly(CopyTend(current.Shape));
 				MetricsDepartureCapture departureCapture =
 					CaptureDepartures(current, nodeCaptures);
 
@@ -132,6 +131,14 @@ namespace Aerospike.Client
 					Departures = departureCapture
 				};
 			}
+		}
+
+		private long[] CopyTend(MetricsHistogramShape expected)
+		{
+			HistogramState current = tendDuration;
+			return current.Shape.CanBeReadAs(expected)
+				? current.Histogram.CopyBuckets()
+				: new long[expected.Columns];
 		}
 
 		internal void ReadProcess(out double cpuPercent, out long memoryBytes)

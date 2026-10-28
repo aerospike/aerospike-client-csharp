@@ -150,5 +150,29 @@ namespace Aerospike.Client
 					policy.LatencyColumns,
 					policy.LatencyShift);
 		}
+
+		private MetricsRuntimeConfig(
+			MetricsRuntimeConfig source,
+			long policyGeneration,
+			MetricsHistogramShape shape)
+		{
+			PolicyGeneration = policyGeneration;
+			OperationalEnabled = source.OperationalEnabled;
+			UsageEnabled = source.UsageEnabled;
+			SampleRange = source.SampleRange;
+			SampleThreshold = source.SampleThreshold;
+			Shape = shape;
+		}
+
+		/// <summary>
+		/// Copy these settings under a newer policy generation and the given shape,
+		/// which must have the same boundaries as <see cref="Shape"/>.
+		/// </summary>
+		internal MetricsRuntimeConfig Reissue(
+			long policyGeneration,
+			MetricsHistogramShape shape)
+		{
+			return new MetricsRuntimeConfig(this, policyGeneration, shape);
+		}
 	}
 }
