@@ -624,8 +624,9 @@ namespace Aerospike.Test
 			string ack = Path.Combine(dir, id + ".ack");
 			string request = Path.Combine(dir, id + ".request");
 
-			File.WriteAllText(tmp, command + '\n', Encoding.UTF8);
-			File.Move(tmp, request);
+			// No UTF-8 BOM: the host control parser treats a BOM as part of the command name.
+			File.WriteAllText(tmp, command + '\n', new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+			File.Move(tmp, request, overwrite: true);
 
 			Assert.IsTrue(WaitFor(() => File.Exists(ack)), "No acknowledgement for '" + command + "' in " + dir);
 

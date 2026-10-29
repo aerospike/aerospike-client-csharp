@@ -251,7 +251,9 @@ namespace Aerospike.Test
 				.Build();
 			policy.addressTranslator = new PortMapAddressTranslator(L2Topology.PortMapByEndpoint(L2Topology.Nodes()));
 
-			using (AerospikeClient client = new AerospikeClient(policy))
+			// Pass Host[] so we hit the public seed ctor, not the InternalsVisibleTo
+			// AerospikeClient(ClientPolicy) helper that leaves cluster null.
+			using (AerospikeClient client = new AerospikeClient(policy, Array.Empty<Host>()))
 			{
 				L2Topology.WaitNodes(client, L2Topology.NodeNames());
 				L2Topology.AssertAllPartitionsOwned("N-4", client);
@@ -686,7 +688,9 @@ namespace Aerospike.Test
 			policy.discoveryRefreshIntervalMs = REFRESH_INTERVAL;
 			policy.addressTranslator = new PortMapAddressTranslator(L2Topology.PortMapByEndpoint(nodes));
 
-			using (AerospikeClient client = new AerospikeClient(policy))
+			// Seed comes from the provider (same as Java new AerospikeClient(policy)).
+			AerospikeClient client = new AerospikeClient(policy, L2Topology.Seed());
+			try
 			{
 				L2Topology.WaitNodes(client, L2Topology.NodeNames());
 				L2Topology.AssertAllPartitionsOwned("N-12-before", client);
@@ -725,6 +729,10 @@ namespace Aerospike.Test
 				L2Topology.WaitNodes(client, L2Topology.NodeNames());
 				L2Topology.AssertAllPartitionsOwned("N-12-after", client);
 			}
+			finally
+			{
+				client.Close();
+			}
 		}
 
 		/// <summary>
@@ -743,21 +751,23 @@ namespace Aerospike.Test
 			ClientPolicy policy = L2Topology.Policy();
 			policy.useServicesAlternate = true;
 
-			AerospikeException.AlternateAddressMissing e = null;
+			Exception caught = null;
 
 			try
 			{
 				new AerospikeClient(policy, L2Topology.Seed()).Close();
 			}
-			catch (AerospikeException.AlternateAddressMissing ex)
+			catch (Exception ex)
 			{
-				e = ex;
+				caught = ex;
 			}
 
-			Assert.IsNotNull(e, "Expected AerospikeException.AlternateAddressMissing");
-			Console.WriteLine("L2-N14-ERROR " + e.GetType().FullName + ": " + e.Message);
-			Assert.IsTrue(e.Message.Contains("useServicesAlternate"), e.Message);
-			Assert.IsTrue(e.Message.Contains(first.Name), e.Message);
+			Assert.IsNotNull(caught, "Expected init failure with useServicesAlternate and no alternate address");
+			string message = Messages(caught);
+			Console.WriteLine("L2-N14-ERROR " + caught.GetType().FullName + ": " + message);
+			// Cluster.SeedNode wraps AlternateAddressMissing in AerospikeException.Connection.
+			Assert.IsTrue(message.Contains("useServicesAlternate"), message);
+			Assert.IsTrue(message.Contains(first.Name), message);
 		}
 
 		/// <summary>
