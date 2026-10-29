@@ -53,6 +53,18 @@ for port in "${port_list[@]}"; do
   timeout 10 bash -c "echo >/dev/tcp/${host}/${port}"
 done
 
+# Mirror Java run-l2-suite.sh keytool import: put the topology CA into the system
+# trust store so SslStream / OpenSSL accept the server cert (TlsPolicy has no CA hook).
+if [[ -n "${AEROSPIKE_CA_CERT:-}" ]]; then
+  [[ -f "${AEROSPIKE_CA_CERT}" ]] || {
+    echo "AEROSPIKE_CA_CERT is set but not a file: ${AEROSPIKE_CA_CERT}" >&2
+    exit 1
+  }
+  echo "Trusting Aerospike CA: ${AEROSPIKE_CA_CERT}"
+  cp "${AEROSPIKE_CA_CERT}" /usr/local/share/ca-certificates/aerospike-ca.crt
+  update-ca-certificates
+fi
+
 filter="${L2_SUITE:-FullyQualifiedName~TestL2Topology}"
 [[ "$filter" =~ ^[A-Za-z0-9~=_.-]+$ ]] || {
   echo "Refusing unexpected filter: ${filter}" >&2

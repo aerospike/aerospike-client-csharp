@@ -175,21 +175,23 @@ namespace Aerospike.Test
 			RequireAlternates();
 
 			L2Node reachable = Reachable(L2Topology.Nodes());
-			AerospikeException.AlternateAddressMissing e = null;
+			Exception caught = null;
 
 			try
 			{
 				new AerospikeClient(AlternatePolicy(), new Host(L2Topology.Host, reachable.Port)).Close();
 			}
-			catch (AerospikeException.AlternateAddressMissing ex)
+			catch (Exception ex)
 			{
-				e = ex;
+				caught = ex;
 			}
 
-			Assert.IsNotNull(e, "Expected AerospikeException.AlternateAddressMissing");
-			Console.WriteLine("L2-ALT-SEED-MISSING " + e.GetType().FullName + ": " + e.Message);
-			Assert.IsTrue(e.Message.Contains(reachable.Name), e.Message);
-			Assert.IsTrue(e.Message.Contains("useServicesAlternate"), e.Message);
+			Assert.IsNotNull(caught, "Expected init failure with useServicesAlternate and no alternate address");
+			// Cluster.SeedNode wraps AlternateAddressMissing in AerospikeException.Connection.
+			string message = TestL2Topology.Messages(caught);
+			Console.WriteLine("L2-ALT-SEED-MISSING " + caught.GetType().FullName + ": " + message);
+			Assert.IsTrue(message.Contains(reachable.Name), message);
+			Assert.IsTrue(message.Contains("useServicesAlternate"), message);
 		}
 
 		private static void AssertAlternateJoins(string row, ClientPolicy policy)
