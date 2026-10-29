@@ -43,10 +43,16 @@ jobs:
     name: L2 discovery (ce${{ matrix.profile != 'default' && format(', {0}', matrix.profile) || '' }})
     strategy:
       fail-fast: false
-      # Expand profiles after CE default is green (CLIENT-5734 verify-ci).
       matrix:
         profile:
           - default
+          - reachable
+          - pass-through-names
+          - pass-through-ports
+          - port-map-range
+          - low-mtu
+          - port-range
+          - idle-reset
     uses: ./.github/workflows/discovery-l2.yaml
     with:
       subset: ce
@@ -57,8 +63,10 @@ jobs:
 
   l2-ee:
     name: L2 discovery (ee${{ matrix.profile != 'default' && format(', {0}', matrix.profile) || '' }})
-    # Hold EE until CE default is green, then restore default + cn-only.
-    if: false
+    if: >-
+      github.event_name == 'push'
+      || github.event_name == 'workflow_dispatch'
+      || github.event.pull_request.head.repo.full_name == github.repository
     strategy:
       fail-fast: false
       matrix:
