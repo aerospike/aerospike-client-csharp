@@ -227,12 +227,48 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Create a vector of raw float16 (IEEE 754 half precision) elements.
-		/// Since C# has no native float16 type here, each element is passed as its
-		/// raw 16-bit bit pattern.
+		/// Create a vector of float16 (IEEE 754 binary16) elements from raw 16-bit bit
+		/// patterns. Prefer <see cref="OfFloat16(Half[])"/> or <see cref="OfFloat16(float[])"/>
+		/// when building from numeric values; use this overload for exact bit interchange
+		/// (including non-finite patterns).
 		/// </summary>
 		public static Vector OfFloat16(short[] data) =>
 			new(VERSION, ElementType.FLOAT16, RequireNonEmpty(data, nameof(data)).Length, (short[])data.Clone());
+
+		/// <summary>
+		/// Create a vector of float16 elements from <see cref="Half"/> values.
+		/// Non-finite elements (<see cref="Half.NaN"/>, infinities) are rejected.
+		/// </summary>
+		public static Vector OfFloat16(Half[] data)
+		{
+			RequireNonEmpty(data, nameof(data));
+			short[] bits = new short[data.Length];
+
+			for (int i = 0; i < data.Length; i++)
+			{
+				bits[i] = HalfToFiniteBits(data[i], nameof(data), i);
+			}
+
+			return new Vector(VERSION, ElementType.FLOAT16, data.Length, bits);
+		}
+
+		/// <summary>
+		/// Create a vector of float16 elements by converting each <see cref="float"/> to
+		/// <see cref="Half"/> with IEEE 754 round-ties-to-even. Rejects NaN, infinities, and
+		/// magnitudes above 65520 (which convert to infinity in binary16).
+		/// </summary>
+		public static Vector OfFloat16(float[] data)
+		{
+			RequireNonEmpty(data, nameof(data));
+			short[] bits = new short[data.Length];
+
+			for (int i = 0; i < data.Length; i++)
+			{
+				bits[i] = FloatToFiniteHalfBits(data[i], nameof(data), i);
+			}
+
+			return new Vector(VERSION, ElementType.FLOAT16, data.Length, bits);
+		}
 
 		/// <summary>
 		/// Create a vector of int32 elements.
@@ -270,13 +306,74 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Return raw float16 data. Throws <see cref="InvalidOperationException"/> if this
+		/// Convert a <see cref="Half"/> to its bit pattern, rejecting non-finite values.
+		/// </summary>
+		private static short HalfToFiniteBits(Half value, string paramName, int index)
+		{
+			if (Half.IsNaN(value) || Half.IsInfinity(value))
+			{
+				throw new ArgumentException(
+					"Vector float16 element at index " + index + " must be finite (got " + value + ")",
+					paramName);
+			}
+
+			return BitConverter.HalfToInt16Bits(value);
+		}
+
+		/// <summary>
+		/// Convert a <see cref="float"/> to finite binary16 bits via IEEE 754
+		/// round-ties-to-even. Magnitudes above 65520 become infinity and are rejected.
+		/// </summary>
+		private static short FloatToFiniteHalfBits(float value, string paramName, int index)
+		{
+			if (float.IsNaN(value) || float.IsInfinity(value))
+			{
+				throw new ArgumentException(
+					"Vector float16 element at index " + index + " must be finite (got " + value + ")",
+					paramName);
+			}
+
+			// (Half)float uses IEEE 754 round-ties-to-even on net8.0+.
+			Half half = (Half)value;
+
+			if (Half.IsNaN(half) || Half.IsInfinity(half))
+			{
+				throw new ArgumentException(
+					"Vector float16 element at index " + index +
+					" overflows binary16 (magnitude above 65520; got " + value + ")",
+					paramName);
+			}
+
+			return BitConverter.HalfToInt16Bits(half);
+		}
+
+		/// <summary>
+		/// Return raw float16 bit patterns. Throws <see cref="InvalidOperationException"/> if this
 		/// vector's element type is not <see cref="ElementType.FLOAT16"/>.
 		/// </summary>
 		public short[] GetFloat16Data()
 		{
 			ValidateType(ElementType.FLOAT16);
 			return (short[])((short[])data).Clone();
+		}
+
+		/// <summary>
+		/// Return float16 elements as <see cref="Half"/> values. Throws
+		/// <see cref="InvalidOperationException"/> if this vector's element type is not
+		/// <see cref="ElementType.FLOAT16"/>.
+		/// </summary>
+		public Half[] GetHalfData()
+		{
+			ValidateType(ElementType.FLOAT16);
+			short[] bits = (short[])data;
+			Half[] values = new Half[bits.Length];
+
+			for (int i = 0; i < bits.Length; i++)
+			{
+				values[i] = BitConverter.Int16BitsToHalf(bits[i]);
+			}
+
+			return values;
 		}
 
 		/// <summary>

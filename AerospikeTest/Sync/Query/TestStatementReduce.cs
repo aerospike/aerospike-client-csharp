@@ -211,12 +211,32 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TopKRejectsInvalidWireSpecification()
 		{
-			// CLIENT-5673 / R28: Top-K misuse is PARAMETER_ERROR (4), not ArgumentException.
+			// R28: Top-K misuse is PARAMETER_ERROR (4) before send, with no server subcode.
+			// CASE_INSENSITIVE is reserved for future STRING Top-K (R78).
 			Statement flags = new();
 			flags.SetOrderBy(Bin, BinDataType.INTEGER, Order.ASC, OrderByFlags.CASE_INSENSITIVE);
 			flags.SetTopK(1);
 			AerospikeException flagEx = Assert.Throws<AerospikeException>(() => flags.ValidateTopK());
 			Assert.AreEqual(ResultCode.PARAMETER_ERROR, flagEx.Result);
+			Assert.AreEqual(SubCode.NONE, flagEx.SubCode);
+			Assert.IsTrue(flagEx.Message.Contains("flags are not supported"));
+
+			// STRING/BYTES Top-K deferred past 8.2.1 — API retained, query blocked on type.
+			Statement stringType = new();
+			stringType.SetOrderBy(Bin, BinDataType.STRING, Order.ASC);
+			stringType.SetTopK(1);
+			AerospikeException stringEx = Assert.Throws<AerospikeException>(() => stringType.ValidateTopK());
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, stringEx.Result);
+			Assert.AreEqual(SubCode.NONE, stringEx.SubCode);
+			Assert.IsTrue(stringEx.Message.Contains("INTEGER or DOUBLE"));
+
+			Statement bytesType = new();
+			bytesType.SetOrderBy(Bin, BinDataType.BYTES, Order.ASC);
+			bytesType.SetTopK(1);
+			AerospikeException bytesEx = Assert.Throws<AerospikeException>(() => bytesType.ValidateTopK());
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, bytesEx.Result);
+			Assert.AreEqual(SubCode.NONE, bytesEx.SubCode);
+			Assert.IsTrue(bytesEx.Message.Contains("INTEGER or DOUBLE"));
 
 			Statement projection = new();
 			projection.SetBinNames("other");
@@ -224,12 +244,14 @@ namespace Aerospike.Test
 			projection.SetTopK(1);
 			AerospikeException projEx = Assert.Throws<AerospikeException>(() => projection.ValidateTopK());
 			Assert.AreEqual(ResultCode.PARAMETER_ERROR, projEx.Result);
+			Assert.AreEqual(SubCode.NONE, projEx.SubCode);
 
 			Statement name = new();
 			name.SetOrderBy("sixteen-byte-bin", BinDataType.INTEGER, Order.ASC);
 			name.SetTopK(1);
 			AerospikeException nameEx = Assert.Throws<AerospikeException>(() => name.ValidateTopK());
 			Assert.AreEqual(ResultCode.PARAMETER_ERROR, nameEx.Result);
+			Assert.AreEqual(SubCode.NONE, nameEx.SubCode);
 
 			Statement duplicateOps = new();
 			duplicateOps.Operations = [Operation.Get(Bin), Operation.Get(Bin)];
@@ -237,6 +259,7 @@ namespace Aerospike.Test
 			duplicateOps.SetTopK(1);
 			AerospikeException dup = Assert.Throws<AerospikeException>(() => duplicateOps.ValidateTopK());
 			Assert.AreEqual(ResultCode.PARAMETER_ERROR, dup.Result);
+			Assert.AreEqual(SubCode.NONE, dup.SubCode);
 			Assert.IsTrue(dup.Message.Contains("exactly one projection operation"));
 		}
 

@@ -26,6 +26,8 @@ namespace Aerospike.Test
 		public void EmptyVectorsAreRejected()
 		{
 			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(Array.Empty<short>()));
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(Array.Empty<Half>()));
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(Array.Empty<float>()));
 			Assert.Throws<ArgumentException>(() => Vector.OfInt32(Array.Empty<int>()));
 			Assert.Throws<ArgumentException>(() => Vector.OfFloat32(Array.Empty<float>()));
 			Assert.Throws<ArgumentException>(() => Vector.OfFloat64(Array.Empty<double>()));
@@ -44,10 +46,31 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void NullVectorDataIsRejected()
 		{
-			Assert.Throws<ArgumentNullException>(() => Vector.OfFloat16(null));
+			Assert.Throws<ArgumentNullException>(() => Vector.OfFloat16((short[])null));
+			Assert.Throws<ArgumentNullException>(() => Vector.OfFloat16((Half[])null));
+			Assert.Throws<ArgumentNullException>(() => Vector.OfFloat16((float[])null));
 			Assert.Throws<ArgumentNullException>(() => Vector.OfInt32(null));
 			Assert.Throws<ArgumentNullException>(() => Vector.OfFloat32(null));
 			Assert.Throws<ArgumentNullException>(() => Vector.OfFloat64(null));
+		}
+
+		[TestMethod]
+		public void Float16HalfRejectsNonFinite()
+		{
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new Half[] { Half.NaN }));
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new Half[] { Half.PositiveInfinity }));
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new Half[] { Half.NegativeInfinity }));
+		}
+
+		[TestMethod]
+		public void Float16FromFloatRejectsNonFiniteAndOverflow()
+		{
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new float[] { float.NaN }));
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new float[] { float.PositiveInfinity }));
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new float[] { float.NegativeInfinity }));
+			// Magnitudes above 65520 convert to infinity in binary16.
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new float[] { 65521f }));
+			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new float[] { -65521f }));
 		}
 
 		[TestMethod]

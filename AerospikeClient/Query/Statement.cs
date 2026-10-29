@@ -378,7 +378,10 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="binName">bin name to order by</param>
-		/// <param name="type">scalar type of <paramref name="binName"/></param>
+		/// <param name="type">
+		/// scalar type of <paramref name="binName"/>; Top-K currently accepts only
+		/// <see cref="BinDataType.INTEGER"/> and <see cref="BinDataType.DOUBLE"/>
+		/// </param>
 		/// <param name="order">sort direction</param>
 		public void SetOrderBy(string binName, BinDataType type, Order order)
 		{
@@ -395,11 +398,15 @@ namespace Aerospike.Client
 		/// </para>
 		/// </summary>
 		/// <param name="binName">bin name to order by</param>
-		/// <param name="type">scalar type of <paramref name="binName"/></param>
+		/// <param name="type">
+		/// scalar type of <paramref name="binName"/>; Top-K currently accepts only
+		/// <see cref="BinDataType.INTEGER"/> and <see cref="BinDataType.DOUBLE"/>
+		/// (<see cref="BinDataType.STRING"/> / <see cref="BinDataType.BYTES"/> are reserved)
+		/// </param>
 		/// <param name="order">sort direction</param>
 		/// <param name="flags">
 		/// comparison options (<see cref="OrderByFlags.CASE_INSENSITIVE"/> for
-		/// <see cref="BinDataType.STRING"/> only)
+		/// <see cref="BinDataType.STRING"/> only; STRING Top-K is not supported in this release)
 		/// </param>
 		public void SetOrderBy(string binName, BinDataType type, Order order, OrderByFlags flags)
 		{
@@ -425,6 +432,12 @@ namespace Aerospike.Client
 		/// Optional second order key for Top-K (tie-breaker). Equivalent to
 		/// <c>ThenOrderBy(binName, type, order, OrderByFlags.NONE)</c>.
 		/// </summary>
+		/// <param name="binName">bin name to order by</param>
+		/// <param name="type">
+		/// scalar type of <paramref name="binName"/>; Top-K currently accepts only
+		/// <see cref="BinDataType.INTEGER"/> and <see cref="BinDataType.DOUBLE"/>
+		/// </param>
+		/// <param name="order">sort direction</param>
 		public void ThenOrderBy(string binName, BinDataType type, Order order)
 		{
 			ThenOrderBy(binName, type, order, OrderByFlags.NONE);
@@ -436,6 +449,17 @@ namespace Aerospike.Client
 		/// is not an error: the key is recorded as the first order key. A third key fails with
 		/// <see cref="ResultCode.PARAMETER_ERROR"/>. When Top-K is already armed, k is kept.
 		/// </summary>
+		/// <param name="binName">bin name to order by</param>
+		/// <param name="type">
+		/// scalar type of <paramref name="binName"/>; Top-K currently accepts only
+		/// <see cref="BinDataType.INTEGER"/> and <see cref="BinDataType.DOUBLE"/>
+		/// (<see cref="BinDataType.STRING"/> / <see cref="BinDataType.BYTES"/> are reserved)
+		/// </param>
+		/// <param name="order">sort direction</param>
+		/// <param name="flags">
+		/// comparison options (<see cref="OrderByFlags.CASE_INSENSITIVE"/> for
+		/// <see cref="BinDataType.STRING"/> only; STRING Top-K is not supported in this release)
+		/// </param>
 		public void ThenOrderBy(string binName, BinDataType type, Order order, OrderByFlags flags)
 		{
 			int? keepLimit = topK?.limit;
@@ -661,10 +685,19 @@ namespace Aerospike.Client
 					label + " bin name must be 1-15 UTF-8 bytes without NUL");
 			}
 
-			if (flags != OrderByFlags.NONE && type != BinDataType.STRING)
+			// Server 8.2.1 Top-K orders INTEGER and DOUBLE only (R78). STRING/BYTES and
+			// CASE_INSENSITIVE stay in the API and wire encoding for a follow-up release —
+			// reject here so queries fail fast instead of a server-side type error.
+			if (type != BinDataType.INTEGER && type != BinDataType.DOUBLE)
 			{
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-					label + " flags are only valid for STRING");
+					label + " type must be INTEGER or DOUBLE");
+			}
+
+			if (flags != OrderByFlags.NONE)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					label + " flags are not supported (reserved for future STRING Top-K)");
 			}
 		}
 

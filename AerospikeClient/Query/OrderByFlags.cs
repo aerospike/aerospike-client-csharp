@@ -30,6 +30,10 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Case-insensitive comparison. Only applicable when <see cref="BinDataType.STRING"/> is used.
 		/// </summary>
+		/// <remarks>
+		/// Reserved for a future release with STRING Top-K. Current Top-K queries support only
+		/// INTEGER and DOUBLE order keys (flags must be <see cref="NONE"/>).
+		/// </remarks>
 		CASE_INSENSITIVE
 	}
 }

@@ -2381,6 +2381,13 @@ namespace Aerospike.Client
 					writeAttr |= Command.INFO2_RELAX_AP_LONG_QUERY;
 				}
 
+				// The server sends a record only when a projected read has a value. A Top-K record
+				// whose order key is empty must still arrive, ranked last as nil.
+				if (statement.HasTopK && operationCount > 0 && !ReadsAllBins(statement.operations))
+				{
+					writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
+				}
+
 				int infoAttr = (isNew || statement.filter == null) ? Command.INFO3_PARTITION_DONE : 0;
 
 				WriteHeaderRead(policy, totalTimeout, readAttr, writeAttr, infoAttr, fieldCount, operationCount);
@@ -2529,6 +2536,24 @@ namespace Aerospike.Client
 				}
 			}
 			End();
+		}
+
+		// RESPOND_ALL_OPS must be off when an operation reads all bins.
+		private static bool ReadsAllBins(Operation[] operations)
+		{
+			if (operations == null)
+			{
+				return false;
+			}
+
+			foreach (Operation operation in operations)
+			{
+				if (operation.type == Operation.Type.READ && operation.binName == null)
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 
 		private static byte[] GetTopKOrderByField(Statement statement)

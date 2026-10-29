@@ -117,6 +117,118 @@ namespace Aerospike.Test
 			CollectionAssert.AreEqual(expected, Values(PushdownDerived(Order.ASC, k), Derived));
 		}
 
+		/// <summary>
+		/// Order-by without top-k is sent unchanged; a vector-capable server rejects
+		/// with <see cref="ResultCode.PARAMETER_ERROR"/> and
+		/// <see cref="SubCode.PARAM_TOP_K_INVALID"/> when error details are requested.
+		/// </summary>
+		[TestMethod]
+		public void OrderByWithoutTopKReturnsParamTopKInvalid()
+		{
+			RequireCapableCluster();
+
+			AerospikeException ae = QueryOrderByWithoutTopK(errorDetailVerbosity: 2);
+
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+			Assert.AreEqual(SubCode.PARAM_TOP_K_INVALID, ae.SubCode);
+			Assert.IsTrue(ae.BaseMessage.Contains("top-k needs both order-by and top-k fields"),
+				"Expected R20 detail in: " + ae.BaseMessage);
+			string prefix = "Error " + ResultCode.PARAMETER_ERROR + "," + SubCode.PARAM_TOP_K_INVALID;
+			Assert.IsTrue(ae.Message.StartsWith(prefix), "Expected message to start with \"" + prefix + "\": " + ae.Message);
+		}
+
+		/// <summary>
+		/// With error-detail verbosity disabled, the same rejection is a plain
+		/// parameter error: no subcode and the default result-code string.
+		/// </summary>
+		[TestMethod]
+		public void OrderByWithoutTopKWithoutErrorDetails()
+		{
+			RequireCapableCluster();
+
+			AerospikeException ae = QueryOrderByWithoutTopK(errorDetailVerbosity: 0);
+
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+			Assert.AreEqual(SubCode.NONE, ae.SubCode);
+			Assert.AreEqual(ResultCode.GetResultString(ResultCode.PARAMETER_ERROR), ae.BaseMessage);
+		}
+
+		private static AerospikeException QueryOrderByWithoutTopK(int errorDetailVerbosity)
+		{
+			Statement statement = Base(Bin);
+			statement.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+
+			QueryPolicy policy = new()
+			{
+				errorDetailVerbosity = errorDetailVerbosity
+			};
+
+			try
+			{
+				using RecordSet recordSet = client.Query(policy, statement);
+				while (recordSet.Next())
+				{
+				}
+				Assert.Fail("Expected AerospikeException for order-by without top-k");
+				return null;
+			}
+			catch (AerospikeException ae)
+			{
+				return ae;
+			}
+		}
+
+		[TestMethod]
+		public void MissingOrderKeyRanksLast()
+		{
+			RequireCapableCluster();
+
+			Key[] missing =
+			[
+				new Key(SuiteHelpers.ns, Set, "missing1"),
+				new Key(SuiteHelpers.ns, Set, "missing2")
+			];
+
+			foreach (Key key in missing)
+			{
+				client.Put(null, key, new Bin("marker", -1));
+			}
+
+			try
+			{
+				int k = Count + missing.Length;
+
+				foreach (Order order in new[] { Order.ASC, Order.DESC })
+				{
+					Statement byBinName = Pushdown(order, k);
+					Statement byOperation = Pushdown(order, k);
+					byOperation.BinNames = null;
+					byOperation.Operations = [Operation.Get(Bin)];
+
+					foreach (Statement statement in new[] { byBinName, byOperation })
+					{
+						List<object> ranked = RankedValues(statement, Bin);
+						Assert.AreEqual(k, ranked.Count);
+
+						for (int i = 0; i < Count; i++)
+						{
+							long expected = order == Order.ASC ? i + 1 : Count - i;
+							Assert.AreEqual(expected, ranked[i]);
+						}
+						Assert.IsNull(ranked[Count]);
+						Assert.IsNull(ranked[Count + 1]);
+					}
+				}
+			}
+			finally
+			{
+				foreach (Key key in missing)
+				{
+					client.Delete(null, key);
+				}
+			}
+		}
+
 		private static Statement ClientOnly(Order order, int k)
 		{
 			Statement statement = Base(Bin);
@@ -188,6 +300,26 @@ namespace Aerospike.Test
 			}
 
 			return values.ToArray();
+		}
+
+		private static List<object> RankedValues(Statement statement, string valueBin)
+		{
+			List<object> values = new();
+			RecordSet recordSet = client.Query(null, statement);
+
+			try
+			{
+				while (recordSet.Next())
+				{
+					values.Add(recordSet.Record.GetValue(valueBin));
+				}
+			}
+			finally
+			{
+				recordSet.Close();
+			}
+
+			return values;
 		}
 	}
 }

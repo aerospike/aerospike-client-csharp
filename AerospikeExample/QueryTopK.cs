@@ -20,8 +20,8 @@ namespace Aerospike.Example;
 
 /// <summary>
 /// Demonstrate Top-K queries using <see cref="Statement.SetOrderBy"/> + <see cref="Statement.SetTopK"/>.
-/// Supporting server nodes return bounded candidates; the client merges them into global Top-K
-/// results and falls back to client-side reduction for mixed clusters.
+/// Every node in the cluster must support Top-K; each returns at most k candidates and the
+/// client merges them into the global Top-K. A mixed cluster is rejected with a parameter error.
 /// </summary>
 public sealed class QueryTopK : SyncExample
 {

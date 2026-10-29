@@ -199,5 +199,81 @@ namespace Aerospike.Test
 
 			Assert.AreEqual(k, count);
 		}
+
+		[TestMethod]
+		public void VectorSearchTopKRanksUncomparableLast()
+		{
+			Key[] uncomparable =
+			[
+				new Key(SuiteHelpers.ns, SetName, KeyPrefix + "_short"),
+				new Key(SuiteHelpers.ns, SetName, KeyPrefix + "_int")
+			];
+
+			client.Put(null, uncomparable[0], new Bin(VecBin, Vector.OfFloat32(new float[] { 0, 0, 0 })));
+			client.Put(null, uncomparable[1], new Bin(IdBin, -1));
+
+			try
+			{
+				int k = Size + uncomparable.Length;
+				List<object> ranked = Distances(ExpReadFlags.EVAL_NO_FAIL, k);
+				Assert.AreEqual(k, ranked.Count);
+
+				double previous = double.NegativeInfinity;
+
+				for (int i = 0; i < Size; i++)
+				{
+					double dist = (double)ranked[i];
+					Assert.IsTrue(dist >= previous, "Comparable distances must come first, ascending");
+					previous = dist;
+				}
+				Assert.IsNull(ranked[Size]);
+				Assert.IsNull(ranked[Size + 1]);
+
+				// Without eval-no-fail, a distance that can't be computed leaves the record out.
+				Assert.AreEqual(Size, Distances(ExpReadFlags.DEFAULT, k).Count);
+			}
+			finally
+			{
+				foreach (Key key in uncomparable)
+				{
+					client.Delete(null, key);
+				}
+			}
+		}
+
+		// Projects only the distance, so a record whose distance is unknown has no other bin to send.
+		private static List<object> Distances(ExpReadFlags readFlags, int k)
+		{
+			const string distBin = "dist";
+
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(SetName);
+			stmt.Operations =
+			[
+				ExpOperation.Read(distBin,
+					Exp.Build(VectorExp.Distance(VectorDistanceMetric.EUCLIDEAN_SQUARED, Query(0), Exp.VectorBin(VecBin))),
+					readFlags)
+			];
+			stmt.SetOrderBy(distBin, BinDataType.DOUBLE, Order.ASC);
+			stmt.SetTopK(k);
+
+			RecordSet rs = client.Query(null, stmt);
+			List<object> ranked = new();
+
+			try
+			{
+				while (rs.Next())
+				{
+					ranked.Add(rs.Record.GetValue(distBin));
+				}
+			}
+			finally
+			{
+				rs.Close();
+			}
+
+			return ranked;
+		}
 	}
 }

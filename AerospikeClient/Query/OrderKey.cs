@@ -58,9 +58,9 @@ namespace Aerospike.Client
 			this.digest = digest;
 			this.secondary = secondary;
 
-			// STRING order keys compare as UTF-8 bytes (current server Top-K behavior).
-			// Unicode collation (R73) is still an open design choice — do not invent a client
-			// collator here until that lands (sort keys or an agreed comparator).
+			// STRING/BYTES Top-K is deferred past server 8.2.1, but client merge still compares
+			// STRING as UTF-8 bytes for when that support returns. Unicode collation (R73) remains
+			// an open design choice — do not invent a client collator here.
 			if (raw is string s)
 			{
 				this.stringBytes = Encoding.UTF8.GetBytes(s);

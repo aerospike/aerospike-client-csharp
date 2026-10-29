@@ -130,6 +130,18 @@ namespace Aerospike.Client
 		/// </summary>
 		public const int PARAM_STRING_UTF8_INVALID = 11;
 
+		/// <summary>
+		/// Top-K / order-by query request rejected (R20). Server constant
+		/// <c>AS_SUB_PARAM_TOP_K_INVALID</c>. Pairs with
+		/// <see cref="ResultCode.PARAMETER_ERROR"/> (4). Covers order-by without
+		/// top-k, top-k without order-by, background or aggregation Top-K,
+		/// Top-K with max-records / sample-max / no-bin-data, and malformed
+		/// order-by or top-k fields. Not used for the Top-K memory ceiling
+		/// (FORBIDDEN 22), which keeps <see cref="NONE"/>.
+		/// Value: 12
+		/// </summary>
+		public const int PARAM_TOP_K_INVALID = 12;
+
 		//-------------------------------------------------------
 		// Pairs with ResultCode.PARTITION_UNAVAILABLE (11)  [AS_ERR_UNAVAILABLE]
 		//-------------------------------------------------------

@@ -35,11 +35,19 @@ namespace Aerospike.Client
 		/// <summary>
 		/// String value.
 		/// </summary>
+		/// <remarks>
+		/// Reserved for a future release. Top-K queries currently support only
+		/// <see cref="INTEGER"/> and <see cref="DOUBLE"/>.
+		/// </remarks>
 		STRING,
 
 		/// <summary>
 		/// Byte array value.
 		/// </summary>
+		/// <remarks>
+		/// Reserved for a future release. Top-K queries currently support only
+		/// <see cref="INTEGER"/> and <see cref="DOUBLE"/>.
+		/// </remarks>
 		BYTES
 	}
 }

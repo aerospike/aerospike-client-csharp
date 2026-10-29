@@ -82,6 +82,47 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void ConstructFloat16FromHalf()
+		{
+			Half[] data = new Half[] { (Half)1.0f, (Half)(-1.0f), (Half)2.0f };
+			Vector v = Vector.OfFloat16(data);
+
+			Assert.AreEqual(Vector.ElementType.FLOAT16, v.elementType);
+			Assert.AreEqual(3, v.dimensions);
+			CollectionAssert.AreEqual(data, v.GetHalfData());
+			CollectionAssert.AreEqual(
+				new short[] { 0x3c00, unchecked((short)0xbc00), 0x4000 },
+				v.GetFloat16Data());
+		}
+
+		[TestMethod]
+		public void ConstructFloat16FromFloat()
+		{
+			// Round-ties-to-even: 65504 is Half.MaxValue; values near it stay finite.
+			float[] data = new float[] { 1.0f, -2.0f, 65504f };
+			Vector v = Vector.OfFloat16(data);
+
+			Assert.AreEqual(Vector.ElementType.FLOAT16, v.elementType);
+			Half[] halves = v.GetHalfData();
+			Assert.AreEqual(3, halves.Length);
+			Assert.AreEqual((Half)1.0f, halves[0]);
+			Assert.AreEqual((Half)(-2.0f), halves[1]);
+			Assert.AreEqual(Half.MaxValue, halves[2]);
+		}
+
+		[TestMethod]
+		public void Float16HalfRoundTripMatchesBits()
+		{
+			Half[] data = new Half[] { (Half)0.5f, (Half)3.14159f, Half.Epsilon, Half.MaxValue };
+			Vector v = Vector.OfFloat16(data);
+			CollectionAssert.AreEqual(data, v.GetHalfData());
+
+			byte[] buffer = new byte[v.GetWireSize()];
+			v.WriteTo(buffer, 0);
+			CollectionAssert.AreEqual(data, Vector.From(buffer, 0, buffer.Length).GetHalfData());
+		}
+
+		[TestMethod]
 		public void ConstructInt32()
 		{
 			int[] data = new int[] { -1, 0, 1, int.MaxValue };
