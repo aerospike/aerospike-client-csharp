@@ -104,7 +104,9 @@ namespace Aerospike.Test
 
 			public bool NeedsPeriodicRefresh()
 			{
-				return true;
+				// False so SeedCandidateManager.RequestUrgentRefresh is a no-op: N-12 asserts the
+				// client reseeds from the last snapshot without another provider call (Java parity).
+				return false;
 			}
 
 			public bool SupportsDeadline()
