@@ -90,12 +90,27 @@ EOF
 
 echo "Running L2 suite filter=${filter} subset=${subset} host=${host} port=${seed_port}"
 # MSTest.Sdk / Microsoft.Testing.Platform: pass filter after -- as well as RunSettings TestCaseFilter.
+set +e
 dotnet test AerospikeTest/AerospikeTest.csproj \
   -c Release \
   --no-restore \
   --settings "${runsettings}" \
   --filter "${filter}" \
   --logger "trx;LogFileName=l2-${subset}.trx" \
+  --logger "console;verbosity=detailed" \
   --results-directory TestResults \
   -- \
   --filter "${filter}"
+status=$?
+set -e
+if [[ "${status}" -ne 0 ]]; then
+  echo "::group::L2 test failure details"
+  find TestResults AerospikeTest/bin -type f \( -name '*.log' -o -name '*.trx' -o -name '*.diag' \) 2>/dev/null \
+    | while read -r f; do
+        echo "===== ${f} ====="
+        # Cap each file so the job log stays usable.
+        head -n 400 "${f}" || true
+      done
+  echo "::endgroup::"
+fi
+exit "${status}"
