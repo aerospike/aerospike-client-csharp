@@ -167,8 +167,6 @@ namespace Aerospike.Test
 		{
 			Assert.IsTrue(Value.AsNull.IsNull);
 			Assert.AreEqual(Value.AsNull, Value.Get((string)null));
-			Assert.AreSame(Value.WILDCARD, Value.WILDCARD);
-			Assert.AreSame(Value.INFINITY, Value.INFINITY);
 		}
 
 		[TestMethod]

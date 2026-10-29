@@ -88,7 +88,8 @@ namespace Aerospike.Client
 		private readonly Dictionary<Version, IConfigurationData> supportedVersions = new()
 		{
 			{ new Version(1, 0, 0), new ConfigurationDatav1_0_0() },
-			{ new Version(1, 1, 0), new ConfigurationDatav1_1_0() }
+			{ new Version(1, 1, 0), new ConfigurationDatav1_1_0() },
+			{ new Version(1, 2, 0), new ConfigurationDatav1_2_0() }
 		};
 
 		private Version schemaVersion = DefaultVersion;
@@ -289,9 +290,39 @@ namespace Aerospike.Client
 		{
 			configRoot.GetSection("static").Bind(ConfigurationData.staticConfig);
 
-			if (ConfigurationData.staticConfig.client.config_interval.HasValue)
+			IConfigurationSection clientSection = configRoot.GetSection("static:client");
+			StaticClientConfig client = ConfigurationData.staticConfig.client;
+
+			if (client.discovery?.dns != null)
 			{
-				Interval = ConfigurationData.staticConfig.client.config_interval.Value;
+				IConfigurationSection dnsSection = clientSection.GetSection("discovery:dns");
+
+				if (dnsSection.GetSection("names").Exists())
+				{
+					client.discovery.dns.names = dnsSection.GetSection("names").Get<string[]>();
+				}
+
+				if (dnsSection.GetSection("servers").Exists())
+				{
+					client.discovery.dns.servers = dnsSection.GetSection("servers").Get<string[]>();
+				}
+			}
+
+			if (client.discovery?.aws != null)
+			{
+				IConfigurationSection filtersSection = clientSection.GetSection("discovery:aws:filters");
+
+				if (filtersSection.Exists())
+				{
+					client.discovery.aws.filters = filtersSection.Get<AwsDiscoveryFilterConfig[]>();
+				}
+			}
+
+			DiscoveryYaml.FinalizeAndValidate(client, clientSection, filePath);
+
+			if (client.config_interval.HasValue)
+			{
+				Interval = client.config_interval.Value;
 			}
 		}
 

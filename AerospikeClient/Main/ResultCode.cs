@@ -22,6 +22,24 @@ namespace Aerospike.Client
 	public sealed class ResultCode
 	{
 		/// <summary>
+		/// Seed candidate provider failed at client initialization and no seed host is left to try.
+		/// Value: -27
+		/// </summary>
+		public const int SEED_DISCOVERY_FAILED = -27;
+
+		/// <summary>
+		/// Address translator translated two nodes to the same host and port.
+		/// Value: -26
+		/// </summary>
+		public const int TRANSLATION_COLLISION = -26;
+
+		/// <summary>
+		/// Address translator has no mapping for a server advertised address and the miss mode is strict.
+		/// Value: -25
+		/// </summary>
+		public const int TRANSLATION_MISS = -25;
+
+		/// <summary>
 		/// Transaction commit called, but the transaction was already aborted.
 		/// Value: -19
 		/// </summary>
@@ -623,6 +641,15 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+				case SEED_DISCOVERY_FAILED:
+					return "Seed discovery failed";
+
+				case TRANSLATION_COLLISION:
+					return "Address translation collision";
+
+				case TRANSLATION_MISS:
+					return "Address translation miss";
+
 				case TXN_ALREADY_ABORTED:
 					return "Transaction already aborted";
 

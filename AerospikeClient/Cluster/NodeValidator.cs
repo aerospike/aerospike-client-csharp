@@ -246,9 +246,10 @@ namespace Aerospike.Client
 					}
 				}
 
-				if (detectLoadBalancer)
+				if (detectLoadBalancer || cluster.useServicesAlternate)
 				{
 					// Seed may be load balancer with changing address. Determine real address.
+					// The alternate address list must also contain the node itself.
 					addressCommand = (cluster.tlsPolicy != null) ?
 						cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :
 						cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
@@ -281,7 +282,12 @@ namespace Aerospike.Client
 					ValidateClusterName(cluster, map);
 				}
 
-				if (addressCommand != null)
+				if (cluster.useServicesAlternate)
+				{
+					ValidateAlternateAddress(map, addressCommand);
+				}
+
+				if (detectLoadBalancer)
 				{
 					SetAddress(cluster, map, addressCommand, tlsName);
 				}
@@ -393,6 +399,16 @@ namespace Aerospike.Client
 			}
 		}
 
+		private void ValidateAlternateAddress(Dictionary<string, string> map, string addressCommand)
+		{
+			string result;
+
+			if (!map.TryGetValue(addressCommand, out result) || result == null || result.Length == 0)
+			{
+				throw new AerospikeException.AlternateAddressMissing(this.name, this.primaryHost);
+			}
+		}
+
 		private void SetAddress(Cluster cluster, Dictionary<string, string> map, string addressCommand, string tlsName)
 		{
 			string result;
@@ -410,12 +426,17 @@ namespace Aerospike.Client
 			// Search real hosts for seed.
 			foreach (Host host in hosts)
 			{
-				h = host;
-
-				string alt;
-				if (cluster.ipMap != null && cluster.ipMap.TryGetValue(h.name, out alt))
+				try
 				{
-					h = new Host(alt, h.port);
+					h = TranslateServiceHost(cluster, host);
+				}
+				catch (AerospikeException.TranslationMiss tm)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn(cluster.context, tm.Message);
+					}
+					continue;
 				}
 
 				if (h.Equals(this.primaryHost))
@@ -431,12 +452,17 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					h = host;
-
-					string alt;
-					if (cluster.ipMap != null && cluster.ipMap.TryGetValue(h.name, out alt))
+					try
 					{
-						h = new Host(alt, h.port);
+						h = TranslateServiceHost(cluster, host);
+					}
+					catch (AerospikeException.TranslationMiss tm)
+					{
+						if (Log.WarnEnabled())
+						{
+							Log.Warn(cluster.context, tm.Message);
+						}
+						continue;
 					}
 
 					IPAddress[] addresses = Connection.GetHostAddresses(h.name, cluster.connectionTimeout);
@@ -492,6 +518,12 @@ namespace Aerospike.Client
 				Log.Info(cluster.context, "Invalid address " + result + ". access-address is probably not configured on server.");
 			}
 		}
+
+		private Host TranslateServiceHost(Cluster cluster, Host host)
+		{
+			string tls = host.tlsName ?? primaryHost?.tlsName;
+			return cluster.TranslateAddress(name, tls, host.name, host.port);
+		}
 	}
 
 	sealed class SwitchClear
@@ -514,12 +546,17 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					clearHost = host;
-
-					string alternativeHost;
-					if (cluster.ipMap != null && cluster.ipMap.TryGetValue(clearHost.name, out alternativeHost))
+					try
 					{
-						clearHost = new Host(alternativeHost, clearHost.port);
+						clearHost = cluster.TranslateAddress(null, host.tlsName, host.name, host.port);
+					}
+					catch (AerospikeException.TranslationMiss tm)
+					{
+						if (Log.WarnEnabled())
+						{
+							Log.Warn(cluster.context, tm.Message);
+						}
+						continue;
 					}
 
 					IPAddress[] addresses = Connection.GetHostAddresses(clearHost.name, cluster.connectionTimeout);

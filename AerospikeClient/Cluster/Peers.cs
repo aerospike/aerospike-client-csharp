@@ -24,6 +24,10 @@ namespace Aerospike.Client
 		public readonly Dictionary<string, Node> nodes;
 		public readonly HashSet<Node> removeNodes;
 		private readonly HashSet<Host> invalidHosts;
+		/// <summary>
+		/// Maps validated node name to the peer node name that first collided with it this tend (FR-46).
+		/// </summary>
+		internal readonly Dictionary<string, string> collided;
 		public int refreshCount;
 		public bool genChanged;
 
@@ -33,6 +37,7 @@ namespace Aerospike.Client
 			nodes = new Dictionary<string, Node>();
 			invalidHosts = new HashSet<Host>();
 			removeNodes = new HashSet<Node>();
+			collided = new Dictionary<string, string>();
 		}
 
 		public bool HasFailed(Host host)
@@ -79,5 +84,9 @@ namespace Aerospike.Client
 		internal String tlsName;
 		internal List<Host> hosts;
 		internal Node replaceNode;
+		/// <summary>
+		/// True when useServicesAlternate is set and this peer has no alternate-access-address.
+		/// </summary>
+		internal bool alternateMissing;
 	}
 }

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Collections.Generic;
+
 namespace Aerospike.Client
 {
 	/// <summary>
@@ -23,6 +25,7 @@ namespace Aerospike.Client
 	{
 		private readonly Cluster cluster;
 		private readonly Info parser;
+		private string nodeName;
 		private string tlsName;
 		private readonly int portDefault;
 		public readonly int generation;
@@ -35,7 +38,21 @@ namespace Aerospike.Client
 				cluster.useServicesAlternate ? "peers-tls-alt" : "peers-tls-std" :
 				cluster.useServicesAlternate ? "peers-clear-alt" : "peers-clear-std";
 
-			parser = new Info(node, conn, command);
+			List<string> stdNames = null;
+
+			if (cluster.useServicesAlternate)
+			{
+				// The alternate list omits peers that have no alternate address.
+				string stdCommand = (cluster.tlsPolicy != null) ? "peers-tls-std" : "peers-clear-std";
+				parser = new Info(node, conn, stdCommand, command);
+				parser.ParseName(stdCommand);
+				stdNames = ParseNodeNames();
+				parser.SkipDelimiter('\n');
+			}
+			else
+			{
+				parser = new Info(node, conn, command);
+			}
 
 			if (parser.length == 0)
 			{
@@ -52,11 +69,19 @@ namespace Aerospike.Client
 			// Reset peers
 			peers.Clear();
 
-			if (parser.buffer[parser.offset] == ']')
+			if (parser.buffer[parser.offset] != ']')
 			{
-				return;
+				ParsePeers(peers);
 			}
 
+			if (stdNames != null)
+			{
+				AddAlternateMissing(peers, stdNames);
+			}
+		}
+
+		private void ParsePeers(List<Peer> peers)
+		{
 			while (true)
 			{
 				Peer peer = ParsePeer();
@@ -73,14 +98,71 @@ namespace Aerospike.Client
 			}
 		}
 
+		private List<string> ParseNodeNames()
+		{
+			List<string> names = new List<string>();
+			parser.SkipDelimiter('[');
+			int depth = 1;
+
+			while (depth > 0 && parser.offset < parser.length && parser.buffer[parser.offset] != '\n')
+			{
+				byte b = parser.buffer[parser.offset++];
+
+				if (b == '[')
+				{
+					if (++depth == 2)
+					{
+						names.Add(parser.ParseString(','));
+					}
+				}
+				else if (b == ']')
+				{
+					depth--;
+				}
+			}
+
+			return names;
+		}
+
+		private static void AddAlternateMissing(List<Peer> peers, List<string> stdNames)
+		{
+			foreach (string name in stdNames)
+			{
+				bool found = false;
+
+				foreach (Peer peer in peers)
+				{
+					if (peer.nodeName.Equals(name))
+					{
+						found = true;
+						break;
+					}
+				}
+
+				if (!found)
+				{
+					Peer peer = new Peer
+					{
+						nodeName = name,
+						hosts = new List<Host>(0),
+						alternateMissing = true
+					};
+					peers.Add(peer);
+				}
+			}
+		}
+
 		private Peer ParsePeer()
 		{
 			Peer peer = new Peer();
 			parser.Expect('[');
-			peer.nodeName = parser.ParseString(',');
+			peer.nodeName = nodeName = parser.ParseString(',');
 			parser.offset++;
 			peer.tlsName = tlsName = parser.ParseString(',');
 			parser.offset++;
+			peer.alternateMissing = cluster.useServicesAlternate &&
+				parser.offset + 1 < parser.length &&
+				parser.buffer[parser.offset + 1] == ']';
 			peer.hosts = ParseHosts();
 			parser.Expect(']');
 			return peer;
@@ -93,13 +175,23 @@ namespace Aerospike.Client
 
 			if (parser.buffer[parser.offset] == ']')
 			{
+				parser.offset++;
 				return hosts;
 			}
 
 			while (true)
 			{
-				Host host = ParseHost();
-				hosts.Add(host);
+				try
+				{
+					hosts.Add(ParseHost());
+				}
+				catch (AerospikeException.TranslationMiss tm)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn(cluster.context, tm.Message);
+					}
+				}
 
 				if (parser.buffer[parser.offset] == ']')
 				{
@@ -126,16 +218,6 @@ namespace Aerospike.Client
 				host = parser.ParseString(':', ',', ']');
 			}
 
-			if (cluster.ipMap != null)
-			{
-				string alternativeHost;
-
-				if (cluster.ipMap.TryGetValue(host, out alternativeHost))
-				{
-					host = alternativeHost;
-				}
-			}
-
 			if (parser.offset < parser.length)
 			{
 				byte b = parser.buffer[parser.offset];
@@ -143,18 +225,22 @@ namespace Aerospike.Client
 				if (b == ':')
 				{
 					parser.offset++;
-					int port = parser.ParseInt();
-					return new Host(host, tlsName, port);
+					return Translate(host, parser.ParseInt());
 				}
 
 				if (b == ',' || b == ']')
 				{
-					return new Host(host, tlsName, portDefault);
+					return Translate(host, portDefault);
 				}
 			}
 
 			string response = parser.GetTruncatedResponse();
 			throw new AerospikeException.Parse("Unterminated host in response: " + response);
+		}
+
+		private Host Translate(string host, int port)
+		{
+			return cluster.TranslateAddress(nodeName, tlsName, host, port);
 		}
 	}
 }

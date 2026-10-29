@@ -24,6 +24,19 @@ namespace Aerospike.Test
 		[AssemblyInitialize()]
 		public static void AssemblyInit(TestContext context)
 		{
+			// L2 discovery CI: seed/peers only reachable through translators; each TestL2* builds
+			// its own client. Skip the shared suite clients (mirrors Java SuiteDiscovery).
+			if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_ENDPOINT_HOSTNAME")))
+			{
+				SuiteHelpers.ns = Prop(context, "Namespace", "test");
+				SuiteHelpers.set = Prop(context, "Set", "test");
+				SuiteHelpers.timeout = int.Parse(Prop(context, "Timeout", "25000"));
+				SuiteHelpers.useServicesAlternate = false;
+				SuiteHelpers.authMode = AuthMode.INTERNAL;
+				Console.WriteLine("L2 discovery mode: skipping shared suite client connect");
+				return;
+			}
+
 			SuiteHelpers.port = int.Parse(context.Properties["Port"].ToString());
 			Console.WriteLine($"Port {SuiteHelpers.port}");
 			Log.Info($"Port {SuiteHelpers.port}");
@@ -62,6 +75,26 @@ namespace Aerospike.Test
 			ConnectSync();
 			Util.Sleep(1000); // Wait a little bit so if dynamic config with metrics is enabled, the async and sync clients don't use the same file
 			ConnectAsync();
+		}
+
+		private static string Prop(TestContext context, string name, string fallback)
+		{
+			try
+			{
+				object value = context.Properties[name];
+				if (value != null)
+				{
+					string text = value.ToString();
+					if (!string.IsNullOrEmpty(text))
+					{
+						return text;
+					}
+				}
+			}
+			catch (KeyNotFoundException)
+			{
+			}
+			return fallback;
 		}
 
 		[AssemblyCleanup()]

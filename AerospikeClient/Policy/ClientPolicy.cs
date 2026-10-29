@@ -14,6 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using Aerospike.Client.Config;
 
 namespace Aerospike.Client
 {
@@ -22,6 +26,14 @@ namespace Aerospike.Client
 	/// </summary>
 	public class ClientPolicy
 	{
+		private const string DiscoveryProviderPath = "static.client.discovery.provider";
+		private const string TranslationProviderPath = "static.client.translation.provider";
+
+		private Dictionary<string, Func<IDictionary<string, object>, ISeedCandidateProvider>> seedCandidateProviderFactories;
+		private Dictionary<string, Func<IDictionary<string, object>, IAddressTranslator>> addressTranslatorFactories;
+		private Registered<ISeedCandidateProvider> registeredSeedCandidateProvider;
+		private Registered<IAddressTranslator> registeredAddressTranslator;
+
 		/// <summary>
 		/// User authentication to cluster.  Leave null for clusters running without restricted access.
 		/// <para>Default: null</para>
@@ -274,9 +286,77 @@ namespace Aerospike.Client
 		/// The key is the IP address returned from friend info requests to other servers.  The 
 		/// value is the real IP address used to connect to the server.
 		/// </para>
+		/// <para>
+		/// When <see cref="addressTranslator"/> is null, this map backs the default
+		/// <see cref="StaticMapAddressTranslator"/>. When <see cref="addressTranslator"/> is set,
+		/// this field is ignored.
+		/// </para>
 		/// <para>Default: null (no IP address translation)</para>
 		/// </summary>
 		public Dictionary<string, string> ipMap;
+
+		/// <summary>
+		/// Source of seed hosts used to discover the cluster. When null,
+		/// <see cref="StaticSeedCandidateProvider"/> is used with the hosts passed to the client
+		/// constructor. Built-in providers set in code include
+		/// <see cref="StaticSeedCandidateProvider"/> and <see cref="DnsSeedCandidateProvider"/>
+		/// (YAML <c>static.client.discovery.provider: dns</c>). Custom providers can be named with
+		/// <see cref="RegisterSeedCandidateProvider"/>.
+		/// <para>Default: null</para>
+		/// </summary>
+		public ISeedCandidateProvider seedCandidateProvider;
+
+		/// <summary>
+		/// Translator applied to every server advertised address before the client connects to it.
+		/// When set, <see cref="ipMap"/> is ignored. When null,
+		/// <see cref="StaticMapAddressTranslator"/> is used with <see cref="ipMap"/>.
+		/// Built-in translators: <see cref="StaticMapAddressTranslator"/> (<c>static-map</c>),
+		/// <see cref="PortMapAddressTranslator"/> (<c>port-map</c>),
+		/// <see cref="PassThroughAddressTranslator"/> (<c>pass-through</c>). Custom translators can
+		/// be named with <see cref="RegisterAddressTranslator"/>.
+		/// <para>Default: null</para>
+		/// </summary>
+		public IAddressTranslator addressTranslator;
+
+		/// <summary>
+		/// Action taken when the address translator has no mapping for a server advertised endpoint.
+		/// <para>Default: <see cref="TranslationMissMode.PASS_THROUGH"/></para>
+		/// </summary>
+		public TranslationMissMode translationOnMiss = TranslationMissMode.PASS_THROUGH;
+
+		/// <summary>
+		/// How static constructor seeds and discovered seeds are combined into the seed list.
+		/// <para>Default: <see cref="SeedMergePolicy.MERGE"/></para>
+		/// </summary>
+		public SeedMergePolicy seedMergePolicy = SeedMergePolicy.MERGE;
+
+		/// <summary>
+		/// Where periodic seed refresh runs when the provider needs periodic refresh (FR-41).
+		/// <para>Default: <see cref="DiscoveryExecutionMode.THREAD"/></para>
+		/// </summary>
+		public DiscoveryExecutionMode discoveryExecutionMode = DiscoveryExecutionMode.THREAD;
+
+		/// <summary>
+		/// Interval in milliseconds between periodic seed candidate refreshes.
+		/// Must be greater or equal to <see cref="tendInterval"/> when the provider needs periodic refresh.
+		/// <para>Default: 30000</para>
+		/// </summary>
+		public int discoveryRefreshIntervalMs = 30000;
+
+		/// <summary>
+		/// Max wall time in milliseconds for one <see cref="ISeedCandidateProvider.RefreshSeedCandidates"/>
+		/// call in <see cref="DiscoveryExecutionMode.THREAD"/> mode (initial await and close wait).
+		/// <para>Default: 10000</para>
+		/// </summary>
+		public int discoveryRefreshTimeoutMs = 10000;
+
+		/// <summary>
+		/// Declared deadline in milliseconds for one periodic refresh on the tend thread
+		/// (<see cref="DiscoveryExecutionMode.TEND"/>). Measured, not enforced.
+		/// Must be in the range <c>0 &lt; value &lt;= tendInterval / 2</c>.
+		/// <para>Default: 100</para>
+		/// </summary>
+		public int discoveryTendRefreshDeadlineMs = 100;
 
 		/// <summary>
 		/// Flag to signify if alternate IP address discovery info commands should be used.
@@ -377,11 +457,25 @@ namespace Aerospike.Client
 			this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
 			this.tlsPolicy = (other.tlsPolicy != null) ? new TlsPolicy(other.tlsPolicy) : null;
 			this.ipMap = other.ipMap;
+			this.seedCandidateProvider = other.seedCandidateProvider;
+			this.addressTranslator = other.addressTranslator;
+			this.translationOnMiss = other.translationOnMiss;
+			this.seedMergePolicy = other.seedMergePolicy;
+			this.discoveryExecutionMode = other.discoveryExecutionMode;
+			this.discoveryRefreshIntervalMs = other.discoveryRefreshIntervalMs;
+			this.discoveryRefreshTimeoutMs = other.discoveryRefreshTimeoutMs;
+			this.discoveryTendRefreshDeadlineMs = other.discoveryTendRefreshDeadlineMs;
 			this.useServicesAlternate = other.useServicesAlternate;
 			this.forceSingleNode = other.forceSingleNode;
 			this.rackAware = other.rackAware;
 			this.rackId = other.rackId;
 			this.rackIds = (other.rackIds != null) ? new List<int>(other.rackIds) : null;
+			this.seedCandidateProviderFactories = (other.seedCandidateProviderFactories != null) ?
+				new Dictionary<string, Func<IDictionary<string, object>, ISeedCandidateProvider>>(other.seedCandidateProviderFactories) : null;
+			this.addressTranslatorFactories = (other.addressTranslatorFactories != null) ?
+				new Dictionary<string, Func<IDictionary<string, object>, IAddressTranslator>>(other.addressTranslatorFactories) : null;
+			this.registeredSeedCandidateProvider = other.registeredSeedCandidateProvider;
+			this.registeredAddressTranslator = other.registeredAddressTranslator;
 		}
 
 		public ClientPolicy(ClientPolicy other, IConfigProvider configProvider) : this(other)
@@ -429,6 +523,8 @@ namespace Aerospike.Client
 				this.minConnsPerNode = staticClient.min_connections_per_node.Value;
 			}
 
+			ApplyDiscoveryAndTranslation(staticClient);
+
 			if (!String.IsNullOrEmpty(dynamicClient.app_id))
 			{
 				this.AppId = dynamicClient.app_id;
@@ -472,6 +568,275 @@ namespace Aerospike.Client
 			if (dynamicClient.use_service_alternative.HasValue)
 			{
 				this.useServicesAlternate = dynamicClient.use_service_alternative.Value;
+			}
+		}
+
+		/// <summary>
+		/// Register a seed candidate provider factory under a name. When
+		/// <c>static.client.discovery.provider</c> in the YAML config file names it, the client calls
+		/// the factory with the other keys of the discovery block as the options map and sets
+		/// <see cref="seedCandidateProvider"/> to the result. Built once at client construction and
+		/// kept across config reloads.
+		/// </summary>
+		/// <param name="name">Must not be a built-in name (<c>static</c>, <c>dns</c>, <c>aws-tags</c>) or already registered</param>
+		/// <param name="factory">Builds the provider from the options map; must not return null</param>
+		public void RegisterSeedCandidateProvider(
+			string name,
+			Func<IDictionary<string, object>, ISeedCandidateProvider> factory)
+		{
+			seedCandidateProviderFactories = Register("seed candidate provider", name, factory,
+				DiscoveryYaml.BuiltInSeedProviders, seedCandidateProviderFactories);
+		}
+
+		/// <summary>
+		/// Register an address translator factory under a name. When
+		/// <c>static.client.translation.provider</c> in the YAML config file names it, the client calls
+		/// the factory with the other keys of the translation block as the options map and sets
+		/// <see cref="addressTranslator"/> to the result. Built once at client construction and kept
+		/// across config reloads.
+		/// </summary>
+		/// <param name="name">Must not be a built-in name (<c>static-map</c>, <c>port-map</c>, <c>pass-through</c>) or already registered</param>
+		/// <param name="factory">Builds the translator from the options map; must not return null</param>
+		public void RegisterAddressTranslator(
+			string name,
+			Func<IDictionary<string, object>, IAddressTranslator> factory)
+		{
+			addressTranslatorFactories = Register("address translator", name, factory,
+				DiscoveryYaml.BuiltInTranslators, addressTranslatorFactories);
+		}
+
+		private void ApplyDiscoveryAndTranslation(StaticClientConfig staticClient)
+		{
+			if (staticClient.ip_map != null)
+			{
+				this.ipMap = staticClient.ip_map;
+			}
+
+			if (staticClient.use_services_alternate.HasValue)
+			{
+				this.useServicesAlternate = staticClient.use_services_alternate.Value;
+			}
+
+			StaticDiscoveryConfig discovery = staticClient.discovery;
+
+			if (discovery != null)
+			{
+				if (discovery.provider != null)
+				{
+					CheckRegistered(DiscoveryProviderPath, discovery.provider, discovery.options,
+						DiscoveryYaml.YamlSeedProviders, seedCandidateProviderFactories);
+				}
+
+				if (discovery.options != null || discovery.dns != null || discovery.aws != null)
+				{
+					Registered<ISeedCandidateProvider> registered;
+
+					if (discovery.dns != null)
+					{
+						registered = BuildDns(discovery.dns, registeredSeedCandidateProvider);
+					}
+					else if (discovery.aws != null)
+					{
+						registered = BuildAws(discovery.aws, registeredSeedCandidateProvider);
+					}
+					else
+					{
+						registered = Build(DiscoveryProviderPath, discovery.provider, discovery.options,
+							seedCandidateProviderFactories, registeredSeedCandidateProvider);
+					}
+
+					registeredSeedCandidateProvider = registered;
+					seedCandidateProvider = registered.instance;
+				}
+				else if (discovery.provider != null)
+				{
+					seedCandidateProvider = null;
+				}
+
+				if (discovery.merge_policy != null)
+				{
+					seedMergePolicy = DiscoveryYaml.ParseMergePolicy(discovery.merge_policy);
+				}
+
+				if (discovery.refresh_interval_ms.HasValue)
+				{
+					discoveryRefreshIntervalMs = discovery.refresh_interval_ms.Value;
+				}
+
+				if (discovery.tend_refresh_deadline_ms.HasValue)
+				{
+					discoveryTendRefreshDeadlineMs = discovery.tend_refresh_deadline_ms.Value;
+				}
+
+				if (discovery.execution_mode != null)
+				{
+					discoveryExecutionMode = DiscoveryYaml.ParseExecutionMode(discovery.execution_mode);
+				}
+
+				if (discovery.refresh_timeout_ms.HasValue)
+				{
+					discoveryRefreshTimeoutMs = discovery.refresh_timeout_ms.Value;
+				}
+			}
+
+			StaticTranslationConfig translation = staticClient.translation;
+
+			if (translation != null)
+			{
+				if (translation.provider != null)
+				{
+					CheckRegistered(TranslationProviderPath, translation.provider, translation.options,
+						DiscoveryYaml.BuiltInTranslators, addressTranslatorFactories);
+
+					switch (translation.provider)
+					{
+						case StaticTranslationConfig.PortMap:
+							addressTranslator = new PortMapAddressTranslator(translation.port_map);
+							break;
+
+						case StaticTranslationConfig.PassThrough:
+							addressTranslator = PassThroughAddressTranslator.Instance;
+							break;
+
+						case StaticTranslationConfig.StaticMap:
+							addressTranslator = (translation.static_map != null) ?
+								new StaticMapAddressTranslator(translation.static_map) : null;
+							break;
+
+						default:
+							registeredAddressTranslator = Build(TranslationProviderPath, translation.provider,
+								translation.options, addressTranslatorFactories, registeredAddressTranslator);
+							addressTranslator = registeredAddressTranslator.instance;
+							break;
+					}
+				}
+
+				if (translation.on_miss != null)
+				{
+					translationOnMiss = DiscoveryYaml.ParseOnMiss(translation.on_miss);
+				}
+			}
+		}
+
+		private static Dictionary<string, Func<IDictionary<string, object>, T>> Register<T>(
+			string type,
+			string name,
+			Func<IDictionary<string, object>, T> factory,
+			string[] builtIn,
+			Dictionary<string, Func<IDictionary<string, object>, T>> factories)
+		{
+			if (string.IsNullOrEmpty(name))
+			{
+				throw new AerospikeException("Invalid " + type + " name: " + name);
+			}
+
+			if (Array.IndexOf(builtIn, name) >= 0)
+			{
+				throw new AerospikeException("Invalid " + type + " name '" + name + "': built-in name");
+			}
+
+			if (factories != null && factories.ContainsKey(name))
+			{
+				throw new AerospikeException("Invalid " + type + " name '" + name + "': already registered");
+			}
+
+			if (factory == null)
+			{
+				throw new AerospikeException("Invalid " + type + " factory for '" + name + "': null");
+			}
+
+			factories ??= new Dictionary<string, Func<IDictionary<string, object>, T>>();
+			factories[name] = factory;
+			return factories;
+		}
+
+		private static Registered<T> Build<T>(
+			string path,
+			string name,
+			IDictionary<string, object> options,
+			Dictionary<string, Func<IDictionary<string, object>, T>> factories,
+			Registered<T> previous)
+			where T : class
+		{
+			if (previous != null)
+			{
+				return previous;
+			}
+
+			T instance;
+
+			try
+			{
+				instance = factories[name](options);
+			}
+			catch (Exception e) when (e is not AerospikeException)
+			{
+				throw new AerospikeException("Invalid " + path + " value '" + name + "': factory failed: " + e.Message, e);
+			}
+
+			if (instance == null)
+			{
+				throw new AerospikeException("Invalid " + path + " value '" + name + "': factory returned null");
+			}
+
+			return new Registered<T>(instance);
+		}
+
+		private static Registered<ISeedCandidateProvider> BuildDns(
+			DnsDiscoveryConfig dns,
+			Registered<ISeedCandidateProvider> previous)
+		{
+			if (previous != null)
+			{
+				return previous;
+			}
+
+			return new Registered<ISeedCandidateProvider>(DiscoveryYaml.BuildDns(dns));
+		}
+
+		private static Registered<ISeedCandidateProvider> BuildAws(
+			AwsDiscoveryConfig aws,
+			Registered<ISeedCandidateProvider> previous)
+		{
+			if (previous != null)
+			{
+				return previous;
+			}
+
+			return new Registered<ISeedCandidateProvider>(DiscoveryYaml.BuildAws(aws));
+		}
+
+		private static void CheckRegistered(
+			string path,
+			string name,
+			IDictionary<string, object> options,
+			string[] yamlNames,
+			IDictionary factories)
+		{
+			if (options != null && (factories == null || !factories.Contains(name)))
+			{
+				List<string> names = new List<string>(yamlNames);
+
+				if (factories != null)
+				{
+					foreach (object key in factories.Keys)
+					{
+						names.Add(key.ToString());
+					}
+				}
+
+				throw new AerospikeException("Invalid " + path + " value '" + name + "': valid values: " +
+					string.Join(", ", names));
+			}
+		}
+
+		private sealed class Registered<T>
+		{
+			internal readonly T instance;
+
+			internal Registered(T instance)
+			{
+				this.instance = instance;
 			}
 		}
 

@@ -53,8 +53,17 @@ namespace Aerospike.Client
 		// Hints for best node for a partition
 		protected internal volatile Dictionary<string, Partitions> partitionMap;
 
-		// IP translations.
-		protected internal readonly Dictionary<string, string> ipMap;
+		// Source of seed hosts.
+		protected internal readonly ISeedCandidateProvider seedCandidateProvider;
+
+		// Advertised address translation.
+		protected internal readonly IAddressTranslator addressTranslator;
+
+		// Action when the address translator has no mapping.
+		protected internal readonly TranslationMissMode translationOnMiss;
+
+		// Seed candidate refresh manager (FR-41).
+		internal readonly SeedCandidateManager seedCandidateManager;
 
 		// TLS connection policy.
 		protected internal readonly TlsPolicy tlsPolicy;
@@ -207,7 +216,19 @@ namespace Aerospike.Client
 				}
 			}
 
-			this.seeds = hosts;
+			this.seedCandidateProvider = policy.seedCandidateProvider ?? new StaticSeedCandidateProvider(hosts);
+			this.addressTranslator = policy.addressTranslator ?? new StaticMapAddressTranslator(policy.ipMap);
+			this.translationOnMiss = policy.translationOnMiss;
+			this.seedCandidateManager = new SeedCandidateManager(
+				seedCandidateProvider, policy, hosts, SetSeeds, context);
+			this.seedCandidateManager.Start();
+			this.seedCandidateManager.AwaitInitialRefresh();
+
+			// seeds are published by the manager; ensure a non-null array for force-single-node.
+			if (seeds == null)
+			{
+				this.seeds = hosts;
+			}
 
 			if (policy.authMode == AuthMode.PKI)
 			{
@@ -380,6 +401,56 @@ namespace Aerospike.Client
 			tendThread.Start();
 		}
 
+		private void SetSeeds(Host[] hosts)
+		{
+			this.seeds = hosts ?? Array.Empty<Host>();
+		}
+
+		/// <summary>
+		/// Translate a server advertised address. The advertised TLS name is always kept.
+		/// Throw <see cref="AerospikeException.TranslationMiss"/> on a strict miss.
+		/// </summary>
+		internal Host TranslateAddress(string nodeName, string tlsName, string host, int port)
+		{
+			Endpoint.SourceList sourceList = useServicesAlternate ?
+				Endpoint.SourceList.ALTERNATE : Endpoint.SourceList.STANDARD;
+
+			return Translate(addressTranslator, translationOnMiss, new Endpoint(nodeName, tlsName, host, port, sourceList));
+		}
+
+		internal static Host Translate(IAddressTranslator translator, Endpoint advertised)
+		{
+			return Translate(translator, TranslationMissMode.PASS_THROUGH, advertised);
+		}
+
+		internal static Host Translate(IAddressTranslator translator, TranslationMissMode onMiss, Endpoint advertised)
+		{
+			Host result = translator.Translate(advertised);
+
+			if (result == null)
+			{
+				if (onMiss == TranslationMissMode.STRICT)
+				{
+					throw new AerospikeException.TranslationMiss(advertised, SeedCandidateManager.TranslatorName(translator));
+				}
+
+				return new Host(advertised.host, advertised.tlsName, advertised.port);
+			}
+
+			// FR-40: never rewrite TLS identity.
+			if (result.tlsName != advertised.tlsName)
+			{
+				return new Host(result.name, advertised.tlsName, result.port);
+			}
+
+			return result;
+		}
+
+		internal string TranslatorName()
+		{
+			return SeedCandidateManager.TranslatorName(addressTranslator);
+		}
+
 		public void AddSeeds(Host[] hosts)
 		{
 			// Use copy on write semantics.
@@ -498,6 +569,7 @@ namespace Aerospike.Client
 			// If active nodes don't exist, seed cluster.
 			if (nodes.Length == 0)
 			{
+				seedCandidateManager.RequestUrgentRefresh();
 				SeedNode(peers);
 
 				// Abort cluster init if all peers of the seed are not reachable and failIfNotConnected is true.
@@ -560,6 +632,9 @@ namespace Aerospike.Client
 			}
 
 			tendCount++;
+
+			// Periodic seed refresh in tend execution mode (FR-41).
+			seedCandidateManager.Tend(tendCount, tendInterval);
 
 			// Balance connections every 30 tend intervals.
 			if (tendCount % 30 == 0)
@@ -1599,6 +1674,7 @@ namespace Aerospike.Client
 
 			tendValid = false;
 			cancel.Cancel();
+			seedCandidateManager.Close();
 
 			lock (metricsLock)
 			{

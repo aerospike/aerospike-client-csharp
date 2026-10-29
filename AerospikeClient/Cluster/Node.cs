@@ -399,7 +399,27 @@ namespace Aerospike.Client
 						continue;
 					}
 
+					if (peer.alternateMissing)
+					{
+						Log.Error(cluster.context, new AerospikeException.AlternateAddressMissing(peer.nodeName, null).Message);
+						peersValidated = false;
+						continue;
+					}
+
+					AerospikeException.TranslationCollision collision = FindCollision(peers, peer);
+
+					if (collision != null)
+					{
+						if (Log.WarnEnabled())
+						{
+							Log.Warn(cluster.context, collision.Message);
+						}
+						peersValidated = false;
+						continue;
+					}
+
 					bool nodeValidated = false;
+					collision = null;
 
 					// Find first host that connects.
 					foreach (Host host in peer.hosts)
@@ -414,6 +434,14 @@ namespace Aerospike.Client
 							// Attempt connection to host.
 							NodeValidator nv = new NodeValidator();
 							nv.ValidateNode(cluster, host);
+
+							collision = FindCollision(peers, peer, host, nv);
+
+							if (collision != null)
+							{
+								nv.primaryConn.Close();
+								break;
+							}
 
 							if (!peer.nodeName.Equals(nv.name))
 							{
@@ -443,10 +471,22 @@ namespace Aerospike.Client
 						{
 							peers.Fail(host);
 
-							if (Log.WarnEnabled())
+							if (e is AerospikeException.AlternateAddressMissing)
+							{
+								Log.Error(cluster.context, "Add node " + host + " failed: " + e.Message);
+							}
+							else if (Log.WarnEnabled())
 							{
 								Log.Warn(cluster.context, "Add node " + host + " failed: " + Util.GetErrorMessage(e));
 							}
+						}
+					}
+
+					if (collision != null)
+					{
+						if (Log.WarnEnabled())
+						{
+							Log.Warn(cluster.context, collision.Message);
 						}
 					}
 
@@ -467,6 +507,137 @@ namespace Aerospike.Client
 			{
 				RefreshFailed(e);
 			}
+		}
+
+		/// <summary>
+		/// Pre-connect host:port collision check against this node, peer list, and known nodes (FR-46).
+		/// </summary>
+		private AerospikeException.TranslationCollision FindCollision(Peers peers, Peer peer)
+		{
+			foreach (Host host in peer.hosts)
+			{
+				if (!name.Equals(peer.nodeName) && this.host.Equals(host))
+				{
+					return new AerospikeException.TranslationCollision(peer.nodeName, name, host, cluster.TranslatorName());
+				}
+
+				foreach (Peer other in peers.peers)
+				{
+					if (!other.nodeName.Equals(peer.nodeName) && other.hosts != null && other.hosts.Contains(host))
+					{
+						return new AerospikeException.TranslationCollision(peer.nodeName, other.nodeName, host, cluster.TranslatorName());
+					}
+				}
+
+				Node node = FindNodeByHost(cluster.nodesMap, peer.nodeName, host);
+
+				if (node == null)
+				{
+					node = FindNodeByHost(peers.nodes, peer.nodeName, host);
+				}
+
+				if (node != null)
+				{
+					return new AerospikeException.TranslationCollision(peer.nodeName, node.name, host, cluster.TranslatorName());
+				}
+			}
+
+			return null;
+		}
+
+		/// <summary>
+		/// Post-validate collision check: newcomer resolved to an already-known node/address (CLIENT-5760).
+		/// </summary>
+		private AerospikeException.TranslationCollision FindCollision(Peers peers, Peer peer, Host host, NodeValidator nv)
+		{
+			string other;
+
+			if (name.Equals(nv.name) || address.Equals(nv.primaryAddress))
+			{
+				other = name;
+			}
+			else
+			{
+				Node node = FindValidatedNode(cluster.nodesMap, peer.nodeName, nv);
+
+				if (node == null)
+				{
+					node = FindValidatedNode(peers.nodes, peer.nodeName, nv);
+
+					if (node != null)
+					{
+						// Neither peer becomes a node when both validate as the same node in this tend.
+						peers.nodes.Remove(node.name);
+						node.Close();
+					}
+				}
+
+				if (node != null)
+				{
+					other = node.name;
+				}
+				else if (!peer.nodeName.Equals(nv.name) && FindPeer(peers, nv.name))
+				{
+					other = nv.name;
+				}
+				else if (!peers.collided.TryGetValue(nv.name, out other))
+				{
+					other = null;
+				}
+			}
+
+			if (other == null)
+			{
+				return null;
+			}
+
+			peers.collided[nv.name] = peer.nodeName;
+			return new AerospikeException.TranslationCollision(peer.nodeName, other, host, cluster.TranslatorName());
+		}
+
+		private static Node FindValidatedNode(Dictionary<string, Node> nodes, string nodeName, NodeValidator nv)
+		{
+			foreach (Node node in nodes.Values)
+			{
+				if (node.name.Equals(nodeName))
+				{
+					continue;
+				}
+
+				if (node.name.Equals(nv.name) ||
+					(node.active && node.failures == 0 && node.address.Equals(nv.primaryAddress)))
+				{
+					return node;
+				}
+			}
+
+			return null;
+		}
+
+		private static bool FindPeer(Peers peers, string nodeName)
+		{
+			foreach (Peer peer in peers.peers)
+			{
+				if (peer.nodeName.Equals(nodeName))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		private static Node FindNodeByHost(Dictionary<string, Node> nodes, string nodeName, Host host)
+		{
+			foreach (Node node in nodes.Values)
+			{
+				if (node.active && node.failures == 0 && !node.name.Equals(nodeName) && node.host.Equals(host))
+				{
+					return node;
+				}
+			}
+
+			return null;
 		}
 
 		private static bool FindPeerNode(Cluster cluster, Peers peers, Peer peer)
