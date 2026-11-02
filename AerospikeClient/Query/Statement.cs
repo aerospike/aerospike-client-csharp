@@ -499,11 +499,23 @@ namespace Aerospike.Client
 		/// <para>
 		/// Every node in the cluster must support Top-K; otherwise the query fails with
 		/// <see cref="ResultCode.PARAMETER_ERROR"/> before sending. Each node returns its best
-		/// <paramref name="k"/> candidates and the client merges them. Calling this again replaces k.
+		/// <paramref name="k"/> candidates and the client merges them with a bounded heap of
+		/// size k (retained memory about k × projected record size). Calling this again replaces k.
+		/// </para>
+		/// <para>
+		/// Project only the bins needed for ranking (and any bins required from the winners).
+		/// With no projection, each node returns every bin for each candidate — including large
+		/// vector bins. The client still receives up to nodes × k records per attempt even though
+		/// it retains only k. Concurrent Top-K queries multiply that footprint; this release has
+		/// no client-side concurrent Top-K or memory-budget policy. For heavy bins, run Top-K with
+		/// a minimal projection and batch-read the winners afterward (records may change between
+		/// the two steps).
 		/// </para>
 		/// <para>
 		/// Nodes send results only after finishing their scan. For large sets, raise the socket
 		/// timeout (or set it to 0); the client does not change the application's timeout policy.
+		/// Results are delivered only after the merge completes (ordered buffer of at most k),
+		/// not streamed like an ordinary query.
 		/// </para>
 		/// </summary>
 		/// <param name="k">maximum number of records to return, in [1, 1000]</param>

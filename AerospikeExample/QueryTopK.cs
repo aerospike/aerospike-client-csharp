@@ -22,6 +22,8 @@ namespace Aerospike.Example;
 /// Demonstrate Top-K queries using <see cref="Statement.SetOrderBy"/> + <see cref="Statement.SetTopK"/>.
 /// Every node in the cluster must support Top-K; each returns at most k candidates and the
 /// client merges them into the global Top-K. A mixed cluster is rejected with a parameter error.
+/// Project the ranking bins (here via <see cref="Statement.SetBinNames"/>); an empty projection
+/// returns every bin for each candidate. See <see cref="Statement.SetTopK"/> for memory guidance.
 /// </summary>
 public sealed class QueryTopK : SyncExample
 {
