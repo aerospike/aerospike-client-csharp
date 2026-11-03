@@ -27,6 +27,19 @@ namespace Aerospike.Client
 		private readonly NodePartitions nodePartitions;
 		private readonly bool sendTopK;
 
+		public QueryPartitionCommand
+		(
+			Cluster cluster,
+			Policy policy,
+			Statement statement,
+			ulong taskId,
+			RecordSet recordSet,
+			PartitionTracker tracker,
+			NodePartitions nodePartitions
+		) : this(cluster, policy, statement, taskId, recordSet, null, tracker, nodePartitions, false)
+		{
+		}
+
 		internal QueryPartitionCommand
 		(
 			Cluster cluster,
