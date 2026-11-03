@@ -25,7 +25,7 @@ namespace Aerospike.Client
 		public readonly HashSet<Node> removeNodes;
 		private readonly HashSet<Host> invalidHosts;
 		/// <summary>
-		/// Maps validated node name to the peer node name that first collided with it this tend (FR-46).
+		/// Maps validated node name to the peer node name that first collided with it this tend.
 		/// </summary>
 		internal readonly Dictionary<string, string> collided;
 		public int refreshCount;

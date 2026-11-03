@@ -89,6 +89,8 @@ jobs:
           - low-mtu
           - port-range
           - idle-reset
+          # TG-18 / SERVER-1839: hostname that does not resolve; CE latest still resolves at startup.
+          - unresolved-access
     uses: ./.github/workflows/discovery-l2.yaml
     with:
       subset: ce
@@ -98,22 +100,38 @@ jobs:
     secrets: inherit
 
   l2-ee:
-    name: L2 discovery (ee${{ matrix.profile != 'default' && format(', {0}', matrix.profile) || '' }})
+    # unresolved-access runs twice for TG-18: 8.2.0.0 resolves and exits; 8.2.1.0-35 advertises verbatim (SERVER-1839).
+    name: L2 discovery (ee${{ matrix.profile != 'default' && format(', {0}', matrix.profile) || '' }}${{ matrix.verbatim-access-address && ', verbatim' || '' }})
     needs: gate
     if: needs.gate.outputs.enterprise == 'true'
     strategy:
       fail-fast: false
       matrix:
-        profile:
-          - default
-          - cn-only
+        include:
+          - profile: default
+            server-tag: 8.2.0.0
+            tls-listen-port-base: "43331"
+            verbatim-access-address: false
+          - profile: cn-only
+            server-tag: 8.2.0.0
+            tls-listen-port-base: "43331"
+            verbatim-access-address: false
+          - profile: unresolved-access
+            server-tag: 8.2.0.0
+            tls-listen-port-base: "43331"
+            verbatim-access-address: false
+          - profile: unresolved-access
+            server-tag: 8.2.1.0-35
+            tls-listen-port-base: "43331"
+            verbatim-access-address: true
     uses: ./.github/workflows/discovery-l2.yaml
     with:
       subset: ee
       server-container-repo: database-docker-dev-local/aerospike-server-enterprise
-      server-tag: 8.2.0.0
-      tls-listen-port-base: "43331"
+      server-tag: ${{ matrix.server-tag }}
+      tls-listen-port-base: ${{ matrix.tls-listen-port-base }}
       profile: ${{ matrix.profile }}
+      verbatim-access-address: ${{ matrix.verbatim-access-address }}
     secrets: inherit
 
   tls-matching:

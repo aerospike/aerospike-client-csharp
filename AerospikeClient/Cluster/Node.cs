@@ -550,7 +550,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Pre-connect host:port collision check against this node, peer list, and known nodes (FR-46).
+		/// Pre-connect host:port collision check against this node, peer list, and known nodes.
 		/// </summary>
 		private AerospikeException.TranslationCollision FindCollision(Peers peers, Peer peer)
 		{
@@ -586,7 +586,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Post-validate collision check: newcomer resolved to an already-known node/address (CLIENT-5760).
+		/// Post-validate collision check: newcomer resolved to an already-known node/address.
 		/// </summary>
 		private AerospikeException.TranslationCollision FindCollision(Peers peers, Peer peer, Host host, NodeValidator nv)
 		{

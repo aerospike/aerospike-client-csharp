@@ -331,7 +331,7 @@ namespace Aerospike.Client
 		public SeedMergePolicy seedMergePolicy = SeedMergePolicy.MERGE;
 
 		/// <summary>
-		/// Where periodic seed refresh runs when the provider needs periodic refresh (FR-41).
+		/// Where periodic seed refresh runs when the provider needs periodic refresh.
 		/// <para>Default: <see cref="DiscoveryExecutionMode.THREAD"/></para>
 		/// </summary>
 		public DiscoveryExecutionMode discoveryExecutionMode = DiscoveryExecutionMode.THREAD;

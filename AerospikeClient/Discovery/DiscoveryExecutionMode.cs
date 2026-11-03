@@ -17,7 +17,7 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Where periodic seed candidate refresh runs (FR-41).
+	/// Where periodic seed candidate refresh runs.
 	/// </summary>
 	public enum DiscoveryExecutionMode
 	{

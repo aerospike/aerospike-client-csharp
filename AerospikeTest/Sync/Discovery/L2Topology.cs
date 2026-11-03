@@ -29,7 +29,9 @@ namespace Aerospike.Test
 	/// L2 topology built by .github/workflows/discovery-l2.yaml: a three-node cluster on a private
 	/// network with no published ports, reachable from the client only through one Toxiproxy listener
 	/// per node behind one endpoint hostname. Topology arrives as environment variables matching the
-	/// aerospike-client-conformance discovery-l2-topology env-file contract.
+	/// aerospike-client-conformance discovery-l2-topology env-file contract, including
+	/// DISCOVERY_UNRESOLVED_HOSTNAME / DISCOVERY_VERBATIM_ACCESS_ADDRESS for the unresolved-access
+	/// profile (CLIENT-5858 / SERVER-1839).
 	/// </summary>
 	internal static class L2Topology
 	{
@@ -70,6 +72,8 @@ namespace Aerospike.Test
 		private static string proxyPortRange;
 		private static string idleReset;
 		private static string dnsServer;
+		private static string unresolvedHostname;
+		private static string verbatimAccessAddress;
 
 		public static string Host { get { Ensure(); return host; } }
 		public static IReadOnlyList<int> Ports { get { Ensure(); return ports; } }
@@ -89,6 +93,15 @@ namespace Aerospike.Test
 		public static string IdleReset { get { Ensure(); return idleReset; } }
 		/// <summary>Optional DNS server (ip:port) serving SRV for the endpoint; set by L2 default profile.</summary>
 		public static string DnsServer { get { Ensure(); return dnsServer; } }
+		/// <summary>
+		/// Hostname that does not resolve in the server containers; set by the unresolved-access profile.
+		/// </summary>
+		public static string UnresolvedHostname { get { Ensure(); return unresolvedHostname; } }
+		/// <summary>
+		/// "1" when the server under test advertises access-address hostnames verbatim (SERVER-1839);
+		/// "0" when it resolves them at startup. Set by the unresolved-access profile.
+		/// </summary>
+		public static string VerbatimAccessAddress { get { Ensure(); return verbatimAccessAddress; } }
 
 		public static string Namespace
 		{
@@ -869,6 +882,8 @@ namespace Aerospike.Test
 				proxyPortRange = Optional("DISCOVERY_PROXY_PORT_RANGE");
 				idleReset = Optional("DISCOVERY_IDLE_RESET");
 				dnsServer = Optional("DISCOVERY_DNS_SERVER");
+				unresolvedHostname = Optional("DISCOVERY_UNRESOLVED_HOSTNAME");
+				verbatimAccessAddress = Optional("DISCOVERY_VERBATIM_ACCESS_ADDRESS");
 				initialized = true;
 			}
 		}

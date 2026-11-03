@@ -23,11 +23,18 @@ on:
       profile:
         description: >-
           A discovery-l2-topology profile: default, reachable, pass-through-names,
-          pass-through-ports, port-map-range, cn-only, low-mtu, port-range or
-          idle-reset
+          pass-through-ports, port-map-range, cn-only, low-mtu, port-range,
+          idle-reset or unresolved-access
         type: string
         required: false
         default: default
+      verbatim-access-address:
+        description: >-
+          For unresolved-access, whether the server under test advertises
+          access-address hostnames verbatim (SERVER-1839). true or false.
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   id-token: write
@@ -61,6 +68,7 @@ jobs:
             cn-only) filter='FullyQualifiedName~TestL2CnOnlyCertificate' ;;
             low-mtu) filter='FullyQualifiedName~TestL2LowMtu' ;;
             idle-reset) filter='FullyQualifiedName~TestL2IdleReset|FullyQualifiedName~TestL2AsyncIdleReset' ;;
+            unresolved-access) filter='FullyQualifiedName~TestL2UnresolvedAccessAddress|FullyQualifiedName~TestL2PortMapNoAccessAddress' ;;
             *)
               echo "::error::Unknown profile ${PROFILE}"
               exit 1
@@ -70,8 +78,8 @@ jobs:
 
       - name: Setup L2 topology
         id: l2
-        # CLIENT-5791 — pin SHA (not branch/tag). Includes discovery-l2-topology + follow-up pin PR #16.
-        uses: aerospike/aerospike-client-conformance/.github/actions/discovery-l2-topology@faa1474b97c83beb7c353bdca62733e6ad8ff1d4
+        # CLIENT-5791 — pin SHA (not branch/tag). 83959d02 adds unresolved-access + verbatim-access-address (CLIENT-5858).
+        uses: aerospike/aerospike-client-conformance/.github/actions/discovery-l2-topology@83959d02eb6bca719d71ba70e72648c528847b69
         with:
           profile: ${{ inputs.profile }}
           subset: ${{ inputs.subset }}
@@ -83,6 +91,7 @@ jobs:
           features-content: ${{ inputs.subset == 'ee' && secrets.AES_FEATURES_CONF || '' }}
           oidc-provider: gh-aerospike
           oidc-audience: aerospike
+          verbatim-access-address: ${{ inputs.verbatim-access-address }}
 
       - name: Build DNS zone
         id: zone
@@ -187,5 +196,5 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
         with:
           files: "**/TestResults/**/*.trx"
-          check_name: "L2 discovery (${{ inputs.subset }}${{ inputs.profile != 'default' && format(', {0}', inputs.profile) || '' }})"
+          check_name: "L2 discovery (${{ inputs.subset }}${{ inputs.profile != 'default' && format(', {0}', inputs.profile) || '' }}${{ inputs.profile == 'unresolved-access' && format(', verbatim={0}', inputs.verbatim-access-address) || '' }})"
           fail_on: ${{ inputs.profile == 'cn-only' && 'nothing' || 'test failures' }}

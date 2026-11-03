@@ -31,6 +31,11 @@
 #   L3_CLUSTER_SIZE           initial AerospikeCluster size on the default profile, 1-8
 #   L3_PER_NODE_WORKERS       kind workers on the per-node profile, 2-8 (default: 2)
 #   L3_PER_NODE_DOMAIN        domain of the per-node hostnames (default: as-endpoint.test)
+#   L3_UNRESOLVED_ENDPOINT    set to 1 on the default profile to restore the CoreDNS configuration the action
+#                             found, without its entry for the endpoint hostname, before any Aerospike pod starts.
+#                             Before the tests run, a pod in the cluster looks the hostname up and the run fails
+#                             unless the answer is NXDOMAIN. Runs TestK8sPassThrough only. A server that resolves
+#                             access addresses at startup does not start
 #   SHARED_WORKFLOWS_DIR      local aerospike/shared-workflows clone
 #   L3_SKIP_BUILD             set to 1 to skip building AerospikeTest first
 #   L3_CONFIGURATION          dotnet configuration (default: Release)
@@ -67,6 +72,8 @@ CLIENT_IMAGE=mcr.microsoft.com/dotnet/sdk:8.0@sha256:6ba9644da07bb5b560a402acec9
 PROFILE="${L3_PROFILE:-default}"
 CLUSTER="${L3_KIND_CLUSTER:-discovery-l3}"
 WORKERS="${L3_PER_NODE_WORKERS:-2}"
+UNRESOLVED="${L3_UNRESOLVED_ENDPOINT:-0}"
+LOOKUP_IMAGE=busybox:1.36.1
 PER_NODE_DOMAIN="${L3_PER_NODE_DOMAIN:-as-endpoint.test}"
 CONFIG="${L3_CONFIGURATION:-Release}"
 WORK_DIR="$TEST_DIR/bin/discovery-l3"
@@ -81,6 +88,8 @@ esac
 [[ "$CLUSTER" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "L3_KIND_CLUSTER must be lower-case letters, digits and dashes (got: $CLUSTER)"
 [[ "$WORKERS" =~ ^[2-8]$ ]] || die "L3_PER_NODE_WORKERS must be 2-8 (got: $WORKERS)"
 [[ "$PER_NODE_DOMAIN" =~ ^[a-z0-9.-]+$ ]] || die "L3_PER_NODE_DOMAIN must be a DNS name (got: $PER_NODE_DOMAIN)"
+[[ "$UNRESOLVED" =~ ^[01]$ ]] || die "L3_UNRESOLVED_ENDPOINT must be 0 or 1 (got: $UNRESOLVED)"
+[ "$UNRESOLVED" = "0" ] || [ "$PROFILE" = "default" ] || die "L3_UNRESOLVED_ENDPOINT=1 needs the default profile"
 
 for tool in kind kubectl helm; do
 	command -v "$tool" >/dev/null 2>&1 || die "$tool not found on PATH"
@@ -192,11 +201,44 @@ CREATED=1
 kind create cluster --name "$CLUSTER" --image "$KIND_IMAGE" "${kind_args[@]}" --wait 180s \
 	--kubeconfig "$KUBECONFIG" || die "kind create cluster failed"
 
+if [ "$PROFILE" = "default" ] && [ "$UNRESOLVED" = "1" ]; then
+	# Restore CoreDNS without the endpoint hostname before any Aerospike pod starts.
+	set +e
+	(
+		export GITHUB_OUTPUT="$WORK_DIR/setup.out"
+		# shellcheck source=/dev/null
+		source "$ACTION_DIR/functions.sh"
+		# shellcheck disable=SC2034 # read by the action's functions
+		ADMIN_PASSWORD="$PASSWORD"
+
+		eval "action_$(declare -f prepare_node)"
+		# shellcheck disable=SC2329 # called by the action's cmd_setup
+		prepare_node() {
+			kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' > "$WORK_DIR/Corefile.found"
+			action_prepare_node
+			kubectl -n kube-system create configmap coredns --from-file="Corefile=$WORK_DIR/Corefile.found" \
+				--dry-run=client -o yaml | kubectl apply -f -
+			kubectl -n kube-system rollout restart deploy/coredns
+			kubectl -n kube-system rollout status deploy/coredns --timeout=180s
+			if kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' | grep -F "$ENDPOINT_HOSTNAME"; then
+				error "CoreDNS still names $ENDPOINT_HOSTNAME"
+			fi
+			echo "CoreDNS has no entry for $ENDPOINT_HOSTNAME; no Aerospike pod has started"
+		}
+		cmd_setup
+	) 2>&1 | sed '/::add-mask::/d' | tee "$WORK_DIR/setup.log"
+	status=("${PIPESTATUS[@]}")
+	set -e
+	[ "${status[0]}" = "0" ] && [ "${status[2]}" = "0" ] || die "setup-kind-ako setup failed (log: $WORK_DIR/setup.log)"
+fi
+
 if [ "$PROFILE" = "default" ]; then
-	ADMIN_PASSWORD="$PASSWORD" CLUSTER_SIZE="$CLUSTER_SIZE" FEATURES_CONTENT="$FEATURES_CONTENT" \
-		SERVER_IMAGE="$SERVER_IMAGE" GITHUB_OUTPUT="$WORK_DIR/setup.out" \
-		bash "$ACTION_DIR/entrypoint-local.sh" setup 2>&1 | sed '/::add-mask::/d' | tee "$WORK_DIR/setup.log" ||
-		die "setup-kind-ako setup failed (log: $WORK_DIR/setup.log)"
+	if [ "$UNRESOLVED" = "0" ]; then
+		ADMIN_PASSWORD="$PASSWORD" CLUSTER_SIZE="$CLUSTER_SIZE" FEATURES_CONTENT="$FEATURES_CONTENT" \
+			SERVER_IMAGE="$SERVER_IMAGE" GITHUB_OUTPUT="$WORK_DIR/setup.out" \
+			bash "$ACTION_DIR/entrypoint-local.sh" setup 2>&1 | sed '/::add-mask::/d' | tee "$WORK_DIR/setup.log" ||
+			die "setup-kind-ako setup failed (log: $WORK_DIR/setup.log)"
+	fi
 
 	export DISCOVERY_ENDPOINT_HOSTNAME="$(output endpoint-hostname "$WORK_DIR/setup.out")"
 	export DISCOVERY_INGRESS_PORTS="$(output ingress-ports "$WORK_DIR/setup.out")"
@@ -276,8 +318,33 @@ for pod in $(kubectl -n aerospike get pods -l aerospike.com/cr -o jsonpath='{.it
 		grep -E 'access-(address|port)' /etc/aerospike/aerospike.conf || true
 done
 
+if [ "$UNRESOLVED" = "1" ]; then
+	lookup=l3-endpoint-lookup
+	kubectl -n aerospike run "$lookup" --image="$LOOKUP_IMAGE" --restart=Never --command -- \
+		nslookup "$DISCOVERY_ENDPOINT_HOSTNAME." >/dev/null || die "cannot start the lookup pod"
+	phase=""
+	for _ in $(seq 1 90); do
+		phase="$(kubectl -n aerospike get pod "$lookup" -o jsonpath='{.status.phase}')"
+		[ "$phase" = "Succeeded" ] || [ "$phase" = "Failed" ] && break
+		sleep 2
+	done
+	kubectl -n aerospike logs "$lookup" > "$WORK_DIR/lookup.log" 2>&1 || true
+	echo "nslookup $DISCOVERY_ENDPOINT_HOSTNAME. from pod $lookup on $(kubectl -n aerospike get pod "$lookup" \
+		-o jsonpath='{.spec.nodeName}') ($phase):"
+	kubectl -n aerospike delete pod "$lookup" --wait=false >/dev/null || true
+	cat "$WORK_DIR/lookup.log"
+	grep -q "NXDOMAIN" "$WORK_DIR/lookup.log" || die "$DISCOVERY_ENDPOINT_HOSTNAME is not NXDOMAIN in the cluster"
+	for pod in $(kubectl -n aerospike get pods -l aerospike.com/cr -o jsonpath='{.items[*].metadata.name}'); do
+		rc=0
+		kubectl --request-timeout=30s -n aerospike exec "$pod" -c aerospike-server -- \
+			getent hosts "$DISCOVERY_ENDPOINT_HOSTNAME" || rc=$?
+		echo "getent hosts $DISCOVERY_ENDPOINT_HOSTNAME in $pod: exit $rc"
+		[ "$rc" = "2" ] || die "$DISCOVERY_ENDPOINT_HOSTNAME resolves in $pod or the lookup failed"
+	done
+fi
+
 log="$WORK_DIR/dotnet.log"
-echo "Running TestK8sPassThrough, $PROFILE profile, seed $L3_SEED"
+echo "Running TestK8sPassThrough, $PROFILE profile, seed $L3_SEED unresolved=$UNRESOLVED"
 export L3_SEED
 set +e
 "$DOCKER" cp "$CLUSTER-control-plane:/usr/bin/kubectl" "$WORK_DIR/bin/kubectl" &&

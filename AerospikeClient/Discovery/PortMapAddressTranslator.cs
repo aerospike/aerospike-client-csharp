@@ -33,7 +33,7 @@ namespace Aerospike.Client
 	/// </para>
 	/// <para>
 	/// Precedence: the advertised <c>host:port</c> is looked up first and the node name second.
-	/// The advertised TLS name is kept (FR-40). The map is parsed and copied at construction.
+	/// The advertised TLS name is kept. The map is parsed and copied at construction.
 	/// </para>
 	/// </summary>
 	public sealed class PortMapAddressTranslator : IAddressTranslator

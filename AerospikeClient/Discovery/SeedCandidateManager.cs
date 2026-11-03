@@ -22,7 +22,7 @@ using System.Threading;
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Schedule periodic seed candidate refreshes (FR-41): either a dedicated background
+	/// Schedule periodic seed candidate refreshes: either a dedicated background
 	/// thread (<see cref="DiscoveryExecutionMode.THREAD"/>) or the cluster tend thread
 	/// (<see cref="DiscoveryExecutionMode.TEND"/>).
 	/// </summary>
