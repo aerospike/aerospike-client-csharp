@@ -171,14 +171,10 @@ namespace Aerospike.Client
 			{
 				if (!nodePartitions.node.HasQueryOrderBy)
 				{
-					// Top-K was already rejected at ValidateTopK when the whole cluster lacks
-					// support; a node that loses the feature mid-query must not soft-fallback.
-					if (statement.HasTopK)
-					{
-						throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-							"Top-K requires every node in the cluster to support query order-by");
-					}
-					return false;
+					// Already rejected at ValidateTopK when the whole cluster lacks support;
+					// a node that loses the feature mid-query must not soft-fallback.
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+						"orderBy/topK is not supported by all nodes in the cluster");
 				}
 			}
 			return true;

@@ -41,7 +41,7 @@ namespace Aerospike.Client
 			this.limit = limit;
 		}
 
-		public void AcceptPartial(Record record, Key key)
+		public void AcceptPartial(Record record, Key key, long lastUpdateTime = 0)
 		{
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 				"limit must be combined with orderBy (see Reduce.TopK)");

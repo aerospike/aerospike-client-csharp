@@ -32,6 +32,8 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void Prepare(TestContext testContext)
 		{
+			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "Top-K");
+
 			for (int i = 1; i <= Count; i++)
 			{
 				client.Put(null, new Key(SuiteHelpers.ns, Set, "key" + i), new Bin(Bin, i));
@@ -232,7 +234,7 @@ namespace Aerospike.Test
 		private static Statement ClientOnly(Order order, int k)
 		{
 			Statement statement = Base(Bin);
-			Internals.SetReduce(statement, Reduce.TopK(Bin, BinDataType.INTEGER, order, OrderByFlags.NONE, k));
+			Internals.SetReduce(statement, Reduce.TopK(Bin, BinDataType.INTEGER, order, k));
 			return statement;
 		}
 
@@ -247,7 +249,7 @@ namespace Aerospike.Test
 		private static Statement ClientOnlyDerived(Order order, int k)
 		{
 			Statement statement = DerivedStatement();
-			Internals.SetReduce(statement, Reduce.TopK(Derived, BinDataType.INTEGER, order, OrderByFlags.NONE, k));
+			Internals.SetReduce(statement, Reduce.TopK(Derived, BinDataType.INTEGER, order, k));
 			return statement;
 		}
 

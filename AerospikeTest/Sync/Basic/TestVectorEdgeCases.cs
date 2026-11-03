@@ -19,6 +19,9 @@ using Aerospike.Client;
 
 namespace Aerospike.Test
 {
+	/// <summary>
+	/// Client-side vector edge-case unit tests (no live cluster required).
+	/// </summary>
 	[TestClass]
 	public class TestVectorEdgeCases
 	{

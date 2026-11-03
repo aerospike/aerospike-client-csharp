@@ -21,11 +21,18 @@ namespace Aerospike.Test
 {
 	/// <summary>
 	/// Server-round-trip tests for the vector particle type.
+	/// Requires server version 8.2.1+.
 	/// </summary>
 	[TestClass]
 	public class TestVectorIO : TestSync
 	{
 		private const string BinName = "vecbin";
+
+		[ClassInitialize]
+		public static void ServerVersionCheck(TestContext testContext)
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "vector");
+		}
 
 		[TestMethod]
 		public void PutGetFloat16()

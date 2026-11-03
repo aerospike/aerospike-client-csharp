@@ -2502,7 +2502,7 @@ namespace Aerospike.Client
 				policy = new QueryPolicy(policy, configProvider);
 			}
 
-			ValidateTopK(statement);
+			ValidateTopK(policy, statement);
 
 			Node[] nodes = cluster.ValidateNodes();
 
@@ -2646,7 +2646,7 @@ namespace Aerospike.Client
 				policy = new QueryPolicy(policy, configProvider);
 			}
 
-			ValidateTopK(statement, partitionFilter);
+			ValidateTopK(policy, statement, partitionFilter);
 
 			Node[] nodes = cluster.ValidateNodes();
 
@@ -2662,13 +2662,17 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void ValidateTopK(Statement statement)
+		private void ValidateTopK(QueryPolicy policy, Statement statement)
 		{
-			ValidateTopK(statement, null);
+			ValidateTopK(policy, statement, null);
 		}
 
-		private void ValidateTopK(Statement statement, PartitionFilter partitionFilter)
+		private void ValidateTopK(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
 		{
+			// Order-by without k is left for the server to reject, but a node that predates
+			// Top-K skips the field and runs a plain query, so a mixed cluster fails up front.
+			CheckOrderBySupport(statement);
+
 			if (!statement.HasTopK)
 			{
 				return;
@@ -2676,23 +2680,39 @@ namespace Aerospike.Client
 
 			statement.ValidateTopK();
 
+			if (!policy.includeBinData)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"Top-K is incompatible with includeBinData=false");
+			}
+
+#pragma warning disable 0618
+			if (policy.maxRecords != 0)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"Top-K is incompatible with maxRecords");
+			}
+#pragma warning restore 0618
+
 			if (!cluster.hasPartitionQuery)
 			{
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 					"Top-K requires partition query support");
 			}
 
-			// PRD: Top-K needs every node in the cluster; soft client-side ranking is not allowed.
-			if (!cluster.hasQueryOrderBy)
-			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-					"Top-K requires every node in the cluster to support query order-by");
-			}
-
 			if (partitionFilter != null && PartitionFilterHasResumePoints(partitionFilter))
 			{
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 					"Top-K cannot use a partition filter that carries resume points from an earlier query");
+			}
+		}
+
+		private void CheckOrderBySupport(Statement statement)
+		{
+			if (statement.HasOrderBy && !cluster.hasQueryOrderBy)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"orderBy/topK is not supported by all nodes in the cluster");
 			}
 		}
 
@@ -2720,13 +2740,15 @@ namespace Aerospike.Client
 			return false;
 		}
 
-		protected static void RejectTopK(Statement statement)
+		protected void RejectTopK(Statement statement)
 		{
 			if (statement.HasTopK)
 			{
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 					"Top-K is only supported by synchronous partition queries");
 			}
+
+			CheckOrderBySupport(statement);
 		}
 
 		/// <summary>

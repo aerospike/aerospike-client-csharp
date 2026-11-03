@@ -29,6 +29,8 @@ public sealed class QueryTopK : SyncExample
 {
 	public override void RunExample()
 	{
+		RequireMinServerVersion(Node.SERVER_VERSION_8_2_1);
+
 		const string indexName = "topkindex";
 		const string keyPrefix = "topkkey";
 		const string binName = "topkbin";

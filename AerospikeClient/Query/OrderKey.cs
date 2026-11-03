@@ -15,7 +15,6 @@
  * the License.
  */
 using System.Collections;
-using System.Text;
 
 namespace Aerospike.Client
 {
@@ -30,15 +29,17 @@ namespace Aerospike.Client
 		internal readonly object value;
 		internal readonly BinDataType type;
 		internal readonly Order order;
-		internal readonly OrderByFlags flags;
 		internal readonly byte[] digest;
+		/// <summary>
+		/// Server last-update time from Field 14, or zero when the row carried none
+		/// (client-side reduce / older servers).
+		/// </summary>
+		internal readonly long lastUpdateTime;
 		/// <summary>Optional secondary (then-order-by) key; compared only when the primary ties.</summary>
 		internal readonly OrderKey secondary;
-		/// <summary>UTF-8 bytes for STRING order keys; null otherwise.</summary>
-		private readonly byte[] stringBytes;
 
-		internal OrderKey(Record record, string bin, BinDataType type, Order order, OrderByFlags flags, byte[] digest)
-			: this(record, bin, type, order, flags, digest, null)
+		internal OrderKey(Record record, string bin, BinDataType type, Order order, byte[] digest)
+			: this(record, bin, type, order, digest, null, 0)
 		{
 		}
 
@@ -47,30 +48,27 @@ namespace Aerospike.Client
 			string bin,
 			BinDataType type,
 			Order order,
-			OrderByFlags flags,
 			byte[] digest,
 			OrderKey secondary)
+			: this(record, bin, type, order, digest, secondary, 0)
 		{
-			object raw = ReadValue(record, bin, type);
+		}
+
+		internal OrderKey(
+			Record record,
+			string bin,
+			BinDataType type,
+			Order order,
+			byte[] digest,
+			OrderKey secondary,
+			long lastUpdateTime)
+		{
+			this.value = ReadValue(record, bin, type);
 			this.type = type;
 			this.order = order;
-			this.flags = flags;
 			this.digest = digest;
 			this.secondary = secondary;
-
-			// STRING/BYTES Top-K is deferred past server 8.2.1, but client merge still compares
-			// STRING as UTF-8 bytes for when that support returns. Unicode collation (R73) remains
-			// an open design choice — do not invent a client collator here.
-			if (raw is string s)
-			{
-				this.stringBytes = Encoding.UTF8.GetBytes(s);
-				this.value = raw;
-			}
-			else
-			{
-				this.stringBytes = null;
-				this.value = raw;
-			}
+			this.lastUpdateTime = lastUpdateTime;
 		}
 
 		internal bool IsNil => value == null;
@@ -79,22 +77,15 @@ namespace Aerospike.Client
 		{
 			int cmp = ComparePrimary(other);
 
+			if (cmp == 0 && secondary != null && other.secondary != null)
+			{
+				cmp = secondary.ComparePrimary(other.secondary);
+			}
+
 			if (cmp != 0)
 			{
 				return cmp;
 			}
-
-			if (secondary != null && other.secondary != null)
-			{
-				cmp = secondary.ComparePrimary(other.secondary);
-
-				if (cmp != 0)
-				{
-					return cmp;
-				}
-			}
-
-			// Tie-break: digest ascending (stable, deterministic ordering).
 			return CompareDigest(digest, other.digest);
 		}
 
@@ -150,8 +141,6 @@ namespace Aerospike.Client
 					};
 				case BinDataType.DOUBLE:
 					return value is double ? value : null;
-				case BinDataType.STRING:
-					return value is string ? value : null;
 				case BinDataType.BYTES:
 					return value is byte[] ? value : null;
 				default:
@@ -161,11 +150,6 @@ namespace Aerospike.Client
 
 		private static int CompareValues(OrderKey a, OrderKey b)
 		{
-			if (a.type == BinDataType.STRING)
-			{
-				return CompareBytes(a.stringBytes, b.stringBytes, a.flags == OrderByFlags.CASE_INSENSITIVE);
-			}
-
 			if (a.type == BinDataType.BYTES)
 			{
 				return CompareBytes((byte[])a.value, (byte[])b.value);
@@ -173,8 +157,8 @@ namespace Aerospike.Client
 
 			if (a.type == BinDataType.DOUBLE)
 			{
-				// Server / PRD R29: NaN ranks after every finite value (and +Inf);
-				// −0.0 equals 0.0 (tie breaks by digest in CompareTo).
+				// NaN ranks after every finite value (and +Inf); −0.0 equals 0.0
+				// (tie breaks by digest in CompareTo).
 				return CompareDouble((double)a.value, (double)b.value);
 			}
 
@@ -183,7 +167,6 @@ namespace Aerospike.Client
 
 		private static int CompareDouble(double a, double b)
 		{
-			// Finite ordering, including −0.0 == 0.0 (IEEE equality).
 			if (a < b)
 			{
 				return -1;
@@ -194,7 +177,6 @@ namespace Aerospike.Client
 				return 1;
 			}
 
-			// a and b are equal, or at least one is NaN (NaN compares unequal to everything).
 			if (!double.IsNaN(a) && !double.IsNaN(b))
 			{
 				return 0;
@@ -215,7 +197,7 @@ namespace Aerospike.Client
 		{
 			long bits = BitConverter.DoubleToInt64Bits(value);
 
-			// Collapse NaN payloads to Java's canonical quiet NaN so NaN ranks above +Inf.
+			// Collapse NaN payloads to a canonical quiet NaN so NaN ranks above +Inf.
 			if (((ulong)bits & 0x7ff0000000000000UL) == 0x7ff0000000000000UL &&
 				((ulong)bits & 0x000fffffffffffffUL) != 0UL)
 			{
@@ -225,35 +207,16 @@ namespace Aerospike.Client
 			return bits;
 		}
 
-		private static int CompareBytes(byte[] a, byte[] b) =>
-			CompareBytes(a, b, false);
-
 		/// <summary>
-		/// Unsigned byte order; optional ASCII A–Z fold to match current server Top-K.
+		/// Unsigned byte order; a prefix ranks before the longer value.
 		/// </summary>
-		private static int CompareBytes(byte[] a, byte[] b, bool foldAscii)
+		private static int CompareBytes(byte[] a, byte[] b)
 		{
 			int len = Math.Min(a.Length, b.Length);
 
 			for (int i = 0; i < len; i++)
 			{
-				int ai = a[i] & 0xff;
-				int bi = b[i] & 0xff;
-
-				if (foldAscii)
-				{
-					if (ai >= 'A' && ai <= 'Z')
-					{
-						ai += 'a' - 'A';
-					}
-
-					if (bi >= 'A' && bi <= 'Z')
-					{
-						bi += 'a' - 'A';
-					}
-				}
-
-				int cmp = ai - bi;
+				int cmp = (a[i] & 0xff) - (b[i] & 0xff);
 
 				if (cmp != 0)
 				{

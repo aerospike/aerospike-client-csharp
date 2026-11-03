@@ -17,8 +17,8 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Sort direction for <see cref="Reduce.OrderBy(string, BinDataType, Order, OrderByFlags)"/> and
-	/// <see cref="Reduce.TopK(string, BinDataType, Order, OrderByFlags, int)"/>.
+	/// Sort direction for <see cref="Statement.SetOrderBy(string, BinDataType, Order)"/> and
+	/// <see cref="Statement.ThenOrderBy(string, BinDataType, Order)"/>.
 	/// </summary>
 	public enum Order
 	{

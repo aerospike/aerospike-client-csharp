@@ -755,7 +755,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Pack a vector's wire bytes as a BLOB particle (Java VectorDist wire shape).
+		/// Pack a vector's wire bytes as a BLOB particle (VectorDist wire shape).
 		/// </summary>
 		internal void PackVectorAsBlob(Vector val)
 		{

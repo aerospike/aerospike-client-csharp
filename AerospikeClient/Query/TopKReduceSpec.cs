@@ -18,7 +18,7 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Ordered LIMIT k reduce combiner backing
-	/// <see cref="Reduce.TopK(string, BinDataType, Order, OrderByFlags, int)"/>
+	/// <see cref="Reduce.TopK(string, BinDataType, Order, int)"/>
 	/// and the composed split form <c>SetReduce(Reduce.OrderBy(...), Reduce.Limit(...))</c>.
 	/// </summary>
 	internal sealed class TopKReduceSpec : ReduceSpec<Record, Record>
@@ -29,11 +29,9 @@ namespace Aerospike.Client
 		private readonly string bin;
 		private readonly BinDataType type;
 		private readonly Order order;
-		private readonly OrderByFlags flags;
 		private readonly string thenBin;
 		private readonly BinDataType thenType;
 		private readonly Order thenOrder;
-		private readonly OrderByFlags thenFlags;
 		private readonly int limit;
 
 		/// <summary>digest -> (key, record), for dedup and result reconstruction.</summary>
@@ -82,21 +80,17 @@ namespace Aerospike.Client
 			string bin,
 			BinDataType type,
 			Order order,
-			OrderByFlags flags,
 			string thenBin,
 			BinDataType thenType,
 			Order thenOrder,
-			OrderByFlags thenFlags,
 			int limit)
 		{
 			this.bin = bin;
 			this.type = type;
 			this.order = order;
-			this.flags = flags;
 			this.thenBin = thenBin;
 			this.thenType = thenType;
 			this.thenOrder = thenOrder;
-			this.thenFlags = thenFlags;
 			this.limit = limit;
 		}
 
@@ -117,18 +111,16 @@ namespace Aerospike.Client
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 					"orderBy bin (" + ob.bin + ") must match limit bin (" + lim.bin + ")");
 			}
-			return Create(ob.bin, ob.type, ob.order, ob.flags, null, default, default, default, lim.limit);
+			return Create(ob.bin, ob.type, ob.order, null, default, default, lim.limit);
 		}
 
 		internal static TopKReduceSpec Create(
 			string bin,
 			BinDataType type,
 			Order order,
-			OrderByFlags flags,
 			string thenBin,
 			BinDataType thenType,
 			Order thenOrder,
-			OrderByFlags thenFlags,
 			int limit)
 		{
 			if (limit < 1 || limit > 1000)
@@ -137,23 +129,28 @@ namespace Aerospike.Client
 					"limit must be in [1, 1000], got: " + limit);
 			}
 
-			return new TopKReduceSpec(bin, type, order, flags, thenBin, thenType, thenOrder, thenFlags, limit);
+			return new TopKReduceSpec(bin, type, order, thenBin, thenType, thenOrder, limit);
 		}
 
-		public void AcceptPartial(Record record, Key key)
+		public void AcceptPartial(Record record, Key key, long lastUpdateTime = 0)
 		{
+			// Read the order-key values before taking the lock, so node threads contend
+			// only for the heap update.
+			OrderKey candidate = MakeOrderKey(record, key.digest, lastUpdateTime);
+
 			lock (sync)
 			{
 				byte[] digest = key.digest;
-				OrderKey candidate = MakeOrderKey(record, digest);
 
-				// Dedup: at most one row per digest (partition migration may re-scan a record).
-				// PRD R29: keep the most recent version (higher generation), not the better-ranked copy.
+				// Dedup: at most one row per digest (partition migration may re-scan a
+				// record). PRD R29: keep the copy with the later last-update time; when
+				// times are equal (including both zero on client-side reduce), keep the
+				// better-ranked copy.
 				if (byDigest.TryGetValue(digest, out Entry existingEntry))
 				{
-					if (record.generation <= existingEntry.record.generation)
+					if (!Replaces(candidate, existingEntry.orderKey))
 					{
-						return; // stale or same version already held
+						return;
 					}
 
 					heap.Remove(existingEntry.orderKey);
@@ -172,15 +169,29 @@ namespace Aerospike.Client
 			}
 		}
 
-		private OrderKey MakeOrderKey(Record record, byte[] digest)
+		/// <summary>
+		/// Whether <paramref name="candidate"/> should replace <paramref name="existing"/>
+		/// for the same digest: later last-update time wins; equal times keep the
+		/// better-ranked copy.
+		/// </summary>
+		private static bool Replaces(OrderKey candidate, OrderKey existing)
+		{
+			if (candidate.lastUpdateTime != existing.lastUpdateTime)
+			{
+				return candidate.lastUpdateTime > existing.lastUpdateTime;
+			}
+			return candidate.CompareTo(existing) < 0;
+		}
+
+		private OrderKey MakeOrderKey(Record record, byte[] digest, long lastUpdateTime)
 		{
 			if (thenBin == null)
 			{
-				return new OrderKey(record, bin, type, order, flags, digest);
+				return new OrderKey(record, bin, type, order, digest, null, lastUpdateTime);
 			}
 
-			OrderKey secondary = new(record, thenBin, thenType, thenOrder, thenFlags, digest);
-			return new OrderKey(record, bin, type, order, flags, digest, secondary);
+			OrderKey secondary = new(record, thenBin, thenType, thenOrder, digest);
+			return new OrderKey(record, bin, type, order, digest, secondary, lastUpdateTime);
 		}
 
 		public Record GetScalarResult()

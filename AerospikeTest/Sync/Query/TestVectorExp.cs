@@ -20,6 +20,7 @@ namespace Aerospike.Test
 {
 	/// <summary>
 	/// Vector-distance expression tests: filtering and Top-K over projected distance.
+	/// Requires server version 8.2.1+.
 	/// </summary>
 	[TestClass]
 	public class TestVectorExp : TestSync
@@ -34,6 +35,8 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void Prepare(TestContext testContext)
 		{
+			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "vector");
+
 			for (int i = 0; i < Size; i++)
 			{
 				Key key = new(SuiteHelpers.ns, SetName, KeyPrefix + i);

@@ -443,7 +443,7 @@ namespace Aerospike.Client
 				return false;
 			}
 
-			// Match Java Arrays.equals(float[]/double[]): bit semantics so NaN==NaN
+			// Bit-exact float/double equality so NaN==NaN
 			// and -0.0 != +0.0.
 			return elementType switch
 			{

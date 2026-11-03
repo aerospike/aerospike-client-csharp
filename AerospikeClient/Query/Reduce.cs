@@ -29,9 +29,9 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Ordered LIMIT k reduce; returns up to <paramref name="k"/> full records in global sort order.
 		/// </summary>
-		internal static ReduceSpec<Record, Record> TopK(string bin, BinDataType type, Order order, OrderByFlags flags, int k)
+		internal static ReduceSpec<Record, Record> TopK(string bin, BinDataType type, Order order, int k)
 		{
-			return TopKReduceSpec.Compose(OrderBy(bin, type, order, flags), Limit(bin, k));
+			return TopKReduceSpec.Compose(OrderBy(bin, type, order), Limit(bin, k));
 		}
 
 		/// <summary>
@@ -41,14 +41,12 @@ namespace Aerospike.Client
 			string bin,
 			BinDataType type,
 			Order order,
-			OrderByFlags flags,
 			string thenBin,
 			BinDataType thenType,
 			Order thenOrder,
-			OrderByFlags thenFlags,
 			int k)
 		{
-			return TopKReduceSpec.Create(bin, type, order, flags, thenBin, thenType, thenOrder, thenFlags, k);
+			return TopKReduceSpec.Create(bin, type, order, thenBin, thenType, thenOrder, k);
 		}
 
 		/// <summary>
@@ -56,14 +54,14 @@ namespace Aerospike.Client
 		/// <see cref="Limit(string, int)"/> on the same bin via
 		/// <see cref="Statement.SetReduce(ReduceSpec{Record, Record}[])"/>.
 		/// </summary>
-		internal static ReduceSpec<Record, Record> OrderBy(string bin, BinDataType type, Order order, OrderByFlags flags)
+		internal static ReduceSpec<Record, Record> OrderBy(string bin, BinDataType type, Order order)
 		{
-			return new OrderByReduceSpec(bin, type, order, flags);
+			return new OrderByReduceSpec(bin, type, order);
 		}
 
 		/// <summary>
 		/// Cap building block for single-key Top-K. Must be paired with
-		/// <see cref="OrderBy(string, BinDataType, Order, OrderByFlags)"/> on the same bin via
+		/// <see cref="OrderBy(string, BinDataType, Order)"/> on the same bin via
 		/// <see cref="Statement.SetReduce(ReduceSpec{Record, Record}[])"/>.
 		/// </summary>
 		internal static ReduceSpec<Record, Record> Limit(string bin, int limit)

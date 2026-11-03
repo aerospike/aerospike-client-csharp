@@ -20,6 +20,9 @@ using Aerospike.Client;
 
 namespace Aerospike.Test
 {
+	/// <summary>
+	/// Client-side vector particle unit tests (no live cluster required).
+	/// </summary>
 	[TestClass]
 	public class TestVector
 	{

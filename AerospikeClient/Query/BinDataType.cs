@@ -17,8 +17,8 @@
 namespace Aerospike.Client
 {
 	/// <summary>
-	/// Scalar bin data type used by <see cref="Reduce"/> order/reduce specs to interpret a bin's
-	/// value for comparison (min/max/order-by).
+	/// Scalar bin data type of a Top-K order key, used to interpret the bin's value for
+	/// comparison; see <see cref="Statement.SetOrderBy(string, BinDataType, Order)"/>.
 	/// </summary>
 	public enum BinDataType
 	{
@@ -33,21 +33,8 @@ namespace Aerospike.Client
 		DOUBLE,
 
 		/// <summary>
-		/// String value.
+		/// Byte array value, compared as unsigned bytes; a prefix ranks before the longer value.
 		/// </summary>
-		/// <remarks>
-		/// Reserved for a future release. Top-K queries currently support only
-		/// <see cref="INTEGER"/> and <see cref="DOUBLE"/>.
-		/// </remarks>
-		STRING,
-
-		/// <summary>
-		/// Byte array value.
-		/// </summary>
-		/// <remarks>
-		/// Reserved for a future release. Top-K queries currently support only
-		/// <see cref="INTEGER"/> and <see cref="DOUBLE"/>.
-		/// </remarks>
 		BYTES
 	}
 }

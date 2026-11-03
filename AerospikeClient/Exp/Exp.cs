@@ -1777,7 +1777,7 @@ namespace Aerospike.Client
 				packer.PackArrayBegin(3);
 				packer.PackNumber(opcode);
 				bin.Pack(packer);
-				// Match Java VectorDist: pack wire bytes as BLOB (not VECTOR particle type).
+				// VectorDist: pack wire bytes as BLOB (not VECTOR particle type).
 				// Server build_vector_distance requires BLOB rtypes; build_value_blob
 				// strips the particle-type byte before as_vector_bytes_check.
 				packer.PackVectorAsBlob(query);

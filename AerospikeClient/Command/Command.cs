@@ -116,6 +116,10 @@ namespace Aerospike.Client
 		protected int serverSubCode;
 		protected ExpressionTrace expTrace;
 
+		// Last-update time from the current query row's LUT field (field 14), or zero when
+		// the row has none. Only Top-K rows ranked by the server carry it. Reset by ParseKey.
+		protected long lastUpdateTime;
+
 		public Command(int socketTimeout, int totalTimeout, int maxRetries)
 		{
 			this.maxRetries = maxRetries;
@@ -2559,7 +2563,7 @@ namespace Aerospike.Client
 		private static byte[] GetTopKOrderByField(Statement statement)
 		{
 			byte[] primary = EncodeOrderBySpec(
-				statement.TopKBin, statement.TopKType, statement.TopKOrder, statement.TopKFlags);
+				statement.TopKBin, statement.TopKType, statement.TopKOrder);
 
 			if (!statement.HasTopKThen)
 			{
@@ -2567,20 +2571,20 @@ namespace Aerospike.Client
 			}
 
 			byte[] secondary = EncodeOrderBySpec(
-				statement.TopKThenBin, statement.TopKThenType, statement.TopKThenOrder, statement.TopKThenFlags);
+				statement.TopKThenBin, statement.TopKThenType, statement.TopKThenOrder);
 			byte[] field = new byte[primary.Length + secondary.Length];
 			Array.Copy(primary, 0, field, 0, primary.Length);
 			Array.Copy(secondary, 0, field, primary.Length, secondary.Length);
 			return field;
 		}
 
-		private static byte[] EncodeOrderBySpec(string binName, BinDataType type, Order order, OrderByFlags flags)
+		private static byte[] EncodeOrderBySpec(string binName, BinDataType type, Order order)
 		{
 			byte[] bin = ByteUtil.StringToUtf8(binName);
 			byte[] field = new byte[4 + bin.Length];
 			field[0] = (byte)GetOrderByType(type);
 			field[1] = (byte)GetOrderByDirection(order);
-			field[2] = (byte)flags;
+			field[2] = 0; // flags byte reserved; always zero for supported types
 			field[3] = (byte)bin.Length;
 			Array.Copy(bin, 0, field, 4, bin.Length);
 			return field;
@@ -2615,8 +2619,6 @@ namespace Aerospike.Client
 					return 1;
 				case BinDataType.DOUBLE:
 					return 2;
-				case BinDataType.STRING:
-					return 3;
 				case BinDataType.BYTES:
 					return 4;
 				default:
@@ -3417,8 +3419,9 @@ namespace Aerospike.Client
 			bval = 0;
 
 			// Reset first so a row without field 45 does not inherit the
-			// previous row's error detail.
+			// previous row's error detail. Field 14 (LUT) is likewise per-row.
 			ResetServerErrorDetail();
+			lastUpdateTime = 0;
 
 			for (int i = 0; i < fieldCount; i++)
 			{
@@ -3447,6 +3450,10 @@ namespace Aerospike.Client
 						int type = dataBuffer[dataOffset++];
 						size--;
 						userKey = ByteUtil.BytesToKeyValue((ParticleType)type, dataBuffer, dataOffset, size);
+						break;
+
+					case FieldType.LUT:
+						lastUpdateTime = ByteUtil.BytesToLong(dataBuffer, dataOffset);
 						break;
 
 					case FieldType.BVAL_ARRAY:

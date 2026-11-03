@@ -18,7 +18,7 @@ namespace Aerospike.Client
 {
 	/// <summary>
 	/// Sort-metadata-only reduce spec produced by
-	/// <see cref="Reduce.OrderBy(string, BinDataType, Order, OrderByFlags)"/>.
+	/// <see cref="Reduce.OrderBy(string, BinDataType, Order)"/>.
 	/// <para>
 	/// Carries no combiner logic by itself. <see cref="Statement.SetReduce"/> pairs this
 	/// with a <see cref="LimitReduceSpec"/> on the same bin and composes them into a
@@ -31,17 +31,15 @@ namespace Aerospike.Client
 		internal readonly string bin;
 		internal readonly BinDataType type;
 		internal readonly Order order;
-		internal readonly OrderByFlags flags;
 
-		internal OrderByReduceSpec(string bin, BinDataType type, Order order, OrderByFlags flags)
+		internal OrderByReduceSpec(string bin, BinDataType type, Order order)
 		{
 			this.bin = bin;
 			this.type = type;
 			this.order = order;
-			this.flags = flags;
 		}
 
-		public void AcceptPartial(Record record, Key key)
+		public void AcceptPartial(Record record, Key key, long lastUpdateTime = 0)
 		{
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 				"orderBy must be combined with limit (see Reduce.TopK)");

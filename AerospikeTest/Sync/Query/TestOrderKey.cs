@@ -19,8 +19,7 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	/// <summary>
-	/// OrderKey behavior covered through the public Top-K reducer (OrderKey is internal).
-	/// Mirrors Java <c>com.aerospike.client.query.TestOrderKey</c>.
+	/// OrderKey behavior covered through the Top-K reducer (OrderKey is internal).
 	/// </summary>
 	[TestClass]
 	public class TestOrderKey
@@ -38,7 +37,7 @@ namespace Aerospike.Test
 		public void NegativeZeroEqualsPositiveZero()
 		{
 			// PRD R29 / reduce-design: −0.0 equals 0.0; tie breaks by digest.
-			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.DOUBLE, Order.ASC, OrderByFlags.NONE, 2);
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.DOUBLE, Order.ASC, 2);
 			reducer.AcceptPartial(Record(0.0), Key("pos"));
 			reducer.AcceptPartial(Record(-0.0), Key("neg"));
 
@@ -51,14 +50,14 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void NanUsesNaturalOrderBeforeDirection()
 		{
-			ReduceSpec<Record, Record> asc = Reduce.TopK(Bin, BinDataType.DOUBLE, Order.ASC, OrderByFlags.NONE, 2);
+			ReduceSpec<Record, Record> asc = Reduce.TopK(Bin, BinDataType.DOUBLE, Order.ASC, 2);
 			asc.AcceptPartial(Record(double.NaN), Key("nan"));
 			asc.AcceptPartial(Record(1.0), Key("finite"));
 			Record[] ascResult = asc.GetResult();
 			Assert.AreEqual(1.0, ascResult[0].GetDouble(Bin));
 			Assert.IsTrue(double.IsNaN(ascResult[1].GetDouble(Bin)));
 
-			ReduceSpec<Record, Record> desc = Reduce.TopK(Bin, BinDataType.DOUBLE, Order.DESC, OrderByFlags.NONE, 2);
+			ReduceSpec<Record, Record> desc = Reduce.TopK(Bin, BinDataType.DOUBLE, Order.DESC, 2);
 			desc.AcceptPartial(Record(1.0), Key("finite"));
 			desc.AcceptPartial(Record(double.NaN), Key("nan"));
 			Record[] descResult = desc.GetResult();
@@ -67,20 +66,35 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void DedupPrefersHigherGeneration()
+		public void DedupEqualLutKeepsBetterRanked()
 		{
-			// R29: when the same digest arrives twice, keep the newer generation
-			// (not the better-ranked order-key value).
-			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, OrderByFlags.NONE, 1);
+			// R29: when last-update times are equal (including both zero), keep the
+			// better-ranked copy — generation is not the tie-breaker.
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, 1);
 			Key key = Key("same");
 
-			reducer.AcceptPartial(Record(10L, generation: 1), key);
-			reducer.AcceptPartial(Record(99L, generation: 3), key);
+			reducer.AcceptPartial(Record(10L, generation: 1), key, 0);
+			reducer.AcceptPartial(Record(99L, generation: 3), key, 0);
 
 			Record[] result = reducer.GetResult();
 			Assert.AreEqual(1, result.Length);
 			Assert.AreEqual(99L, result[0].GetLong(Bin));
 			Assert.AreEqual(3, result[0].generation);
+		}
+
+		[TestMethod]
+		public void DedupLaterLutWinsEvenIfWorseRanked()
+		{
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, 1);
+			Key key = Key("same");
+
+			reducer.AcceptPartial(Record(99L, generation: 1), key, 100);
+			reducer.AcceptPartial(Record(10L, generation: 2), key, 200);
+
+			Record[] result = reducer.GetResult();
+			Assert.AreEqual(1, result.Length);
+			Assert.AreEqual(10L, result[0].GetLong(Bin));
+			Assert.AreEqual(2, result[0].generation);
 		}
 	}
 }

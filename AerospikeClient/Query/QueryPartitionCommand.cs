@@ -110,15 +110,29 @@ namespace Aerospike.Client
 					// Feed the client-side global reduce combiner instead of streaming this
 					// partial result directly to the caller. The executor emits the merged
 					// result (if any) once all partitions have been received.
-					reducer.AcceptPartial(record, key);
+					reducer.AcceptPartial(record, key, lastUpdateTime);
+
+					if (sendTopK)
+					{
+						// The server streams Top-K in rank order, not digest order, so
+						// resuming after this digest would skip ranked candidates not yet
+						// streamed. The merge drops the duplicates a full re-query returns.
+						tracker.CountRecord(nodePartitions);
+					}
+					else
+					{
+						tracker.SetLast(nodePartitions, key, bval);
+					}
 				}
 				else if (!recordSet.Put(new KeyRecord(key, record)))
 				{
 					Stop();
 					throw new AerospikeException.QueryTerminated();
 				}
-
-				tracker.SetLast(nodePartitions, key, bval);
+				else
+				{
+					tracker.SetLast(nodePartitions, key, bval);
+				}
 			}
 			return true;
 		}

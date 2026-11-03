@@ -21,7 +21,7 @@ namespace Aerospike.Client
 	/// <para>
 	/// Each cluster node produces a partial result for a query (e.g. a locally bounded Top-K
 	/// heap). The query executor feeds every node's partial results into
-	/// <see cref="AcceptPartial(TInput, Key)"/> in any order (nodes complete concurrently), then reads
+	/// <see cref="AcceptPartial"/> in any order (nodes complete concurrently), then reads
 	/// the merged result via <see cref="GetScalarResult"/> or <see cref="GetResult"/>.
 	/// </para>
 	/// <para>
@@ -30,7 +30,7 @@ namespace Aerospike.Client
 	/// </para>
 	/// </summary>
 	/// <typeparam name="TInput">
-	/// Type of each partial accepted by <see cref="AcceptPartial(TInput, Key)"/>
+	/// Type of each partial accepted by <see cref="AcceptPartial"/>
 	/// (usually <see cref="Record"/>).
 	/// </typeparam>
 	/// <typeparam name="TResult">Element type returned by <see cref="GetResult"/>.</typeparam>
@@ -41,7 +41,10 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="record">partial result (usually a <see cref="Record"/>)</param>
 		/// <param name="key">record key; used for digest-based deduplication and tie-breaking</param>
-		void AcceptPartial(TInput record, Key key);
+		/// <param name="lastUpdateTime">
+		/// record last-update time from Field 14, or zero when the server did not send one
+		/// </param>
+		void AcceptPartial(TInput record, Key key, long lastUpdateTime = 0);
 
 		/// <summary>
 		/// Return a single scalar view of the merged result (e.g. the best-ranked record for a
