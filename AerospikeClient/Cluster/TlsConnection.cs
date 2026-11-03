@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,10 +14,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.RegularExpressions;
 
 namespace Aerospike.Client
 {
@@ -26,6 +28,9 @@ namespace Aerospike.Client
 	/// </summary>
 	public sealed class TlsConnection : Connection
 	{
+		private static readonly ConcurrentDictionary<string, byte> LegacyWarned = new ConcurrentDictionary<string, byte>();
+		private static readonly Regex DottedQuad = new Regex(@"^[0-9]+(\.[0-9]+){3}$", RegexOptions.Compiled);
+
 		private readonly SslStream sslStream;
 		private readonly Cluster cluster;
 		private readonly string tlsName;
@@ -83,105 +88,258 @@ namespace Aerospike.Client
 			SslPolicyErrors sslPolicyErrors
 		)
 		{
+			// SslStream's built-in hostname check is not RFC 9525; MatchCertificateName owns that.
+			// Ignore RemoteCertificateNameMismatch so legacy CN / IP-as-dNSName fallback can warn
+			// and accept, and so SAN matching is not short-circuited by SslStream.
+			SslPolicyErrors errors = sslPolicyErrors & ~SslPolicyErrors.RemoteCertificateNameMismatch;
+
 			// RemoteCertificateChainErrors will be set if the certificate is self-signed and not
-			// placed in the Windows or Linux truststore. Enable the following line to temporarily
-			// allow RemoteCertificateChainErrors for testing purposes.
-			//
-			// if (sslPolicyErrors != SslPolicyErrors.None && sslPolicyErrors != SslPolicyErrors.RemoteCertificateChainErrors)
-			if (sslPolicyErrors != SslPolicyErrors.None)
+			// placed in the Windows or Linux truststore. Install the CA (update-ca-certificates /
+			// certutil) before connecting; do not ignore chain errors here.
+			if (errors != SslPolicyErrors.None)
 			{
 				if (Log.DebugEnabled())
 				{
-					Log.Debug(cluster.context, "Invalid certificate policy error: " + sslPolicyErrors);
+					Log.Debug(cluster.context, "Invalid certificate policy error: " + errors);
 				}
 				return false;
 			}
 
-			// Exclude certificate serial numbers.
+			// Exclude certificate serial numbers. GetSerialNumber is little-endian; config hex is
+			// typically big-endian (openssl -serial), so compare both orientations.
 			if (cluster.tlsPolicy.revokeCertificates != null)
 			{
-				byte[] serialNumber = cert.GetSerialNumber();
+				byte[] serialLe = cert.GetSerialNumber();
+				byte[] serialBe = (byte[])serialLe.Clone();
+				Array.Reverse(serialBe);
 
 				foreach (byte[] sn in cluster.tlsPolicy.revokeCertificates)
 				{
-					if (Util.ByteArrayEquals(serialNumber, sn))
+					if (Util.ByteArrayEquals(serialLe, sn) || Util.ByteArrayEquals(serialBe, sn))
 					{
-						if (Log.DebugEnabled())
-						{
-							Log.Debug(cluster.context, "Invalid certificate serial number: " + ByteUtil.BytesToHexString(serialNumber));
-						}
-						return false;
+						throw new AerospikeException("Invalid certificate serial number: " +
+							ByteUtil.BytesToHexString(serialBe));
 					}
 				}
 			}
 
-			// Search subject certificate name.
-			if (FindTlsName(cert.Subject, "CN=", tlsName))
+			if (MatchCertificateName(cert, tlsName, cluster.context))
 			{
 				return true;
 			}
 
-			// Search subject alternative names.
-			var cert2 = (X509Certificate2)cert;
-			foreach (X509Extension ext in cert2.Extensions)
-			{
-				if (ext.Oid.Value.Equals("2.5.29.17")) // Subject Alternative Name
-				{
-					string str = ext.Format(false);
-
-					// Tag is "DNS Name=" on Windows.
-					if (FindTlsName(str, "DNS Name=", tlsName))
-					{
-						return true;
-					}
-
-					// Tag is "DNS:" on Linux.
-					if (FindTlsName(str, "DNS:", tlsName))
-					{
-						return true;
-					}
-				}
-			}
-
-			if (Log.DebugEnabled())
-			{
-				Log.Debug(cluster.context, "Invalid certificate, tlsName not found: " + tlsName);
-			}
-			return false;
+			throw new AerospikeException("Invalid TLS name: " + tlsName);
 		}
 
-		private static bool FindTlsName(string str, string filter, string tlsName)
+		/// <summary>
+		/// Validate that <paramref name="tlsName"/> matches the certificate per RFC 9525 (with the
+		/// deprecated CN/legacy dNSName fallback). Used by L1 conformance. Throws
+		/// <see cref="AerospikeException"/> on mismatch.
+		/// </summary>
+		internal static void ValidateServerCertificate(string tlsName, X509Certificate cert)
 		{
-			string token;
-			int begin = 0;
-			int end;
-
-			while ((begin = str.IndexOf(filter, begin)) >= 0)
+			if (tlsName == null)
 			{
-				begin += filter.Length;
-				end = str.IndexOf(',', begin);
+				throw new AerospikeException("Invalid TLS name: null");
+			}
 
-				if (end >= 0)
+			if (MatchCertificateName(cert, tlsName, null))
+			{
+				return;
+			}
+
+			throw new AerospikeException("Invalid TLS name: " + tlsName);
+		}
+
+		/// <summary>
+		/// If tlsName is an IPv4 or IPv6 literal, it is an IP-ID and matches only an iPAddress SAN
+		/// holding the same address. Otherwise it is a DNS-ID and matches only a dNSName SAN,
+		/// ASCII case-insensitive. The only wildcard is a left-most label of exactly "*".
+		/// Deprecated legacy fallback: exact (case-sensitive) subject CN or dNSName equality.
+		/// </summary>
+		private static bool MatchCertificateName(X509Certificate cert, string tlsName, Log.Context context)
+		{
+			if (tlsName == null)
+			{
+				return false;
+			}
+
+			X509Certificate2 cert2 = cert as X509Certificate2 ?? new X509Certificate2(cert);
+			X509SubjectAlternativeNameExtension san = FindSan(cert2);
+
+			if (san != null)
+			{
+				byte[] ip = ParseIpLiteral(tlsName);
+				bool ipId = ip != null || IsIpId(tlsName);
+
+				if (ipId)
 				{
-					token = str.Substring(begin, end - begin);
+					if (ip != null)
+					{
+						foreach (IPAddress address in san.EnumerateIPAddresses())
+						{
+							if (Util.ByteArrayEquals(ip, address.GetAddressBytes()))
+							{
+								return true;
+							}
+						}
+					}
 				}
 				else
 				{
-					token = str.Substring(begin);
+					foreach (string dns in san.EnumerateDnsNames())
+					{
+						if (MatchDnsName(dns, tlsName))
+						{
+							return true;
+						}
+					}
 				}
-
-				if (token.Equals(tlsName))
-				{
-					return true;
-				}
-
-				if (end < 0)
-				{
-					break;
-				}
-				begin = end + 1;
 			}
+
+			if (MatchLegacyName(tlsName, cert2, san))
+			{
+				if (Log.WarnEnabled() && LegacyWarned.TryAdd(tlsName, 0))
+				{
+					string message = "TLS name '" + tlsName +
+						"' matched the server certificate only by the legacy rule " +
+						"(subject CN or IP address as dNSName). This is not RFC 9525 conformant and will be " +
+						"rejected in the next major release.";
+
+					if (context != null)
+					{
+						Log.Warn(context, message);
+					}
+					else
+					{
+						Log.Warn(message);
+					}
+				}
+
+				return true;
+			}
+
 			return false;
+		}
+
+		private static X509SubjectAlternativeNameExtension FindSan(X509Certificate2 cert)
+		{
+			foreach (X509Extension ext in cert.Extensions)
+			{
+				if (ext.Oid != null && ext.Oid.Value.Equals("2.5.29.17"))
+				{
+					return new X509SubjectAlternativeNameExtension(ext.RawData, false);
+				}
+			}
+
+			return null;
+		}
+
+		private static bool MatchLegacyName(string tlsName, X509Certificate2 cert, X509SubjectAlternativeNameExtension san)
+		{
+			string cn = cert.GetNameInfo(X509NameType.SimpleName, false);
+
+			if (!string.IsNullOrEmpty(cn) && cn.Equals(tlsName))
+			{
+				return true;
+			}
+
+			if (san != null)
+			{
+				foreach (string dns in san.EnumerateDnsNames())
+				{
+					if (dns.Equals(tlsName))
+					{
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		private static bool MatchDnsName(string pattern, string name)
+		{
+			if (pattern.StartsWith("*.", StringComparison.Ordinal))
+			{
+				if (pattern.IndexOf('*', 1) >= 0)
+				{
+					return false;
+				}
+
+				int dot = name.IndexOf('.');
+				return dot > 0 && EqualsIgnoreCaseAscii(pattern.Substring(1), name.Substring(dot));
+			}
+
+			return pattern.IndexOf('*') < 0 && EqualsIgnoreCaseAscii(pattern, name);
+		}
+
+		private static bool EqualsIgnoreCaseAscii(string a, string b)
+		{
+			if (a.Length != b.Length)
+			{
+				return false;
+			}
+
+			for (int i = 0; i < a.Length; i++)
+			{
+				char x = a[i];
+				char y = b[i];
+
+				if (x != y && ToLowerAscii(x) != ToLowerAscii(y))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		private static char ToLowerAscii(char c)
+		{
+			return (c >= 'A' && c <= 'Z') ? (char)(c + ('a' - 'A')) : c;
+		}
+
+		private static bool IsIpId(string s)
+		{
+			return s.IndexOf(':') >= 0 || DottedQuad.IsMatch(s);
+		}
+
+		/// <summary>
+		/// Parse IPv4 or IPv6 literal without name resolution. Return null if not a literal.
+		/// </summary>
+		private static byte[] ParseIpLiteral(string s)
+		{
+			if (s.Length > 2 && s[0] == '[' && s[s.Length - 1] == ']')
+			{
+				s = s.Substring(1, s.Length - 2);
+			}
+
+			if (!IPAddress.TryParse(s, out IPAddress address))
+			{
+				return null;
+			}
+
+			// Reject IPv4 with leading zeros (Java parity / RFC 5952 style).
+			if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+			{
+				string[] parts = s.Split('.');
+
+				if (parts.Length != 4)
+				{
+					return null;
+				}
+
+				foreach (string part in parts)
+				{
+					if (part.Length > 1 && part[0] == '0')
+					{
+						return null;
+					}
+				}
+			}
+
+			return address.GetAddressBytes();
 		}
 
 		public override void Write(byte[] buffer, int length)
@@ -215,6 +373,7 @@ namespace Aerospike.Client
 				{
 					throw new SocketException((int)SocketError.ConnectionReset);
 				}
+				received = true;
 				pos += count;
 			}
 		}
@@ -257,6 +416,7 @@ namespace Aerospike.Client
 				{
 					throw new SocketException((int)SocketError.ConnectionReset);
 				}
+				received = true;
 				pos += count;
 			}
 		}

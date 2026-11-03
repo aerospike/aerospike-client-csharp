@@ -71,6 +71,7 @@ namespace Aerospike.Client
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
 		protected internal int peersCount;
+		private List<Host> advertisedHosts;
 		protected internal int referenceCount;
 		protected internal int failures;
 		protected internal readonly uint features;
@@ -393,6 +394,11 @@ namespace Aerospike.Client
 
 				foreach (Peer peer in peers.peers)
 				{
+					if (cluster.notifyViewChange)
+					{
+						CompareAdvertised(peers, peer);
+					}
+
 					if (FindPeerNode(cluster, peers, peer))
 					{
 						// Node already exists. Do not even try to connect to hosts.				
@@ -454,6 +460,7 @@ namespace Aerospike.Client
 
 							// Create new node.
 							Node node = cluster.CreateNode(nv, true);
+							node.advertisedHosts = peer.advertised;
 							peers.nodes[nv.name] = node;
 							nodeValidated = true;
 
@@ -507,6 +514,39 @@ namespace Aerospike.Client
 			{
 				RefreshFailed(e);
 			}
+		}
+
+		private void CompareAdvertised(Peers peers, Peer peer)
+		{
+			if (!cluster.nodesMap.TryGetValue(peer.nodeName, out Node node) || peer.advertised == null)
+			{
+				return;
+			}
+
+			if (node.advertisedHosts != null && !HostListsEqual(node.advertisedHosts, peer.advertised))
+			{
+				peers.addressChanged = true;
+			}
+
+			node.advertisedHosts = peer.advertised;
+		}
+
+		private static bool HostListsEqual(List<Host> a, List<Host> b)
+		{
+			if (a.Count != b.Count)
+			{
+				return false;
+			}
+
+			for (int i = 0; i < a.Count; i++)
+			{
+				if (!a[i].Equals(b[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
 		}
 
 		/// <summary>
@@ -905,6 +945,8 @@ namespace Aerospike.Client
 						try
 						{
 							conn.SetTimeout(timeoutMillis);
+							conn.pooled = true;
+							conn.received = false;
 							return conn;
 						}
 						catch (Exception e)
@@ -919,67 +961,15 @@ namespace Aerospike.Client
 				}
 				else if (pool.IncrTotal() <= pool.Capacity)
 				{
-					// Socket not found and queue has available slot.
-					// Create new connection.
 					try
 					{
-						conn = CreateConnection(timeoutMillis, pool);
+						return CreateAuthenticatedConnection(timeoutMillis, timeoutDelay, pool);
 					}
 					catch (Exception)
 					{
 						pool.DecrTotal();
 						throw;
 					}
-
-					if (cluster.authEnabled)
-					{
-						byte[] token = SessionToken;
-
-						if (token != null)
-						{
-							try
-							{
-								if (!AdminCommand.Authenticate(cluster, conn, token))
-								{
-									SignalLogin();
-									throw new AerospikeException("Authentication failed");
-								}
-							}
-							catch (Connection.ReadTimeout crt)
-							{
-								if (timeoutDelay > 0)
-								{
-									// The connection State is always STATE_READ_AUTH_HEADER here which does not reference
-									// isSingle, so just pass in true for isSingle in ConnectionRecover.
-									cluster.RecoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt, true));
-									conn = null;
-								}
-								else
-								{
-									CloseConnection(conn);
-								}
-								throw;
-							}
-							catch (SocketException se)
-							{
-								CloseConnection(conn);
-								if (se.SocketErrorCode == SocketError.TimedOut)
-								{
-									// This is really a socket write timeout, but the calling
-									// method's catch handler just identifies error as a client
-									// timeout, which is what we need.
-									throw new Connection.ReadTimeout(null, 0, 0, (byte)0);
-								}
-							}
-							catch (Exception)
-							{
-								// Socket not authenticated.  Do not put back into pool.
-								CloseConnectionOnError(conn);
-								throw;
-							}
-						}
-					}
-					return conn;
 				}
 				else
 				{
@@ -1012,6 +1002,87 @@ namespace Aerospike.Client
 			}
 			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
 				"Node " + this + " max connections " + cluster.maxConnsPerNode + " would be exceeded.");
+		}
+
+		/// <summary>
+		/// Create a new socket without taking one from the pool. Counted in the pool and returned by
+		/// <see cref="PutConnection"/>. Used after a stale pooled connection is discarded.
+		/// </summary>
+		public Connection GetNewConnection(int timeoutMillis, int timeoutDelay)
+		{
+			foreach (Pool<Connection> pool in connectionPools)
+			{
+				if (pool.IncrTotal() <= pool.Capacity)
+				{
+					try
+					{
+						return CreateAuthenticatedConnection(timeoutMillis, timeoutDelay, pool);
+					}
+					catch (Exception)
+					{
+						pool.DecrTotal();
+						throw;
+					}
+				}
+
+				pool.DecrTotal();
+			}
+
+			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
+				"Node " + this + " max connections " + cluster.maxConnsPerNode + " would be exceeded.");
+		}
+
+		private Connection CreateAuthenticatedConnection(int timeoutMillis, int timeoutDelay, Pool<Connection> pool)
+		{
+			Connection conn = CreateConnection(timeoutMillis, pool);
+
+			if (cluster.authEnabled)
+			{
+				byte[] token = SessionToken;
+
+				if (token != null)
+				{
+					try
+					{
+						if (!AdminCommand.Authenticate(cluster, conn, token))
+						{
+							SignalLogin();
+							throw new AerospikeException("Authentication failed");
+						}
+					}
+					catch (Connection.ReadTimeout crt)
+					{
+						if (timeoutDelay > 0)
+						{
+							cluster.RecoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt, true));
+							conn = null;
+						}
+						else
+						{
+							CloseConnection(conn);
+						}
+						throw;
+					}
+					catch (SocketException se)
+					{
+						CloseConnection(conn);
+						if (se.SocketErrorCode == SocketError.TimedOut)
+						{
+							throw new Connection.ReadTimeout(null, 0, 0, (byte)0);
+						}
+						throw;
+					}
+					catch (Exception)
+					{
+						CloseConnectionOnError(conn);
+						throw;
+					}
+				}
+			}
+
+			conn.pooled = false;
+			conn.received = false;
+			return conn;
 		}
 
 		private Connection CreateConnection(int timeout, Pool<Connection> pool)
@@ -1062,6 +1133,23 @@ namespace Aerospike.Client
 			{
 				CloseConnection(conn);
 			}
+		}
+
+		/// <summary>
+		/// Close a pooled connection that failed before any response was read, without counting an
+		/// error. Returns false if the connection was newly created or has already read response data.
+		/// </summary>
+		public bool CloseStaleConnection(Connection conn)
+		{
+			if (!conn.pooled || conn.received)
+			{
+				return false;
+			}
+
+			conn.pool.DecrTotal();
+			Interlocked.Increment(ref connsClosed);
+			conn.Close();
+			return true;
 		}
 
 		/// <summary>

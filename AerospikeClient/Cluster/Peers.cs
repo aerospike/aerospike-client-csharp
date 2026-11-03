@@ -30,6 +30,10 @@ namespace Aerospike.Client
 		internal readonly Dictionary<string, string> collided;
 		public int refreshCount;
 		public bool genChanged;
+		/// <summary>
+		/// True when a live node's advertised host list changed this tend (view-change notify).
+		/// </summary>
+		internal bool addressChanged;
 
 		public Peers(int peerCapacity)
 		{
@@ -83,6 +87,10 @@ namespace Aerospike.Client
 		internal String nodeName;
 		internal String tlsName;
 		internal List<Host> hosts;
+		/// <summary>
+		/// Pre-translation advertised hosts for view-change detection. Null when unused.
+		/// </summary>
+		internal List<Host> advertised;
 		internal Node replaceNode;
 		/// <summary>
 		/// True when useServicesAlternate is set and this peer has no alternate-access-address.

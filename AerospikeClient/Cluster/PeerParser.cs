@@ -27,6 +27,7 @@ namespace Aerospike.Client
 		private readonly Info parser;
 		private string nodeName;
 		private string tlsName;
+		private List<Host> advertised;
 		private readonly int portDefault;
 		public readonly int generation;
 
@@ -163,6 +164,7 @@ namespace Aerospike.Client
 			peer.alternateMissing = cluster.useServicesAlternate &&
 				parser.offset + 1 < parser.length &&
 				parser.buffer[parser.offset + 1] == ']';
+			peer.advertised = advertised = cluster.notifyViewChange ? new List<Host>() : null;
 			peer.hosts = ParseHosts();
 			parser.Expect(']');
 			return peer;
@@ -240,6 +242,11 @@ namespace Aerospike.Client
 
 		private Host Translate(string host, int port)
 		{
+			if (advertised != null)
+			{
+				advertised.Add(new Host(host, tlsName, port));
+			}
+
 			return cluster.TranslateAddress(nodeName, tlsName, host, port);
 		}
 	}

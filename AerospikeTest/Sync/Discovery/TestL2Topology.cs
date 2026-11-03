@@ -36,15 +36,12 @@ namespace Aerospike.Test
 		private const string SET = "l2";
 		private const int KEY_COUNT = 300;
 		private const int MISS_RETRIES = 3;
-		private const string DNS_BLOCKER = "N-4 needs a DNS server on the L2 client network serving SRV " +
-			"records for the endpoint; the L2 topology has none yet (E4 gap)";
+		private const string DNS_BLOCKER = "N-4 needs DISCOVERY_DNS_SERVER, a DNS server on the L2 client " +
+			"network serving SRV records for the endpoint (the discovery-l2 workflow's default profile)";
 		private const string NODE_CONTROL_BLOCKER = "N-11 needs DISCOVERY_CONTROL_DIR so the host can start a " +
 			"fourth node (run_l2.sh L2_NODE_CONTROL=1, or the discovery-l2 workflow)";
 		private const int REFRESH_INTERVAL = 600000;
 		private const int MISS_KEY_COUNT = 200;
-
-		// Mirrors the Java blocker: the L2 topology has no SRV DNS server yet.
-		private static readonly bool DnsServerAvailable = false;
 
 		internal static readonly ConcurrentQueue<string> Warnings = new ConcurrentQueue<string>();
 		internal static readonly ConcurrentQueue<string> Errors = new ConcurrentQueue<string>();
@@ -244,12 +241,13 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void N4DnsProviderSeedsThroughEndpoint()
 		{
-			SkipUnless(DnsServerAvailable, DNS_BLOCKER);
+			SkipUnless(!string.IsNullOrEmpty(L2Topology.DnsServer), DNS_BLOCKER);
 
 			ClientPolicy policy = L2Topology.Policy();
 			policy.seedCandidateProvider = DnsSeedCandidateProvider.CreateBuilder()
 				.Names("_aerospike._tcp." + L2Topology.Host)
 				.RecordType(DnsSeedCandidateProvider.RecordType.SRV)
+				.Servers(L2Topology.DnsServer)
 				.Build();
 			policy.addressTranslator = new PortMapAddressTranslator(L2Topology.PortMapByEndpoint(L2Topology.Nodes()));
 

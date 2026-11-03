@@ -22,6 +22,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Aerospike.Client
 {
@@ -85,7 +86,10 @@ namespace Aerospike.Client
 			bool tls = uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase);
 			string host = uri.Host;
 			int port = uri.IsDefaultPort ? (tls ? 443 : 80) : uri.Port;
-			IPAddress[] addresses = Dns.GetHostAddresses(host);
+
+			// Fail fast if the budget is already spent before DNS / connect.
+			int dnsTimeout = Remaining(deadline);
+			IPAddress[] addresses = ResolveHostAddresses(host, dnsTimeout);
 
 			if (addresses.Length == 0)
 			{
@@ -124,6 +128,9 @@ namespace Aerospike.Client
 
 				if (tls)
 				{
+					// AuthenticateAsClient is not separately cancellable; bound it with socket timeouts.
+					socket.ReceiveTimeout = Remaining(deadline);
+					socket.SendTimeout = Remaining(deadline);
 					SslStream ssl = new SslStream(stream, false);
 					ssl.AuthenticateAsClient(host);
 					stream = ssl;
@@ -268,6 +275,23 @@ namespace Aerospike.Client
 
 			long ms = (remaining * 1000 + Stopwatch.Frequency - 1) / Stopwatch.Frequency;
 			return (int)Math.Min(int.MaxValue, ms);
+		}
+
+		/// <summary>
+		/// Resolve <paramref name="host"/> with a wall-clock budget. System DNS is not cancellable;
+		/// this aborts waiting for the result when the deadline passes (the DNS work may still finish
+		/// on a thread-pool thread).
+		/// </summary>
+		private static IPAddress[] ResolveHostAddresses(string host, int timeoutMs)
+		{
+			Task<IPAddress[]> task = Task.Run(() => Dns.GetHostAddresses(host));
+
+			if (!task.Wait(timeoutMs))
+			{
+				throw new TimeoutException("timed out");
+			}
+
+			return task.Result;
 		}
 
 		private sealed class Reader

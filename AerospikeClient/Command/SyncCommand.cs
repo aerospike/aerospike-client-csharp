@@ -69,6 +69,7 @@ namespace Aerospike.Client
 			bool metricsEnabled = cluster.MetricsEnabled;
 			LatencyType latencyType = metricsEnabled ? GetLatencyType() : LatencyType.NONE;
 			bool isClientTimeout;
+			bool staleRetry = false;
 
 			// Execute command until successful, timed out or maximum iterations have been reached.
 			while (true)
@@ -92,7 +93,10 @@ namespace Aerospike.Client
 					{
 						metricsWatch = ValueStopwatch.StartNew();
 					}
-					Connection conn = node.GetConnection(socketTimeout, policy.TimeoutDelay);
+					Connection conn = staleRetry ?
+						node.GetNewConnection(socketTimeout, policy.TimeoutDelay) :
+						node.GetConnection(socketTimeout, policy.TimeoutDelay);
+					int sentCounter = commandSentCounter;
 
 					try
 					{
@@ -181,6 +185,14 @@ namespace Aerospike.Client
 					}
 					catch (SocketException se)
 					{
+						if (!staleRetry && IsStaleConnection(se, commandSentCounter != sentCounter) &&
+							node.CloseStaleConnection(conn))
+						{
+							// Pooled socket was already closed by the peer. Same attempt on a new connection.
+							staleRetry = true;
+							continue;
+						}
+
 						// Socket errors are considered temporary anomalies.
 						// Retry after closing connection.
 						node.CloseConnectionOnError(conn);
@@ -199,8 +211,14 @@ namespace Aerospike.Client
 					}
 					catch (IOException ioe)
 					{
+						if (!staleRetry && IsStaleConnection(ioe, commandSentCounter != sentCounter) &&
+							node.CloseStaleConnection(conn))
+						{
+							staleRetry = true;
+							continue;
+						}
+
 						// IO errors are considered temporary anomalies.  Retry.
-						// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 						node.CloseConnection(conn);
 						exception = new AerospikeException.Connection(ioe);
 						isClientTimeout = false;
@@ -309,6 +327,7 @@ namespace Aerospike.Client
 				}
 
 				iteration++;
+				staleRetry = false;
 
 				if (!PrepareRetry(isClientTimeout || exception.Result != ResultCode.SERVER_NOT_AVAILABLE))
 				{
@@ -447,6 +466,53 @@ namespace Aerospike.Client
 		protected internal virtual bool IsWrite()
 		{
 			return false;
+		}
+
+		/// <summary>
+		/// True when a pooled connection failed before any response was read (or a write failed to
+		/// send), so the same attempt can run on a fresh connection without consuming a retry.
+		/// </summary>
+		private bool IsStaleConnection(Exception e, bool sent)
+		{
+			if (sent && (IsWrite() || !IsConnectionReset(e)))
+			{
+				return false;
+			}
+
+			if (totalTimeout > 0)
+			{
+				long remaining = (long)deadline.Subtract(DateTime.UtcNow).TotalMilliseconds;
+
+				if (remaining <= 0)
+				{
+					return false;
+				}
+
+				if (remaining < totalTimeout)
+				{
+					totalTimeout = (int)remaining;
+
+					if (socketTimeout > totalTimeout)
+					{
+						socketTimeout = totalTimeout;
+					}
+				}
+			}
+
+			return true;
+		}
+
+		private static bool IsConnectionReset(Exception e)
+		{
+			if (e is SocketException se)
+			{
+				return se.SocketErrorCode == SocketError.ConnectionReset ||
+					se.SocketErrorCode == SocketError.ConnectionAborted ||
+					se.SocketErrorCode == SocketError.Shutdown;
+			}
+
+			string message = e.Message;
+			return message != null && message.Contains("reset", StringComparison.OrdinalIgnoreCase);
 		}
 
 		protected virtual bool IsSingle()

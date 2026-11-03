@@ -35,15 +35,15 @@ namespace Aerospike.Client
 
 		internal static List<string> Query(IPEndPoint server, string name, ushort type, int timeoutMs)
 		{
-			byte[] request = BuildQuery(name, type);
+			ushort id = (ushort)Environment.TickCount;
+			byte[] request = BuildQuery(name, type, id);
 			byte[] response = Exchange(server, request, timeoutMs);
-			return ParseAnswers(response, type);
+			return ParseAnswers(response, type, id);
 		}
 
-		private static byte[] BuildQuery(string name, ushort type)
+		private static byte[] BuildQuery(string name, ushort type, ushort id)
 		{
 			List<byte> packet = new List<byte>(64);
-			ushort id = (ushort)Environment.TickCount;
 			packet.Add((byte)(id >> 8));
 			packet.Add((byte)id);
 			packet.Add(0x01); // RD
@@ -173,11 +173,18 @@ namespace Aerospike.Client
 			}
 		}
 
-		private static List<string> ParseAnswers(byte[] response, ushort expectedType)
+		private static List<string> ParseAnswers(byte[] response, ushort expectedType, ushort expectedId)
 		{
 			if (response.Length < 12)
 			{
 				throw new AerospikeException("DNS response too short");
+			}
+
+			ushort id = (ushort)((response[0] << 8) | response[1]);
+
+			if (id != expectedId)
+			{
+				throw new AerospikeException("DNS response id mismatch");
 			}
 
 			int rcode = response[3] & 0x0f;

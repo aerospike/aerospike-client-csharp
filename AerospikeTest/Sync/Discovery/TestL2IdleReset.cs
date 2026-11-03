@@ -25,7 +25,7 @@ namespace Aerospike.Test
 {
 	/// <summary>
 	/// Testing strategy section 4.3.2 row F-1 against the default <see cref="L2Topology"/>, in its own
-	/// run_l2.sh profile because it fails on Java until pooled sockets are checked on checkout. Every
+	/// run_l2.sh profile. Stale pooled sockets are discarded on checkout (CLIENT-5553 parity). Every
 	/// toxic the case adds is removed in <see cref="Restore"/>.
 	/// </summary>
 	[TestClass]
@@ -168,13 +168,20 @@ namespace Aerospike.Test
 				}
 
 				Dictionary<string, long[]> end = L2Topology.ConnectionStats(client);
+				List<string> undetected = new List<string>();
 				long closed = 0;
 				long errors = 0;
 
 				foreach (KeyValuePair<string, long[]> entry in end)
 				{
 					long[] s = start[entry.Key];
-					closed += entry.Value[L2Topology.Closed] - s[L2Topology.Closed];
+					long nodeClosed = entry.Value[L2Topology.Closed] - s[L2Topology.Closed];
+
+					if (nodeClosed == 0)
+					{
+						undetected.Add(entry.Key);
+					}
+					closed += nodeClosed;
 					errors += entry.Value[L2Topology.Errors] - s[L2Topology.Errors];
 				}
 
@@ -188,8 +195,8 @@ namespace Aerospike.Test
 				{
 					Console.WriteLine("L2-F1-FAILED " + failure);
 				}
-				Assert.IsTrue(closed >= pooled,
-					"F-1: " + pooled + " reset pooled connections but only " + closed + " closed by the client");
+				Assert.IsTrue(undetected.Count == 0,
+					"F-1: no reset pooled connection was detected on " + TestL2Topology.Fmt(undetected));
 				Assert.AreEqual(0, failures.Count, "F-1: commands failed to the caller after idle RST: " + TestL2Topology.Fmt(failures));
 			}
 		}
@@ -204,7 +211,7 @@ namespace Aerospike.Test
 		/// Open a connection through a listener and complete one info request on it, so Toxiproxy has
 		/// linked it to the node.
 		/// </summary>
-		private static Socket Probe(L2Node node)
+		internal static Socket Probe(L2Node node)
 		{
 			Socket socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
 			socket.ReceiveTimeout = PROBE_TIMEOUT;
@@ -250,7 +257,7 @@ namespace Aerospike.Test
 		/// <summary>
 		/// Read the next byte of a probe connection: RST when the peer reset it, FIN when it closed it.
 		/// </summary>
-		private static string ProbeResult(Socket socket)
+		internal static string ProbeResult(Socket socket)
 		{
 			try
 			{

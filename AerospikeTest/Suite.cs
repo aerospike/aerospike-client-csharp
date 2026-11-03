@@ -26,14 +26,38 @@ namespace Aerospike.Test
 		{
 			// L2 discovery CI: seed/peers only reachable through translators; each TestL2* builds
 			// its own client. Skip the shared suite clients (mirrors Java SuiteDiscovery).
-			if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_ENDPOINT_HOSTNAME")))
+			// AWS tags real suite (run_aws_tags_real.sh): TestAwsTagsReal builds its own client from
+			// the EC2 tag provider; there is no static seed Host for AssemblyInit.
+			// L1 conformance: fixture runner only; no Aerospike cluster.
+			// L0 discovery unit: server-free SPI / merge / tend tests; no Aerospike cluster.
+			bool discoveryUnit = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_UNIT")) ||
+				string.Equals(Prop(context, "DiscoveryUnit", ""), "true", StringComparison.OrdinalIgnoreCase);
+
+			if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_KUBECONFIG")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_ENDPOINT_HOSTNAME")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TLS_CASE")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TLS_NODES")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_TAGS_REAL_REGION")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CONFORMANCE_DIR")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FIXTURES_DIRECTORY")) ||
+				discoveryUnit)
 			{
 				SuiteHelpers.ns = Prop(context, "Namespace", "test");
 				SuiteHelpers.set = Prop(context, "Set", "test");
 				SuiteHelpers.timeout = int.Parse(Prop(context, "Timeout", "25000"));
 				SuiteHelpers.useServicesAlternate = false;
 				SuiteHelpers.authMode = AuthMode.INTERNAL;
-				Console.WriteLine("L2 discovery mode: skipping shared suite client connect");
+				string mode = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_KUBECONFIG"))
+					? "L3 discovery"
+					: (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_ENDPOINT_HOSTNAME"))
+						? "L2 discovery"
+						: ((!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TLS_CASE")) ||
+							!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TLS_NODES")))
+							? "TLS matching"
+							: (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_TAGS_REAL_REGION"))
+								? "AWS tags real"
+								: (discoveryUnit ? "L0 discovery unit" : "L1 conformance"))));
+				Console.WriteLine(mode + " mode: skipping shared suite client connect");
 				return;
 			}
 

@@ -209,7 +209,7 @@ namespace Aerospike.Client
 					if (cluster.tlsPolicy != null && cluster.tlsPolicy.forLoginOnly)
 					{
 						// Switch to using non-TLS socket.
-						SwitchClear sc = new SwitchClear(cluster, conn, sessionToken);
+						SwitchClear sc = new SwitchClear(cluster, conn, tlsName, sessionToken);
 						conn.Close();
 						address = sc.clearAddress;
 						socketAddress = sc.clearSocketAddress;
@@ -533,11 +533,18 @@ namespace Aerospike.Client
 		internal Connection clearConn;
 
 		// Switch from TLS connection to non-TLS connection.
-		internal SwitchClear(Cluster cluster, Connection conn, byte[] sessionToken)
+		internal SwitchClear(Cluster cluster, Connection conn, string tlsName, byte[] sessionToken)
 		{
 			// Obtain non-TLS addresses.
 			string command = cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
-			string result = Info.Request(conn, command);
+			Dictionary<string, string> map = Info.Request(conn, command, "node");
+
+			if (!map.TryGetValue(command, out string result) || result == null)
+			{
+				throw new AerospikeException("Invalid non-TLS address response for " + command);
+			}
+
+			map.TryGetValue("node", out string nodeName);
 			List<Host> hosts = Host.ParseServiceHosts(result);
 			Host clearHost;
 
@@ -548,7 +555,7 @@ namespace Aerospike.Client
 				{
 					try
 					{
-						clearHost = cluster.TranslateAddress(null, host.tlsName, host.name, host.port);
+						clearHost = cluster.TranslateAddress(nodeName, tlsName, host.name, host.port);
 					}
 					catch (AerospikeException.TranslationMiss tm)
 					{

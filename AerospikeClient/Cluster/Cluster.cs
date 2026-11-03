@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client.Config;
+using System.Reflection;
 using System.Text;
 
 namespace Aerospike.Client
@@ -64,6 +65,12 @@ namespace Aerospike.Client
 
 		// Seed candidate refresh manager (FR-41).
 		internal readonly SeedCandidateManager seedCandidateManager;
+
+		// Cluster view change counter passed to the address translator.
+		private int viewChange;
+
+		// True when the address translator overrides OnClusterViewChanged.
+		internal readonly bool notifyViewChange;
 
 		// TLS connection policy.
 		protected internal readonly TlsPolicy tlsPolicy;
@@ -195,18 +202,7 @@ namespace Aerospike.Client
 			// Default TLS names when TLS enabled.
 			if (tlsPolicy != null)
 			{
-				bool useClusterName = HasClusterName;
-
-				for (int i = 0; i < hosts.Length; i++)
-				{
-					Host host = hosts[i];
-
-					if (host.tlsName == null)
-					{
-						string tlsName = useClusterName ? clusterName : host.name;
-						hosts[i] = new Host(host.name, tlsName, host.port);
-					}
-				}
+				DefaultTlsNames(hosts);
 			}
 			else
 			{
@@ -218,72 +214,82 @@ namespace Aerospike.Client
 
 			this.seedCandidateProvider = policy.seedCandidateProvider ?? new StaticSeedCandidateProvider(hosts);
 			this.addressTranslator = policy.addressTranslator ?? new StaticMapAddressTranslator(policy.ipMap);
+			this.notifyViewChange = OverridesViewChange(addressTranslator);
 			this.translationOnMiss = policy.translationOnMiss;
 			this.seedCandidateManager = new SeedCandidateManager(
 				seedCandidateProvider, policy, hosts, SetSeeds, context);
-			this.seedCandidateManager.Start();
-			this.seedCandidateManager.AwaitInitialRefresh();
 
-			// seeds are published by the manager; ensure a non-null array for force-single-node.
-			if (seeds == null)
+			try
 			{
-				this.seeds = hosts;
-			}
+				this.seedCandidateManager.Start();
+				this.seedCandidateManager.AwaitInitialRefresh();
 
-			if (policy.authMode == AuthMode.PKI)
-			{
-				this.authEnabled = true;
-				if (!string.IsNullOrEmpty(policy.password))
+				// seeds are published by the manager; ensure a non-null array for force-single-node.
+				if (seeds == null)
 				{
-					throw new AerospikeException(ResultCode.INVALID_CREDENTIAL, "Authentication failed (65): Password authentication is disabled for PKI-only users. Please authenticate using your certificate.");
-				}
-				this.user = ByteUtil.StringToUtf8(policy.user);
-			}
-			else if (policy.user != null && policy.user.Length > 0)
-			{
-				this.authEnabled = true;
-				this.user = ByteUtil.StringToUtf8(policy.user);
-
-				// Only store clear text password if external authentication is used.
-				if (authMode != AuthMode.INTERNAL)
-				{
-					this.password = ByteUtil.StringToUtf8(policy.password);
+					this.seeds = hosts;
 				}
 
-				string pass = policy.password;
-
-				if (pass == null)
+				if (policy.authMode == AuthMode.PKI)
 				{
-					pass = "";
+					this.authEnabled = true;
+					if (!string.IsNullOrEmpty(policy.password))
+					{
+						throw new AerospikeException(ResultCode.INVALID_CREDENTIAL, "Authentication failed (65): Password authentication is disabled for PKI-only users. Please authenticate using your certificate.");
+					}
+					this.user = ByteUtil.StringToUtf8(policy.user);
+				}
+				else if (policy.user != null && policy.user.Length > 0)
+				{
+					this.authEnabled = true;
+					this.user = ByteUtil.StringToUtf8(policy.user);
+
+					// Only store clear text password if external authentication is used.
+					if (authMode != AuthMode.INTERNAL)
+					{
+						this.password = ByteUtil.StringToUtf8(policy.password);
+					}
+
+					string pass = policy.password;
+
+					if (pass == null)
+					{
+						pass = "";
+					}
+
+					pass = AdminCommand.HashPassword(pass);
+					this.passwordHash = ByteUtil.StringToUtf8(pass);
+				}
+				else
+				{
+					this.authEnabled = false;
+					this.user = null;
 				}
 
-				pass = AdminCommand.HashPassword(pass);
-				this.passwordHash = ByteUtil.StringToUtf8(pass);
+				minConnsPerNode = policy.minConnsPerNode;
+				maxConnsPerNode = policy.maxConnsPerNode;
+
+				if (minConnsPerNode > maxConnsPerNode)
+				{
+					throw new AerospikeException("Invalid connection range: " + minConnsPerNode + " - " + maxConnsPerNode);
+				}
+
+				connPoolsPerNode = policy.connPoolsPerNode;
+				nodesMap = new Dictionary<string, Node>();
+				nodes = new Node[0];
+				partitionMap = new Dictionary<string, Partitions>();
+				recoverCount = 0;
+				recoverQueue = new Pool<ConnectionRecover>(256, 10000);
+				cancel = new CancellationTokenSource();
+				cancelToken = cancel.Token;
+
+				configInterval = client.configProvider != null ? client.configProvider.Interval : IConfigProvider.DEFAULT_CONFIG_INTERVAL;
 			}
-			else
+			catch
 			{
-				this.authEnabled = false;
-				this.user = null;
+				seedCandidateManager.Close();
+				throw;
 			}
-
-			minConnsPerNode = policy.minConnsPerNode;
-			maxConnsPerNode = policy.maxConnsPerNode;
-
-			if (minConnsPerNode > maxConnsPerNode)
-			{
-				throw new AerospikeException("Invalid connection range: " + minConnsPerNode + " - " + maxConnsPerNode);
-			}
-
-			connPoolsPerNode = policy.connPoolsPerNode;
-			nodesMap = new Dictionary<string, Node>();
-			nodes = new Node[0];
-			partitionMap = new Dictionary<string, Partitions>();
-			recoverCount = 0;
-			recoverQueue = new Pool<ConnectionRecover>(256, 10000);
-			cancel = new CancellationTokenSource();
-			cancelToken = cancel.Token;
-
-			configInterval = client.configProvider != null ? client.configProvider.Interval : IConfigProvider.DEFAULT_CONFIG_INTERVAL;
 		}
 
 		public void StartTendThread(ClientPolicy policy)
@@ -403,7 +409,30 @@ namespace Aerospike.Client
 
 		private void SetSeeds(Host[] hosts)
 		{
-			this.seeds = hosts ?? Array.Empty<Host>();
+			hosts ??= Array.Empty<Host>();
+
+			if (tlsPolicy != null)
+			{
+				DefaultTlsNames(hosts);
+			}
+
+			this.seeds = hosts;
+		}
+
+		private void DefaultTlsNames(Host[] hosts)
+		{
+			bool useClusterName = HasClusterName;
+
+			for (int i = 0; i < hosts.Length; i++)
+			{
+				Host host = hosts[i];
+
+				if (host.tlsName == null)
+				{
+					string tlsName = useClusterName ? clusterName : host.name;
+					hosts[i] = new Host(host.name, tlsName, host.port);
+				}
+			}
 		}
 
 		/// <summary>
@@ -449,6 +478,39 @@ namespace Aerospike.Client
 		internal string TranslatorName()
 		{
 			return SeedCandidateManager.TranslatorName(addressTranslator);
+		}
+
+		private static bool OverridesViewChange(IAddressTranslator translator)
+		{
+			InterfaceMapping map = translator.GetType().GetInterfaceMap(typeof(IAddressTranslator));
+
+			for (int i = 0; i < map.InterfaceMethods.Length; i++)
+			{
+				if (map.InterfaceMethods[i].Name == nameof(IAddressTranslator.OnClusterViewChanged))
+				{
+					return map.TargetMethods[i].DeclaringType != typeof(IAddressTranslator);
+				}
+			}
+
+			return false;
+		}
+
+		private void ClusterViewChanged()
+		{
+			viewChange++;
+
+			try
+			{
+				addressTranslator.OnClusterViewChanged(viewChange);
+			}
+			catch (Exception e)
+			{
+				if (Log.WarnEnabled())
+				{
+					Log.Warn(context, "Address translator " + TranslatorName() +
+						" OnClusterViewChanged failed: " + Util.GetErrorMessage(e));
+				}
+			}
 		}
 
 		public void AddSeeds(Host[] hosts)
@@ -554,7 +616,9 @@ namespace Aerospike.Client
 		/// </summary>
 		private void Tend(bool isInit)
 		{
+			// All node additions/deletions are performed in tend thread.
 			// Initialize tend iteration node statistics.
+			Node[] nodesBefore = nodes;
 			Peers peers = new Peers(nodes.Length + 16);
 
 			// Clear node reference counts.
@@ -565,7 +629,6 @@ namespace Aerospike.Client
 				node.rebalanceChanged = false;
 			}
 
-			// All node additions/deletions are performed in tend thread.		
 			// If active nodes don't exist, seed cluster.
 			if (nodes.Length == 0)
 			{
@@ -615,6 +678,11 @@ namespace Aerospike.Client
 				}
 			}
 
+			if (notifyViewChange && !isInit && (!object.ReferenceEquals(nodes, nodesBefore) || peers.addressChanged))
+			{
+				ClusterViewChanged();
+			}
+
 			invalidNodeCount += peers.InvalidCount;
 
 			// Refresh partition map when necessary.
@@ -633,8 +701,12 @@ namespace Aerospike.Client
 
 			tendCount++;
 
-			// Periodic seed refresh in tend execution mode (FR-41).
-			seedCandidateManager.Tend(tendCount, tendInterval);
+			// Periodic seed refresh in tend execution mode (FR-41). Skip on init —
+			// Start() already refreshed once.
+			if (!isInit)
+			{
+				seedCandidateManager.Tend(tendCount, tendInterval);
+			}
 
 			// Balance connections every 30 tend intervals.
 			if (tendCount % 30 == 0)

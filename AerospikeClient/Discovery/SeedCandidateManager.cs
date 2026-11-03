@@ -241,7 +241,7 @@ namespace Aerospike.Client
 			}
 
 			Stopwatch sw = Stopwatch.StartNew();
-			Host[] hosts = RefreshOrEmpty(tendCount, out _);
+			Host[] hosts = RefreshOrEmpty(tendCount, out Exception error);
 			sw.Stop();
 			long elapsed = sw.ElapsedMilliseconds;
 
@@ -269,14 +269,17 @@ namespace Aerospike.Client
 
 			Interlocked.Exchange(ref overrunCount, 0);
 
-			if (hosts != null)
+			// Provider failure or a null result keeps the previous snapshot (Java SeedRefresher parity).
+			if (error != null || hosts == null)
 			{
-				Host[] seeds = Merge(hosts, false);
+				return;
+			}
 
-				if (seeds.Length > 0)
-				{
-					PublishSnapshot(seeds);
-				}
+			Host[] seeds = Merge(hosts, false);
+
+			if (seeds.Length > 0)
+			{
+				PublishSnapshot(seeds);
 			}
 		}
 
@@ -286,10 +289,13 @@ namespace Aerospike.Client
 			wakeEvent.Set();
 
 			Thread thread = refreshThread;
+			bool joined = true;
 
 			if (thread != null)
 			{
-				if (!thread.Join(refreshTimeoutMs > 0 ? refreshTimeoutMs : 10000) && Log.WarnEnabled())
+				joined = thread.Join(refreshTimeoutMs > 0 ? refreshTimeoutMs : 10000);
+
+				if (!joined && Log.WarnEnabled())
 				{
 					Log.Warn(logContext, "Seed candidate refresh thread did not stop within " +
 						refreshTimeoutMs + "ms");
@@ -311,8 +317,13 @@ namespace Aerospike.Client
 				}
 			}
 
-			wakeEvent.Dispose();
-			initialRefreshEvent.Dispose();
+			// Only dispose sync events after the refresh thread has stopped; otherwise
+			// RefreshLoop may hit ObjectDisposedException on WaitOne.
+			if (joined)
+			{
+				wakeEvent.Dispose();
+				initialRefreshEvent.Dispose();
+			}
 		}
 
 		internal Host[] Merge(Host[] discovered, bool init)
@@ -408,7 +419,14 @@ namespace Aerospike.Client
 					break;
 				}
 
-				wakeEvent.WaitOne(refreshIntervalMs);
+				try
+				{
+					wakeEvent.WaitOne(refreshIntervalMs);
+				}
+				catch (ObjectDisposedException)
+				{
+					break;
+				}
 			}
 		}
 
@@ -426,7 +444,7 @@ namespace Aerospike.Client
 			{
 				SeedCandidateContext ctx = new SeedCandidateContext(clusterName, staticSeeds, tendIteration);
 				List<Host> list = provider.RefreshSeedCandidates(ctx);
-				return list != null ? list.ToArray() : Array.Empty<Host>();
+				return list?.ToArray();
 			}
 			catch (Exception e)
 			{
@@ -438,7 +456,7 @@ namespace Aerospike.Client
 						" failed: " + e.Message);
 				}
 
-				return Array.Empty<Host>();
+				return null;
 			}
 		}
 

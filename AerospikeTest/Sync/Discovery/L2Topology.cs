@@ -69,6 +69,7 @@ namespace Aerospike.Test
 		private static string clientNetworkMtu;
 		private static string proxyPortRange;
 		private static string idleReset;
+		private static string dnsServer;
 
 		public static string Host { get { Ensure(); return host; } }
 		public static IReadOnlyList<int> Ports { get { Ensure(); return ports; } }
@@ -86,6 +87,8 @@ namespace Aerospike.Test
 		public static string ClientNetworkMtu { get { Ensure(); return clientNetworkMtu; } }
 		public static string ProxyPortRange { get { Ensure(); return proxyPortRange; } }
 		public static string IdleReset { get { Ensure(); return idleReset; } }
+		/// <summary>Optional DNS server (ip:port) serving SRV for the endpoint; set by L2 default profile.</summary>
+		public static string DnsServer { get { Ensure(); return dnsServer; } }
 
 		public static string Namespace
 		{
@@ -747,6 +750,29 @@ namespace Aerospike.Test
 			return new Dictionary<string, long[]>(map);
 		}
 
+		/// <summary>
+		/// Async connection and error counters by node name, same layout as <see cref="ConnectionStats"/>.
+		/// </summary>
+		public static Dictionary<string, long[]> AsyncConnectionStats(AerospikeClient client)
+		{
+			ClusterStats stats = client.GetClusterStats();
+			SortedDictionary<string, long[]> map = new SortedDictionary<string, long[]>(StringComparer.Ordinal);
+
+			foreach (NodeStats node in stats.nodes)
+			{
+				map[node.node.Name] = new long[]
+				{
+					node.asyncStats.inUse,
+					node.asyncStats.inPool,
+					node.asyncStats.opened,
+					node.asyncStats.closed,
+					node.ErrorCount,
+					node.TimeoutCount
+				};
+			}
+			return new Dictionary<string, long[]>(map);
+		}
+
 		public static string Format(Dictionary<string, long[]> stats)
 		{
 			StringBuilder sb = new StringBuilder();
@@ -842,6 +868,7 @@ namespace Aerospike.Test
 				clientNetworkMtu = Optional("DISCOVERY_CLIENT_NETWORK_MTU");
 				proxyPortRange = Optional("DISCOVERY_PROXY_PORT_RANGE");
 				idleReset = Optional("DISCOVERY_IDLE_RESET");
+				dnsServer = Optional("DISCOVERY_DNS_SERVER");
 				initialized = true;
 			}
 		}

@@ -1,0 +1,5 @@
+# Manifest for the aws-tags real AWS harness in aerospike-client-conformance (aws-real/README.md).
+# Each command runs with bash on the runner (Amazon Linux 2023) from the repository root.
+AWS_REAL_SETUP='sudo dnf install -y -q dotnet-sdk-8.0'
+AWS_REAL_BUILD='dotnet build AwsTagsRealProbe/AwsTagsRealProbe.csproj -c Release --nologo -v q'
+AWS_REAL_PROBE='dotnet exec AwsTagsRealProbe/bin/Release/net8.0/AwsTagsRealProbe.dll'

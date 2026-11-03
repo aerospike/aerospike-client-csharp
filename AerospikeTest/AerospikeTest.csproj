@@ -19,12 +19,16 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="MSTest" Version="4.4.0" />
+    <PackageReference Include="YamlDotNet" Version="13.0.1" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="LuaResources\average_example.lua" />
     <EmbeddedResource Include="LuaResources\filter_example.lua" />
     <EmbeddedResource Include="LuaResources\record_example.lua" />
     <EmbeddedResource Include="LuaResources\sum_example.lua" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="conformance\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
