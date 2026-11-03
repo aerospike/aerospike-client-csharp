@@ -44,7 +44,7 @@ namespace Aerospike.Client
 			internal override bool HasVector() => true;
 
 			public override void ValidateKeyType() =>
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: Vector");
+				throw new AerospikeException(ResultCode.PARSE_ERROR, "Invalid key type: Vector");
 
 			public override string ToString() => Vector.ToString();
 

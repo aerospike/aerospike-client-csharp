@@ -144,7 +144,7 @@ namespace Aerospike.Client
 				case BinDataType.BYTES:
 					return value is byte[] ? value : null;
 				default:
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Unsupported BinDataType: " + type);
+					throw new AerospikeException(ResultCode.PARSE_ERROR, "Unsupported BinDataType: " + type);
 			}
 		}
 

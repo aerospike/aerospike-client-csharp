@@ -158,6 +158,24 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void TopKDedupeRemembersLutAfterEviction()
+		{
+			// k=1: admit a newer, worse-ranked copy of digest D so it occupies the heap,
+			// then admit a better-ranked unrelated record that evicts D. An older copy of D
+			// must not re-enter (R29), even though byDigest no longer tracks D.
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, 1);
+
+			Key d = Key("dup");
+			reducer.AcceptPartial(Record(Bin, 1L, 1), d, 200);
+			reducer.AcceptPartial(Record(Bin, 100L, 1), Key("winner"), 100);
+			reducer.AcceptPartial(Record(Bin, 50L, 1), d, 100);
+
+			Record[] result = reducer.GetResult();
+			Assert.AreEqual(1, result.Length);
+			Assert.AreEqual(100L, result[0].GetLong(Bin));
+		}
+
+		[TestMethod]
 		public void TopKNegativeZeroEqualsPositiveZero()
 		{
 			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.DOUBLE, Order.ASC, 2);
@@ -244,7 +262,7 @@ namespace Aerospike.Test
 				Bin, BinDataType.INTEGER, Order.DESC,
 				"ts", BinDataType.INTEGER, Order.ASC,
 				0));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ex.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ex.Result);
 		}
 
 		private static Record RecordTwo(string binA, object valueA, string binB, object valueB)

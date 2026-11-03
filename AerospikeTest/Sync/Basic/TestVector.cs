@@ -246,6 +246,13 @@ namespace Aerospike.Test
 			Assert.AreEqual("[1, 2, 3]", v.ToString());
 		}
 
+		[TestMethod]
+		public void ToStringFloat16UsesHalfValues()
+		{
+			Vector v = Vector.OfFloat16(new Half[] { (Half)1.5f, (Half)(-2.0f) });
+			Assert.AreEqual("[" + ((Half)1.5f) + ", " + ((Half)(-2.0f)) + "]", v.ToString());
+		}
+
 		//-------------------------------------------------------
 		// WriteTo (wire format)
 		//-------------------------------------------------------
@@ -446,7 +453,7 @@ namespace Aerospike.Test
 			Packer packer = new Packer();
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => packer.PackList(new List<object> { Value.Get(v) }));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
@@ -456,7 +463,7 @@ namespace Aerospike.Test
 			Vector v = Vector.OfFloat32(new float[] { 1.5f, -2.25f, 3.0f });
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => Packer.Pack(new List<object> { v }));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
@@ -466,7 +473,7 @@ namespace Aerospike.Test
 			Vector v = Vector.OfInt32(new int[] { 1, 2, 3 });
 			Bin bin = new Bin("veclist", new List<object> { v });
 			AerospikeException e = Assert.Throws<AerospikeException>(() => bin.value.EstimateSize());
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
@@ -550,7 +557,7 @@ namespace Aerospike.Test
 		{
 			Value value = Value.Get(Vector.OfInt32(new int[] { 1, 2, 3 }));
 			AerospikeException e = Assert.Throws<AerospikeException>(() => value.ValidateKeyType());
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 		}
 
 		[TestMethod]

@@ -173,7 +173,7 @@ namespace Aerospike.Client
 				{
 					// Already rejected at ValidateTopK when the whole cluster lacks support;
 					// a node that loses the feature mid-query must not soft-fallback.
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					throw new AerospikeException(ResultCode.PARSE_ERROR,
 						"orderBy/topK is not supported by all nodes in the cluster");
 				}
 			}

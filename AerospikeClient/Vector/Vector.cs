@@ -417,12 +417,24 @@ namespace Aerospike.Client
 
 		public override string ToString() => elementType switch
 		{
-			ElementType.FLOAT16 => "[" + string.Join(", ", (short[])data) + "]",
+			ElementType.FLOAT16 => "[" + string.Join(", ", Float16ToHalfStrings()) + "]",
 			ElementType.INT32 => "[" + string.Join(", ", (int[])data) + "]",
 			ElementType.FLOAT32 => "[" + string.Join(", ", (float[])data) + "]",
 			ElementType.FLOAT64 => "[" + string.Join(", ", (double[])data) + "]",
 			_ => data.ToString()
 		};
+
+		private string[] Float16ToHalfStrings()
+		{
+			short[] bits = (short[])data;
+			string[] values = new string[bits.Length];
+
+			for (int i = 0; i < bits.Length; i++)
+			{
+				values[i] = BitConverter.Int16BitsToHalf(bits[i]).ToString();
+			}
+			return values;
+		}
 
 		public override bool Equals(object obj) => Equals(obj as Vector);
 

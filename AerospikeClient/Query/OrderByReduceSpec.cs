@@ -41,19 +41,19 @@ namespace Aerospike.Client
 
 		public void AcceptPartial(Record record, Key key, long lastUpdateTime = 0)
 		{
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+			throw new AerospikeException(ResultCode.PARSE_ERROR,
 				"orderBy must be combined with limit (see Reduce.TopK)");
 		}
 
 		public Record GetScalarResult()
 		{
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+			throw new AerospikeException(ResultCode.PARSE_ERROR,
 				"orderBy must be combined with limit (see Reduce.TopK)");
 		}
 
 		public Record[] GetResult()
 		{
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+			throw new AerospikeException(ResultCode.PARSE_ERROR,
 				"orderBy must be combined with limit (see Reduce.TopK)");
 		}
 	}

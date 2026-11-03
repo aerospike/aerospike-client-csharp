@@ -19,9 +19,11 @@ using Aerospike.Client;
 namespace Aerospike.Example;
 
 /// <summary>
-/// Demonstrate Top-K queries using <see cref="Statement.SetOrderBy"/> + <see cref="Statement.SetTopK"/>.
+/// Demonstrate Top-K queries using <see cref="Statement.SetOrderBy"/>,
+/// <see cref="Statement.ThenOrderBy"/>, and <see cref="Statement.SetTopK"/>.
 /// Every node in the cluster must support Top-K; each returns at most k candidates and the
-/// client merges them into the global Top-K. A mixed cluster is rejected with a parameter error.
+/// client merges them into the global Top-K. A mixed cluster is rejected with a client
+/// parameter error (<see cref="ResultCode.PARSE_ERROR"/>).
 /// Project the ranking bins (here via <see cref="Statement.SetBinNames"/>); an empty projection
 /// returns every bin for each candidate. See <see cref="Statement.SetTopK"/> for memory guidance.
 /// </summary>
@@ -34,12 +36,13 @@ public sealed class QueryTopK : SyncExample
 		const string indexName = "topkindex";
 		const string keyPrefix = "topkkey";
 		const string binName = "topkbin";
+		const string thenBin = "tsbin";
 		const int size = 20;
 		const int k = 5;
 
 		CreateIndex(indexName, binName);
-		WriteRecords(keyPrefix, binName, size);
-		RunQuery(binName, k);
+		WriteRecords(keyPrefix, binName, thenBin, size);
+		RunQuery(binName, thenBin, k);
 		client.DropIndex(null, ns, set, indexName);
 	}
 
@@ -63,30 +66,33 @@ public sealed class QueryTopK : SyncExample
 		}
 	}
 
-	private void WriteRecords(string keyPrefix, string binName, int size)
+	private void WriteRecords(string keyPrefix, string binName, string thenBin, int size)
 	{
 		Console.WriteLine($"Write {size} records.");
 
 		for (int i = 1; i <= size; i++)
 		{
 			Key key = new(ns, set, keyPrefix + i);
-			client.Put(writePolicy, key, new Bin(binName, i));
+			// Primary score = i; secondary ts = size - i so ties on score (none here) would
+			// break ascending by ts.
+			client.Put(writePolicy, key, new Bin(binName, i), new Bin(thenBin, size - i));
 		}
 	}
 
-	private void RunQuery(string binName, int k)
+	private void RunQuery(string binName, string thenBin, int k)
 	{
 		const int begin = 1;
 		const int end = 1000;
 
-		Console.WriteLine($"Query top {k} by bin={binName} descending");
+		Console.WriteLine($"Query top {k} by bin={binName} DESC, then {thenBin} ASC");
 
 		Statement stmt = new();
 		stmt.SetNamespace(ns);
 		stmt.SetSetName(set);
-		stmt.SetBinNames(binName);
+		stmt.SetBinNames(binName, thenBin);
 		stmt.SetFilter(Filter.Range(binName, begin, end));
 		stmt.SetOrderBy(binName, BinDataType.INTEGER, Order.DESC);
+		stmt.ThenOrderBy(thenBin, BinDataType.INTEGER, Order.ASC);
 		stmt.SetTopK(k);
 
 		using RecordSet rs = client.Query(null, stmt);
@@ -96,7 +102,8 @@ public sealed class QueryTopK : SyncExample
 		while (rs.Next())
 		{
 			int value = rs.Record.GetInt(binName);
-			Console.WriteLine($"Top-K record: {binName}={value}");
+			int ts = rs.Record.GetInt(thenBin);
+			Console.WriteLine($"Top-K record: {binName}={value} {thenBin}={ts}");
 
 			if (value != expected)
 			{

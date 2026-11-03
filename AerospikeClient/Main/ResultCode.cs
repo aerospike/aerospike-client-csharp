@@ -106,7 +106,9 @@ namespace Aerospike.Client
 		public const int INVALID_NODE_ERROR = -3;
 
 		/// <summary>
-		/// Client parse error.
+		/// Invalid client API parameter or client parse error.
+		/// Used for Top-K / vector checks made before anything is sent (R28, R30);
+		/// server rejections keep <see cref="PARAMETER_ERROR"/> (4).
 		/// Value: -2
 		/// </summary>
 		public const int PARSE_ERROR = -2;

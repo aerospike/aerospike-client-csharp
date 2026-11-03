@@ -217,7 +217,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TopKRejectsInvalidWireSpecification()
 		{
-			// Top-K misuse is PARAMETER_ERROR (4) before send, with no server subcode.
+			// Top-K misuse is PARSE_ERROR (-2) before send, with no server subcode.
 			Statement bytesType = new();
 			bytesType.SetBinNames(Bin);
 			bytesType.SetOrderBy(Bin, BinDataType.BYTES, Order.ASC);
@@ -229,14 +229,14 @@ namespace Aerospike.Test
 			projection.SetOrderBy(Bin, BinDataType.INTEGER, Order.ASC);
 			projection.SetTopK(1);
 			AerospikeException projEx = Assert.Throws<AerospikeException>(() => projection.ValidateTopK());
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, projEx.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, projEx.Result);
 			Assert.AreEqual(SubCode.NONE, projEx.SubCode);
 
 			Statement name = new();
 			name.SetOrderBy("sixteen-byte-bin", BinDataType.INTEGER, Order.ASC);
 			name.SetTopK(1);
 			AerospikeException nameEx = Assert.Throws<AerospikeException>(() => name.ValidateTopK());
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, nameEx.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, nameEx.Result);
 			Assert.AreEqual(SubCode.NONE, nameEx.SubCode);
 
 			Statement duplicateOps = new();
@@ -244,7 +244,7 @@ namespace Aerospike.Test
 			duplicateOps.SetOrderBy(Bin, BinDataType.INTEGER, Order.ASC);
 			duplicateOps.SetTopK(1);
 			AerospikeException dup = Assert.Throws<AerospikeException>(() => duplicateOps.ValidateTopK());
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, dup.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, dup.Result);
 			Assert.AreEqual(SubCode.NONE, dup.SubCode);
 			Assert.IsTrue(dup.Message.Contains("exactly one projection operation"));
 
@@ -253,7 +253,7 @@ namespace Aerospike.Test
 			duplicateBins.SetOrderBy(Bin, BinDataType.INTEGER, Order.ASC);
 			duplicateBins.SetTopK(1);
 			AerospikeException dupBins = Assert.Throws<AerospikeException>(() => duplicateBins.ValidateTopK());
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, dupBins.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, dupBins.Result);
 			Assert.IsTrue(dupBins.Message.Contains("exactly once"));
 		}
 
@@ -320,17 +320,33 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void ThenOrderByThirdKeyRejectedAtValidate()
+		public void ThenOrderByThirdKeyRejectedImmediately()
 		{
 			Statement stmt = new();
 			stmt.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
 			stmt.ThenOrderBy("ts", BinDataType.INTEGER, Order.ASC);
-			stmt.ThenOrderBy("id", BinDataType.INTEGER, Order.ASC);
-			stmt.SetTopK(2);
 
-			AerospikeException ex = Assert.Throws<AerospikeException>(() => stmt.ValidateTopK());
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ex.Result);
+			AerospikeException ex = Assert.Throws<AerospikeException>(() =>
+				stmt.ThenOrderBy("id", BinDataType.INTEGER, Order.ASC));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ex.Result);
 			Assert.IsTrue(ex.Message.Contains("at most two keys"));
+			Assert.IsTrue(stmt.HasTopKThen);
+			Assert.AreEqual("ts", stmt.TopKThenBin);
+		}
+
+		[TestMethod]
+		public void SetTopKOutOfRangeThrowsWithoutArming()
+		{
+			Statement stmt = new();
+			stmt.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+
+			AerospikeException ex = Assert.Throws<AerospikeException>(() => stmt.SetTopK(0));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ex.Result);
+			Assert.IsFalse(stmt.HasTopK);
+
+			ex = Assert.Throws<AerospikeException>(() => stmt.SetTopK(1001));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ex.Result);
+			Assert.IsFalse(stmt.HasTopK);
 		}
 
 		[TestMethod]
@@ -339,7 +355,7 @@ namespace Aerospike.Test
 			Statement stmt = new();
 			AerospikeException ex = Assert.Throws<AerospikeException>(() =>
 				stmt.ThenOrderBy("ts", BinDataType.INTEGER, Order.ASC));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ex.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ex.Result);
 			Assert.IsTrue(ex.Message.Contains("thenOrderBy requires setOrderBy"));
 		}
 
@@ -367,7 +383,7 @@ namespace Aerospike.Test
 			stmt.SetTopK(5);
 
 			AerospikeException ex = Assert.Throws<AerospikeException>(() => stmt.ValidateTopK());
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ex.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ex.Result);
 			Assert.IsTrue(ex.Message.Contains("order key"));
 		}
 
@@ -380,7 +396,7 @@ namespace Aerospike.Test
 			stmt.SetTopK(2);
 
 			AerospikeException ex = Assert.Throws<AerospikeException>(() => stmt.ValidateTopK());
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ex.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ex.Result);
 			Assert.IsTrue(ex.Message.Contains("different bins"));
 		}
 	}

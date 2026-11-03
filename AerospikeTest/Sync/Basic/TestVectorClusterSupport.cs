@@ -149,16 +149,16 @@ namespace Aerospike.Test
 
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => ListOperation.Append("v", Value.Get(Vec)));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 
 			e = Assert.Throws<AerospikeException>(
 				() => ListOperation.AppendItems("v", new List<object> { Value.Get(Vec) }));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 
 			e = Assert.Throws<AerospikeException>(
 				() => ListOperation.InsertItems("v", 0, new List<object> { Value.Get(Vec) }));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 		}
 
 		[TestMethod]
@@ -168,13 +168,13 @@ namespace Aerospike.Test
 
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => MapOperation.Put(MapPolicy.Default, "m", Value.Get("k"), Value.Get(Vec)));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 
 			Dictionary<object, object> items = new() { { Value.Get("k"), Value.Get(Vec) } };
 			e = Assert.Throws<AerospikeException>(
 				() => MapOperation.PutItems(MapPolicy.Default, "m", items));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 		}
 
 		[TestMethod]
@@ -182,7 +182,7 @@ namespace Aerospike.Test
 		{
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => HLLOperation.Add(HLLPolicy.Default, "h", new List<object> { Value.Get(Vec) }));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
@@ -202,7 +202,7 @@ namespace Aerospike.Test
 		{
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => Internals.CheckVectorSupport(NewCommand(false), true));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains(ExpectedMessage));
 		}
 
@@ -229,7 +229,7 @@ namespace Aerospike.Test
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => NewCommand(true).SetWrite(new WritePolicy(), Operation.Type.WRITE, Key,
 					new Bin[] { new Bin("v", new List<object> { Vec }) }));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
@@ -239,7 +239,7 @@ namespace Aerospike.Test
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => NewCommand(true).SetWrite(new WritePolicy(), Operation.Type.WRITE, Key,
 					new Bin[] { new Bin("v", new Dictionary<object, object> { { "k", Vec } }) }));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
@@ -262,7 +262,7 @@ namespace Aerospike.Test
 
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => NewCommand(false).SetWrite(wp, Operation.Type.WRITE, Key, new Bin[] { new Bin("s", 1) }));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains(ExpectedMessage));
 		}
 
@@ -271,7 +271,7 @@ namespace Aerospike.Test
 		{
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => ListOperation.Append("v", Value.Get(Vec)));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
@@ -284,7 +284,7 @@ namespace Aerospike.Test
 
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => NewCommand(false).SetOperate(args.writePolicy, Key, args));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains(ExpectedMessage));
 		}
 
@@ -292,7 +292,7 @@ namespace Aerospike.Test
 		{
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => NewCommand(false).SetWrite(new WritePolicy(), Operation.Type.WRITE, Key, new Bin[] { bin }));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains(ExpectedMessage));
 		}
 	}

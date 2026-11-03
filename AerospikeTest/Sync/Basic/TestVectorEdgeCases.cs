@@ -239,7 +239,7 @@ namespace Aerospike.Test
 			Dictionary<object, object> map = new() { { "k", Value.Get(v) } };
 			AerospikeException e = Assert.Throws<AerospikeException>(
 				() => Packer.Pack(map, MapOrder.UNORDERED));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
@@ -249,7 +249,7 @@ namespace Aerospike.Test
 			Vector v = Vector.OfInt32(new int[] { 1, 2, 3 });
 			Bin bin = new Bin("vecmap", new Dictionary<object, object> { { "k", v } });
 			AerospikeException e = Assert.Throws<AerospikeException>(() => bin.value.EstimateSize());
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 
@@ -261,7 +261,7 @@ namespace Aerospike.Test
 			List<object> list = new() { inner };
 
 			AerospikeException e = Assert.Throws<AerospikeException>(() => Packer.Pack(list));
-			Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
 		}
 

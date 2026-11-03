@@ -768,7 +768,7 @@ namespace Aerospike.Client
 			// PackVectorAsBlob uses BLOB and remains valid for distance expression literals.
 			if (type == ParticleType.VECTOR && nestDepth > 0)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
 					"list/map cannot hold a vector");
 			}
 

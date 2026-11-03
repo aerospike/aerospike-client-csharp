@@ -37,6 +37,12 @@ namespace Aerospike.Client
 		/// <summary>digest -> (key, record), for dedup and result reconstruction.</summary>
 		private readonly Dictionary<byte[], Entry> byDigest = new(DigestComparer);
 
+		/// <summary>
+		/// Max last-update time seen per digest, retained after heap eviction so a newer
+		/// copy that was ranked out cannot be replaced later by an older copy (R29).
+		/// </summary>
+		private readonly Dictionary<byte[], long> maxLutByDigest = new(DigestComparer);
+
 		/// <summary>Worst-first set: Min is evicted first when the set exceeds <see cref="limit"/>.</summary>
 		private readonly SortedSet<OrderKey> heap = new(WorstFirst);
 
@@ -102,13 +108,13 @@ namespace Aerospike.Client
 		{
 			if (orderBy is not OrderByReduceSpec ob || limit is not LimitReduceSpec lim)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
 					"topK requires one orderBy spec and one limit spec");
 			}
 
 			if (!ob.bin.Equals(lim.bin))
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
 					"orderBy bin (" + ob.bin + ") must match limit bin (" + lim.bin + ")");
 			}
 			return Create(ob.bin, ob.type, ob.order, null, default, default, lim.limit);
@@ -125,7 +131,7 @@ namespace Aerospike.Client
 		{
 			if (limit < 1 || limit > 1000)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
 					"limit must be in [1, 1000], got: " + limit);
 			}
 
@@ -145,7 +151,14 @@ namespace Aerospike.Client
 				// Dedup: at most one row per digest (partition migration may re-scan a
 				// record). PRD R29: keep the copy with the later last-update time; when
 				// times are equal (including both zero on client-side reduce), keep the
-				// better-ranked copy.
+				// better-ranked copy. maxLutByDigest outlives heap eviction so a newer
+				// copy that fell out of the top-k cannot lose to an older re-scan.
+				if (maxLutByDigest.TryGetValue(digest, out long seenLut) &&
+					candidate.lastUpdateTime < seenLut)
+				{
+					return;
+				}
+
 				if (byDigest.TryGetValue(digest, out Entry existingEntry))
 				{
 					if (!Replaces(candidate, existingEntry.orderKey))
@@ -155,6 +168,11 @@ namespace Aerospike.Client
 
 					heap.Remove(existingEntry.orderKey);
 					byDigest.Remove(digest);
+				}
+
+				if (candidate.lastUpdateTime >= seenLut)
+				{
+					maxLutByDigest[digest] = candidate.lastUpdateTime;
 				}
 
 				heap.Add(candidate);

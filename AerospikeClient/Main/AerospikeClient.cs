@@ -2682,27 +2682,27 @@ namespace Aerospike.Client
 
 			if (!policy.includeBinData)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
 					"Top-K is incompatible with includeBinData=false");
 			}
 
 #pragma warning disable 0618
 			if (policy.maxRecords != 0)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
 					"Top-K is incompatible with maxRecords");
 			}
 #pragma warning restore 0618
 
 			if (!cluster.hasPartitionQuery)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
 					"Top-K requires partition query support");
 			}
 
 			if (partitionFilter != null && PartitionFilterHasResumePoints(partitionFilter))
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
 					"Top-K cannot use a partition filter that carries resume points from an earlier query");
 			}
 		}
@@ -2711,12 +2711,16 @@ namespace Aerospike.Client
 		{
 			if (statement.HasOrderBy && !cluster.hasQueryOrderBy)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
 					"orderBy/topK is not supported by all nodes in the cluster");
 			}
 		}
 
-		private static bool PartitionFilterHasResumePoints(PartitionFilter filter)
+		/// <summary>
+		/// Whether a partition filter carries resume state from an earlier paged query.
+		/// Top-K rejects such filters before send (R28).
+		/// </summary>
+		internal static bool PartitionFilterHasResumePoints(PartitionFilter filter)
 		{
 			if (filter.Digest != null)
 			{
@@ -2744,7 +2748,7 @@ namespace Aerospike.Client
 		{
 			if (statement.HasTopK)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
 					"Top-K is only supported by synchronous partition queries");
 			}
 

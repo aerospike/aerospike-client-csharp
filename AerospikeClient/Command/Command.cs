@@ -2743,7 +2743,7 @@ namespace Aerospike.Client
 		{
 			if (vectorPresent && !vectorSupported)
 			{
-				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
 					"Vector is not supported by all nodes in the cluster");
 			}
 		}
@@ -3453,7 +3453,7 @@ namespace Aerospike.Client
 						break;
 
 					case FieldType.LUT:
-						lastUpdateTime = ByteUtil.BytesToLong(dataBuffer, dataOffset);
+						lastUpdateTime = ParseLutField(dataBuffer, dataOffset, size);
 						break;
 
 					case FieldType.BVAL_ARRAY:
@@ -3471,6 +3471,19 @@ namespace Aerospike.Client
 				dataOffset += size;
 			}
 			return new Key(ns, digest, setName, userKey);
+		}
+
+		/// <summary>
+		/// Parse FieldType.LUT (14): big-endian int64 milliseconds since the Citrusleaf epoch.
+		/// </summary>
+		internal static long ParseLutField(byte[] buffer, int offset, int size)
+		{
+			if (size != 8)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"LUT field must be 8 bytes, got " + size);
+			}
+			return ByteUtil.BytesToLong(buffer, offset);
 		}
 
 		public long? ParseVersion(int fieldCount)
