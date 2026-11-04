@@ -33,8 +33,7 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      # v5.2.0: setup-dotnet v6 installs the LTS runtime (.NET 10) first and MTP then
-      # handshake-fails the net8.0 test host (exit 5, zero tests).
+      # global.json pins SDK 8.0.x so preinstalled .NET 10 does not take over (MTP exit 5).
       - name: Setup .NET
         uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:

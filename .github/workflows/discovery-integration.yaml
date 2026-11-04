@@ -89,7 +89,7 @@ jobs:
           - low-mtu
           - port-range
           - idle-reset
-          # TG-18 / SERVER-1839: hostname that does not resolve; CE latest still resolves at startup.
+          # TG-18 / SERVER-1839: CE latest advertises unresolved hostnames verbatim (stays up).
           - unresolved-access
     uses: ./.github/workflows/discovery-l2.yaml
     with:
@@ -97,6 +97,8 @@ jobs:
       server-container-repo: database-docker-virtual/aerospike-server
       server-tag: latest
       profile: ${{ matrix.profile }}
+      # CE latest already ships SERVER-1839; keep the resolve-and-exit cell on EE 8.2.0.0 only.
+      verbatim-access-address: ${{ matrix.profile == 'unresolved-access' }}
     secrets: inherit
 
   l2-ee:
