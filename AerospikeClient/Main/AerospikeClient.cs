@@ -2703,7 +2703,7 @@ namespace Aerospike.Client
 			if (partitionFilter != null && PartitionFilterHasResumePoints(partitionFilter))
 			{
 				throw new AerospikeException(ResultCode.PARSE_ERROR,
-					"Top-K cannot use a partition filter that carries resume points from an earlier query");
+					"Top-K can't resume a partition filter from an earlier query");
 			}
 		}
 

@@ -65,7 +65,8 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void ElementTypeFromInvalidCode()
 		{
-			Assert.Throws<ArgumentException>(() => Vector.ElementTypeFromCode(0x7f));
+			AerospikeException e = Assert.Throws<AerospikeException>(() => Vector.ElementTypeFromCode(0x7f));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 		}
 
 		//-------------------------------------------------------
@@ -403,13 +404,16 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void FromRejectsShortBuffer()
 		{
-			Assert.Throws<ArgumentException>(() => Vector.From(new byte[4], 0, 4));
+			AerospikeException e = Assert.Throws<AerospikeException>(() => Vector.From(new byte[4], 0, 4));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 		}
 
 		[TestMethod]
 		public void FromTooShortThrows()
 		{
-			Assert.Throws<ArgumentException>(() => Vector.From(new byte[Vector.HEADER_SIZE - 1], 0, Vector.HEADER_SIZE - 1));
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => Vector.From(new byte[Vector.HEADER_SIZE - 1], 0, Vector.HEADER_SIZE - 1));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 		}
 
 		[TestMethod]
@@ -418,7 +422,9 @@ namespace Aerospike.Test
 			Vector v = Vector.OfFloat32(new float[] { 1.0f, 2.0f, 3.0f });
 			byte[] buffer = new byte[v.GetWireSize()];
 			v.WriteTo(buffer, 0);
-			Assert.Throws<ArgumentException>(() => Vector.From(buffer, 0, buffer.Length - 1));
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => Vector.From(buffer, 0, buffer.Length - 1));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 		}
 
 		[TestMethod]
@@ -427,7 +433,9 @@ namespace Aerospike.Test
 			byte[] buffer = new byte[Vector.HEADER_SIZE];
 			buffer[0] = Vector.VERSION;
 			buffer[1] = 0x7f;
-			Assert.Throws<ArgumentException>(() => Vector.From(buffer, 0, buffer.Length));
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => Vector.From(buffer, 0, buffer.Length));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 		}
 
 		//-------------------------------------------------------

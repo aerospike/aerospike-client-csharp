@@ -422,14 +422,15 @@ namespace Aerospike.Client
 		/// <param name="order">sort direction</param>
 		/// <exception cref="AerospikeException">
 		/// with <see cref="ResultCode.PARSE_ERROR"/> when called before
-		/// <see cref="SetOrderBy(string, BinDataType, Order)"/> or when a third key is added
+		/// <see cref="SetOrderBy(string, BinDataType, Order)"/> ("thenOrderBy must follow orderBy")
+		/// or when a third key is added ("orderBy supports at most two keys")
 		/// </exception>
 		public void ThenOrderBy(string binName, BinDataType type, Order order)
 		{
 			if (!orderBySet)
 			{
 				throw new AerospikeException(ResultCode.PARSE_ERROR,
-					"thenOrderBy requires setOrderBy to be called first");
+					"thenOrderBy must follow orderBy");
 			}
 
 			if (thenOrderBySet)
@@ -580,11 +581,11 @@ namespace Aerospike.Client
 					"Top-K requires an order key; call SetOrderBy()");
 			}
 
-			ValidateOrderKey(orderByBin, orderByType, "Top-K order-by");
+			ValidateOrderKey(orderByBin, orderByType);
 
 			if (thenOrderBySet)
 			{
-				ValidateOrderKey(thenOrderByBin, thenOrderByType, "Top-K then-order-by");
+				ValidateOrderKey(thenOrderByBin, thenOrderByType);
 
 				if (orderByBin.Equals(thenOrderByBin))
 				{
@@ -611,11 +612,11 @@ namespace Aerospike.Client
 					"orderBy is incompatible with aggregate UDFs; use the UDF's own reduce stage");
 			}
 
-			RequireProjected(orderByBin, "Top-K order-by");
+			RequireProjected(orderByBin);
 
 			if (thenOrderBySet)
 			{
-				RequireProjected(thenOrderByBin, "Top-K then-order-by");
+				RequireProjected(thenOrderByBin);
 			}
 
 			// Ensure the combiner matches the validated keys / limit.
@@ -657,11 +658,12 @@ namespace Aerospike.Client
 			reduceResolved = false;
 		}
 
-		private static void ValidateOrderKey(string bin, BinDataType type, string label)
+		private static void ValidateOrderKey(string bin, BinDataType type)
 		{
 			if (bin == null)
 			{
-				throw new AerospikeException(ResultCode.PARSE_ERROR, label + " specification is incomplete");
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL");
 			}
 
 			int length = ByteUtil.EstimateSizeUtf8(bin);
@@ -669,17 +671,17 @@ namespace Aerospike.Client
 			if (length == 0 || length > 15 || bin.IndexOf('\0') >= 0)
 			{
 				throw new AerospikeException(ResultCode.PARSE_ERROR,
-					label + " bin name must be 1-15 UTF-8 bytes without NUL");
+					"Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL");
 			}
 
 			if (type != BinDataType.INTEGER && type != BinDataType.DOUBLE && type != BinDataType.BYTES)
 			{
 				throw new AerospikeException(ResultCode.PARSE_ERROR,
-					label + " type must be INTEGER, DOUBLE or BYTES");
+					"orderBy type must be INTEGER, DOUBLE, or BYTES; got " + type);
 			}
 		}
 
-		private void RequireProjected(string bin, string label)
+		private void RequireProjected(string bin)
 		{
 			if (operations != null)
 			{
@@ -695,14 +697,13 @@ namespace Aerospike.Client
 
 				if (matches == 0)
 				{
-					throw new AerospikeException(ResultCode.PARSE_ERROR,
-						label + " bin must be included in the operations projection");
+					throw NotInProjection(bin);
 				}
 
 				if (matches > 1)
 				{
 					throw new AerospikeException(ResultCode.PARSE_ERROR,
-						label + " bin must be produced by exactly one projection operation");
+						"orderBy bin '" + bin + "' is produced by more than one operation");
 				}
 				return;
 			}
@@ -721,17 +722,21 @@ namespace Aerospike.Client
 
 				if (matches == 0)
 				{
-					throw new AerospikeException(ResultCode.PARSE_ERROR,
-						label + " bin must be included in the bin projection");
+					throw NotInProjection(bin);
 				}
 
 				if (matches > 1)
 				{
 					throw new AerospikeException(ResultCode.PARSE_ERROR,
-						label + " bin must appear exactly once in the bin projection");
+						"orderBy bin '" + bin + "' is produced by more than one operation");
 				}
 			}
 		}
+
+		private static AerospikeException NotInProjection(string binName) =>
+			new(ResultCode.PARSE_ERROR,
+				"orderBy bin '" + binName +
+				"' is not in projection; add it to the projection or remove the projection");
 
 		/// <summary>
 		/// Resolve the reduce spec(s) set by <see cref="SetReduce"/> into a single combiner usable by a

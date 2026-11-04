@@ -231,6 +231,7 @@ namespace Aerospike.Test
 			AerospikeException projEx = Assert.Throws<AerospikeException>(() => projection.ValidateTopK());
 			Assert.AreEqual(ResultCode.PARSE_ERROR, projEx.Result);
 			Assert.AreEqual(SubCode.NONE, projEx.SubCode);
+			Assert.IsTrue(projEx.Message.Contains("is not in projection"));
 
 			Statement name = new();
 			name.SetOrderBy("sixteen-byte-bin", BinDataType.INTEGER, Order.ASC);
@@ -238,6 +239,7 @@ namespace Aerospike.Test
 			AerospikeException nameEx = Assert.Throws<AerospikeException>(() => name.ValidateTopK());
 			Assert.AreEqual(ResultCode.PARSE_ERROR, nameEx.Result);
 			Assert.AreEqual(SubCode.NONE, nameEx.SubCode);
+			Assert.IsTrue(nameEx.Message.Contains("1-15 UTF-8 bytes without NUL"));
 
 			Statement duplicateOps = new();
 			duplicateOps.Operations = [Operation.Get(Bin), Operation.Get(Bin)];
@@ -246,7 +248,7 @@ namespace Aerospike.Test
 			AerospikeException dup = Assert.Throws<AerospikeException>(() => duplicateOps.ValidateTopK());
 			Assert.AreEqual(ResultCode.PARSE_ERROR, dup.Result);
 			Assert.AreEqual(SubCode.NONE, dup.SubCode);
-			Assert.IsTrue(dup.Message.Contains("exactly one projection operation"));
+			Assert.IsTrue(dup.Message.Contains("produced by more than one operation"));
 
 			Statement duplicateBins = new();
 			duplicateBins.SetBinNames(Bin, Bin);
@@ -254,7 +256,7 @@ namespace Aerospike.Test
 			duplicateBins.SetTopK(1);
 			AerospikeException dupBins = Assert.Throws<AerospikeException>(() => duplicateBins.ValidateTopK());
 			Assert.AreEqual(ResultCode.PARSE_ERROR, dupBins.Result);
-			Assert.IsTrue(dupBins.Message.Contains("exactly once"));
+			Assert.IsTrue(dupBins.Message.Contains("produced by more than one operation"));
 		}
 
 		[TestMethod]
@@ -356,7 +358,7 @@ namespace Aerospike.Test
 			AerospikeException ex = Assert.Throws<AerospikeException>(() =>
 				stmt.ThenOrderBy("ts", BinDataType.INTEGER, Order.ASC));
 			Assert.AreEqual(ResultCode.PARSE_ERROR, ex.Result);
-			Assert.IsTrue(ex.Message.Contains("thenOrderBy requires setOrderBy"));
+			Assert.IsTrue(ex.Message.Contains("thenOrderBy must follow orderBy"));
 		}
 
 		[TestMethod]

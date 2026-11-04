@@ -28,12 +28,12 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void EmptyVectorsAreRejected()
 		{
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(Array.Empty<short>()));
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(Array.Empty<Half>()));
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(Array.Empty<float>()));
-			Assert.Throws<ArgumentException>(() => Vector.OfInt32(Array.Empty<int>()));
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat32(Array.Empty<float>()));
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat64(Array.Empty<double>()));
+			AssertParseError(() => Vector.OfFloat16(Array.Empty<short>()));
+			AssertParseError(() => Vector.OfFloat16(Array.Empty<Half>()));
+			AssertParseError(() => Vector.OfFloat16(Array.Empty<float>()));
+			AssertParseError(() => Vector.OfInt32(Array.Empty<int>()));
+			AssertParseError(() => Vector.OfFloat32(Array.Empty<float>()));
+			AssertParseError(() => Vector.OfFloat64(Array.Empty<double>()));
 		}
 
 		[TestMethod]
@@ -43,7 +43,7 @@ namespace Aerospike.Test
 			buffer[0] = Vector.VERSION;
 			buffer[1] = (byte)Vector.ElementType.FLOAT32;
 			ByteUtil.IntToLittleBytes(0, buffer, 2);
-			Assert.Throws<ArgumentException>(() => Vector.From(buffer, 0, buffer.Length));
+			AssertParseError(() => Vector.From(buffer, 0, buffer.Length));
 		}
 
 		[TestMethod]
@@ -60,20 +60,20 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void Float16HalfRejectsNonFinite()
 		{
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new Half[] { Half.NaN }));
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new Half[] { Half.PositiveInfinity }));
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new Half[] { Half.NegativeInfinity }));
+			AssertParseError(() => Vector.OfFloat16(new Half[] { Half.NaN }));
+			AssertParseError(() => Vector.OfFloat16(new Half[] { Half.PositiveInfinity }));
+			AssertParseError(() => Vector.OfFloat16(new Half[] { Half.NegativeInfinity }));
 		}
 
 		[TestMethod]
 		public void Float16FromFloatRejectsNonFiniteAndOverflow()
 		{
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new float[] { float.NaN }));
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new float[] { float.PositiveInfinity }));
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new float[] { float.NegativeInfinity }));
+			AssertParseError(() => Vector.OfFloat16(new float[] { float.NaN }));
+			AssertParseError(() => Vector.OfFloat16(new float[] { float.PositiveInfinity }));
+			AssertParseError(() => Vector.OfFloat16(new float[] { float.NegativeInfinity }));
 			// Magnitudes above 65520 convert to infinity in binary16.
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new float[] { 65521f }));
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat16(new float[] { -65521f }));
+			AssertParseError(() => Vector.OfFloat16(new float[] { 65521f }));
+			AssertParseError(() => Vector.OfFloat16(new float[] { -65521f }));
 		}
 
 		[TestMethod]
@@ -99,13 +99,9 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void Float32SpecialValuesRoundTrip()
+		public void Float32FiniteExtremesRoundTrip()
 		{
-			float[] data = new float[]
-			{
-				float.NaN, float.PositiveInfinity, float.NegativeInfinity,
-				-0.0f, 0.0f, float.Epsilon, float.MaxValue
-			};
+			float[] data = new float[] { -0.0f, 0.0f, float.Epsilon, float.MinValue, float.MaxValue };
 			Vector v = Vector.OfFloat32(data);
 
 			byte[] buffer = new byte[v.GetWireSize()];
@@ -119,13 +115,17 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void Float64SpecialValuesRoundTrip()
+		public void Float32RejectsNonFinite()
 		{
-			double[] data = new double[]
-			{
-				double.NaN, double.PositiveInfinity, double.NegativeInfinity,
-				-0.0, 0.0, double.Epsilon, double.MaxValue
-			};
+			AssertParseError(() => Vector.OfFloat32(new float[] { float.NaN }));
+			AssertParseError(() => Vector.OfFloat32(new float[] { float.PositiveInfinity }));
+			AssertParseError(() => Vector.OfFloat32(new float[] { float.NegativeInfinity }));
+		}
+
+		[TestMethod]
+		public void Float64FiniteExtremesRoundTrip()
+		{
+			double[] data = new double[] { -0.0, 0.0, double.Epsilon, double.MinValue, double.MaxValue };
 			Vector v = Vector.OfFloat64(data);
 
 			byte[] buffer = new byte[v.GetWireSize()];
@@ -139,12 +139,31 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void Float64RejectsNonFinite()
+		{
+			AssertParseError(() => Vector.OfFloat64(new double[] { double.NaN }));
+			AssertParseError(() => Vector.OfFloat64(new double[] { double.PositiveInfinity }));
+			AssertParseError(() => Vector.OfFloat64(new double[] { double.NegativeInfinity }));
+		}
+
+		[TestMethod]
 		public void EqualsUsesBitSemanticsForFloats()
 		{
-			Assert.AreEqual(Vector.OfFloat32(new float[] { float.NaN }), Vector.OfFloat32(new float[] { float.NaN }));
 			Assert.AreNotEqual(Vector.OfFloat32(new float[] { -0.0f }), Vector.OfFloat32(new float[] { 0.0f }));
-			Assert.AreEqual(Vector.OfFloat64(new double[] { double.NaN }), Vector.OfFloat64(new double[] { double.NaN }));
 			Assert.AreNotEqual(Vector.OfFloat64(new double[] { -0.0 }), Vector.OfFloat64(new double[] { 0.0 }));
+		}
+
+		[TestMethod]
+		public void OversizedDimensionsAreRejected()
+		{
+			// Prefer From() header checks so we don't allocate MaxDimensions+1 element arrays.
+			AssertFromDimensionsRejected(Vector.ElementType.FLOAT16, Vector.MaxDimensionsFloat16 + 1);
+			AssertFromDimensionsRejected(Vector.ElementType.INT32, Vector.MaxDimensionsInt32OrFloat32 + 1);
+			AssertFromDimensionsRejected(Vector.ElementType.FLOAT32, Vector.MaxDimensionsInt32OrFloat32 + 1);
+			AssertFromDimensionsRejected(Vector.ElementType.FLOAT64, Vector.MaxDimensionsFloat64 + 1);
+
+			// Of* shares RequireValidDimensions; spot-check one constructor path.
+			AssertParseError(() => Vector.OfFloat64(new double[Vector.MaxDimensionsFloat64 + 1]));
 		}
 
 		[TestMethod]
@@ -182,7 +201,7 @@ namespace Aerospike.Test
 			buffer[4] = 0xff;
 			buffer[5] = 0xff;
 
-			Assert.Throws<ArgumentException>(() => Vector.From(buffer, 0, buffer.Length));
+			AssertParseError(() => Vector.From(buffer, 0, buffer.Length));
 		}
 
 		[TestMethod]
@@ -193,7 +212,7 @@ namespace Aerospike.Test
 			buffer[1] = (byte)Vector.ElementType.FLOAT32;
 			ByteUtil.IntToLittleBytes(unchecked((uint)int.MaxValue), buffer, 2);
 
-			Assert.Throws<ArgumentException>(() => Vector.From(buffer, 0, buffer.Length));
+			AssertParseError(() => Vector.From(buffer, 0, buffer.Length));
 		}
 
 		[TestMethod]
@@ -205,7 +224,7 @@ namespace Aerospike.Test
 
 			buffer[0] = 0x02;
 
-			Assert.Throws<ArgumentException>(() => Vector.From(buffer, 0, buffer.Length));
+			AssertParseError(() => Vector.From(buffer, 0, buffer.Length));
 		}
 
 		[TestMethod]
@@ -263,6 +282,21 @@ namespace Aerospike.Test
 			AerospikeException e = Assert.Throws<AerospikeException>(() => Packer.Pack(list));
 			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
+		}
+
+		private static void AssertParseError(Action action)
+		{
+			AerospikeException e = Assert.Throws<AerospikeException>(action);
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
+		}
+
+		private static void AssertFromDimensionsRejected(Vector.ElementType elementType, int dimensions)
+		{
+			byte[] buffer = new byte[Vector.HEADER_SIZE];
+			buffer[0] = Vector.VERSION;
+			buffer[1] = (byte)elementType;
+			ByteUtil.IntToLittleBytes((uint)dimensions, buffer, 2);
+			AssertParseError(() => Vector.From(buffer, 0, buffer.Length));
 		}
 
 		private static void AssertRoundTrip(Vector v)

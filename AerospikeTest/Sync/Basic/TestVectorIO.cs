@@ -88,7 +88,9 @@ namespace Aerospike.Test
 		public void EmptyVectorRejectedByClient()
 		{
 			// Of* rejects empty arrays before any round trip (CLIENT-5686 / PRD R30).
-			Assert.Throws<ArgumentException>(() => Vector.OfFloat32(Array.Empty<float>()));
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => Vector.OfFloat32(Array.Empty<float>()));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
 		}
 
 		[TestMethod]

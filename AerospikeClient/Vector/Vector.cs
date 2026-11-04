@@ -74,6 +74,21 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Maximum dimensions for float16 (256 KiB element payload).
+		/// </summary>
+		public const int MaxDimensionsFloat16 = 131072;
+
+		/// <summary>
+		/// Maximum dimensions for int32 and float32 (256 KiB element payload).
+		/// </summary>
+		public const int MaxDimensionsInt32OrFloat32 = 65536;
+
+		/// <summary>
+		/// Maximum dimensions for float64 (256 KiB element payload).
+		/// </summary>
+		public const int MaxDimensionsFloat64 = 32768;
+
+		/// <summary>
 		/// Return the number of bytes used to encode a single element of the given type.
 		/// </summary>
 		public static int GetElementByteSize(ElementType elementType) => elementType switch
@@ -82,7 +97,7 @@ namespace Aerospike.Client
 			ElementType.INT32 => 4,
 			ElementType.FLOAT32 => 4,
 			ElementType.FLOAT64 => 8,
-			_ => throw new ArgumentException("Unknown vector element type: " + elementType)
+			_ => throw ParseError("Unknown vector element type: " + elementType)
 		};
 
 		/// <summary>
@@ -94,7 +109,19 @@ namespace Aerospike.Client
 			(byte)ElementType.INT32 => ElementType.INT32,
 			(byte)ElementType.FLOAT32 => ElementType.FLOAT32,
 			(byte)ElementType.FLOAT64 => ElementType.FLOAT64,
-			_ => throw new ArgumentException("Unknown vector element type code: " + code)
+			_ => throw ParseError("Unknown vector element type code: " + code)
+		};
+
+		/// <summary>
+		/// Maximum dimensions allowed for the given element type (R6).
+		/// </summary>
+		public static int GetMaxDimensions(ElementType elementType) => elementType switch
+		{
+			ElementType.FLOAT16 => MaxDimensionsFloat16,
+			ElementType.INT32 => MaxDimensionsInt32OrFloat32,
+			ElementType.FLOAT32 => MaxDimensionsInt32OrFloat32,
+			ElementType.FLOAT64 => MaxDimensionsFloat64,
+			_ => throw ParseError("Unknown vector element type: " + elementType)
 		};
 
 		/// <summary>
@@ -187,7 +214,7 @@ namespace Aerospike.Client
 		{
 			if (length < HEADER_SIZE)
 			{
-				throw new ArgumentException("Invalid vector length: " + length);
+				throw ParseError("Invalid vector length: " + length);
 			}
 
 			int pos = offset;
@@ -196,7 +223,7 @@ namespace Aerospike.Client
 
 			if (version != VERSION)
 			{
-				throw new ArgumentException(
+				throw ParseError(
 					"Unsupported vector format version " + version + " (expected " + VERSION + ")");
 			}
 
@@ -204,10 +231,7 @@ namespace Aerospike.Client
 			int dimensions = ByteUtil.LittleBytesToInt(buffer, pos);
 			pos += DIMENSIONS_SIZE;
 
-			if (dimensions < 1)
-			{
-				throw new ArgumentException("Vector must have at least 1 dimension");
-			}
+			RequireValidDimensions(elementType, dimensions);
 
 			// Use long math so a large dimensions count cannot overflow the int size computation
 			// (which could otherwise bypass the bounds check and trigger a huge allocation).
@@ -215,7 +239,7 @@ namespace Aerospike.Client
 
 			if (length < HEADER_SIZE + dataSizeLong)
 			{
-				throw new ArgumentException("Invalid vector length: " + length +
+				throw ParseError("Invalid vector length: " + length +
 					", expected at least " + (HEADER_SIZE + dataSizeLong));
 			}
 
@@ -232,8 +256,12 @@ namespace Aerospike.Client
 		/// when building from numeric values; use this overload for exact bit interchange
 		/// (including non-finite patterns).
 		/// </summary>
-		public static Vector OfFloat16(short[] data) =>
-			new(VERSION, ElementType.FLOAT16, RequireNonEmpty(data, nameof(data)).Length, (short[])data.Clone());
+		public static Vector OfFloat16(short[] data)
+		{
+			RequireNonEmpty(data, nameof(data));
+			RequireValidDimensions(ElementType.FLOAT16, data.Length);
+			return new Vector(VERSION, ElementType.FLOAT16, data.Length, (short[])data.Clone());
+		}
 
 		/// <summary>
 		/// Create a vector of float16 elements from <see cref="Half"/> values.
@@ -242,11 +270,12 @@ namespace Aerospike.Client
 		public static Vector OfFloat16(Half[] data)
 		{
 			RequireNonEmpty(data, nameof(data));
+			RequireValidDimensions(ElementType.FLOAT16, data.Length);
 			short[] bits = new short[data.Length];
 
 			for (int i = 0; i < data.Length; i++)
 			{
-				bits[i] = HalfToFiniteBits(data[i], nameof(data), i);
+				bits[i] = HalfToFiniteBits(data[i], i);
 			}
 
 			return new Vector(VERSION, ElementType.FLOAT16, data.Length, bits);
@@ -260,11 +289,12 @@ namespace Aerospike.Client
 		public static Vector OfFloat16(float[] data)
 		{
 			RequireNonEmpty(data, nameof(data));
+			RequireValidDimensions(ElementType.FLOAT16, data.Length);
 			short[] bits = new short[data.Length];
 
 			for (int i = 0; i < data.Length; i++)
 			{
-				bits[i] = FloatToFiniteHalfBits(data[i], nameof(data), i);
+				bits[i] = FloatToFiniteHalfBits(data[i], i);
 			}
 
 			return new Vector(VERSION, ElementType.FLOAT16, data.Length, bits);
@@ -273,20 +303,37 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Create a vector of int32 elements.
 		/// </summary>
-		public static Vector OfInt32(int[] data) =>
-			new(VERSION, ElementType.INT32, RequireNonEmpty(data, nameof(data)).Length, (int[])data.Clone());
+		public static Vector OfInt32(int[] data)
+		{
+			RequireNonEmpty(data, nameof(data));
+			RequireValidDimensions(ElementType.INT32, data.Length);
+			return new Vector(VERSION, ElementType.INT32, data.Length, (int[])data.Clone());
+		}
 
 		/// <summary>
-		/// Create a vector of float (fp32) elements.
+		/// Create a vector of float (fp32) elements. Non-finite elements are rejected.
 		/// </summary>
-		public static Vector OfFloat32(float[] data) =>
-			new(VERSION, ElementType.FLOAT32, RequireNonEmpty(data, nameof(data)).Length, (float[])data.Clone());
+		public static Vector OfFloat32(float[] data)
+		{
+			RequireNonEmpty(data, nameof(data));
+			RequireValidDimensions(ElementType.FLOAT32, data.Length);
+			RequireFiniteFloat32(data);
+			return new Vector(VERSION, ElementType.FLOAT32, data.Length, (float[])data.Clone());
+		}
 
 		/// <summary>
-		/// Create a vector of double (fp64) elements.
+		/// Create a vector of double (fp64) elements. Non-finite elements are rejected.
 		/// </summary>
-		public static Vector OfFloat64(double[] data) =>
-			new(VERSION, ElementType.FLOAT64, RequireNonEmpty(data, nameof(data)).Length, (double[])data.Clone());
+		public static Vector OfFloat64(double[] data)
+		{
+			RequireNonEmpty(data, nameof(data));
+			RequireValidDimensions(ElementType.FLOAT64, data.Length);
+			RequireFiniteFloat64(data);
+			return new Vector(VERSION, ElementType.FLOAT64, data.Length, (double[])data.Clone());
+		}
+
+		private static AerospikeException ParseError(string message) =>
+			new(ResultCode.PARSE_ERROR, message);
 
 		/// <summary>
 		/// Reject null and empty arrays; empty vectors are invalid (PRD R30).
@@ -300,21 +347,64 @@ namespace Aerospike.Client
 
 			if (data.Length == 0)
 			{
-				throw new ArgumentException("Vector must have at least 1 dimension", paramName);
+				throw ParseError("Vector must have at least 1 dimension");
 			}
 			return data;
+		}
+
+		private static void RequireValidDimensions(ElementType elementType, int dimensions)
+		{
+			if (dimensions < 1)
+			{
+				throw ParseError("Vector must have at least 1 dimension");
+			}
+
+			int max = GetMaxDimensions(elementType);
+
+			if (dimensions > max)
+			{
+				throw ParseError("Vector " + dimensions + " dimensions exceed max " + max +
+					" for element type " + (byte)elementType);
+			}
+		}
+
+		private static void RequireFiniteFloat32(float[] data)
+		{
+			for (int i = 0; i < data.Length; i++)
+			{
+				float value = data[i];
+
+				if (float.IsNaN(value) || float.IsInfinity(value))
+				{
+					throw ParseError(
+						"Vector float32 element at index " + i + " must be finite (got " + value + ")");
+				}
+			}
+		}
+
+		private static void RequireFiniteFloat64(double[] data)
+		{
+			for (int i = 0; i < data.Length; i++)
+			{
+				double value = data[i];
+
+				if (double.IsNaN(value) || double.IsInfinity(value))
+				{
+					throw ParseError(
+						"Vector float64 element at index " + i + " must be finite (got " + value + ")");
+				}
+			}
 		}
 
 		/// <summary>
 		/// Convert a <see cref="Half"/> to its bit pattern, rejecting non-finite values.
 		/// </summary>
-		private static short HalfToFiniteBits(Half value, string paramName, int index)
+		private static short HalfToFiniteBits(Half value, int index)
 		{
 			if (Half.IsNaN(value) || Half.IsInfinity(value))
 			{
-				throw new ArgumentException(
-					"Vector float16 element at index " + index + " must be finite (got " + value + ")",
-					paramName);
+				throw ParseError(
+					"Vector float16 element at index " + index + " must be finite (got " + value + ")");
 			}
 
 			return BitConverter.HalfToInt16Bits(value);
@@ -324,13 +414,12 @@ namespace Aerospike.Client
 		/// Convert a <see cref="float"/> to finite binary16 bits via IEEE 754
 		/// round-ties-to-even. Magnitudes above 65520 become infinity and are rejected.
 		/// </summary>
-		private static short FloatToFiniteHalfBits(float value, string paramName, int index)
+		private static short FloatToFiniteHalfBits(float value, int index)
 		{
 			if (float.IsNaN(value) || float.IsInfinity(value))
 			{
-				throw new ArgumentException(
-					"Vector float16 element at index " + index + " must be finite (got " + value + ")",
-					paramName);
+				throw ParseError(
+					"Vector float16 element at index " + index + " must be finite (got " + value + ")");
 			}
 
 			// (Half)float uses IEEE 754 round-ties-to-even on net8.0+.
@@ -338,10 +427,9 @@ namespace Aerospike.Client
 
 			if (Half.IsNaN(half) || Half.IsInfinity(half))
 			{
-				throw new ArgumentException(
+				throw ParseError(
 					"Vector float16 element at index " + index +
-					" overflows binary16 (magnitude above 65520; got " + value + ")",
-					paramName);
+					" overflows binary16 (magnitude above 65520; got " + value + ")");
 			}
 
 			return BitConverter.HalfToInt16Bits(half);
