@@ -315,6 +315,13 @@ namespace Aerospike.Client
 				s = s.Substring(1, s.Length - 2);
 			}
 
+			// Zone/scope IDs (fe80::1%en0) are not RFC 9525 IP-IDs; .NET TryParse strips the
+			// suffix and would otherwise match an iPAddress SAN for the unscoped address.
+			if (s.IndexOf('%') >= 0)
+			{
+				return null;
+			}
+
 			if (!IPAddress.TryParse(s, out IPAddress address))
 			{
 				return null;

@@ -104,6 +104,7 @@ echo "Running L3 suite filter=${filter} seed=${L3_SEED}"
 dotnet restore AerospikeTest/AerospikeTest.csproj
 dotnet build AerospikeTest/AerospikeTest.csproj -c Release --no-restore
 set +e
+# MSTest.Sdk / Microsoft.Testing.Platform: pass filter after -- as well (same as run-l2-suite).
 dotnet test AerospikeTest/AerospikeTest.csproj \
   -c Release \
   --no-build \
@@ -111,7 +112,9 @@ dotnet test AerospikeTest/AerospikeTest.csproj \
   --filter "${filter}" \
   --logger "trx;LogFileName=l3-k8s.trx" \
   --logger "console;verbosity=detailed" \
-  --results-directory TestResults
+  --results-directory TestResults \
+  -- \
+  --filter "${filter}"
 status=$?
 set -e
 rm -f "${runsettings}"

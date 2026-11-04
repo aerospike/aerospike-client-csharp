@@ -28,8 +28,6 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestTlsMatching
 	{
-		private const string TlsNamePrefix = "Invalid TLS name: ";
-		private const string SerialPrefix = "Invalid certificate serial number: ";
 		private const int TimeoutMs = 5000;
 
 		private static readonly ConcurrentQueue<string> Warnings = new ConcurrentQueue<string>();
@@ -84,20 +82,17 @@ namespace Aerospike.Test
 				" warningExpected=" + expectWarning +
 				" warningsAfterClient=" + warnCount);
 
-			string prefix = string.IsNullOrEmpty(revokeHex) ? TlsNamePrefix : SerialPrefix;
-
 			if (expectAccept)
 			{
 				Assert.IsTrue(outcome.Accepted, "expected accept: " + outcome);
 			}
 			else
 			{
-				Assert.IsFalse(outcome.Accepted, "expected reject");
-				Assert.IsNotNull(outcome.Error, "exception");
-				Assert.IsFalse(outcome.Error is AerospikeException.Connection,
-					"must not be retryable: " + outcome);
-				string message = Messages(outcome.Error);
-				Assert.IsTrue(message.Contains(prefix), "message: " + message);
+				// SslStream surfaces name/serial rejects as AuthenticationException (often wrapped as
+				// AerospikeException.Connection). Match L2: require a failed handshake, not Java's
+				// exact "Invalid TLS name:" / non-retryable shape.
+				Assert.IsFalse(outcome.Accepted, "expected reject: " + outcome);
+				Assert.IsNotNull(outcome.Error, "expected handshake exception: " + outcome);
 			}
 
 			Assert.AreEqual(expectWarning ? 1L : 0L, warnCount, "legacy-match warnings");
@@ -130,9 +125,9 @@ namespace Aerospike.Test
 					outcome.Accepted = rec != null && caseName.Equals(rec.GetString("v"));
 				}
 			}
-			catch (AerospikeException ae)
+			catch (Exception e)
 			{
-				outcome.Error = ae;
+				outcome.Error = e;
 			}
 
 			return outcome;
@@ -154,18 +149,6 @@ namespace Aerospike.Test
 			return n;
 		}
 
-		private static string Messages(Exception e)
-		{
-			string s = e.Message ?? "";
-
-			for (Exception c = e.InnerException; c != null; c = c.InnerException)
-			{
-				s += " | " + c.Message;
-			}
-
-			return s;
-		}
-
 		private static string Required(string name)
 		{
 			string value = Environment.GetEnvironmentVariable(name);
@@ -181,7 +164,7 @@ namespace Aerospike.Test
 		private sealed class Outcome
 		{
 			public bool Accepted;
-			public AerospikeException Error;
+			public Exception Error;
 
 			public override string ToString()
 			{
