@@ -1,22 +1,43 @@
 [
   {
-    "server-tag": "latest",
+    "server-tag": "8.1.2.0",
     "server-type": "aerospike-server-enterprise",
-    "server-container-repo": "database-docker-prod-public-local/aerospike-server-enterprise",
+    "server-container-repo": "database-docker-virtual/aerospike-server-enterprise",
     "tls": false,
     "security": false
   },
   {
-    "server-tag": "latest",
+    "server-tag": "8.1.2.0",
     "server-type": "aerospike-server-enterprise",
-    "server-container-repo": "database-docker-prod-public-local/aerospike-server-enterprise",
+    "server-container-repo": "database-docker-virtual/aerospike-server-enterprise",
     "tls": true,
     "security": true
   },
   {
-    "server-tag": "latest",
+    "server-tag": "8.1.2.0",
     "server-type": "aerospike-server",
-    "server-container-repo": "database-docker-prod-public-local/aerospike-server",
+    "server-container-repo": "database-docker-virtual/aerospike-server",
+    "tls": false,
+    "security": false
+  },
+  {
+    "server-tag": "8.2.0.1",
+    "server-type": "aerospike-server-enterprise",
+    "server-container-repo": "database-docker-virtual/aerospike-server-enterprise",
+    "tls": false,
+    "security": false
+  },
+  {
+    "server-tag": "8.2.0.1",
+    "server-type": "aerospike-server-enterprise",
+    "server-container-repo": "database-docker-virtual/aerospike-server-enterprise",
+    "tls": true,
+    "security": true
+  },
+  {
+    "server-tag": "8.2.0.1",
+    "server-type": "aerospike-server",
+    "server-container-repo": "database-docker-virtual/aerospike-server",
     "tls": false,
     "security": false
   }

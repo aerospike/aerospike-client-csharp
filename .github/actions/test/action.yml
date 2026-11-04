@@ -4,8 +4,8 @@ description: Runs the Aerospike .NET client test suite against a server containe
 inputs:
   server-tag:
     required: false
-    default: latest
-    description: Server docker image tag
+    default: 8.2.0.1
+    description: Server docker image tag (prefer pinned GA from .github/test_servers.json)
   oidc-provider:
     required: true
     description: OIDC provider
@@ -27,8 +27,8 @@ inputs:
     required: false
     default: ""
     description: >
-      Full Docker image repo path (e.g. database-docker-prod-public-local/aerospike-server-enterprise).
-      When empty, defaults to database-docker-prod-public-local/<server-type> (latest GA).
+      Full Docker image repo path (e.g. database-docker-virtual/aerospike-server-enterprise).
+      When empty, defaults to database-docker-virtual/<server-type>.
   enable-tls:
     required: false
     default: "false"
@@ -53,8 +53,7 @@ runs:
 
         CONTAINER_REPO="${{ inputs.server-container-repo }}"
         if [ -z "$CONTAINER_REPO" ]; then
-          # prod-public-local:latest tracks last GA (not in-progress builds on virtual).
-          CONTAINER_REPO="database-docker-prod-public-local/${{ inputs.server-type }}"
+          CONTAINER_REPO="database-docker-virtual/${{ inputs.server-type }}"
         fi
         echo "server-container-repo=$CONTAINER_REPO" >> "$GITHUB_OUTPUT"
 

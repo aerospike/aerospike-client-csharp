@@ -1,5 +1,5 @@
 name: Build and test
-run-name: "${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.pull_request.number) || (github.event_name == 'workflow_dispatch' && inputs.release-candidate && 'Release candidate') || (github.event_name == 'push' && 'Stage') || 'Dev' }} build (${{ inputs.server-tag || 'latest' }}, ${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && 'enterprise' || 'community' }}, ${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && (format('{0}', inputs.strong-consistency) == 'false' && 'AP' || 'SC') || 'AP' }}${{ (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && inputs.enable-tls && ', TLS' || '' }})"
+run-name: "${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.pull_request.number) || (github.event_name == 'workflow_dispatch' && inputs.release-candidate && 'Release candidate') || (github.event_name == 'push' && 'Stage') || 'Dev' }} build (${{ inputs.server-tag || 'server matrix' }}${{ inputs.server-tag && format(', {0}', (inputs.server-type || 'aerospike-server-enterprise') == 'aerospike-server-enterprise' && 'enterprise' || 'community') || '' }})"
 
 permissions:
   # Required for OIDC token requests (used by JFrog/sign jobs)
@@ -42,22 +42,23 @@ on:
       server-tag:
         type: string
         required: false
-        default: latest
-        description: Server docker image tag
+        default: ""
+        description: Optional override. Leave empty to use .github/test_servers.json matrix.
       server-type:
         type: string
         required: false
         default: aerospike-server-enterprise
+        description: Used only when server-tag override is set.
       strong-consistency:
         type: boolean
         required: false
         default: true
-        description: Enable strong consistency. Enterprise edition required.
+        description: Used only when server-tag override is set. Enterprise edition required.
       enable-tls:
         type: boolean
         required: false
         default: false
-        description: Enable TLS for server and test connections. Enterprise edition required.
+        description: Used only when server-tag override is set. Enterprise edition required.
 
 # Queue stage push + RC deploys so JFrog bundle create/promote cannot overlap.
 # PR and ad-hoc (non-RC) runs use a unique group and do not block each other.
@@ -217,8 +218,91 @@ jobs:
       credential_id: ${{ secrets.CREDENTIAL_ID }}
       es-totp_secret: ${{ secrets.ES_TOTP_SECRET }}
 
+  # Load pinned GA tags from .github/test_servers.json
+  # workflow_dispatch can override with a single server-tag. Untrusted PRs
+  # (Dependabot/forks) are forced to community so they do not need EE secrets.
+  load-test-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      servers: ${{ steps.servers.outputs.servers }}
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Load PR/stage server matrix
+      id: servers
+      shell: bash
+      env:
+        IN_SERVER_TAG: ${{ inputs.server-tag }}
+        IN_SERVER_TYPE: ${{ inputs.server-type }}
+        IN_ENABLE_TLS: ${{ format('{0}', inputs.enable-tls) }}
+        IN_STRONG_CONSISTENCY: ${{ format('{0}', inputs.strong-consistency) }}
+        IN_TRUSTED_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
+      run: |
+        set -euo pipefail
+        if [ -n "${IN_SERVER_TAG:-}" ]; then
+          SERVER_TYPE="${IN_SERVER_TYPE:-aerospike-server-enterprise}"
+          ENABLE_TLS="${IN_ENABLE_TLS:-false}"
+          if [ "$IN_STRONG_CONSISTENCY" = "false" ]; then SC=false; else SC=true; fi
+          if [ "$ENABLE_TLS" = "true" ]; then ENABLE_TLS=true; else ENABLE_TLS=false; fi
+          if [ "$SERVER_TYPE" != "aerospike-server-enterprise" ]; then
+            ENABLE_TLS=false
+            SC=false
+            REPO="database-docker-virtual/aerospike-server"
+          else
+            REPO="database-docker-virtual/aerospike-server-enterprise"
+          fi
+          servers=$(jq -cn \
+            --arg tag "$IN_SERVER_TAG" \
+            --arg type "$SERVER_TYPE" \
+            --arg repo "$REPO" \
+            --argjson tls "$ENABLE_TLS" \
+            --argjson sc "$SC" \
+            '[{
+              "server-tag": $tag,
+              "server-type": $type,
+              "server-container-repo": $repo,
+              "tls": $tls,
+              "security": false,
+              "strong-consistency": $sc
+            }]')
+        elif [ "$IN_TRUSTED_SECRETS" != "true" ]; then
+          # Fork/Dependabot: community only, reuse tags from the PR matrix file.
+          servers=$(jq -c '
+            [ .[]
+              | .["server-type"] = "aerospike-server"
+              | .["server-container-repo"] = "database-docker-virtual/aerospike-server"
+              | .tls = false
+              | .security = false
+              | .["strong-consistency"] = false
+            ]
+            | unique_by(.["server-tag"])
+          ' .github/test_servers.json)
+        else
+          servers=$(jq -c '
+            [ .[]
+              | .["strong-consistency"] = (.["server-type"] == "aerospike-server-enterprise")
+            ]
+          ' .github/test_servers.json)
+        fi
+        if [ "$servers" = "[]" ] || [ -z "$servers" ]; then
+          echo "No PR/stage test servers configured" >&2
+          exit 1
+        fi
+        echo "servers=$servers" >> "$GITHUB_OUTPUT"
+        echo "Server matrix: $servers"
+
   test:
-    needs: build
+    needs: [build, load-test-matrix]
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(needs.load-test-matrix.outputs.servers) }}
+    name: test-${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}
     runs-on: ubuntu-latest
     steps:
     - name: Harden the runner (Audit all outbound calls)
@@ -228,61 +312,19 @@ jobs:
 
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-    # Resolve test inputs once so trusted PR/push runs (which have no `inputs.*`)
-    # behave the same as a workflow_dispatch run that accepts all defaults.
-    # Notes on the tricky cases:
-    #   • `format('{0}', inputs.X)` coerces null → '' for safe string compare,
-    #     avoiding GitHub's loose equality where `null == false` is true.
-    #   • Untrusted PRs (Dependabot/forks) use the community server so they do
-    #     not need enterprise features.conf secrets.
-    #   • Community server runs are always AP and non-TLS.
-    - name: Resolve test inputs
-      id: cfg
-      shell: bash
-      env:
-        IN_SERVER_TAG: ${{ inputs.server-tag }}
-        IN_SERVER_TYPE: ${{ inputs.server-type }}
-        IN_ENABLE_TLS: ${{ format('{0}', inputs.enable-tls) }}
-        IN_STRONG_CONSISTENCY: ${{ format('{0}', inputs.strong-consistency) }}
-        IN_TRUSTED_SECRETS: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
-      run: |
-        SERVER_TAG="${IN_SERVER_TAG:-latest}"
-        if [ "$IN_TRUSTED_SECRETS" = "true" ]; then
-          SERVER_TYPE="${IN_SERVER_TYPE:-aerospike-server-enterprise}"
-        else
-          SERVER_TYPE="${IN_SERVER_TYPE:-aerospike-server}"
-        fi
-        ENABLE_TLS="${IN_ENABLE_TLS:-false}"
-        # Default SC to '1' (enabled). Only flip to '0' when the dispatch input
-        # is explicitly false; null/empty (PR/push) keeps the default.
-        if [ "$IN_STRONG_CONSISTENCY" = "false" ]; then
-          SC="0"
-        else
-          SC="1"
-        fi
-        if [ "$ENABLE_TLS" = "true" ]; then ENABLE_TLS="true"; else ENABLE_TLS="false"; fi
-        if [ "$SERVER_TYPE" != "aerospike-server-enterprise" ]; then
-          ENABLE_TLS="false"
-          SC="0"
-        fi
-        {
-          echo "server-tag=$SERVER_TAG"
-          echo "server-type=$SERVER_TYPE"
-          echo "enable-tls=$ENABLE_TLS"
-          echo "strong-consistency=$SC"
-          echo "is-enterprise=$([ "$SERVER_TYPE" = "aerospike-server-enterprise" ] && echo true || echo false)"
-        } >> "$GITHUB_OUTPUT"
-
     - name: Test
       uses: ./.github/actions/test
       with:
-        server-tag: ${{ steps.cfg.outputs.server-tag }}
-        server-type: ${{ steps.cfg.outputs.server-type }}
-        enable-tls: ${{ steps.cfg.outputs.enable-tls }}
-        strong-consistency: ${{ steps.cfg.outputs.strong-consistency }}
-        features-content: ${{ steps.cfg.outputs.is-enterprise == 'true' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) && secrets.AES_FEATURES_CONF || '' }}
+        server-tag: ${{ matrix.server.server-tag }}
+        server-type: ${{ matrix.server.server-type }}
+        server-container-repo: ${{ matrix.server.server-container-repo }}
+        enable-tls: ${{ matrix.server.tls }}
+        enable-security: ${{ matrix.server.security == true && 'true' || 'false' }}
+        strong-consistency: ${{ matrix.server.strong-consistency == true && '1' || '0' }}
+        features-content: ${{ matrix.server.server-type == 'aerospike-server-enterprise' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) && secrets.AES_FEATURES_CONF || '' }}
         oidc-provider: gh-aerospike
         oidc-audience: aerospike
+        artifact-suffix: ${{ matrix.server.server-tag }}-${{ matrix.server.server-type }}
 
     # Trusted PR-only: surface test results as a check + comment on the pull request.
     # Dependabot/fork PR tokens cannot write checks/comments.
@@ -291,7 +333,7 @@ jobs:
       uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
       with:
         files: test-results/**/*.trx
-        check_name: "Test Results (${{ steps.cfg.outputs.server-tag }})"
+        check_name: "Test Results (${{ matrix.server.server-tag }})"
 
     # Trusted PR-only: publish example smoke tests as their own result check.
     - name: Publish example run results
@@ -299,7 +341,7 @@ jobs:
       uses: step-security/publish-unit-test-result-action@681100d67b09305624c089873f12c545ee7cbc24 # v2.23.0
       with:
         files: example-results/**/*.trx
-        check_name: "Example Run (${{ steps.cfg.outputs.server-tag }})"
+        check_name: "Example Run (${{ matrix.server.server-tag }})"
 
   deploy:
     if: ${{ needs.build.outputs.should-deploy == 'true' }}
