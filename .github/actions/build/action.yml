@@ -9,6 +9,12 @@ inputs:
     required: false
     default: "true"
     description: Re-sign AerospikeClient.dll with the private strong-name key.
+  package-version:
+    required: false
+    default: ""
+    description: >
+      Optional NuGet/assembly version override (e.g. 8.5.1-ci.12). When empty,
+      pack uses the committed .csproj <Version>.
 
 runs:
   using: composite
@@ -19,7 +25,16 @@ runs:
 
     - name: Build
       shell: pwsh
-      run: dotnet build --configuration Release --no-restore
+      env:
+        PACKAGE_VERSION: ${{ inputs.package-version }}
+      run: |
+        $versionArgs = @()
+        if (-not [string]::IsNullOrWhiteSpace($env:PACKAGE_VERSION)) {
+          $versionArgs = @("/p:Version=$($env:PACKAGE_VERSION)", "/p:PackageVersion=$($env:PACKAGE_VERSION)")
+          Write-Host "Building with version $($env:PACKAGE_VERSION)"
+        }
+        & dotnet build --configuration Release --no-restore @versionArgs
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     - name: Create Code Signing Key
       if: inputs.sign-client == 'true'
@@ -40,7 +55,16 @@ runs:
 
     - name: Create nuget packages
       shell: pwsh
-      run: dotnet pack --no-build
+      env:
+        PACKAGE_VERSION: ${{ inputs.package-version }}
+      run: |
+        $versionArgs = @()
+        if (-not [string]::IsNullOrWhiteSpace($env:PACKAGE_VERSION)) {
+          $versionArgs = @("/p:Version=$($env:PACKAGE_VERSION)", "/p:PackageVersion=$($env:PACKAGE_VERSION)")
+          Write-Host "Packing with version $($env:PACKAGE_VERSION)"
+        }
+        & dotnet pack --no-build @versionArgs
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     - name: Publish test project
       shell: pwsh
