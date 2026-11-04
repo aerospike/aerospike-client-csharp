@@ -24,7 +24,9 @@ kubeconfig="${DISCOVERY_KUBECONFIG:?DISCOVERY_KUBECONFIG is required}"
   exit 1
 }
 
-filter="${L3_SUITE:-FullyQualifiedName~(TestK8sPassThrough|TestK8sScale)}"
+# Same OR shape as run-l2-suite: FullyQualifiedName~A|FullyQualifiedName~B.
+# MTP rejects the grouped form FullyQualifiedName~(A|B) (zero tests).
+filter="${L3_SUITE:-FullyQualifiedName~TestK8sPassThrough|FullyQualifiedName~TestK8sScale}"
 [[ "$filter" =~ ^[A-Za-z0-9~=_.()|-]+$ ]] || {
   echo "Refusing unexpected filter: ${filter}" >&2
   exit 1
