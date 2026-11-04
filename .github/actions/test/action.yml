@@ -27,8 +27,8 @@ inputs:
     required: false
     default: ""
     description: >
-      Full Docker image repo path (e.g. database-docker-virtual/aerospike-server-enterprise).
-      When empty, defaults to the setup-aerospike-server action's built-in default.
+      Full Docker image repo path (e.g. database-docker-prod-public-local/aerospike-server-enterprise).
+      When empty, defaults to database-docker-prod-public-local/<server-type> (latest GA).
   enable-tls:
     required: false
     default: "false"
@@ -53,7 +53,8 @@ runs:
 
         CONTAINER_REPO="${{ inputs.server-container-repo }}"
         if [ -z "$CONTAINER_REPO" ]; then
-          CONTAINER_REPO="database-docker-virtual/${{ inputs.server-type }}"
+          # prod-public-local:latest tracks last GA (not in-progress builds on virtual).
+          CONTAINER_REPO="database-docker-prod-public-local/${{ inputs.server-type }}"
         fi
         echo "server-container-repo=$CONTAINER_REPO" >> "$GITHUB_OUTPUT"
 
