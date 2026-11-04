@@ -26,10 +26,25 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
+      - name: Checkout conformance fixtures
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: aerospike/aerospike-client-conformance
+          ref: f66304f36d1cded608e4d6c199622266e2db1dc3 # main, fixture set 1.1.0
+          path: conformance-fixtures
+
       - name: Setup .NET
         uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: "8.0.x"
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML for fixture loading
+        run: pip install --quiet pyyaml
 
       # Match discovery-l2: hard-coded OIDC provider/audience (JFROG_OIDC_* secrets are unset here).
       - name: Set up JFrog CLI
@@ -52,6 +67,8 @@ jobs:
         env:
           AEROSPIKE_IMAGE: aerospike.jfrog.io/${{ inputs.server-container-repo }}:${{ inputs.server-tag }}
           AEROSPIKE_FEATURES_CONTENT: ${{ secrets.AES_FEATURES_CONF }}
+          FIXTURES_DIRECTORY: ${{ github.workspace }}/conformance-fixtures
+          DECLARATIONS_FILE: AerospikeTest/conformance/csharp-declared.yaml
         run: |
           set -euo pipefail
           if [[ -z "${AEROSPIKE_FEATURES_CONTENT}" ]]; then

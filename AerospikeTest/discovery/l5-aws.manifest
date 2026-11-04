@@ -1,0 +1,7 @@
+# Manifest for the l5-aws harness in aerospike-client-conformance (l5-aws/README.md).
+# Each command runs with bash on the runner (Amazon Linux 2023) from the repository root.
+L5_SETUP='sudo dnf install -y -q dotnet-sdk-8.0'
+L5_BUILD='dotnet build AerospikeL5Driver/AerospikeL5Driver.csproj AerospikeTest/AerospikeTest.csproj -c Release --nologo -v q'
+L5_DRIVER='AerospikeTest/discovery/l5_driver.sh'
+# Fallback when a harness revision does not use L5_DRIVER: MSTest rows via L5_ROW.
+L5_RUN='AerospikeTest/discovery/run_l5.sh'

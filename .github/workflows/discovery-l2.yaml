@@ -60,7 +60,8 @@ jobs:
         run: |
           set -euo pipefail
           case "${PROFILE}" in
-            default) filter='FullyQualifiedName~TestL2Topology' ;;
+            # N-* topology plus F-4 silent-drop / circuit breaker (TestL2FaultInjection).
+            default) filter='FullyQualifiedName~TestL2Topology|FullyQualifiedName~TestL2FaultInjection' ;;
             port-range) filter='FullyQualifiedName~TestL2SourcePortRange' ;;
             reachable) filter='FullyQualifiedName~TestL2ReachableNode' ;;
             pass-through-names | pass-through-ports) filter='FullyQualifiedName~TestL2PassThrough' ;;

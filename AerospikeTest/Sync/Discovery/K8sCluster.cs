@@ -155,6 +155,47 @@ namespace Aerospike.Test
 		}
 
 		/// <summary>
+		/// Return the Aerospike node ID the operator reports for the pod, or an empty string when it
+		/// reports none.
+		/// </summary>
+		public string NodeId(string pod)
+		{
+			return Get(".status.pods['" + pod + "'].aerospike.nodeID");
+		}
+
+		/// <summary>
+		/// Return the zone of each rack, in rack order.
+		/// </summary>
+		public List<string> RackZones()
+		{
+			return Lines(Kubectl("-n", clusterNamespace, "get", "aerospikecluster", clusterName, "-o",
+				"jsonpath={range .spec.rackConfig.racks[*]}{.zone}{\"\\n\"}{end}"));
+		}
+
+		/// <summary>
+		/// Return the UID of the pod and the node it is scheduled on, or empty strings when the pod does
+		/// not exist.
+		/// </summary>
+		public string[] PodPlacement(string pod)
+		{
+			string[] parts = Kubectl("-n", clusterNamespace, "get", "pod", pod, "--ignore-not-found", "-o",
+				"jsonpath={.metadata.uid} {.spec.nodeName}").Trim().Split(' ', StringSplitOptions.None);
+			return new[] { parts[0], parts.Length > 1 ? parts[1] : "" };
+		}
+
+		/// <summary>
+		/// Return the cloud instance ID at the end of the node's providerID, or the providerID when it
+		/// has no path.
+		/// </summary>
+		public static string Instance(string node)
+		{
+			string provider = Kubectl("get", "node", node, "--ignore-not-found", "-o",
+				"jsonpath={.spec.providerID}").Trim();
+			int slash = provider.LastIndexOf('/');
+			return slash < 0 ? provider : provider.Substring(slash + 1);
+		}
+
+		/// <summary>
 		/// Return the UID of the object, or an empty string when it does not exist.
 		/// </summary>
 		public string Uid(string kind, string objectName)

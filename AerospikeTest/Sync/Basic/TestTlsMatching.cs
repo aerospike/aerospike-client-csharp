@@ -20,10 +20,10 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	/// <summary>
-	/// Server certificate name matching against a TLS-enabled server whose certificate shape is
-	/// chosen per run by AerospikeTest/tls/run_tls_matching.sh. Case parameters arrive as
-	/// environment variables: TLS_CASE, TLS_NAME, TLS_EXPECT, TLS_WARNING, TLS_REVOKE,
-	/// TLS_CA, TLS_HOST, TLS_PORT, TLS_NAMESPACE.
+	/// Server certificate name matching against a TLS-enabled server. Cases are driven from
+	/// aerospike-client-conformance tls/name-matching.yaml by AerospikeTest/tls/run_tls_matching.sh.
+	/// Parameters: TLS_CASE, TLS_NAME, TLS_EXPECT, TLS_WARNING, TLS_REVOKE, TLS_CA, TLS_HOST,
+	/// TLS_PORT, TLS_NAMESPACE.
 	/// </summary>
 	[TestClass]
 	public class TestTlsMatching

@@ -47,7 +47,7 @@ jobs:
           mkdir -p TestResults
           # Server-free discovery coverage. MSTest.Sdk needs the filter after -- as well.
           # l0.runsettings also sets DISCOVERY_UNIT so AssemblyInit skips the suite client.
-          filter='FullyQualifiedName~TestDiscovery|FullyQualifiedName~TestSeedMergePolicy|FullyQualifiedName~TestSeedCandidateManager|FullyQualifiedName~TestDiscoverySpi|FullyQualifiedName~TestTranslateLatency|FullyQualifiedName~TestIdleReap|FullyQualifiedName~TestClusterViewChange|FullyQualifiedName~TestDiscoveryNaming|FullyQualifiedName~TestDnsSeedCandidateProvider|FullyQualifiedName~TestAwsEc2TagSeedCandidateProvider|FullyQualifiedName~TestAwsSigV4|FullyQualifiedName~TestDiscoveryYaml|FullyQualifiedName~TestPeerParser|FullyQualifiedName~TestZeroNodeReseed|FullyQualifiedName~TestAddressTranslatorNoIo'
+          filter='FullyQualifiedName~TestDiscovery|FullyQualifiedName~TestSeedMergePolicy|FullyQualifiedName~TestSeedCandidateManager|FullyQualifiedName~TestDiscoverySpi|FullyQualifiedName~TestTranslateLatency|FullyQualifiedName~TestIdleReap|FullyQualifiedName~TestClusterViewChange|FullyQualifiedName~TestDiscoveryNaming|FullyQualifiedName~TestDnsSeedCandidateProvider|FullyQualifiedName~TestAwsEc2TagSeedCandidateProvider|FullyQualifiedName~TestAwsCredentialChain|FullyQualifiedName~TestAwsSigV4|FullyQualifiedName~TestDiscoveryYaml|FullyQualifiedName~TestPeerParser|FullyQualifiedName~TestZeroNodeReseed|FullyQualifiedName~TestAddressTranslatorNoIo'
           dotnet test AerospikeTest/AerospikeTest.csproj \
             -c Release \
             --settings AerospikeTest/conformance/l0.runsettings \

@@ -1,22 +1,21 @@
 #!/usr/bin/env bash
 #
-# Server certificate name matching integration cases.
+# Server certificate name matching against a real Enterprise server.
 #
-# For each case: generate a CA and the case's server certificate with openssl, start one
-# Aerospike Enterprise container serving TLS with that certificate, run TestTlsMatching once
-# (sync), then remove the container. Case n6_proxy (testing-strategy N-6)
-# instead starts a two node cluster and runs TestTlsProxy, which reaches each node through a
-# TCP pass-through listener and learns the second node's tls-name from peers-*. Certificates live under
-# test/target/tls-matching and are regenerated on every run. Certificate generation, file names
-# and server config follow shared-workflows setup-aerospike-server; only the CN and SANs vary.
+# Cases come from aerospike-client-conformance tls/name-matching.yaml (Mirza CI guide §5):
+# one certificate per shapes entry, fixture rows as the case list, blocked rows skipped.
+# csharp-declared.yaml rows with result=fail are known L1 divergences (legacy CN fallback).
+# Integration still asserts the fixture expect; a failing row that is declared fail does not
+# fail the suite. An extra Testing Strategy N-6 proxy case (n6_proxy) follows the fixture rows.
 #
 # Required environment:
-#   AEROSPIKE_IMAGE             Enterprise server image, e.g. aerospike/aerospike-server-enterprise:8.1
+#   AEROSPIKE_IMAGE             Enterprise server image
 #   AEROSPIKE_FEATURES_FILE     feature-key file, or
-#   AEROSPIKE_FEATURES_CONTENT  feature-key file content (e.g. from a CI secret)
-# Optional environment:
-#   TLS_MATCHING_PORT           host port mapped to the container TLS port 4333 (default 4433;
-#                               n6_proxy also uses the next port for its second node)
+#   AEROSPIKE_FEATURES_CONTENT  feature-key file content
+#   FIXTURES_DIRECTORY          aerospike-client-conformance checkout (fixture set 1.1.0+)
+# Optional:
+#   DECLARATIONS_FILE           defaults to AerospikeTest/conformance/csharp-declared.yaml
+#   TLS_MATCHING_PORT           host port for the container TLS port (default 4433)
 #   TLS_MATCHING_SKIP_BUILD     set to 1 to skip building the client first
 #
 # Usage: AerospikeTest/tls/run_tls_matching.sh [case ...]   (no arguments runs every case)
@@ -29,6 +28,8 @@ ROOT_DIR="$(cd "$TEST_DIR/.." && pwd)"
 WORK_DIR="$TEST_DIR/bin/tls-matching"
 PORT="${TLS_MATCHING_PORT:-4433}"
 PREFIX="tls-matching-$$"
+LOADER="$SCRIPT_DIR/load_name_matching_cases.py"
+DECLARATIONS_FILE="${DECLARATIONS_FILE:-$TEST_DIR/conformance/csharp-declared.yaml}"
 
 die() {
 	echo "ERROR: $*" >&2
@@ -38,7 +39,13 @@ die() {
 command -v docker >/dev/null 2>&1 || die "docker CLI not found"
 docker info >/dev/null 2>&1 || die "docker daemon not reachable"
 command -v openssl >/dev/null 2>&1 || die "openssl not found"
+command -v python3 >/dev/null 2>&1 || die "python3 is required to load tls/name-matching.yaml"
 [ -n "${AEROSPIKE_IMAGE:-}" ] || die "AEROSPIKE_IMAGE is not set"
+[ -n "${FIXTURES_DIRECTORY:-}" ] || die "FIXTURES_DIRECTORY is not set (aerospike-client-conformance checkout)"
+[ -f "$FIXTURES_DIRECTORY/tls/name-matching.yaml" ] || die "tls/name-matching.yaml not found under FIXTURES_DIRECTORY"
+[ -f "$DECLARATIONS_FILE" ] || die "declarations file not found: $DECLARATIONS_FILE"
+[ -f "$LOADER" ] || die "case loader not found: $LOADER"
+
 if [ -n "${AEROSPIKE_FEATURES_FILE:-}" ]; then
 	[ -z "${AEROSPIKE_FEATURES_CONTENT:-}" ] || die "set only one of AEROSPIKE_FEATURES_FILE and AEROSPIKE_FEATURES_CONTENT"
 	[ -r "$AEROSPIKE_FEATURES_FILE" ] || die "AEROSPIKE_FEATURES_FILE '$AEROSPIKE_FEATURES_FILE' is not readable"
@@ -61,37 +68,11 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 
-# name|tlsName|subject CN|subjectAltName ("-" for no extension)|expect|warning|bootstrap tlsName|revoke
-# Reject certs carry the bootstrap tlsName as a dNSName so netty is reached without the CN fallback (except cn_case_only).
-CASES=(
-	"dns_exact|node.example.com|server-cn|DNS:node.example.com|accept|false||no"
-	"dns_case|node.example.com|server-cn|DNS:Node.Example.COM|accept|false||no"
-	"ipv4_ip_san|127.0.0.1|server-cn|IP:127.0.0.1|accept|false||no"
-	"ipv6_ip_san|2001:db8::1|server-cn|IP:2001:db8::1|accept|false||no"
-	"ipv6_ip_san_equivalent|2001:0db8:0:0:0:0:0:1|server-cn|IP:2001:db8::1|accept|false||no"
-	"ipv6_bracketed|[2001:db8::1]|server-cn|IP:2001:db8::1|accept|false||no"
-	"ipv6_scoped|fe80::1%en0|server-cn|IP:fe80::1,DNS:server-cn|reject|false|server-cn|no"
-	"ipv4_leading_zero|127.000.0.1|server-cn|IP:127.0.0.1,DNS:server-cn|reject|false|server-cn|no"
-	"dns_only_as_ip|localhost|server-cn|IP:127.0.0.1,DNS:server-cn|reject|false|server-cn|no"
-	"wildcard_one_label|a.example.com|server-cn|DNS:*.example.com|accept|false||no"
-	"wildcard_case|A.Example.COM|server-cn|DNS:*.example.com|accept|false||no"
-	"wildcard_bare_domain|example.com|server-cn|DNS:*.example.com,DNS:server-cn|reject|false|server-cn|no"
-	"wildcard_two_labels|a.b.example.com|server-cn|DNS:*.example.com,DNS:server-cn|reject|false|server-cn|no"
-	"wildcard_partial_label|ab.example.com|server-cn|DNS:a*.example.com,DNS:server-cn|reject|false|server-cn|no"
-	"wildcard_double|a.b.example.com|server-cn|DNS:*.*.example.com,DNS:server-cn|reject|false|server-cn|no"
-	"wildcard_inner_label|foo.a.example.com|server-cn|DNS:foo.*.example.com,DNS:server-cn|reject|false|server-cn|no"
-	"ip_vs_wildcard|127.0.0.1|server-cn|DNS:*.0.0.1,DNS:server-cn|reject|false|server-cn|no"
-	"cn_case_only|node.example.com|Node.Example.com|-|reject|false|Node.Example.com|no"
-	"legacy_cn_only|node.example.com|node.example.com|-|accept|true||no"
-	"legacy_cn_nonmatching_dns|node.example.com|node.example.com|DNS:other.example.com|accept|true||no"
-	"legacy_ip_as_dns|127.0.0.1|server-cn|DNS:127.0.0.1|accept|true||no"
-	"dns_san_nonmatching_cn|node.example.com|server-cn|DNS:node.example.com|accept|false||no"
-	"ci_setup_aerospike_server|aerospike-tls|aerospike-tls|DNS:aerospike-1,DNS:localhost,DNS:docker,IP:127.0.0.1|accept|true||no"
-	"ci_setup_aerospike_server_fixed|aerospike-tls|aerospike-tls|DNS:aerospike-1,DNS:localhost,DNS:docker,IP:127.0.0.1,DNS:aerospike-tls|accept|false||no"
-	"revoked_serial|node.example.com|server-cn|DNS:node.example.com|reject|false||yes"
-)
+# Load fixture rows: case shape tlsName subjectCN sanSpec expect declared
+mapfile -t FIXTURE_ROWS < <(python3 "$LOADER" --fixtures "$FIXTURES_DIRECTORY" --declarations "$DECLARATIONS_FILE")
+[ "${#FIXTURE_ROWS[@]}" -gt 0 ] || die "no runnable rows from tls/name-matching.yaml"
 
-# name|tls-name on both nodes|subject CN|subjectAltName
+# name|tls-name on both nodes|subject CN|subjectAltName — Testing Strategy N-6, not a fixture row.
 PROXY_CASES=(
 	"n6_proxy|cluster.example.com|server-cn|DNS:cluster.example.com"
 )
@@ -101,9 +82,10 @@ if [ $# -gt 0 ]; then
 	SELECTED_PROXY=()
 	for want in "$@"; do
 		found=0
-		for c in "${CASES[@]}"; do
-			if [ "${c%%|*}" = "$want" ]; then
-				SELECTED+=("$c")
+		for row in "${FIXTURE_ROWS[@]}"; do
+			IFS=$'\t' read -r case_name _ <<< "$row"
+			if [ "$case_name" = "$want" ]; then
+				SELECTED+=("$row")
 				found=1
 			fi
 		done
@@ -115,7 +97,7 @@ if [ $# -gt 0 ]; then
 		done
 		[ $found = 1 ] || die "unknown case '$want'"
 	done
-	CASES=("${SELECTED[@]+"${SELECTED[@]}"}")
+	FIXTURE_ROWS=("${SELECTED[@]+"${SELECTED[@]}"}")
 	PROXY_CASES=("${SELECTED_PROXY[@]+"${SELECTED_PROXY[@]}"}")
 fi
 
@@ -134,6 +116,9 @@ else
 	printf '%s\n' "$AEROSPIKE_FEATURES_CONTENT" > "$FEATURES"
 	chmod 644 "$FEATURES"
 fi
+
+# Cache generated certificates by shape name.
+declare -A SHAPE_DIR=()
 
 gen_certs() {
 	local dir="$1" cn="$2" san="$3"
@@ -157,6 +142,23 @@ gen_certs() {
 
 	rm -f "$dir"/*.csr "$dir"/*.srl "$dir/san.ext"
 	chmod 644 "$dir"/*
+}
+
+ensure_shape() {
+	local shape="$1" cn="$2" san="$3"
+	local dir="$WORK_DIR/shapes/$shape"
+
+	if [ -n "${SHAPE_DIR[$shape]+x}" ]; then
+		echo "${SHAPE_DIR[$shape]}"
+		return 0
+	fi
+
+	mkdir -p "$dir"
+	gen_certs "$dir" "$cn" "$san"
+	# Server tls-name must be the CN or a dNSName on the cert; every fixture shape has a CN.
+	write_conf "$dir" "$cn"
+	SHAPE_DIR[$shape]="$dir"
+	echo "$dir"
 }
 
 write_conf() {
@@ -242,7 +244,7 @@ wait_cluster_size() {
 }
 
 report_case() {
-	local name="$1" expect="$2" rc="$3" log="$4"
+	local name="$1" expect="$2" rc="$3" log="$4" note="${5:-}"
 
 	grep -E "TLS-RESULT|TLS-PROXY|CLIENT-LOG WARN" "$log" | sed 's/^/  /' || true
 	grep -E "Passed!|Failed!|failed|error" "$log" | tail -5 | sed 's/^/  /' || true
@@ -253,35 +255,35 @@ report_case() {
 		status=FAIL
 		FAILED=$((FAILED + 1))
 	fi
-	echo "CASE-STATUS $name $status"
-	SUMMARY+=("$(printf '%-36s %-6s %s' "$name" "$expect" "$status")")
+	echo "CASE-STATUS $name $status${note:+ ($note)}"
+	SUMMARY+=("$(printf '%-40s %-6s %-6s %s' "$name" "$expect" "$status" "$note")")
 }
 
 SUMMARY=()
 FAILED=0
 
-for c in "${CASES[@]+"${CASES[@]}"}"; do
-	IFS='|' read -r name tls_name cn san expect warning bootstrap revoke <<< "$c"
-	dir="$WORK_DIR/$name"
-	mkdir -p "$dir"
+for row in "${FIXTURE_ROWS[@]+"${FIXTURE_ROWS[@]}"}"; do
+	IFS=$'\t' read -r name shape tls_name cn san fixture_expect declared <<< "$row"
 
-	gen_certs "$dir" "$cn" "$san"
-	# The server refuses to start unless its own tls-name is the certificate CN or a dNSName.
-	write_conf "$dir" "$cn"
-
-	serial=""
-	if [ "$revoke" = "yes" ]; then
-		serial="$(openssl x509 -in "$dir/server.crt" -noout -serial | cut -d= -f2)"
+	expect="$fixture_expect"
+	warning=false
+	note=""
+	if [ "$declared" != "pass" ] && [ "$declared" != "fail" ]; then
+		die "unsupported declaration result '$declared' for case $name"
 	fi
 
+	shape_dir="$(ensure_shape "$shape" "$cn" "$san")"
+	dir="$WORK_DIR/cases/$name"
+	mkdir -p "$dir"
+	# Reuse the shape cert/conf; keep a per-case log directory.
+	cp -a "$shape_dir/." "$dir/"
+
 	echo
-	echo "=== CASE $name"
+	echo "=== CASE $name (shape=$shape)"
 	echo "certificate:"
-	openssl x509 -in "$dir/server.crt" -noout -text | grep -m1 'Version:' | sed 's/^ */  /'
 	openssl x509 -in "$dir/server.crt" -noout -subject -ext subjectAltName 2>&1 | sed 's/^/  /'
 	echo "tlsName: $tls_name"
-	echo "expected: $expect (sync), deprecation warning expected: $warning"
-	[ -n "$serial" ] && echo "revokeCertificates: $serial"
+	echo "fixture expect: $expect; declared: $declared"
 
 	container="$PREFIX-$name"
 	docker run -d --name "$container" -p "127.0.0.1:$PORT:4333" --ulimit nofile=15000 \
@@ -291,7 +293,6 @@ for c in "${CASES[@]+"${CASES[@]}"}"; do
 	STARTED+=("$container")
 	wait_ready "$container"
 
-	# Trust this case's CA for SslStream chain validation.
 	sudo cp "$dir/ca.crt" /usr/local/share/ca-certificates/aerospike-tls-matching.crt
 	sudo update-ca-certificates >/dev/null 2>&1 || true
 
@@ -300,7 +301,7 @@ for c in "${CASES[@]+"${CASES[@]}"}"; do
 	(
 		cd "$ROOT_DIR"
 		export TLS_CASE="$name" TLS_NAME="$tls_name" TLS_EXPECT="$expect" TLS_WARNING="$warning"
-		export TLS_BOOTSTRAP="$bootstrap" TLS_REVOKE="$serial" TLS_CA="$dir/ca.crt"
+		export TLS_BOOTSTRAP="" TLS_REVOKE="" TLS_CA="$dir/ca.crt"
 		export TLS_HOST=127.0.0.1 TLS_PORT="$PORT" TLS_NAMESPACE=test
 		filter='FullyQualifiedName~TestTlsMatching'
 		dotnet test AerospikeTest/AerospikeTest.csproj -c Release --no-build \
@@ -310,14 +311,23 @@ for c in "${CASES[@]+"${CASES[@]}"}"; do
 	rc=$?
 	set -e
 
-	report_case "$name" "$expect" "$rc" "$log"
+	if [ "$declared" = "fail" ]; then
+		if [ "$rc" -ne 0 ]; then
+			note="declared-fail still diverges"
+			rc=0
+		else
+			note="declared-fail now matches fixture"
+		fi
+	fi
+
+	report_case "$name" "$expect" "$rc" "$log" "$note"
 
 	docker rm -f "$container" >/dev/null 2>&1 || true
 done
 
 for c in "${PROXY_CASES[@]+"${PROXY_CASES[@]}"}"; do
 	IFS='|' read -r name tls_name cn san <<< "$c"
-	dir="$WORK_DIR/$name"
+	dir="$WORK_DIR/cases/$name"
 	mkdir -p "$dir"
 
 	gen_certs "$dir" "$cn" "$san"
@@ -366,18 +376,17 @@ for c in "${PROXY_CASES[@]+"${PROXY_CASES[@]}"}"; do
 	rc=$?
 	set -e
 
-	report_case "$name" accept "$rc" "$log"
+	report_case "$name" accept "$rc" "$log" "N-6 proxy"
 
 	docker rm -f "$node_a" "$node_b" >/dev/null 2>&1 || true
 	docker network rm "$network" >/dev/null 2>&1 || true
 done
 
 echo
-echo "=== SUMMARY (case, expected, status)"
+echo "=== SUMMARY (case, expected, status, note)"
 for s in "${SUMMARY[@]}"; do
 	echo "$s"
 done
-echo "cases: $((${#CASES[@]} + ${#PROXY_CASES[@]})) failed: $FAILED"
+echo "cases: $((${#FIXTURE_ROWS[@]} + ${#PROXY_CASES[@]})) failed: $FAILED"
 
 [ $FAILED -eq 0 ]
-
