@@ -27,29 +27,19 @@ jobs:
           ref: ${{ github.ref }}
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: "8.0.x"
 
-      - name: Require JFrog OIDC
-        env:
-          OIDC_PROVIDER: ${{ secrets.JFROG_OIDC_PROVIDER }}
-          OIDC_AUDIENCE: ${{ secrets.JFROG_OIDC_AUDIENCE }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${OIDC_PROVIDER}" || -z "${OIDC_AUDIENCE}" ]]; then
-            echo "::error::JFROG_OIDC_PROVIDER and JFROG_OIDC_AUDIENCE are required to pull the Aerospike image."
-            exit 1
-          fi
-
+      # Match discovery-l2: hard-coded OIDC provider/audience (JFROG_OIDC_* secrets are unset here).
       - name: Set up JFrog CLI
         id: jf
         uses: step-security/setup-jfrog-cli@a6b41f8338bea0983ddff6bd4ede7d2dcd81e1fa # v4.8.1
         env:
           JF_URL: https://aerospike.jfrog.io
         with:
-          oidc-provider-name: ${{ secrets.JFROG_OIDC_PROVIDER }}
-          oidc-audience: ${{ secrets.JFROG_OIDC_AUDIENCE }}
+          oidc-provider-name: gh-aerospike
+          oidc-audience: aerospike
 
       - name: Docker login
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0

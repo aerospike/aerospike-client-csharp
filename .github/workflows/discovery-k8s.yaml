@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@67a357865c8979a06ad778ed3dd5e1a6f0d7fe0e # v4.3.0
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: "8.0.x"
 
@@ -87,7 +87,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@67a357865c8979a06ad778ed3dd5e1a6f0d7fe0e # v4.3.0
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: "8.0.x"
 

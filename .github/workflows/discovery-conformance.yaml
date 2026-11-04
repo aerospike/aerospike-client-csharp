@@ -33,8 +33,10 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
+      # v5.2.0: setup-dotnet v6 installs the LTS runtime (.NET 10) first and MTP then
+      # handshake-fails the net8.0 test host (exit 5, zero tests).
       - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: "8.0.x"
 
@@ -73,7 +75,7 @@ jobs:
           path: conformance-fixtures
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: "8.0.x"
 

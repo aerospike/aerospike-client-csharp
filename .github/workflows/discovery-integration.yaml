@@ -100,7 +100,7 @@ jobs:
     secrets: inherit
 
   l2-ee:
-    # unresolved-access runs twice for TG-18: 8.2.0.0 resolves and exits; 8.2.1.0-35 advertises verbatim (SERVER-1839).
+    # unresolved-access runs twice for TG-18: 8.2.0.0 resolves and exits; 8.2.1.0-35 (timestamped tag) advertises verbatim.
     name: L2 discovery (ee${{ matrix.profile != 'default' && format(', {0}', matrix.profile) || '' }}${{ matrix.verbatim-access-address && ', verbatim' || '' }})
     needs: gate
     if: needs.gate.outputs.enterprise == 'true'
@@ -121,7 +121,8 @@ jobs:
             tls-listen-port-base: "43331"
             verbatim-access-address: false
           - profile: unresolved-access
-            server-tag: 8.2.1.0-35
+            # Docker tags in database-docker-dev-local are build-id + timestamp, not the short -N form.
+            server-tag: 8.2.1.0-35_20261103T045900Z
             tls-listen-port-base: "43331"
             verbatim-access-address: true
     uses: ./.github/workflows/discovery-l2.yaml

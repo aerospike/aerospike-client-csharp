@@ -66,7 +66,8 @@ if [[ -n "${AEROSPIKE_CA_CERT:-}" ]]; then
 fi
 
 filter="${L2_SUITE:-FullyQualifiedName~TestL2Topology}"
-[[ "$filter" =~ ^[A-Za-z0-9~=_.-]+$ ]] || {
+# Allow '|' so a profile can run multiple TestL2* classes (idle-reset, unresolved-access).
+[[ "$filter" =~ ^[A-Za-z0-9~=_.|-]+$ ]] || {
   echo "Refusing unexpected filter: ${filter}" >&2
   exit 1
 }
