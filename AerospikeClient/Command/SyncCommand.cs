@@ -177,7 +177,8 @@ namespace Aerospike.Client
 						}
 						else
 						{
-							node.CloseConnection(conn);
+							// Match Java closeConnection: count toward maxErrorRate (CloseConnection alone does not).
+							node.CloseConnectionOnError(conn);
 						}
 						exception = new AerospikeException.Timeout(policy, true);
 						isClientTimeout = true;

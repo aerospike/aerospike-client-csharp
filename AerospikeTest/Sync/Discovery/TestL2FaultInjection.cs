@@ -107,15 +107,19 @@ namespace Aerospike.Test
 					}
 				}
 
+				// Injection-relative bound allows one socketTimeout of headroom so a Put that was still
+				// finishing when the toxic landed can start its failing attempt without flaking CI.
+				long injectionBound = timeoutBound + SOCKET_TIMEOUT;
 				Console.WriteLine("L2-F4-TIMEOUT victim=" + victim.Name + " listener=" + victim.Port + " firstTimeoutMs=" +
-					firstTimeoutMs + " maxErrorElapsedMs=" + maxElapsed + " timeoutBoundMs=" + timeoutBound + " errors=" +
+					firstTimeoutMs + " maxErrorElapsedMs=" + maxElapsed + " timeoutBoundMs=" + timeoutBound +
+					" injectionBoundMs=" + injectionBound + " errors=" +
 					TestL2Topology.FmtMap(L2Topology.Kinds(errors)) + " successes=" + load.Successes() + " threadsReturned=" + finished);
 				Console.WriteLine("L2-F4-NODE active=" + (node != null && node.Active) + " nodes=" + TestL2Topology.Fmt(L2Topology.NodeNames(client)) +
 					" owners=" + TestL2Topology.FmtMap(L2Topology.Owners(client)) + " refreshFailedWarnings=" + refreshFailures);
 
 				Assert.IsTrue(finished, "F-4: command threads still blocked " + timeoutBound + "ms after stop");
-				Assert.IsTrue(firstTimeoutMs <= timeoutBound,
-					"F-4: first timeout " + firstTimeoutMs + "ms after the drop, bound " + timeoutBound + "ms");
+				Assert.IsTrue(firstTimeoutMs <= injectionBound,
+					"F-4: first timeout " + firstTimeoutMs + "ms after the drop, bound " + injectionBound + "ms");
 				Assert.IsTrue(maxElapsed <= timeoutBound, "F-4: an error took " + maxElapsed + "ms, bound " + timeoutBound + "ms");
 			});
 		}
@@ -206,6 +210,7 @@ namespace Aerospike.Test
 				wp.socketTimeout = SOCKET_TIMEOUT;
 				wp.totalTimeout = TOTAL_TIMEOUT;
 				wp.maxRetries = MAX_RETRIES;
+				wp.sleepBetweenRetries = 0;
 				long timeoutBound = wp.totalTimeout + wp.socketTimeout;
 				Load load = new Load("l2-f4", THREADS, (thread, iteration) =>
 					client.Put(wp, keys[(thread + iteration * THREADS) % keys.Count], new Bin("v", iteration)));
@@ -213,8 +218,9 @@ namespace Aerospike.Test
 				try
 				{
 					Assert.IsTrue(L2Topology.WaitFor(() => load.Successes() >= THREADS), "No command succeeded before the drop");
-					long injected = TestL2Topology.NanoTime();
 					AddToxic(victim.Proxy, TOXIC, "timeout", 1.0, "{\"timeout\":0}");
+					// Stamp after the toxic is in place so injection-relative bounds are not charged for the HTTP round-trip.
+					long injected = TestL2Topology.NanoTime();
 					drop(client, victim, wp, load, injected, timeoutBound);
 				}
 				finally
