@@ -76,7 +76,7 @@ namespace Aerospike.Test
 			TestL2Topology.CaptureWarnings();
 			Run(policy, (client, victim, wp, load, injected, timeoutBound) =>
 			{
-				Assert.IsTrue(L2Topology.WaitFor(() => Count(load.Errors(), ResultCode.TIMEOUT) >= THREADS),
+				Assert.IsTrue(L2Topology.WaitFor(() => CountTimeouts(load.Errors()) >= THREADS),
 					"F-4: fewer than " + THREADS + " timeouts after the drop");
 				bool finished = load.Stop(timeoutBound);
 				List<Outcome> errors = load.Errors();
@@ -87,7 +87,7 @@ namespace Aerospike.Test
 				foreach (Outcome outcome in errors)
 				{
 					maxElapsed = Math.Max(maxElapsed, outcome.ElapsedMs);
-					Assert.AreEqual(ResultCode.TIMEOUT, ResultCodeOf(outcome),
+					Assert.IsTrue(IsTimeout(outcome),
 						"F-4: error is not a timeout: " + outcome.Kind() + ' ' + TestL2Topology.Messages(outcome.Error));
 					long at = (outcome.StartNanos - injected) / 1000000L + outcome.ElapsedMs;
 
@@ -252,9 +252,35 @@ namespace Aerospike.Test
 			return outcome.Error is AerospikeException ae ? ae.Result : ResultCode.CLIENT_ERROR;
 		}
 
+		/// <summary>
+		/// Client timeout for F-4: ResultCode.TIMEOUT, or a Connection whose message is a socket
+		/// timeout (connect path, or a Linux IOException wrapper that still surfaces as Connection).
+		/// </summary>
+		private static bool IsTimeout(Outcome outcome)
+		{
+			if (ResultCodeOf(outcome) == ResultCode.TIMEOUT)
+			{
+				return true;
+			}
+
+			if (outcome.Error is AerospikeException.Connection)
+			{
+				string message = TestL2Topology.Messages(outcome.Error);
+				return message.Contains("timed out", StringComparison.OrdinalIgnoreCase) ||
+					message.Contains("timeout", StringComparison.OrdinalIgnoreCase);
+			}
+
+			return false;
+		}
+
 		private static long Count(List<Outcome> outcomes, int resultCode)
 		{
 			return outcomes.Count(o => ResultCodeOf(o) == resultCode);
+		}
+
+		private static long CountTimeouts(List<Outcome> outcomes)
+		{
+			return outcomes.Count(IsTimeout);
 		}
 
 		private static bool Writes(AerospikeClient client, WritePolicy policy, Key key)

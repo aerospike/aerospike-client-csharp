@@ -218,11 +218,23 @@ namespace Aerospike.Client
 							continue;
 						}
 
-						// IO errors are considered temporary anomalies.  Retry.
-						node.CloseConnection(conn);
-						exception = new AerospikeException.Connection(ioe);
-						isClientTimeout = false;
-						node.AddError(ns);
+						// On Linux, a receive timeout is often IOException wrapping SocketException
+						// TimedOut (Windows raises SocketException directly). Treat that as a client
+						// timeout so retries, error-rate, and the thrown exception match SocketException.
+						if (IsSocketTimeout(ioe))
+						{
+							node.CloseConnectionOnError(conn);
+							isClientTimeout = true;
+							node.AddTimeout(ns);
+						}
+						else
+						{
+							// IO errors are considered temporary anomalies.  Retry.
+							node.CloseConnection(conn);
+							exception = new AerospikeException.Connection(ioe);
+							isClientTimeout = false;
+							node.AddError(ns);
+						}
 					}
 					catch (Exception)
 					{
@@ -251,11 +263,19 @@ namespace Aerospike.Client
 				}
 				catch (IOException ioe)
 				{
-					// IO errors are considered temporary anomalies.  Retry.
-					// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
-					exception = new AerospikeException.Connection(ioe);
-					isClientTimeout = false;
-					node.AddError(ns);
+					// Same Linux receive-timeout shape as the inner IOException handler.
+					if (IsSocketTimeout(ioe))
+					{
+						isClientTimeout = true;
+						node.AddTimeout(ns);
+					}
+					else
+					{
+						// IO errors are considered temporary anomalies.  Retry.
+						exception = new AerospikeException.Connection(ioe);
+						isClientTimeout = false;
+						node.AddError(ns);
+					}
 				}
 				catch (Connection.ReadTimeout)
 				{
@@ -513,6 +533,23 @@ namespace Aerospike.Client
 
 			string message = e.Message;
 			return message != null && message.Contains("reset", StringComparison.OrdinalIgnoreCase);
+		}
+
+		/// <summary>
+		/// True when <paramref name="e"/> is a socket receive/connect timeout, including the
+		/// Linux IOException-wrapper form of <see cref="SocketError.TimedOut"/>.
+		/// </summary>
+		private static bool IsSocketTimeout(Exception e)
+		{
+			for (Exception cur = e; cur != null; cur = cur.InnerException)
+			{
+				if (cur is SocketException se && se.SocketErrorCode == SocketError.TimedOut)
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		protected virtual bool IsSingle()
