@@ -1,6 +1,7 @@
 # Manifest for the aws-tags real AWS harness in aerospike-client-conformance (aws-real/README.md).
 # Each command runs with bash on the runner (Amazon Linux 2023) from the repository root.
 # Amazon Linux's dotnet-sdk-8.0 package is too old for global.json (8.0.400); install that SDK.
-AWS_REAL_SETUP='curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && bash /tmp/dotnet-install.sh --version 8.0.400 && export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && dotnet --list-sdks'
+# dotnet-install.sh does not pull ICU; without libicu, dotnet aborts on globalization init.
+AWS_REAL_SETUP='sudo dnf install -y libicu && curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && bash /tmp/dotnet-install.sh --version 8.0.400 && export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && dotnet --list-sdks'
 AWS_REAL_BUILD='export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && dotnet build AwsTagsRealProbe/AwsTagsRealProbe.csproj -c Release --nologo -v q'
 AWS_REAL_PROBE='export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && dotnet exec AwsTagsRealProbe/bin/Release/net8.0/AwsTagsRealProbe.dll'
