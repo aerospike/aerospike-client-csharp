@@ -91,13 +91,16 @@ namespace Aerospike.Client
 		public const ulong AS_MSG_TYPE = 3UL;
 		public const ulong MSG_TYPE_COMPRESSED = 4UL;
 
-		internal byte[] dataBuffer;
-		internal int dataOffset;
+		protected internal byte[] dataBuffer;
+		protected internal int dataOffset;
 		internal readonly int maxRetries;
 		internal readonly int serverTimeout;
 		internal int socketTimeout;
 		internal int totalTimeout;
 		internal long? Version;
+
+		// True if the cluster supports vectors.
+		internal bool vectorSupported = true;
 
 		protected int resultCode;
 		protected int generation;
@@ -111,6 +114,10 @@ namespace Aerospike.Client
 		protected string serverMessage;
 		protected int serverSubCode;
 		protected ExpressionTrace expTrace;
+
+		// Last-update time from the current query row's LUT field (field 14), or zero when
+		// the row has none. Only Top-K rows ranked by the server carry it. Reset by ParseKey.
+		protected long lastUpdateTime;
 
 		public Command(int socketTimeout, int totalTimeout, int maxRetries)
 		{
@@ -2114,10 +2121,12 @@ namespace Aerospike.Client
 			ulong taskId,
 			bool background,
 			NodePartitions nodePartitions,
-			Node node
+			Node node,
+			bool sendTopK = false
 		)
 		{
 			byte[] functionArgBuffer = null;
+			TopKFields topKFields = GetTopKFields(statement, sendTopK);
 			int fieldCount = 0;
 			int filterSize = 0;
 			int binNameSize = 0;
@@ -2154,6 +2163,18 @@ namespace Aerospike.Client
 			// Estimate taskId field.
 			dataOffset += 8 + FIELD_HEADER_SIZE;
 			fieldCount++;
+
+			if (topKFields != null)
+			{
+				dataOffset += FIELD_HEADER_SIZE + topKFields.orderBy.Length;
+				fieldCount++;
+
+				if (topKFields.limit != null)
+				{
+					dataOffset += FIELD_HEADER_SIZE + topKFields.limit.Length;
+					fieldCount++;
+				}
+			}
 
 			byte[] packedCtx = null;
 			string indexName = null;
@@ -2363,6 +2384,13 @@ namespace Aerospike.Client
 					writeAttr |= Command.INFO2_RELAX_AP_LONG_QUERY;
 				}
 
+				// The server sends a record only when a projected read has a value. A Top-K record
+				// whose order key is empty must still arrive, ranked last as nil.
+				if (statement.HasTopK && operationCount > 0 && !ReadsAllBins(statement.operations))
+				{
+					writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
+				}
+
 				int infoAttr = (isNew || statement.filter == null) ? Command.INFO3_PARTITION_DONE : 0;
 
 				WriteHeaderRead(policy, totalTimeout, readAttr, writeAttr, infoAttr, fieldCount, operationCount);
@@ -2389,6 +2417,16 @@ namespace Aerospike.Client
 
 			// Write taskId field
 			WriteField(taskId, FieldType.QUERY_ID);
+
+			if (topKFields != null)
+			{
+				WriteField(topKFields.orderBy, FieldType.ORDER_BY);
+
+				if (topKFields.limit != null)
+				{
+					WriteField(topKFields.limit, FieldType.TOP_K);
+				}
+			}
 
 			if (statement.filter != null)
 			{
@@ -2503,6 +2541,107 @@ namespace Aerospike.Client
 			End();
 		}
 
+		// RESPOND_ALL_OPS must be off when an operation reads all bins.
+		private static bool ReadsAllBins(Operation[] operations)
+		{
+			if (operations == null)
+			{
+				return false;
+			}
+
+			foreach (Operation operation in operations)
+			{
+				if (operation.type == Operation.Type.READ && operation.binName == null)
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
+		private static byte[] GetTopKOrderByField(Statement statement)
+		{
+			byte[] primary = EncodeOrderBySpec(
+				statement.TopKBin, statement.TopKType, statement.TopKOrder);
+
+			if (!statement.HasTopKThen)
+			{
+				return primary;
+			}
+
+			byte[] secondary = EncodeOrderBySpec(
+				statement.TopKThenBin, statement.TopKThenType, statement.TopKThenOrder);
+			byte[] field = new byte[primary.Length + secondary.Length];
+			Array.Copy(primary, 0, field, 0, primary.Length);
+			Array.Copy(secondary, 0, field, primary.Length, secondary.Length);
+			return field;
+		}
+
+		private static byte[] EncodeOrderBySpec(string binName, BinDataType type, Order order)
+		{
+			byte[] bin = ByteUtil.StringToUtf8(binName);
+			byte[] field = new byte[4 + bin.Length];
+			field[0] = (byte)GetOrderByType(type);
+			field[1] = (byte)GetOrderByDirection(order);
+			field[2] = 0; // flags byte reserved; always zero for supported types
+			field[3] = (byte)bin.Length;
+			Array.Copy(bin, 0, field, 4, bin.Length);
+			return field;
+		}
+
+		private static TopKFields GetTopKFields(Statement statement, bool sendTopK)
+		{
+			// sendTopK means the cluster supports ORDER_BY / TOP_K fields.
+			// Order-by without top-k is still sent so the server can reject it (PRD decision 2026-10-13).
+			if (!sendTopK || !statement.HasOrderBy)
+			{
+				return null;
+			}
+
+			byte[] orderBy = GetTopKOrderByField(statement);
+			byte[] limit = statement.HasTopK ? GetTopKField(statement.TopKLimit) : null;
+			return new TopKFields(orderBy, limit);
+		}
+
+		private static byte[] GetTopKField(int limit)
+		{
+			byte[] field = new byte[4];
+			ByteUtil.IntToBytes((uint)limit, field, 0);
+			return field;
+		}
+
+		private static int GetOrderByType(BinDataType type)
+		{
+			switch (type)
+			{
+				case BinDataType.INTEGER:
+					return 1;
+				case BinDataType.DOUBLE:
+					return 2;
+				case BinDataType.BYTES:
+					return 4;
+				default:
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Unsupported BinDataType: " + type);
+			}
+		}
+
+		private static int GetOrderByDirection(Order order)
+		{
+			return order == Order.ASC ? 0 : 1;
+		}
+
+		private sealed class TopKFields
+		{
+			internal readonly byte[] orderBy;
+			internal readonly byte[] limit;
+
+			internal TopKFields(byte[] orderBy, byte[] limit)
+			{
+				this.orderBy = orderBy;
+				this.limit = limit;
+			}
+		}
+
 		//--------------------------------------------------
 		// Command Sizing
 		//--------------------------------------------------
@@ -2575,12 +2714,14 @@ namespace Aerospike.Client
 		{
 			dataOffset += ByteUtil.EstimateSizeUtf8(bin.name) + OPERATION_HEADER_SIZE;
 			dataOffset += bin.value.EstimateSize();
+			CheckVectorSupport(bin.value.HasVector());
 		}
 
 		private void EstimateOperationSize(Operation operation)
 		{
 			dataOffset += ByteUtil.EstimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
 			dataOffset += operation.value.EstimateSize();
+			CheckVectorSupport(operation.value.HasVector());
 		}
 
 		private void EstimateReadOperationSize(Operation operation)
@@ -2591,6 +2732,19 @@ namespace Aerospike.Client
 			}
 			dataOffset += ByteUtil.EstimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
 			dataOffset += operation.value.EstimateSize();
+			CheckVectorSupport(operation.value.HasVector());
+		}
+
+		/// <summary>
+		/// Verify vector support. For internal use only.
+		/// </summary>
+		internal void CheckVectorSupport(bool vectorPresent)
+		{
+			if (vectorPresent && !vectorSupported)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"Vector is not supported by all nodes in the cluster");
+			}
 		}
 
 		private void EstimateOperationSize(string binName)
@@ -3002,6 +3156,7 @@ namespace Aerospike.Client
 
 		private void WriteOperation(Bin bin, Operation.Type operationType)
 		{
+			CheckVectorSupport(bin.value.HasVector());
 			int nameLength = ByteUtil.StringToUtf8(bin.name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 			int valueLength = bin.value.Write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
@@ -3016,6 +3171,7 @@ namespace Aerospike.Client
 
 		private void WriteOperation(Operation operation)
 		{
+			CheckVectorSupport(operation.value.HasVector());
 			int nameLength = ByteUtil.StringToUtf8(operation.binName, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 			int valueLength = operation.value.Write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
@@ -3262,8 +3418,9 @@ namespace Aerospike.Client
 			bval = 0;
 
 			// Reset first so a row without field 45 does not inherit the
-			// previous row's error detail.
+			// previous row's error detail. Field 14 (LUT) is likewise per-row.
 			ResetServerErrorDetail();
+			lastUpdateTime = 0;
 
 			for (int i = 0; i < fieldCount; i++)
 			{
@@ -3294,6 +3451,10 @@ namespace Aerospike.Client
 						userKey = ByteUtil.BytesToKeyValue((ParticleType)type, dataBuffer, dataOffset, size);
 						break;
 
+					case FieldType.LUT:
+						lastUpdateTime = ParseLutField(dataBuffer, dataOffset, size);
+						break;
+
 					case FieldType.BVAL_ARRAY:
 						bval = (ulong)ByteUtil.LittleBytesToLong(dataBuffer, dataOffset);
 						break;
@@ -3309,6 +3470,19 @@ namespace Aerospike.Client
 				dataOffset += size;
 			}
 			return new Key(ns, digest, setName, userKey);
+		}
+
+		/// <summary>
+		/// Parse FieldType.LUT (14): big-endian int64 milliseconds since the Citrusleaf epoch.
+		/// </summary>
+		internal static long ParseLutField(byte[] buffer, int offset, int size)
+		{
+			if (size != 8)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"LUT field must be 8 bytes, got " + size);
+			}
+			return ByteUtil.BytesToLong(buffer, offset);
 		}
 
 		public long? ParseVersion(int fieldCount)

@@ -27,6 +27,7 @@ namespace Aerospike.Client
 			public byte[] Bytes { get; }
 
 			private readonly ParticleType type;
+			internal bool hasVector;
 
 			public override ParticleType Type => type;
 
@@ -42,6 +43,8 @@ namespace Aerospike.Client
 			{
 				Bytes = bytes;
 				this.type = type;
+				// VECTOR particle subtype must participate in cluster capability checks.
+				this.hasVector = type == ParticleType.VECTOR;
 			}
 
 			public override int EstimateSize() => Bytes.Length;
@@ -52,7 +55,9 @@ namespace Aerospike.Client
 				return Bytes.Length;
 			}
 
-			public override void Pack(Packer packer) => packer.PackParticleBytes(Bytes);
+			public override void Pack(Packer packer) => packer.PackParticleBytes(Bytes, type);
+
+			internal override bool HasVector() => hasVector;
 
 			public override string ToString() => ByteUtil.BytesToHexString(Bytes);
 

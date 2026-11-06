@@ -494,7 +494,7 @@ namespace Aerospike.Client
 				flags |= BitOperation.INT_FLAGS_SIGNED;
 			}
 			packer.PackNumber(flags);
-			return packer.ToByteArray();
+			return PackUtil.Finish(packer);
 		}
 
 		private static byte[] PackGetInt(Exp bitOffset, Exp bitSize, bool signed)
@@ -511,17 +511,17 @@ namespace Aerospike.Client
 			{
 				packer.PackNumber(BitOperation.INT_FLAGS_SIGNED);
 			}
-			return packer.ToByteArray();
+			return PackUtil.Finish(packer);
 		}
 
 		private static Exp AddWrite(Exp bin, byte[] bytes)
 		{
-			return new Exp.Module(bin, bytes, (int)Exp.Type.BLOB, MODULE | Exp.MODIFY);
+			return new Exp.Module(bin, bytes, (int)Exp.Type.BLOB, MODULE | Exp.MODIFY, PackUtil.ConsumeLastHasVector());
 		}
 
 		private static Exp AddRead(Exp bin, byte[] bytes, Exp.Type retType)
 		{
-			return new Exp.Module(bin, bytes, (int)retType, MODULE);
+			return new Exp.Module(bin, bytes, (int)retType, MODULE, PackUtil.ConsumeLastHasVector());
 		}
 	}
 }

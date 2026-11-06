@@ -1,0 +1,199 @@
+/*
+ * Copyright 2012-2026 Aerospike, Inc.
+ *
+ * Portions may be licensed to Aerospike, Inc. under one or more contributor
+ * license agreements.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+using System.Collections;
+using Aerospike.Client;
+
+namespace Aerospike.Test
+{
+	/// <summary>
+	/// Server-round-trip tests for the vector particle type.
+	/// Requires server version 8.2.1+.
+	/// </summary>
+	[TestClass]
+	public class TestVectorIO : TestSync
+	{
+		private const string BinName = "vecbin";
+
+		[ClassInitialize]
+		public static void ServerVersionCheck(TestContext testContext)
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "vector");
+		}
+
+		[TestMethod]
+		public void PutGetFloat16()
+		{
+			PutGetRoundTrip("veckey16", Vector.OfFloat16(new short[] { 0x3c00, unchecked((short)0xbc00), 0x4000 }));
+		}
+
+		[TestMethod]
+		public void PutGetInt32()
+		{
+			PutGetRoundTrip("veckey32i", Vector.OfInt32(new int[] { -5, 0, 7, 12345 }));
+		}
+
+		[TestMethod]
+		public void PutGetFloat32()
+		{
+			PutGetRoundTrip("veckey32f", Vector.OfFloat32(new float[] { 1.5f, -2.25f, 3.14159f }));
+		}
+
+		[TestMethod]
+		public void PutGetFloat64()
+		{
+			PutGetRoundTrip("veckey64", Vector.OfFloat64(new double[] { 1.5, -2.25, 3.14159 }));
+		}
+
+		private static void PutGetRoundTrip(string userKey, Vector v)
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, userKey);
+			client.Delete(null, key);
+			client.Put(null, key, new Bin(BinName, v));
+
+			Record record = client.Get(null, key);
+			AssertRecordFound(key, record);
+			Assert.AreEqual(v, record.GetVector(BinName));
+		}
+
+		[TestMethod]
+		public void OverwriteWithDifferentDimensions()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "vecoverwrite");
+			client.Delete(null, key);
+
+			client.Put(null, key, new Bin(BinName, Vector.OfFloat32(new float[] { 1.0f, 2.0f })));
+			Vector second = Vector.OfFloat32(new float[] { 9.0f, 8.0f, 7.0f, 6.0f });
+			client.Put(null, key, new Bin(BinName, second));
+
+			Record record = client.Get(null, key);
+			AssertRecordFound(key, record);
+			Assert.AreEqual(second, record.GetVector(BinName));
+		}
+
+		[TestMethod]
+		public void EmptyVectorRejectedByClient()
+		{
+			// Of* rejects empty arrays before any round trip (CLIENT-5686 / PRD R30).
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => Vector.OfFloat32(Array.Empty<float>()));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
+		}
+
+		[TestMethod]
+		public void EmptyVectorWriteRejectedByServer()
+		{
+			// Bypass Vector.Of* and send a raw zero-dimension VECTOR particle so the
+			// server still rejects malformed wire data.
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "vecempty");
+			client.Delete(null, key);
+
+			byte[] empty = new byte[Vector.HEADER_SIZE];
+			empty[0] = Vector.VERSION;
+			empty[1] = (byte)Vector.ElementType.FLOAT32;
+			ByteUtil.IntToLittleBytes(0, empty, 2);
+
+			try
+			{
+				client.Put(null, key, new Bin(BinName, new Value.BytesValue(empty, ParticleType.VECTOR)));
+				Assert.Fail("Expected PARAMETER_ERROR for zero-dimension vector");
+			}
+			catch (AerospikeException e)
+			{
+				Assert.AreEqual(ResultCode.PARAMETER_ERROR, e.Result);
+			}
+		}
+
+		[TestMethod]
+		public void VectorInListBinRejected()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "veclistbin");
+			client.Delete(null, key);
+
+			Vector v = Vector.OfInt32(new int[] { 1, 2, 3 });
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => client.Put(null, key, new Bin("listbin", new List<object> { v })));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
+		}
+
+		[TestMethod]
+		public void VectorInMapBinRejected()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "vecmapbin");
+			client.Delete(null, key);
+
+			Vector v = Vector.OfFloat32(new float[] { 1.5f, 2.5f });
+			AerospikeException e = Assert.Throws<AerospikeException>(
+				() => client.Put(null, key, new Bin("mapbin", new Dictionary<object, object> { { "k", v } })));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, e.Result);
+			Assert.IsTrue(e.Message.Contains("list/map cannot hold a vector"));
+		}
+
+		[TestMethod]
+		public void OperateVectorRoundTrip()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "vecoperate");
+			client.Delete(null, key);
+
+			Vector v = Vector.OfFloat64(new double[] { 1.1, 2.2, 3.3 });
+			Record record = client.Operate(null, key,
+				Operation.Put(new Bin(BinName, v)),
+				Operation.Get(BinName));
+
+			AssertRecordFound(key, record);
+			Assert.AreEqual(v, record.GetVector(BinName));
+		}
+
+		[TestMethod]
+		public void BatchWriteReadVectors()
+		{
+			int count = 5;
+			Key[] keys = new Key[count];
+			Vector[] vectors = new Vector[count];
+
+			for (int i = 0; i < count; i++)
+			{
+				keys[i] = new Key(SuiteHelpers.ns, SuiteHelpers.set, "vecbatch" + i);
+				client.Delete(null, keys[i]);
+				vectors[i] = Vector.OfFloat32(new float[] { i, i + 0.5f, i + 1.0f });
+				client.Put(null, keys[i], new Bin(BinName, vectors[i]));
+			}
+
+			Record[] records = client.Get(null, keys);
+			Assert.AreEqual(count, records.Length);
+
+			for (int i = 0; i < count; i++)
+			{
+				AssertRecordFound(keys[i], records[i]);
+				Assert.AreEqual(vectors[i], records[i].GetVector(BinName));
+			}
+		}
+
+		[TestMethod]
+		public void WriteAllElementTypesPreservesBytes()
+		{
+			Vector v = Vector.OfInt32(new int[] { int.MinValue, 0, int.MaxValue });
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "vecbytes");
+			client.Delete(null, key);
+			client.Put(null, key, new Bin(BinName, v));
+
+			Record record = client.Get(null, key);
+			AssertRecordFound(key, record);
+			CollectionAssert.AreEqual(v.GetInt32Data(), record.GetVector(BinName).GetInt32Data());
+		}
+	}
+}

@@ -2724,6 +2724,8 @@ namespace Aerospike.Client
 				policy = new QueryPolicy(policy, configProvider);
 			}
 
+			RejectTopK(statement);
+
 			Node[] nodes = cluster.ValidateNodes();
 
 			if (cluster.hasPartitionQuery || statement.filter == null)
@@ -2773,6 +2775,8 @@ namespace Aerospike.Client
 			{
 				policy = new QueryPolicy(policy, configProvider);
 			}
+
+			RejectTopK(statement);
 
 			Node[] nodes = cluster.ValidateNodes();
 

@@ -77,6 +77,9 @@ namespace Aerospike.Client
 				case ParticleType.HLL:
 					return BytesToHLL(buf, offset, len);
 
+				case ParticleType.VECTOR:
+					return BytesToVector(buf, offset, len);
+
 				case ParticleType.LIST:
 					{
 						Unpacker unpacker = new Unpacker(buf, offset, len, false);
@@ -254,6 +257,11 @@ namespace Aerospike.Client
 			byte[] bytes = new byte[len];
 			Array.Copy(buf, offset, bytes, 0, len);
 			return Value.GetAsHLL(bytes);
+		}
+
+		public static object BytesToVector(byte[] buf, int offset, int len)
+		{
+			return Vector.From(buf, offset, len);
 		}
 
 		public static object BytesToNumber(byte[] buf, int offset, int len)

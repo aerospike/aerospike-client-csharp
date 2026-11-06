@@ -252,12 +252,12 @@ namespace Aerospike.Client
 
 		private static Exp AddWrite(Exp bin, byte[] bytes)
 		{
-			return new Exp.Module(bin, bytes, (int)Exp.Type.HLL, MODULE | Exp.MODIFY);
+			return new Exp.Module(bin, bytes, (int)Exp.Type.HLL, MODULE | Exp.MODIFY, PackUtil.ConsumeLastHasVector());
 		}
 
 		private static Exp AddRead(Exp bin, byte[] bytes, Exp.Type retType)
 		{
-			return new Exp.Module(bin, bytes, (int)retType, MODULE);
+			return new Exp.Module(bin, bytes, (int)retType, MODULE, PackUtil.ConsumeLastHasVector());
 		}
 	}
 }

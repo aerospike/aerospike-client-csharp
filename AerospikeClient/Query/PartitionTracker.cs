@@ -350,6 +350,16 @@ namespace Aerospike.Client
 			if (nodePartitions != null) nodePartitions.recordCount++;
 		}
 
+		/// <summary>
+		/// Count a record without moving its partition's resume cursor, so a retry
+		/// re-queries the partition from the start. Used for Top-K pushdown, where the
+		/// server streams in rank order rather than digest order.
+		/// </summary>
+		public void CountRecord(NodePartitions nodePartitions)
+		{
+			if (nodePartitions != null) nodePartitions.recordCount++;
+		}
+
 		public bool AllowRecord()
 		{
 			return recordCount == -1 || Interlocked.Increment(ref recordCount) <= maxRecords;
