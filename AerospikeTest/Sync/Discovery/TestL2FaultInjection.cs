@@ -25,8 +25,9 @@ namespace Aerospike.Test
 	/// Testing strategy section 4.3.2 row F-4 against the default <see cref="L2Topology"/>: a Toxiproxy
 	/// timeout toxic on one node's listener holds data with no reply and no close, as a conntrack
 	/// mismatch does. No client marks down a node the cluster still lists (strategy TG-24), so F-4
-	/// asserts bounded timeouts, no blocked threads, recovery, and the error-rate circuit breaker. Every
-	/// toxic a case adds is removed in <see cref="Restore"/>.
+	/// asserts bounded timeouts, no blocked threads, recovery, and the error-rate circuit breaker.
+	/// Sync and <see cref="AsyncClient"/> paths are both covered (Java also runs Netty loops; C# has
+	/// one async stack). Every toxic a case adds is removed in <see cref="Restore"/>.
 	/// </summary>
 	[TestClass]
 	public class TestL2FaultInjection
@@ -42,6 +43,12 @@ namespace Aerospike.Test
 		private const int BREAKER_WINDOW = 4;
 
 		private readonly List<string[]> toxics = new List<string[]>();
+
+		private enum Transport
+		{
+			Sync,
+			Async
+		}
 
 		private delegate void Drop(AerospikeClient client, L2Node victim, WritePolicy wp, Load load, long injected, long timeoutBound);
 
@@ -72,9 +79,37 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void F4SilentDropTimesOutWithoutBlocking()
 		{
-			ClientPolicy policy = L2Topology.Policy();
+			TimesOutWithoutBlocking(Transport.Sync);
+		}
+
+		[TestMethod]
+		public void F4AsyncSilentDropTimesOutWithoutBlocking()
+		{
+			TimesOutWithoutBlocking(Transport.Async);
+		}
+
+		/// <summary>
+		/// F-4 with a low maxErrorRate: the timeouts trip the node's error-rate circuit breaker within a
+		/// bound from errorRateWindow and tendInterval, and commands started after the trip fail fast with
+		/// MAX_ERROR_RATE instead of waiting out socketTimeout.
+		/// </summary>
+		[TestMethod]
+		public void F4SilentDropTripsCircuitBreaker()
+		{
+			TripsCircuitBreaker(Transport.Sync);
+		}
+
+		[TestMethod]
+		public void F4AsyncSilentDropTripsCircuitBreaker()
+		{
+			TripsCircuitBreaker(Transport.Async);
+		}
+
+		private void TimesOutWithoutBlocking(Transport transport)
+		{
+			ClientPolicy policy = Policy(transport);
 			TestL2Topology.CaptureWarnings();
-			Run(policy, (client, victim, wp, load, injected, timeoutBound) =>
+			Run(policy, transport, (client, victim, wp, load, injected, timeoutBound) =>
 			{
 				Assert.IsTrue(L2Topology.WaitFor(() => CountTimeouts(load.Errors()) >= THREADS),
 					"F-4: fewer than " + THREADS + " timeouts after the drop");
@@ -110,12 +145,14 @@ namespace Aerospike.Test
 				// Injection-relative bound allows one socketTimeout of headroom so a Put that was still
 				// finishing when the toxic landed can start its failing attempt without flaking CI.
 				long injectionBound = timeoutBound + SOCKET_TIMEOUT;
-				Console.WriteLine("L2-F4-TIMEOUT victim=" + victim.Name + " listener=" + victim.Port + " firstTimeoutMs=" +
-					firstTimeoutMs + " maxErrorElapsedMs=" + maxElapsed + " timeoutBoundMs=" + timeoutBound +
-					" injectionBoundMs=" + injectionBound + " errors=" +
-					TestL2Topology.FmtMap(L2Topology.Kinds(errors)) + " successes=" + load.Successes() + " threadsReturned=" + finished);
-				Console.WriteLine("L2-F4-NODE active=" + (node != null && node.Active) + " nodes=" + TestL2Topology.Fmt(L2Topology.NodeNames(client)) +
-					" owners=" + TestL2Topology.FmtMap(L2Topology.Owners(client)) + " refreshFailedWarnings=" + refreshFailures);
+				Console.WriteLine("L2-F4-TIMEOUT transport=" + transport + " victim=" + victim.Name + " listener=" +
+					victim.Port + " firstTimeoutMs=" + firstTimeoutMs + " maxErrorElapsedMs=" + maxElapsed +
+					" timeoutBoundMs=" + timeoutBound + " injectionBoundMs=" + injectionBound + " errors=" +
+					TestL2Topology.FmtMap(L2Topology.Kinds(errors)) + " successes=" + load.Successes() +
+					" threadsReturned=" + finished);
+				Console.WriteLine("L2-F4-NODE active=" + (node != null && node.Active) + " nodes=" +
+					TestL2Topology.Fmt(L2Topology.NodeNames(client)) + " owners=" +
+					TestL2Topology.FmtMap(L2Topology.Owners(client)) + " refreshFailedWarnings=" + refreshFailures);
 
 				Assert.IsTrue(finished, "F-4: command threads still blocked " + timeoutBound + "ms after stop");
 				Assert.IsTrue(firstTimeoutMs <= injectionBound,
@@ -124,18 +161,12 @@ namespace Aerospike.Test
 			});
 		}
 
-		/// <summary>
-		/// F-4 with a low maxErrorRate: the timeouts trip the node's error-rate circuit breaker within a
-		/// bound from errorRateWindow and tendInterval, and commands started after the trip fail fast with
-		/// MAX_ERROR_RATE instead of waiting out socketTimeout.
-		/// </summary>
-		[TestMethod]
-		public void F4SilentDropTripsCircuitBreaker()
+		private void TripsCircuitBreaker(Transport transport)
 		{
-			ClientPolicy policy = L2Topology.Policy();
+			ClientPolicy policy = Policy(transport);
 			policy.maxErrorRate = BREAKER_MAX_ERROR_RATE;
 			policy.errorRateWindow = BREAKER_WINDOW;
-			Run(policy, (client, victim, wp, load, injected, timeoutBound) =>
+			Run(policy, transport, (client, victim, wp, load, injected, timeoutBound) =>
 			{
 				long tripBound = (long)(policy.errorRateWindow + 1) * policy.tendInterval + timeoutBound;
 				bool tripped = L2Topology.WaitFor(() => Count(load.Errors(), ResultCode.MAX_ERROR_RATE) > 0);
@@ -165,9 +196,10 @@ namespace Aerospike.Test
 					}
 				}
 
-				Console.WriteLine("L2-F4-BREAKER victim=" + victim.Name + " maxErrorRate=" + policy.maxErrorRate +
-					" errorRateWindow=" + policy.errorRateWindow + " tendInterval=" + policy.tendInterval + " trippedMs=" + trippedMs +
-					" tripBoundMs=" + tripBound + " backoffsAfterTrip=" + afterTrip + " maxBackoffElapsedMs=" + maxBackoffMs + " errors=" +
+				Console.WriteLine("L2-F4-BREAKER transport=" + transport + " victim=" + victim.Name +
+					" maxErrorRate=" + policy.maxErrorRate + " errorRateWindow=" + policy.errorRateWindow +
+					" tendInterval=" + policy.tendInterval + " trippedMs=" + trippedMs + " tripBoundMs=" + tripBound +
+					" backoffsAfterTrip=" + afterTrip + " maxBackoffElapsedMs=" + maxBackoffMs + " errors=" +
 					TestL2Topology.FmtMap(L2Topology.Kinds(load.Errors())) + " threadsReturned=" + finished);
 
 				Assert.IsTrue(tripped, "F-4: circuit breaker never tripped: " + TestL2Topology.FmtMap(L2Topology.Kinds(load.Errors())));
@@ -183,13 +215,15 @@ namespace Aerospike.Test
 		/// Load the victim node with writes, drop its traffic silently, run the check, then remove the
 		/// toxic and assert the node serves again and every partition is owned.
 		/// </summary>
-		private void Run(ClientPolicy policy, Drop drop)
+		private void Run(ClientPolicy policy, Transport transport, Drop drop)
 		{
 			List<L2Node> nodes = L2Topology.Nodes();
 			L2Node victim = nodes[nodes.Count - 1];
 			policy.addressTranslator = new PortMapAddressTranslator(L2Topology.PortMapByEndpoint(nodes));
 
-			using (AerospikeClient client = new AerospikeClient(policy, L2Topology.Seed()))
+			using (AerospikeClient client = transport == Transport.Async
+				? new AsyncClient((AsyncClientPolicy)policy, L2Topology.Seed())
+				: new AerospikeClient(policy, L2Topology.Seed()))
 			{
 				L2Topology.WaitNodes(client, L2Topology.NodeNames());
 				Node[] masters = L2Topology.AssertAllPartitionsOwned("F-4-before", client);
@@ -212,8 +246,21 @@ namespace Aerospike.Test
 				wp.maxRetries = MAX_RETRIES;
 				wp.sleepBetweenRetries = 0;
 				long timeoutBound = wp.totalTimeout + wp.socketTimeout;
+				AsyncClient async = client as AsyncClient;
 				Load load = new Load("l2-f4", THREADS, (thread, iteration) =>
-					client.Put(wp, keys[(thread + iteration * THREADS) % keys.Count], new Bin("v", iteration)));
+				{
+					Key key = keys[(thread + iteration * THREADS) % keys.Count];
+					Bin bin = new Bin("v", iteration);
+
+					if (async == null)
+					{
+						client.Put(wp, key, bin);
+					}
+					else
+					{
+						PutAsync(async, wp, key, bin, 2 * timeoutBound);
+					}
+				});
 
 				try
 				{
@@ -234,10 +281,57 @@ namespace Aerospike.Test
 				bool back = L2Topology.WaitFor(() => L2Topology.NodeNames(client).Contains(victim.Name) &&
 					client.Cluster.GetNode(victim.Name).Active && L2Topology.Owners(client).ContainsKey(victim.Name) &&
 					Writes(client, wp, probe));
-				Console.WriteLine("L2-F4-RECOVERED back=" + back + " ms=" + (TestL2Topology.NanoTime() - removed) / 1000000L +
-					" nodes=" + TestL2Topology.Fmt(L2Topology.NodeNames(client)) + " owners=" + TestL2Topology.FmtMap(L2Topology.Owners(client)));
+				Console.WriteLine("L2-F4-RECOVERED transport=" + transport + " back=" + back + " ms=" +
+					(TestL2Topology.NanoTime() - removed) / 1000000L + " nodes=" +
+					TestL2Topology.Fmt(L2Topology.NodeNames(client)) + " owners=" +
+					TestL2Topology.FmtMap(L2Topology.Owners(client)));
 				Assert.IsTrue(back, "F-4: " + victim.Name + " did not come back after the toxic was removed");
 				L2Topology.AssertAllPartitionsOwned("F-4-after", client);
+			}
+		}
+
+		private static ClientPolicy Policy(Transport transport)
+		{
+			if (transport == Transport.Async)
+			{
+				return new AsyncClientPolicy
+				{
+					tendInterval = L2Topology.TendInterval,
+					timeout = 1000,
+					asyncMaxCommands = 300
+				};
+			}
+
+			return L2Topology.Policy();
+		}
+
+		/// <summary>
+		/// Put on the async client and wait up to <paramref name="waitMs"/> for completion. A callback
+		/// that never fires is recorded as a non-timeout error (same contract as Java F-4 async).
+		/// </summary>
+		private static void PutAsync(AsyncClient client, WritePolicy policy, Key key, Bin bin, long waitMs)
+		{
+			Task task = client.Put(policy, CancellationToken.None, key, bin);
+
+			try
+			{
+				if (!task.Wait(TimeSpan.FromMilliseconds(waitMs)))
+				{
+					throw new InvalidOperationException("Async put did not complete within " + waitMs + "ms");
+				}
+
+				task.GetAwaiter().GetResult();
+			}
+			catch (AggregateException ae)
+			{
+				Exception cause = ae.GetBaseException();
+
+				if (cause is AerospikeException)
+				{
+					throw cause;
+				}
+
+				throw;
 			}
 		}
 

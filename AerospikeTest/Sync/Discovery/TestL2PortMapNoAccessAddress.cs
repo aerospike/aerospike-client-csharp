@@ -35,6 +35,12 @@ namespace Aerospike.Test
 		private const string SET = "l2-no-access";
 		private const int KEY_COUNT = 300;
 
+		[ClassInitialize]
+		public static void ClassInit(TestContext context)
+		{
+			L2Topology.RequireEnv();
+		}
+
 		/// <summary>
 		/// Every node advertises no alternate address and a standard address the client cannot reach.
 		/// With a port-map from each standard address to its listener, the client holds one distinct

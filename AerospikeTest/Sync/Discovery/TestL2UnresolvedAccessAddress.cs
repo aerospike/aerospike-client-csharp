@@ -36,6 +36,12 @@ namespace Aerospike.Test
 		private string addedProxy;
 		private string addedNode;
 
+		[ClassInitialize]
+		public static void ClassInit(TestContext context)
+		{
+			L2Topology.RequireEnv();
+		}
+
 		[TestCleanup]
 		public void Restore()
 		{

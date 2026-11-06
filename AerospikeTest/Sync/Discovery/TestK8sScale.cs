@@ -44,6 +44,7 @@ namespace Aerospike.Test
 		private K8sCluster cluster;
 		private int foundSize;
 		private string pinnedService;
+		private string heldService;
 
 		[ClassInitialize]
 		public static void ClassInit(TestContext context)
@@ -95,6 +96,12 @@ namespace Aerospike.Test
 
 			try
 			{
+				if (heldService != null)
+				{
+					c.DeleteService(heldService);
+					heldService = null;
+				}
+
 				if (pinnedService != null)
 				{
 					c.DeleteService(pinnedService);
@@ -360,16 +367,25 @@ namespace Aerospike.Test
 			string lastUid = cluster.Uid("service", last.Name);
 			int lastNodePort = cluster.NodePort(last.Name, port);
 			cluster.Scale(size - 1);
-			string removedUid = cluster.Uid("service", last.Name);
+			string lastName = last.Name;
+			Assert.IsTrue(K8sCluster.WaitFor(() => cluster.Uid("service", lastName).Length == 0,
+				K8sCluster.ScaleTimeoutMs, 1000), lastName + " Service not deleted within " + K8sCluster.ScaleTimeoutMs + "ms");
+
+			// Hold the old NodePort so the allocator cannot hand it back to the recreated Service by chance.
+			string held = cluster.Name + "-held-node-port";
+			heldService = held;
+			cluster.CreatePodNodePortService(held, last.Name, port, lastNodePort);
 			cluster.Scale(size);
 			string recreatedUid = cluster.Uid("service", last.Name);
 			int recreatedNodePort = cluster.NodePort(last.Name, port);
-			Console.WriteLine("L3-POD-RECREATED pod=" + last.Name + " serviceUid=" + lastUid + "->" +
-				(removedUid.Length == 0 ? "(deleted)" : removedUid) + "->" + recreatedUid + " oldNodePort=" + lastNodePort +
-				" newNodePort=" + recreatedNodePort);
+			cluster.DeleteService(held);
+			heldService = null;
+			Console.WriteLine("L3-POD-RECREATED pod=" + last.Name + " serviceUid=" + lastUid + "->(deleted)->" +
+				recreatedUid + " oldNodePort=" + lastNodePort + " newNodePort=" + recreatedNodePort);
 			Assert.IsFalse(string.IsNullOrEmpty(recreatedUid), last.Name + " has no Service after it was recreated");
 			Assert.AreNotEqual(lastUid, recreatedUid, last.Name + " Service not recreated");
 			Assert.IsTrue(recreatedNodePort > 0, last.Name + " has no Service NodePort for " + port);
+			Assert.AreNotEqual(lastNodePort, recreatedNodePort, last.Name + " recreated Service kept NodePort " + lastNodePort);
 			Assert.AreEqual(pinned, cluster.NodePort(service, port));
 			AssertPinnedSeed("recreated", service, port, pinned, size);
 		}

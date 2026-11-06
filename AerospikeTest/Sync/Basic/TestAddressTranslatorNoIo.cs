@@ -64,6 +64,38 @@ namespace Aerospike.Test
 			Assert.IsNull(miss);
 		}
 
+		[TestMethod]
+		public void PortMapConstructAndTranslateDoNoConnect()
+		{
+			NoIoConnectGuard.Arm();
+
+			try
+			{
+				PortMapAddressTranslator translator = new PortMapAddressTranslator(new Dictionary<string, string>
+				{
+					["node1.internal:3000"] = "lb.example.invalid:30001",
+					["BB9"] = "lb.example.invalid:30002"
+				});
+
+				Host byEndpoint = translator.Translate(new Endpoint("BB9A", null, "node1.internal", 3000,
+					Endpoint.SourceList.STANDARD));
+				Host byNode = translator.Translate(new Endpoint("BB9", "tls1", "node2.internal", 3000,
+					Endpoint.SourceList.ALTERNATE));
+				Host miss = translator.Translate(new Endpoint("BB9A", null, "node3.internal", 3000,
+					Endpoint.SourceList.STANDARD));
+
+				Assert.AreEqual("lb.example.invalid", byEndpoint.name);
+				Assert.AreEqual(30001, byEndpoint.port);
+				Assert.AreEqual("lb.example.invalid", byNode.name);
+				Assert.AreEqual(30002, byNode.port);
+				Assert.IsNull(miss);
+			}
+			finally
+			{
+				NoIoConnectGuard.Disarm();
+			}
+		}
+
 		// Java StaticMapAddressTranslatorNoIoTest.guardDetectsLookup arms the JVM resolver.
 		// There is no supported hook for Dns.GetHostAddresses in unit tests; translate-only checks above
 		// use intentionally unresolvable names so a DNS lookup would throw or stall.

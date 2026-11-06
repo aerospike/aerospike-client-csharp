@@ -971,7 +971,8 @@ namespace Aerospike.Test
 
 			if (string.IsNullOrEmpty(value))
 			{
-				throw new InvalidOperationException("Environment variable " + name +
+				// Inconclusive (not fail) so a normal local/unit-test run without the L2 harness skips.
+				Assert.Inconclusive("Environment variable " + name +
 					" is not set. Run .github/discovery/run-l2-suite.sh or the discovery-l2 workflow");
 			}
 			return value;

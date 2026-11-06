@@ -14,21 +14,23 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-using System.Collections.Generic;
 using System.Diagnostics;
 using Aerospike.Client;
 
 namespace Aerospike.Test
 {
 	/// <summary>
-	/// U-8 timing half: translate() p99 stays under a 10 ms CI ceiling (NFR-7 target is 1 ms).
+	/// U-8 timing half: <c>translate()</c> p99 stays under 1 ms (NFR-7).
+	/// Each translator is timed over <see cref="Rounds"/> rounds after a warm-up; the median of the
+	/// round p99s must stay under 1 ms so a GC pause that spoils a few rounds cannot fail the test,
+	/// while a translator that is really slow fails every round.
 	/// </summary>
 	[TestClass]
 	public class TestTranslateLatency
 	{
-		private const int Warmup = 50_000;
-		private const int Iterations = 50_000;
-		private static readonly long CeilingTicks = Stopwatch.Frequency / 100; // 10 ms
+		private const int Warmup = 20_000;
+		private const int Rounds = 7;
+		private const int CallsPerRound = 20_000;
 
 		private static readonly Endpoint[] Endpoints =
 		[
@@ -39,7 +41,7 @@ namespace Aerospike.Test
 		];
 
 		[TestMethod]
-		public void StaticMapP99UnderCeiling()
+		public void StaticMapP99UnderTarget()
 		{
 			Measure("static-map", new StaticMapAddressTranslator(new Dictionary<string, string>
 			{
@@ -49,7 +51,7 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PortMapP99UnderCeiling()
+		public void PortMapP99UnderTarget()
 		{
 			Measure("port-map", new PortMapAddressTranslator(new Dictionary<string, string>
 			{
@@ -60,9 +62,26 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void PassThroughP99UnderCeiling()
+		public void PassThroughP99UnderTarget()
 		{
 			Measure("pass-through", PassThroughAddressTranslator.Instance, 4);
+		}
+
+		[TestMethod]
+		public void SpinningTranslatorFailsTarget()
+		{
+			IAddressTranslator spinning = new SpinningTranslator(TimeSpan.FromMilliseconds(2));
+			long[][] rounds = new long[Rounds][];
+
+			for (int r = 0; r < Rounds; r++)
+			{
+				rounds[r] = new long[100];
+				Time(spinning, rounds[r]);
+			}
+
+			AssertFailedException failure = Assert.Throws<AssertFailedException>(() =>
+				AssertP99UnderTarget("spin-2ms", rounds));
+			StringAssert.Contains(failure.Message, "spin-2ms median round p99 ");
 		}
 
 		private static void Measure(string name, IAddressTranslator translator, int hitsPerRound)
@@ -77,9 +96,23 @@ namespace Aerospike.Test
 				}
 			}
 
-			long[] ticks = new long[Iterations];
+			long[][] rounds = new long[Rounds][];
 
-			for (int i = 0; i < Iterations; i++)
+			for (int r = 0; r < Rounds; r++)
+			{
+				rounds[r] = new long[CallsPerRound];
+				hits += Time(translator, rounds[r]);
+			}
+
+			Assert.AreEqual((Warmup + Rounds * CallsPerRound) / Endpoints.Length * hitsPerRound, hits);
+			AssertP99UnderTarget(name, rounds);
+		}
+
+		private static int Time(IAddressTranslator translator, long[] ticks)
+		{
+			int hits = 0;
+
+			for (int i = 0; i < ticks.Length; i++)
 			{
 				Endpoint advertised = Endpoints[i % Endpoints.Length];
 				long begin = Stopwatch.GetTimestamp();
@@ -92,19 +125,59 @@ namespace Aerospike.Test
 				}
 			}
 
-			Array.Sort(ticks);
-			long p50 = ticks[Iterations / 2];
-			long p99 = ticks[Iterations * 99 / 100];
-			Console.WriteLine("translate() " + name + ": p50 " + TicksToNs(p50) + " ns, p99 " +
-				TicksToNs(p99) + " ns over " + Iterations + " calls");
+			return hits;
+		}
 
-			Assert.AreEqual((Warmup + Iterations) / Endpoints.Length * hitsPerRound, hits);
-			Assert.IsTrue(p99 < CeilingTicks, name + " p99 " + TicksToNs(p99) + " ns");
+		private static void AssertP99UnderTarget(string name, long[][] rounds)
+		{
+			long[] p50s = new long[rounds.Length];
+			long[] p99s = new long[rounds.Length];
+			int calls = 0;
+
+			for (int r = 0; r < rounds.Length; r++)
+			{
+				long[] nanos = (long[])rounds[r].Clone();
+				Array.Sort(nanos);
+				p50s[r] = TicksToNs(nanos[nanos.Length / 2]);
+				p99s[r] = TicksToNs(nanos[nanos.Length * 99 / 100]);
+				calls += rounds[r].Length;
+			}
+
+			string roundP99s = '[' + string.Join(", ", p99s) + ']';
+			Array.Sort(p50s);
+			Array.Sort(p99s);
+			long p50 = p50s[rounds.Length / 2];
+			long p99 = p99s[rounds.Length / 2];
+			Console.WriteLine("translate() " + name + ": p50 " + p50 + " ns, p99 " + p99 + " ns (median of " +
+				rounds.Length + " rounds, round p99s " + roundP99s + " ns) over " + calls + " calls");
+
+			Assert.IsTrue(p99 < 1_000_000L, name + " median round p99 " + p99 + " ns, round p99s " + roundP99s + " ns");
 		}
 
 		private static long TicksToNs(long ticks)
 		{
 			return ticks * 1_000_000_000L / Stopwatch.Frequency;
+		}
+
+		private sealed class SpinningTranslator : IAddressTranslator
+		{
+			private readonly long spinTicks;
+
+			public SpinningTranslator(TimeSpan spin)
+			{
+				spinTicks = (long)(spin.TotalSeconds * Stopwatch.Frequency);
+			}
+
+			public Host Translate(Endpoint advertised)
+			{
+				long deadline = Stopwatch.GetTimestamp() + spinTicks;
+
+				while (Stopwatch.GetTimestamp() < deadline)
+				{
+				}
+
+				return new Host(advertised.host, advertised.port);
+			}
 		}
 	}
 }
