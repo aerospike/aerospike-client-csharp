@@ -12,6 +12,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DRIVER="$ROOT_DIR/AerospikeL5Driver/bin/Release/net8.0/AerospikeL5Driver.dll"
 
+# Prefer the SDK installed by L5_SETUP when Amazon Linux's package is too old for global.json.
+if [ -x "${HOME}/.dotnet/dotnet" ]; then
+	export DOTNET_ROOT="${HOME}/.dotnet"
+	export PATH="${HOME}/.dotnet:${PATH}"
+fi
+
 if [ ! -f "$DRIVER" ]; then
 	echo "ERROR: $DRIVER not found; run L5_BUILD first" >&2
 	exit 1

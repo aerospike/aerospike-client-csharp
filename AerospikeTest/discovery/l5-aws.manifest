@@ -1,7 +1,8 @@
 # Manifest for the l5-aws harness in aerospike-client-conformance (l5-aws/README.md).
 # Each command runs with bash on the runner (Amazon Linux 2023) from the repository root.
-L5_SETUP='sudo dnf install -y -q dotnet-sdk-8.0'
-L5_BUILD='dotnet build AerospikeL5Driver/AerospikeL5Driver.csproj AerospikeTest/AerospikeTest.csproj -c Release --nologo -v q'
-L5_DRIVER='AerospikeTest/discovery/l5_driver.sh'
+# Amazon Linux's dotnet-sdk-8.0 package is too old for global.json (8.0.400); install that SDK.
+L5_SETUP='curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && bash /tmp/dotnet-install.sh --version 8.0.400 && export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && dotnet --list-sdks'
+L5_BUILD='export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && dotnet build AerospikeL5Driver/AerospikeL5Driver.csproj AerospikeTest/AerospikeTest.csproj -c Release --nologo -v q'
+L5_DRIVER='export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && AerospikeTest/discovery/l5_driver.sh'
 # Fallback when a harness revision does not use L5_DRIVER: MSTest rows via L5_ROW.
-L5_RUN='AerospikeTest/discovery/run_l5.sh'
+L5_RUN='export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && AerospikeTest/discovery/run_l5.sh'
