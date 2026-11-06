@@ -344,11 +344,34 @@ namespace Aerospike.Test
 
 			AerospikeException ex = Assert.Throws<AerospikeException>(() => stmt.SetTopK(0));
 			Assert.AreEqual(ResultCode.PARSE_ERROR, ex.Result);
+			Assert.AreEqual(SubCode.NONE, ex.SubCode);
+			Assert.AreEqual("topK must be in [1, 1000]; got 0", ex.BaseMessage);
 			Assert.IsFalse(stmt.HasTopK);
 
 			ex = Assert.Throws<AerospikeException>(() => stmt.SetTopK(1001));
 			Assert.AreEqual(ResultCode.PARSE_ERROR, ex.Result);
+			Assert.AreEqual(SubCode.NONE, ex.SubCode);
+			Assert.AreEqual("topK must be in [1, 1000]; got 1001", ex.BaseMessage);
 			Assert.IsFalse(stmt.HasTopK);
+		}
+
+		[TestMethod]
+		public void ValidateTopKRejectsNonWireOrderType()
+		{
+			// C# BinDataType only exposes INTEGER/DOUBLE/BYTES; an out-of-range cast
+			// still must fail ValidateTopK (parity with other clients rejecting STRING).
+			BinDataType invalid = (BinDataType)99;
+			Statement stmt = new();
+			stmt.SetBinNames(Bin);
+			stmt.SetOrderBy(Bin, invalid, Order.ASC);
+			stmt.SetTopK(1);
+
+			AerospikeException ex = Assert.Throws<AerospikeException>(() => stmt.ValidateTopK());
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ex.Result);
+			Assert.AreEqual(SubCode.NONE, ex.SubCode);
+			Assert.AreEqual(
+				"orderBy type must be INTEGER, DOUBLE, or BYTES; got " + invalid,
+				ex.BaseMessage);
 		}
 
 		[TestMethod]
@@ -399,7 +422,8 @@ namespace Aerospike.Test
 
 			AerospikeException ex = Assert.Throws<AerospikeException>(() => stmt.ValidateTopK());
 			Assert.AreEqual(ResultCode.PARSE_ERROR, ex.Result);
-			Assert.IsTrue(ex.Message.Contains("different bins"));
+			Assert.AreEqual(SubCode.NONE, ex.SubCode);
+			Assert.AreEqual("orderBy keys must use different bins", ex.BaseMessage);
 		}
 	}
 }
