@@ -91,6 +91,7 @@ namespace Aerospike.Client
 		{
 			this.cluster = cluster;
 			this.name = nv.name;
+			this.hostname = nv.hostname;
 			this.host = nv.primaryHost;
 			this.address = nv.primaryAddress;
 			this.tendConnection = nv.primaryConn;
@@ -466,7 +467,12 @@ namespace Aerospike.Client
 
 							if (peer.replaceNode != null)
 							{
-								if (Log.InfoEnabled())
+								if (host.name.Equals(peer.replaceNode.hostname) &&
+									peer.replaceNode.name.Equals(nv.name))
+								{
+									peer.replaceNode.LogMove(node);
+								}
+								else if (Log.InfoEnabled())
 								{
 									Log.Info("Replace node: " + peer.replaceNode);
 								}
@@ -699,8 +705,8 @@ namespace Aerospike.Client
 				{
 					if (h.port == node.host.port)
 					{
-						// Check for IP address (node.host.name is an IP address) or hostname if it exists.
-						if (h.name.Equals(node.host.name) || (node.hostname != null && h.name == node.hostname))
+						// Check for IP address (node.host.name is an IP address).
+						if (h.name.Equals(node.host.name))
 						{
 							// Main node host is also the same as one of the peer hosts.
 							// Peer should not be added.
@@ -709,13 +715,16 @@ namespace Aerospike.Client
 						}
 
 						// Peer name might be a hostname. Get peer IP addresses and check with node IP address.
+						// When the hostname has several addresses, the node's address may be the one that
+						// failed, so let the peer be validated on the other addresses.
 						try
 						{
 							IPAddress[] addresses = Dns.GetHostAddresses(h.name);
+
 							foreach (IPAddress address in addresses)
 							{
-								if (address.Equals(node.address.Address) ||
-									IPAddress.IsLoopback(address))
+								if (IPAddress.IsLoopback(address) || (addresses.Length == 1 &&
+									(address.Equals(node.address.Address) || h.name.Equals(node.hostname))))
 								{
 									// Set peer hostname for faster future lookups.
 									node.hostname = h.name;
@@ -726,6 +735,12 @@ namespace Aerospike.Client
 						}
 						catch (Exception)
 						{
+							if (h.name.Equals(node.hostname))
+							{
+								node.referenceCount++;
+								return true;
+							}
+
 							// Peer name is invalid. replaceNode may be set, but that node will
 							// not be replaced because NodeValidator will reject it.
 							Log.Error("Invalid peer received by cluster tend: " + h.name);
@@ -744,6 +759,84 @@ namespace Aerospike.Client
 				return true;
 			}
 			return false;
+		}
+
+		/// <summary>
+		/// Replace a node whose refresh failed with the same node on another address of its hostname.
+		/// </summary>
+		protected internal void RefreshAddress(Peers peers)
+		{
+			if (failures <= 0 || !active || hostname == null)
+			{
+				return;
+			}
+
+			IPAddress[] addresses;
+
+			try
+			{
+				addresses = Dns.GetHostAddresses(hostname);
+			}
+			catch (Exception)
+			{
+				return;
+			}
+
+			if (addresses.Length <= 1)
+			{
+				return;
+			}
+
+			Host alias = new Host(hostname, host.tlsName, host.port);
+
+			foreach (IPAddress ia in addresses)
+			{
+				if (ia.Equals(address.Address))
+				{
+					continue;
+				}
+
+				try
+				{
+					NodeValidator nv = new NodeValidator();
+					nv.ValidateAlias(cluster, alias, ia);
+
+					if (!name.Equals(nv.name) || FindValidatedNode(cluster.nodesMap, name, nv) != null ||
+						FindValidatedNode(peers.nodes, name, nv) != null)
+					{
+						if (Log.DebugEnabled())
+						{
+							Log.Debug(cluster.context, "Address " + nv.primaryHost + " of " + hostname +
+								" is node " + nv.name + ", not node " + name);
+						}
+						nv.primaryConn.Close();
+						continue;
+					}
+
+					Node node = cluster.CreateNode(nv, true);
+					node.advertisedHosts = advertisedHosts;
+					peers.nodes[name] = node;
+					peers.removeNodes.Add(this);
+					LogMove(node);
+					return;
+				}
+				catch (Exception e)
+				{
+					if (Log.DebugEnabled())
+					{
+						Log.Debug(cluster.context, "Address " + ia + ' ' + host.port + " failed: " +
+							Util.GetErrorMessage(e));
+					}
+				}
+			}
+		}
+
+		private void LogMove(Node node)
+		{
+			if (Log.InfoEnabled())
+			{
+				Log.Info("Move node " + name + ' ' + hostname + " from " + host + " to " + node.host);
+			}
 		}
 
 		protected internal void RefreshPartitions(Peers peers)

@@ -370,8 +370,10 @@ namespace Aerospike.L5Driver
 			{
 				return node.Name.Equals(Info.Request(policy, node, "node"));
 			}
-			catch (AerospikeException)
+			catch (Exception)
 			{
+				// SocketException and other I/O can escape Auth/Info without becoming AerospikeException;
+				// never let a reach check abort the driver process.
 				return false;
 			}
 		}

@@ -22,6 +22,7 @@ namespace Aerospike.Client
 	{
 		internal Node fallback;
 		internal string name;
+		internal string hostname;
 		internal Host primaryHost;
 		internal IPEndPoint primaryAddress;
 		internal Connection primaryConn;
@@ -38,6 +39,7 @@ namespace Aerospike.Client
 		public Node SeedNode(Cluster cluster, Host host, Peers peers)
 		{
 			name = null;
+			hostname = null;
 			primaryHost = null;
 			primaryAddress = null;
 			primaryConn = null;
@@ -54,6 +56,7 @@ namespace Aerospike.Client
 				try
 				{
 					ValidateAddress(cluster, address, host.tlsName, host.port, true);
+					SetHostname(host, address);
 
 					Node node = cluster.CreateNode(this, false);
 
@@ -147,6 +150,7 @@ namespace Aerospike.Client
 				try
 				{
 					ValidateAddress(cluster, address, host.tlsName, host.port, false);
+					SetHostname(host, address);
 					return;
 				}
 				catch (Exception e)
@@ -167,6 +171,38 @@ namespace Aerospike.Client
 			// Exception can't be null here because Connection.GetHostAddresses()
 			// will throw exception if aliases length is zero.
 			throw exception;
+		}
+
+		/// <summary>
+		/// Verify that one address of a host references a valid node.
+		/// </summary>
+		internal void ValidateAlias(Cluster cluster, Host host, IPAddress address)
+		{
+			ValidateAddress(cluster, address, host.tlsName, host.port, false);
+			SetHostname(host, address);
+		}
+
+		private void SetHostname(Host host, IPAddress address)
+		{
+			hostname = (IsHostname(host.name) && address.Equals(primaryAddress.Address)) ? host.name : null;
+		}
+
+		private static bool IsHostname(string name)
+		{
+			if (name.IndexOf(':') >= 0)
+			{
+				return false;
+			}
+
+			foreach (char c in name)
+			{
+				if (c != '.' && !char.IsDigit(c))
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		private static string BuildUserAgentCommand(Cluster cluster)

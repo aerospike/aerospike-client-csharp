@@ -15,6 +15,7 @@
  * the License.
  */
 using Aerospike.Client.Config;
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text;
 
@@ -62,6 +63,9 @@ namespace Aerospike.Client
 
 		// Action when the address translator has no mapping.
 		protected internal readonly TranslationMissMode translationOnMiss;
+
+		// Pass-through miss warnings once per node and advertised address when addressTranslator is set.
+		private readonly ConcurrentDictionary<string, string> translationMisses;
 
 		// Seed candidate refresh manager (FR-41).
 		internal readonly SeedCandidateManager seedCandidateManager;
@@ -216,6 +220,9 @@ namespace Aerospike.Client
 			this.addressTranslator = policy.addressTranslator ?? new StaticMapAddressTranslator(policy.ipMap);
 			this.notifyViewChange = OverridesViewChange(addressTranslator);
 			this.translationOnMiss = policy.translationOnMiss;
+			// The default translator is the legacy ipMap, which misses unmapped hosts by design.
+			this.translationMisses = policy.addressTranslator != null ?
+				new ConcurrentDictionary<string, string>() : null;
 			this.seedCandidateManager = new SeedCandidateManager(
 				seedCandidateProvider, policy, hosts, SetSeeds, context);
 
@@ -444,15 +451,29 @@ namespace Aerospike.Client
 			Endpoint.SourceList sourceList = useServicesAlternate ?
 				Endpoint.SourceList.ALTERNATE : Endpoint.SourceList.STANDARD;
 
-			return Translate(addressTranslator, translationOnMiss, new Endpoint(nodeName, tlsName, host, port, sourceList));
+			return Translate(addressTranslator, translationOnMiss,
+				new Endpoint(nodeName, tlsName, host, port, sourceList), translationMisses);
 		}
 
 		internal static Host Translate(IAddressTranslator translator, Endpoint advertised)
 		{
-			return Translate(translator, TranslationMissMode.PASS_THROUGH, advertised);
+			return Translate(translator, TranslationMissMode.PASS_THROUGH, advertised, null);
 		}
 
 		internal static Host Translate(IAddressTranslator translator, TranslationMissMode onMiss, Endpoint advertised)
+		{
+			return Translate(translator, onMiss, advertised, null);
+		}
+
+		/// <summary>
+		/// Translate an advertised address. On a pass-through miss, warn once per node and advertised
+		/// address when <paramref name="misses"/> is not null.
+		/// </summary>
+		private static Host Translate(
+			IAddressTranslator translator,
+			TranslationMissMode onMiss,
+			Endpoint advertised,
+			ConcurrentDictionary<string, string> misses)
 		{
 			Host result = translator.Translate(advertised);
 
@@ -461,6 +482,34 @@ namespace Aerospike.Client
 				if (onMiss == TranslationMissMode.STRICT)
 				{
 					throw new AerospikeException.TranslationMiss(advertised, SeedCandidateManager.TranslatorName(translator));
+				}
+
+				if (misses != null)
+				{
+					string address = advertised.host + ':' + advertised.port;
+					string key = advertised.nodeName ?? "";
+					string previous = null;
+
+					misses.AddOrUpdate(key,
+						_ =>
+						{
+							previous = null;
+							return address;
+						},
+						(_, old) =>
+						{
+							previous = old;
+							return address;
+						});
+
+					if (!address.Equals(previous) && Log.WarnEnabled())
+					{
+						Log.Warn("Address translator " + SeedCandidateManager.TranslatorName(translator) +
+							" has no mapping for node " + advertised.nodeName + " advertised address " +
+							address + " in the " +
+							(advertised.sourceList == Endpoint.SourceList.ALTERNATE ? "alternate" : "standard") +
+							" list. Connecting to the advertised address because translation.on_miss is pass_through");
+					}
 				}
 
 				return new Host(advertised.host, advertised.tlsName, advertised.port);
@@ -649,6 +698,11 @@ namespace Aerospike.Client
 					node.Refresh(peers);
 				}
 
+				foreach (Node node in nodes)
+				{
+					node.RefreshAddress(peers);
+				}
+
 				// Refresh peers when necessary.
 				if (peers.genChanged)
 				{
@@ -662,18 +716,24 @@ namespace Aerospike.Client
 
 					// Handle nodes changes determined from refreshes.
 					FindNodesToRemove(peers);
-
-					// Remove nodes in a batch.
-					if (peers.removeNodes.Count > 0)
-					{
-						RemoveNodes(peers.removeNodes);
-					}
 				}
 
-				// Add peer nodes to cluster.
-				if (peers.nodes.Count > 0)
+				// Add peer nodes to cluster before removing the nodes they replace.
+				bool added = peers.nodes.Count > 0;
+
+				if (added)
 				{
 					AddNodes(peers.nodes);
+				}
+
+				// Remove nodes in a batch.
+				if (peers.removeNodes.Count > 0)
+				{
+					RemoveNodes(peers.removeNodes);
+				}
+
+				if (added)
+				{
 					RefreshPeers(peers);
 				}
 			}

@@ -320,6 +320,10 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Action taken when the address translator has no mapping for a server advertised endpoint.
+		/// <see cref="TranslationMissMode.PASS_THROUGH"/> connects to the advertised endpoint unchanged.
+		/// When <see cref="addressTranslator"/> is set, that miss is logged at warning level once per
+		/// node and advertised endpoint. <see cref="TranslationMissMode.STRICT"/> does not connect and
+		/// fails with <see cref="AerospikeException.TranslationMiss"/>.
 		/// <para>Default: <see cref="TranslationMissMode.PASS_THROUGH"/></para>
 		/// </summary>
 		public TranslationMissMode translationOnMiss = TranslationMissMode.PASS_THROUGH;
