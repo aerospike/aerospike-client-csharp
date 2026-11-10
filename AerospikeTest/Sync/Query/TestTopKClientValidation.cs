@@ -19,7 +19,8 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	/// <summary>
-	/// Client-side Top-K request validation that runs before anything is sent (R28).
+	/// Client-side Top-K request validation that runs before anything is sent (R28),
+	/// aligned with the Node.js Top-K plan cases TK-K1, TK-R*, and TK-S*.
 	/// Live-cluster tests require every node to advertise query-order-by.
 	/// </summary>
 	[TestClass]
@@ -149,6 +150,221 @@ namespace Aerospike.Test
 			plain.SetSetName(Set);
 			PartitionTracker plainTracker = new(new QueryPolicy(), plain, (Node[])null);
 			Assert.IsTrue(plainTracker.RetryOnTimeout);
+		}
+
+		/// <summary>TK-K1 / TK-R3 / TK-R4: reject huge or zero k before allocating.</summary>
+		[TestMethod]
+		public void RejectsKOutsideOneToThousand()
+		{
+			Statement stmt = new();
+			foreach (int k in new int[] { 0, 1001, 1 << 20, int.MaxValue, -1 })
+			{
+				AerospikeException ae = Assert.Throws<AerospikeException>(
+					() => stmt.SetTopK(k),
+					"expected SetTopK(" + k + ") to throw");
+				Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+				Assert.AreEqual("topK must be in [1, 1000]; got " + k, ae.BaseMessage);
+			}
+		}
+
+		/// <summary>TK-R5: k without an order key.</summary>
+		[TestMethod]
+		public void RejectsTopKWithoutOrderBy()
+		{
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(Set);
+			stmt.SetTopK(3);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => Internals.ValidateTopK(stmt));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+			Assert.AreEqual("Top-K requires an order key; call SetOrderBy()", ae.BaseMessage);
+		}
+
+		/// <summary>TK-S3: thenOrderBy before orderBy.</summary>
+		[TestMethod]
+		public void RejectsThenOrderByBeforeOrderBy()
+		{
+			Statement stmt = new();
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => stmt.ThenOrderBy("ts", BinDataType.INTEGER, Order.ASC));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+			Assert.AreEqual("thenOrderBy must follow orderBy", ae.BaseMessage);
+		}
+
+		/// <summary>TK-R7: at most two order keys.</summary>
+		[TestMethod]
+		public void RejectsThirdOrderKey()
+		{
+			Statement stmt = new();
+			stmt.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+			stmt.ThenOrderBy("ts", BinDataType.INTEGER, Order.ASC);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => stmt.ThenOrderBy("extra", BinDataType.INTEGER, Order.ASC));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+			Assert.AreEqual("orderBy supports at most two keys", ae.BaseMessage);
+		}
+
+		/// <summary>TK-S3b / TK-S4: a later orderBy replaces keys; a later topK replaces k.</summary>
+		[TestMethod]
+		public void OrderByReplacementClearsThenKeepsLatestTopK()
+		{
+			Statement stmt = new();
+			stmt.SetOrderBy("score", BinDataType.INTEGER, Order.DESC);
+			stmt.ThenOrderBy("ts", BinDataType.INTEGER, Order.ASC);
+			stmt.SetTopK(5);
+
+			Assert.IsTrue(stmt.HasTopKThen);
+			Assert.AreEqual(5, stmt.TopKLimit);
+
+			stmt.SetOrderBy("price", BinDataType.INTEGER, Order.ASC);
+			Assert.IsFalse(stmt.HasTopKThen);
+			Assert.AreEqual("price", stmt.TopKBin);
+			Assert.AreEqual(5, stmt.TopKLimit);
+
+			stmt.ThenOrderBy("ts", BinDataType.INTEGER, Order.ASC);
+			stmt.SetTopK(7);
+			Assert.IsTrue(stmt.HasTopKThen);
+			Assert.AreEqual("price", stmt.TopKBin);
+			Assert.AreEqual("ts", stmt.TopKThenBin);
+			Assert.AreEqual(7, stmt.TopKLimit);
+		}
+
+		/// <summary>TK-R6: unsupported order type (STRING is not in BinDataType for this release).</summary>
+		[TestMethod]
+		public void RejectsUnsupportedOrderByType()
+		{
+			Statement stmt = new();
+			stmt.SetOrderBy(Bin, (BinDataType)5, Order.DESC);
+			stmt.SetTopK(3);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => Internals.ValidateTopK(stmt));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+			Assert.AreEqual("orderBy type must be INTEGER, DOUBLE, or BYTES; got 5", ae.BaseMessage);
+		}
+
+		/// <summary>TK-R6: empty / oversized / NUL bin names.</summary>
+		[TestMethod]
+		public void RejectsInvalidOrderByBinName()
+		{
+			foreach (string bin in new string[] { "", "abcdefghijklmnop", "sc\0re" })
+			{
+				Statement stmt = new();
+				stmt.SetOrderBy(bin, BinDataType.INTEGER, Order.DESC);
+				stmt.SetTopK(3);
+
+				AerospikeException ae = Assert.Throws<AerospikeException>(
+					() => Internals.ValidateTopK(stmt),
+					"expected invalid bin '" + bin.Replace("\0", "\\0") + "' to throw");
+				Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+				Assert.AreEqual(
+					"Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL",
+					ae.BaseMessage);
+			}
+		}
+
+		/// <summary>TK-R13: same bin as both order keys.</summary>
+		[TestMethod]
+		public void RejectsDuplicateOrderByBins()
+		{
+			Statement stmt = new();
+			stmt.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+			stmt.ThenOrderBy(Bin, BinDataType.INTEGER, Order.ASC);
+			stmt.SetTopK(3);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => Internals.ValidateTopK(stmt));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+			Assert.AreEqual("orderBy keys must use different bins", ae.BaseMessage);
+		}
+
+		/// <summary>TK-R9: order key missing from projection.</summary>
+		[TestMethod]
+		public void RejectsOrderKeyNotInProjection()
+		{
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(Set);
+			stmt.SetBinNames("other");
+			stmt.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+			stmt.SetTopK(3);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => Internals.ValidateTopK(stmt));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+			Assert.AreEqual(
+				"orderBy bin '" + Bin + "' is not in projection; add it to the projection or remove the projection",
+				ae.BaseMessage);
+		}
+
+		/// <summary>TK-R9: two ops producing the order key.</summary>
+		[TestMethod]
+		public void RejectsOrderKeyProducedByMultipleOps()
+		{
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(Set);
+			stmt.Operations =
+			[
+				Operation.Get(Bin),
+				Operation.Get(Bin)
+			];
+			stmt.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+			stmt.SetTopK(3);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => Internals.ValidateTopK(stmt));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+			Assert.AreEqual(
+				"orderBy bin '" + Bin + "' is produced by more than one operation",
+				ae.BaseMessage);
+		}
+
+		/// <summary>TK-R1: Top-K incompatible with aggregate UDFs.</summary>
+		[TestMethod]
+		public void RejectsAggregateUdf()
+		{
+			Statement stmt = TopKStatement();
+			stmt.SetAggregateFunction("pkg", "fn");
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => Internals.ValidateTopK(stmt));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+			Assert.AreEqual(
+				"orderBy is incompatible with aggregate UDFs; use the UDF's own reduce stage",
+				ae.BaseMessage);
+		}
+
+		/// <summary>TK-R2: Top-K on a background execute is rejected before send.</summary>
+		[TestMethod]
+		public void RejectsBackgroundExecuteTopK()
+		{
+			RequireCapableCluster();
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => client.Execute(null, TopKStatement(), "pkg", "fn"));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+			Assert.IsTrue(ae.Message.Contains("synchronous"));
+		}
+
+		/// <summary>
+		/// TK-R10: statement maxRecords conflicts with Top-K (policy maxRecords covered above).
+		/// </summary>
+		[TestMethod]
+		public void RejectsStatementMaxRecords()
+		{
+			Statement stmt = TopKStatement();
+#pragma warning disable 0618
+			stmt.maxRecords = 10;
+#pragma warning restore 0618
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => Internals.ValidateTopK(stmt));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+			Assert.AreEqual("Top-K is incompatible with maxRecords", ae.BaseMessage);
 		}
 
 		private sealed class NullRecordSequenceListener : RecordSequenceListener

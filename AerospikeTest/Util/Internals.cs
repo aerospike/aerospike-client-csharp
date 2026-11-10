@@ -122,5 +122,18 @@ namespace Aerospike.Test
 				throw e.InnerException ?? e;
 			}
 		}
+
+		internal static void ValidateTopK(Statement statement)
+		{
+			MethodInfo method = typeof(Statement).GetMethod("ValidateTopK", BindingFlags.Instance | BindingFlags.NonPublic);
+			try
+			{
+				method.Invoke(statement, null);
+			}
+			catch (TargetInvocationException e)
+			{
+				throw e.InnerException ?? e;
+			}
+		}
 	}
 }

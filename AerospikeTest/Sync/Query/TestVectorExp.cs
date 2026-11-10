@@ -162,6 +162,34 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void VectorSearchTopKNearest()
 		{
+			AssertTopKNearest(VectorDistanceMetric.EUCLIDEAN_SQUARED, Order.ASC, ascending: true, expectIdsNearestQuery0: true);
+		}
+
+		/// <summary>
+		/// KNN Top-K with DOT_PRODUCT as the order key (DESC). Monotonic scores only —
+		/// this fixture's magnitude grows with id, so nearest-by-dot is not id 0..k-1.
+		/// </summary>
+		[TestMethod]
+		public void VectorSearchTopKNearestDotProduct()
+		{
+			AssertTopKNearest(VectorDistanceMetric.DOT_PRODUCT, Order.DESC, ascending: false, expectIdsNearestQuery0: false);
+		}
+
+		/// <summary>
+		/// KNN Top-K with COSINE_SIMILARITY as the order key (higher is nearer).
+		/// </summary>
+		[TestMethod]
+		public void VectorSearchTopKNearestCosine()
+		{
+			AssertTopKNearest(VectorDistanceMetric.COSINE_SIMILARITY, Order.DESC, ascending: false, expectIdsNearestQuery0: true);
+		}
+
+		private static void AssertTopKNearest(
+			VectorDistanceMetric metric,
+			Order order,
+			bool ascending,
+			bool expectIdsNearestQuery0)
+		{
 			int k = 5;
 			string distBin = "dist";
 
@@ -173,15 +201,15 @@ namespace Aerospike.Test
 			[
 				Operation.Get(IdBin),
 				ExpOperation.Read(distBin,
-					Exp.Build(VectorExp.Distance(VectorDistanceMetric.EUCLIDEAN_SQUARED, Query(0), Exp.VectorBin(VecBin))),
+					Exp.Build(VectorExp.Distance(metric, Query(0), Exp.VectorBin(VecBin))),
 					ExpReadFlags.DEFAULT)
 			];
-			stmt.SetOrderBy(distBin, BinDataType.DOUBLE, Order.ASC);
+			stmt.SetOrderBy(distBin, BinDataType.DOUBLE, order);
 			stmt.SetTopK(k);
 
 			RecordSet rs = client.Query(null, stmt);
 			int count = 0;
-			double previous = double.NegativeInfinity;
+			double previous = ascending ? double.NegativeInfinity : double.PositiveInfinity;
 
 			try
 			{
@@ -189,8 +217,19 @@ namespace Aerospike.Test
 				{
 					Record record = rs.Record;
 					double dist = record.GetDouble(distBin);
-					Assert.IsTrue(dist >= previous, "Top-K nearest must be in ascending distance order");
-					Assert.AreEqual(count, record.GetLong(IdBin), "Top-K nearest must return records nearest to query(0)");
+					if (ascending)
+					{
+						Assert.IsTrue(dist >= previous, metric + " Top-K must be ascending");
+					}
+					else
+					{
+						Assert.IsTrue(dist <= previous, metric + " Top-K must be descending");
+					}
+					if (expectIdsNearestQuery0)
+					{
+						Assert.AreEqual(count, record.GetLong(IdBin),
+							metric + " Top-K must return records nearest to query(0)");
+					}
 					previous = dist;
 					count++;
 				}
