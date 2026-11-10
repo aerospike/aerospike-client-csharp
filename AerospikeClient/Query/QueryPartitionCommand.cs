@@ -97,8 +97,13 @@ namespace Aerospike.Client
 				// When an error code is received, mark partition as unavailable
 				// for the current round. Unavailable partitions will be retried
 				// in the next round. Generation is overloaded as partitionId.
+				// Top-K must not retry TIMEOUT via that path.
 				if (resultCode != 0)
 				{
+					if (statement.HasTopK && resultCode == ResultCode.TIMEOUT)
+					{
+						throw CreateException(resultCode);
+					}
 					tracker.PartitionUnavailable(nodePartitions, generation);
 				}
 				return true;

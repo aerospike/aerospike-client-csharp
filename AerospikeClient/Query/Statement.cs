@@ -471,10 +471,14 @@ namespace Aerospike.Client
 		/// the two steps).
 		/// </para>
 		/// <para>
-		/// Nodes send results only after finishing their scan. For large sets, raise the socket
-		/// timeout (or set it to 0); the client does not change the application's timeout policy.
-		/// Results are delivered only after the merge completes (ordered buffer of at most k),
-		/// not streamed like an ordinary query.
+		/// Nodes send results only after finishing their scan. Set
+		/// <see cref="Policy.socketTimeout"/> longer than the expected run time (or 0 for no
+		/// socket idle limit), and set <see cref="Policy.totalTimeout"/> as the query deadline.
+		/// The client does not change the application's timeout policy, and does not retry a
+		/// Top-K query after a client or server <see cref="ResultCode.TIMEOUT"/> — each retry
+		/// would restart a full scan on the timed-out node. On timeout the application receives
+		/// the error and no records (results are delivered only after the merge completes into
+		/// an ordered buffer of at most k, not streamed like an ordinary query).
 		/// </para>
 		/// </summary>
 		/// <param name="k">maximum number of records to return, in [1, 1000]</param>

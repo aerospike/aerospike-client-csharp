@@ -86,6 +86,14 @@ public sealed class QueryTopK : SyncExample
 
 		Console.WriteLine($"Query top {k} by bin={binName} DESC, then {thenBin} ASC");
 
+		// Top-K does not retry on TIMEOUT; keep socketTimeout above the scan (or 0)
+		// and use totalTimeout as the deadline.
+		QueryPolicy policy = new()
+		{
+			socketTimeout = 0,
+			totalTimeout = 0
+		};
+
 		Statement stmt = new();
 		stmt.SetNamespace(ns);
 		stmt.SetSetName(set);
@@ -95,7 +103,7 @@ public sealed class QueryTopK : SyncExample
 		stmt.ThenOrderBy(thenBin, BinDataType.INTEGER, Order.ASC);
 		stmt.SetTopK(k);
 
-		using RecordSet rs = client.Query(null, stmt);
+		using RecordSet rs = client.Query(policy, stmt);
 		int count = 0;
 		int expected = 20;
 

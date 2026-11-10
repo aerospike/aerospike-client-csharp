@@ -27,6 +27,7 @@ namespace Aerospike.Client
 		private readonly Node nodeFilter;
 		private readonly PartitionFilter partitionFilter;
 		private readonly Replica replica;
+		private readonly bool retryOnTimeout = true;
 		private List<NodePartitions> nodePartitionsList;
 		private List<AerospikeException> exceptions;
 		private volatile int recordCount;
@@ -36,6 +37,12 @@ namespace Aerospike.Client
 		public int totalTimeout;
 		public int iteration = 1;
 		private DateTime deadline;
+
+		/// <summary>
+		/// Whether TIMEOUT (client socket or server) is eligible for partition retry.
+		/// False for Top-K: each retry restarts a full node scan.
+		/// </summary>
+		internal bool RetryOnTimeout => retryOnTimeout;
 
 		public PartitionTracker(ScanPolicy policy, Node[] nodes)
 			: this((Policy)policy, nodes)
@@ -47,6 +54,7 @@ namespace Aerospike.Client
 			: this((Policy)policy, nodes)
 		{
 			SetMaxRecords(policy, stmt);
+			retryOnTimeout = !stmt.HasTopK;
 		}
 
 		private PartitionTracker(Policy policy, Node[] nodes)
@@ -76,6 +84,7 @@ namespace Aerospike.Client
 			: this((Policy)policy, nodeFilter)
 		{
 			SetMaxRecords(policy, stmt);
+			retryOnTimeout = !stmt.HasTopK;
 		}
 
 		private PartitionTracker(Policy policy, Node nodeFilter)
@@ -98,6 +107,7 @@ namespace Aerospike.Client
 		public PartitionTracker(QueryPolicy policy, Statement stmt, Node[] nodes, PartitionFilter filter)
 			: this((Policy)policy, nodes, filter, (stmt.maxRecords > 0) ? stmt.maxRecords : policy.maxRecords)
 		{
+			retryOnTimeout = !stmt.HasTopK;
 		}
 #pragma warning restore 0618
 
@@ -524,8 +534,16 @@ namespace Aerospike.Client
 
 			switch (ae.Result)
 			{
-				case ResultCode.SERVER_NOT_AVAILABLE:
 				case ResultCode.TIMEOUT:
+					// Top-K ranks on the server before sending; a retry restarts that full
+					// scan on the node. Do not retry client or server TIMEOUT.
+					if (!retryOnTimeout)
+					{
+						return false;
+					}
+					goto case ResultCode.SERVER_NOT_AVAILABLE;
+
+				case ResultCode.SERVER_NOT_AVAILABLE:
 				case ResultCode.INDEX_NOTFOUND:
 				case ResultCode.INDEX_NOTREADABLE:
 					AddException(nodePartitions.node, ae);

@@ -136,6 +136,21 @@ namespace Aerospike.Test
 			Assert.IsFalse(AerospikeClient.PartitionFilterHasResumePoints(PartitionFilter.Id(0)));
 		}
 
+		[TestMethod]
+		public void TopKDoesNotRetryOnTimeout()
+		{
+			Statement topK = TopKStatement();
+			PartitionTracker topKTracker = new(new QueryPolicy(), topK, (Node[])null);
+			Assert.IsFalse(topKTracker.RetryOnTimeout);
+			Assert.IsFalse(topKTracker.ShouldRetry(null, new AerospikeException(ResultCode.TIMEOUT)));
+
+			Statement plain = new();
+			plain.SetNamespace("test");
+			plain.SetSetName(Set);
+			PartitionTracker plainTracker = new(new QueryPolicy(), plain, (Node[])null);
+			Assert.IsTrue(plainTracker.RetryOnTimeout);
+		}
+
 		private sealed class NullRecordSequenceListener : RecordSequenceListener
 		{
 			public void OnRecord(Key key, Record record)

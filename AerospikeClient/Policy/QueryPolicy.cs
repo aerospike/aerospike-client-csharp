@@ -211,6 +211,12 @@ namespace Aerospike.Client
 		/// default maxRetries is used because it's wasteful to invalidate
 		/// all query results because a single partition was missed.
 		/// </para>
+		/// <para>
+		/// Top-K queries (<see cref="Statement.SetTopK(int)"/>) do not retry on
+		/// <see cref="ResultCode.TIMEOUT"/> regardless of maxRetries. Use a socket
+		/// timeout longer than the expected run (or 0) and a total timeout as the
+		/// deadline.
+		/// </para>
 		/// </summary>
 		public QueryPolicy() : base()
 		{
