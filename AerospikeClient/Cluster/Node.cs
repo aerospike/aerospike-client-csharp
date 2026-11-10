@@ -476,7 +476,7 @@ namespace Aerospike.Client
 								{
 									Log.Info("Replace node: " + peer.replaceNode);
 								}
-								peers.removeNodes.Add(peer.replaceNode);
+								peers.RemoveNode(peer.replaceNode);
 							}
 							break;
 						}
@@ -816,7 +816,7 @@ namespace Aerospike.Client
 					Node node = cluster.CreateNode(nv, true);
 					node.advertisedHosts = advertisedHosts;
 					peers.nodes[name] = node;
-					peers.removeNodes.Add(this);
+					peers.RemoveNode(this);
 					LogMove(node);
 					return;
 				}

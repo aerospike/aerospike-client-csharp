@@ -16,6 +16,7 @@
  */
 using Aerospike.Client.Config;
 using System.Collections.Concurrent;
+using System.Net;
 using System.Reflection;
 using System.Text;
 
@@ -66,6 +67,12 @@ namespace Aerospike.Client
 
 		// Pass-through miss warnings once per node and advertised address when addressTranslator is set.
 		private readonly ConcurrentDictionary<string, string> translationMisses;
+
+		/// <summary>
+		/// Last validated address per host:port, preferred on the next multi-address connect race.
+		/// </summary>
+		internal readonly ConcurrentDictionary<string, IPAddress> validAddresses =
+			new ConcurrentDictionary<string, IPAddress>();
 
 		// Seed candidate refresh manager (FR-41).
 		internal readonly SeedCandidateManager seedCandidateManager;
@@ -140,7 +147,7 @@ namespace Aerospike.Client
 		private int invalidNodeCount;
 
 		// Interval in milliseconds between cluster tends.
-		private int tendInterval;
+		internal int tendInterval;
 
 		private bool failIfNotConnected;
 
@@ -727,9 +734,9 @@ namespace Aerospike.Client
 				}
 
 				// Remove nodes in a batch.
-				if (peers.removeNodes.Count > 0)
+				if (peers.nodesToRemove.Count > 0)
 				{
-					RemoveNodes(peers.removeNodes);
+					RemoveNodes(peers);
 				}
 
 				if (added)
@@ -933,12 +940,20 @@ namespace Aerospike.Client
 					node.RefreshPeers(peers);
 				}
 
-				if (peers.nodes.Count > 0)
+				bool added = peers.nodes.Count > 0;
+
+				if (added)
 				{
-					// Add new peer nodes to cluster.
+					// Add new peer nodes to cluster before removing the nodes they replace.
 					AddNodes(peers.nodes);
 				}
-				else
+
+				if (peers.nodesToRemove.Count > 0)
+				{
+					RemoveNodes(peers);
+				}
+
+				if (!added)
 				{
 					break;
 				}
@@ -959,14 +974,13 @@ namespace Aerospike.Client
 		private void FindNodesToRemove(Peers peers)
 		{
 			int refreshCount = peers.refreshCount;
-			HashSet<Node> removeNodes = peers.removeNodes;
 
 			foreach (Node node in nodes)
 			{
 				if (!node.Active)
 				{
 					// Inactive nodes must be removed.
-					removeNodes.Add(node);
+					peers.RemoveNode(node);
 					continue;
 				}
 
@@ -975,7 +989,7 @@ namespace Aerospike.Client
 					// All node info requests failed and this node had 5 consecutive failures.
 					// Remove node.  If no nodes are left, seeds will be tried in next cluster
 					// tend iteration.
-					removeNodes.Add(node);
+					peers.RemoveNode(node);
 					continue;
 				}
 
@@ -990,13 +1004,13 @@ namespace Aerospike.Client
 						{
 							// Node doesn't have any partitions mapped to it.
 							// There is no point in keeping it in the cluster.
-							removeNodes.Add(node);
+							peers.RemoveNode(node);
 						}
 					}
 					else
 					{
 						// Node not responding. Remove it.
-						removeNodes.Add(node);
+						peers.RemoveNode(node);
 					}
 				}
 			}
@@ -1082,8 +1096,10 @@ namespace Aerospike.Client
 			nodesMap[node.Name] = node;
 		}
 
-		private void RemoveNodes(HashSet<Node> nodesToRemove)
+		private void RemoveNodes(Peers peers)
 		{
+			HashSet<Node> nodesToRemove = peers.nodesToRemove;
+
 			// There is no need to delete nodes from partitionWriteMap because the nodes 
 			// have already been set to inactive. Further connection requests will result 
 			// in an exception and a different node will be tried.
@@ -1091,8 +1107,11 @@ namespace Aerospike.Client
 			// Cleanup node resources.
 			foreach (Node node in nodesToRemove)
 			{
-				// Remove node from map.
-				nodesMap.Remove(node.Name);
+				// Remove from map unless a replacement node already took its name.
+				if (nodesMap.TryGetValue(node.Name, out Node mapped) && object.ReferenceEquals(mapped, node))
+				{
+					nodesMap.Remove(node.Name);
+				}
 
 				lock (metricsLock)
 				{
@@ -1116,12 +1135,16 @@ namespace Aerospike.Client
 				}
 				else
 				{
+					peers.removeNodes.Clear();
+					nodesToRemove.Clear();
 					return;
 				}
 			}
 
 			// Remove all nodes at once to avoid copying entire array multiple times.
 			RemoveNodesCopy(nodesToRemove);
+			peers.removeNodes.Clear();
+			nodesToRemove.Clear();
 		}
 
 		/// <summary>
@@ -1136,7 +1159,7 @@ namespace Aerospike.Client
 			Node[] nodeArray = new Node[nodes.Length - nodesToRemove.Count];
 			int count = 0;
 
-			// Add nodes that are not in remove list.
+			// Add nodes that are not in remove list (reference equality).
 			foreach (Node node in nodes)
 			{
 				if (nodesToRemove.Contains(node))
@@ -1807,6 +1830,7 @@ namespace Aerospike.Client
 			tendValid = false;
 			cancel.Cancel();
 			seedCandidateManager.Close();
+			validAddresses.Clear();
 
 			lock (metricsLock)
 			{

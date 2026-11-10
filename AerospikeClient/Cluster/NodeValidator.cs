@@ -14,7 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Diagnostics;
 using System.Net;
+using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace Aerospike.Client
 {
@@ -143,6 +146,12 @@ namespace Aerospike.Client
 		public void ValidateNode(Cluster cluster, Host host)
 		{
 			IPAddress[] addresses = Connection.GetHostAddresses(host.name, cluster.connectionTimeout);
+
+			if (addresses.Length > 1)
+			{
+				addresses = ConnectAll(cluster, host, addresses);
+			}
+
 			Exception exception = null;
 
 			foreach (IPAddress address in addresses)
@@ -151,6 +160,7 @@ namespace Aerospike.Client
 				{
 					ValidateAddress(cluster, address, host.tlsName, host.port, false);
 					SetHostname(host, address);
+					cluster.validAddresses[host.name + ':' + host.port] = address;
 					return;
 				}
 				catch (Exception e)
@@ -171,6 +181,207 @@ namespace Aerospike.Client
 			// Exception can't be null here because Connection.GetHostAddresses()
 			// will throw exception if aliases length is zero.
 			throw exception;
+		}
+
+		/// <summary>
+		/// Start a connect to every address at once and wait until one completes or
+		/// min(connectTimeout, tendInterval) passes. Return the addresses that completed by then,
+		/// the last validated address first, then in DNS order.
+		/// </summary>
+		internal static IPAddress[] ConnectAll(Cluster cluster, Host host, IPAddress[] addresses)
+		{
+			cluster.validAddresses.TryGetValue(host.name + ':' + host.port, out IPAddress preferred);
+			int bound = cluster.connectionTimeout > 0
+				? Math.Min(cluster.connectionTimeout, cluster.tendInterval)
+				: cluster.tendInterval;
+			return ConnectAll(bound, host.port, preferred, addresses);
+		}
+
+		/// <summary>
+		/// Race TCP connects across <paramref name="addresses"/> and return those that completed
+		/// within <paramref name="boundMs"/>, preferred first then DNS order.
+		/// </summary>
+		internal static IPAddress[] ConnectAll(int boundMs, int port, IPAddress preferred, IPAddress[] addresses)
+		{
+			List<IPAddress> connected = new List<IPAddress>(addresses.Length);
+			List<(IPAddress Address, Socket Socket, Task Task)> pending = new List<(IPAddress, Socket, Task)>();
+			object gate = new object();
+
+			void Start(IPAddress address)
+			{
+				Socket socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+				try
+				{
+					socket.NoDelay = true;
+					Task task = ConnectSocketAsync(socket, new IPEndPoint(address, port));
+					pending.Add((address, socket, task));
+				}
+				catch (Exception e)
+				{
+					try
+					{
+						socket.Dispose();
+					}
+					catch
+					{
+					}
+
+					if (Log.DebugEnabled())
+					{
+						Log.Debug("Address " + address + ' ' + port + " failed: " + Util.GetErrorMessage(e));
+					}
+				}
+			}
+
+			if (preferred != null)
+			{
+				foreach (IPAddress address in addresses)
+				{
+					if (address.Equals(preferred))
+					{
+						Start(preferred);
+						break;
+					}
+				}
+			}
+
+			foreach (IPAddress address in addresses)
+			{
+				if (!address.Equals(preferred))
+				{
+					Start(address);
+				}
+			}
+
+			if (pending.Count == 0)
+			{
+				throw new AerospikeException.Connection("No connection to port " + port + " started for " +
+					addresses.Length + " addresses");
+			}
+
+			Stopwatch sw = Stopwatch.StartNew();
+
+			while (connected.Count == 0)
+			{
+				int remaining = boundMs - (int)sw.ElapsedMilliseconds;
+
+				if (remaining <= 0)
+				{
+					break;
+				}
+
+				List<Task> running = new List<Task>();
+
+				foreach ((IPAddress Address, Socket Socket, Task Task) item in pending)
+				{
+					if (!item.Task.IsCompleted)
+					{
+						running.Add(item.Task);
+					}
+				}
+
+				if (running.Count == 0)
+				{
+					break;
+				}
+
+				try
+				{
+					Task.WhenAny(running).Wait(remaining);
+				}
+				catch
+				{
+				}
+
+				Harvest(pending, connected, gate, port);
+
+				if (connected.Count > 0)
+				{
+					// Collect any other connects that finished in the same window.
+					Harvest(pending, connected, gate, port);
+					break;
+				}
+			}
+
+			Harvest(pending, connected, gate, port);
+
+			foreach ((IPAddress Address, Socket Socket, Task Task) item in pending)
+			{
+				if (!item.Task.IsCompleted && Log.DebugEnabled())
+				{
+					Log.Debug("Address " + item.Address + ' ' + port +
+						" failed: connect did not complete within " + boundMs + "ms");
+				}
+
+				try
+				{
+					item.Socket.Dispose();
+				}
+				catch
+				{
+				}
+			}
+
+			if (connected.Count == 0)
+			{
+				throw new AerospikeException.Connection("No connection to port " + port + " completed for " +
+					addresses.Length + " addresses within " + boundMs + "ms");
+			}
+
+			connected.Sort((a, b) => Rank(addresses, preferred, a).CompareTo(Rank(addresses, preferred, b)));
+			return connected.ToArray();
+		}
+
+		private static void Harvest(
+			List<(IPAddress Address, Socket Socket, Task Task)> pending,
+			List<IPAddress> connected,
+			object gate,
+			int port)
+		{
+			foreach ((IPAddress Address, Socket Socket, Task Task) item in pending)
+			{
+				if (item.Task.Status != TaskStatus.RanToCompletion)
+				{
+					if (item.Task.IsFaulted && Log.DebugEnabled())
+					{
+						Log.Debug("Address " + item.Address + ' ' + port + " failed: " +
+							Util.GetErrorMessage(item.Task.Exception.GetBaseException()));
+					}
+					continue;
+				}
+
+				lock (gate)
+				{
+					if (!connected.Contains(item.Address))
+					{
+						connected.Add(item.Address);
+					}
+				}
+			}
+		}
+
+		private static int Rank(IPAddress[] addresses, IPAddress preferred, IPAddress address)
+		{
+			if (preferred != null && address.Equals(preferred))
+			{
+				return -1;
+			}
+
+			for (int i = 0; i < addresses.Length; i++)
+			{
+				if (addresses[i].Equals(address))
+				{
+					return i;
+				}
+			}
+
+			return addresses.Length;
+		}
+
+		private static async Task ConnectSocketAsync(Socket socket, IPEndPoint endpoint)
+		{
+			await socket.ConnectAsync(endpoint).ConfigureAwait(false);
 		}
 
 		/// <summary>
