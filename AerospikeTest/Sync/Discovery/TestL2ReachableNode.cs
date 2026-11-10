@@ -49,8 +49,8 @@ namespace Aerospike.Test
 
 		/// <summary>
 		/// N-10: on_miss unset (pass_through). port-map covers every node but the reachable one, whose
-		/// advertised address is used unchanged for its <see cref="Node"/>. All nodes join, no translation
-		/// miss is logged and the partition map is complete.
+		/// advertised address is used unchanged for its <see cref="Node"/>. All nodes join, the unmapped
+		/// peer warns once, and the partition map is complete.
 		/// </summary>
 		[TestMethod]
 		public void N10UnmappedPeerPassesThroughUnchanged()
@@ -88,7 +88,12 @@ namespace Aerospike.Test
 
 				Dictionary<string, int> owners = L2Topology.Owners(L2Topology.AssertAllPartitionsOwned("N-10", client));
 				CollectionAssert.AreEqual(L2Topology.NodeNames(), TestL2Topology.Sorted(owners.Keys));
-				Assert.AreEqual(0, TranslationMisses().Count, TestL2Topology.Fmt(TranslationMisses()));
+
+				List<string> misses = TranslationMisses();
+				Assert.AreEqual(1, misses.Count, TestL2Topology.Fmt(misses));
+				Assert.IsTrue(misses[0].Contains(reachable.Name), misses[0]);
+				Assert.IsTrue(misses[0].Contains(advertised), misses[0]);
+				Assert.IsTrue(misses[0].Contains("pass_through"), misses[0]);
 			}
 		}
 
@@ -122,7 +127,7 @@ namespace Aerospike.Test
 
 		/// <summary>
 		/// useServicesAlternate, on_miss pass_through and a custom translator that maps nothing: every
-		/// alternate address is used unchanged.
+		/// alternate address is used unchanged, with one warn-once miss warning per peer.
 		/// </summary>
 		[TestMethod]
 		public void AlternateEmptyCustomPassThroughJoins()
@@ -132,7 +137,8 @@ namespace Aerospike.Test
 			ClientPolicy policy = AlternatePolicy();
 			policy.addressTranslator = new TestL2Topology.EmptyTranslator();
 			policy.translationOnMiss = TranslationMissMode.PASS_THROUGH;
-			AssertAlternateJoins("alternate-custom-empty-pass-through", policy);
+			AssertAlternateJoins("alternate-custom-empty-pass-through", policy,
+				WithAlternate(L2Topology.Nodes()).Count);
 		}
 
 		/// <summary>
@@ -194,7 +200,7 @@ namespace Aerospike.Test
 			Assert.IsTrue(message.Contains("useServicesAlternate"), message);
 		}
 
-		private static void AssertAlternateJoins(string row, ClientPolicy policy)
+		private static void AssertAlternateJoins(string row, ClientPolicy policy, int expectedTranslationMisses = 0)
 		{
 			List<L2Node> nodes = L2Topology.Nodes();
 			L2Node reachable = Reachable(nodes);
@@ -212,8 +218,9 @@ namespace Aerospike.Test
 				});
 
 				List<string> missing = AlternateMissing(reachable);
+				List<string> misses = TranslationMisses();
 				Console.WriteLine("L2-ALT-JOIN " + row + " nodes=" + TestL2Topology.Fmt(L2Topology.NodeNames(client)) + " withoutAlternate=" +
-					reachable.Name + " missingErrors=" + missing.Count + " translationMisses=" + TranslationMisses().Count);
+					reachable.Name + " missingErrors=" + missing.Count + " translationMisses=" + misses.Count);
 
 				foreach (L2Node expected in withAlternate)
 				{
@@ -227,7 +234,7 @@ namespace Aerospike.Test
 				Assert.IsTrue(missing.Count >= MISS_RETRIES,
 					"Node " + reachable.Name + " without alternate not reported every tend: " + TestL2Topology.Fmt(TestL2Topology.Errors));
 				Console.WriteLine("L2-ALT-LOG " + row + ' ' + missing[0]);
-				Assert.AreEqual(0, TranslationMisses().Count, TestL2Topology.Fmt(TranslationMisses()));
+				Assert.AreEqual(expectedTranslationMisses, misses.Count, TestL2Topology.Fmt(misses));
 			}
 		}
 

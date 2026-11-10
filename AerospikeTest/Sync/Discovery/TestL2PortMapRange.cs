@@ -119,7 +119,8 @@ namespace Aerospike.Test
 		/// N-19 outside the range: a node started on an address the pre-filled port-map does not cover
 		/// is decided by on_miss. With strict the UX-2 error names the node, its advertised endpoint and
 		/// the translator on every tend and no <see cref="Node"/> is created. With the default the unchanged
-		/// address, which the client cannot reach, is tried on every tend and no <see cref="Node"/> is created.
+		/// address, which the client cannot reach, is tried on every tend (with one pass-through miss
+		/// warn) and no <see cref="Node"/> is created.
 		/// </summary>
 		[TestMethod]
 		public void N19NodeOutsideRangeDecidedByOnMiss()
@@ -190,7 +191,11 @@ namespace Aerospike.Test
 					"Unchanged address " + advertised + " not tried every tend: " + TestL2Topology.Fmt(TestL2Topology.Warnings));
 				Console.WriteLine("L2-N19-PASS-THROUGH-LOG " + attempts[0]);
 				CollectionAssert.AreEqual(names, L2Topology.NodeNames(client));
-				Assert.AreEqual(0, Misses(name).Count, TestL2Topology.Fmt(Misses(name)));
+
+				List<string> misses = Misses(name);
+				Assert.AreEqual(1, misses.Count, TestL2Topology.Fmt(misses));
+				Assert.IsTrue(misses[0].Contains(advertised), misses[0]);
+				Assert.IsTrue(misses[0].Contains("pass_through"), misses[0]);
 			}
 		}
 

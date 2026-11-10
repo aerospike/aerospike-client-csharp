@@ -14,16 +14,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using Aerospike.Client;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using Aerospike.Client;
 
 namespace Aerospike.Test
 {
 	/// <summary>
 	/// Pass-through translation misses warn once per node and advertised address when an
-	/// address translator is set (CLIENT-5867), matching Java EndpointSourceListTest.
+	/// address translator is set.
 	/// </summary>
 	[TestClass]
 	public class TestTranslationMissWarn
