@@ -37,12 +37,6 @@ namespace Aerospike.Client
 		/// <summary>digest -> (key, record), for dedup and result reconstruction.</summary>
 		private readonly Dictionary<byte[], Entry> byDigest = new(DigestComparer);
 
-		/// <summary>
-		/// Max last-update time seen per digest, retained after heap eviction so a newer
-		/// copy that was ranked out cannot be replaced later by an older copy (R29).
-		/// </summary>
-		private readonly Dictionary<byte[], long> maxLutByDigest = new(DigestComparer);
-
 		/// <summary>Worst-first set: Min is evicted first when the set exceeds <see cref="limit"/>.</summary>
 		private readonly SortedSet<OrderKey> heap = new(WorstFirst);
 
@@ -149,16 +143,9 @@ namespace Aerospike.Client
 				byte[] digest = key.digest;
 
 				// Dedup: at most one row per digest (partition migration may re-scan a
-				// record). PRD R29: keep the copy with the later last-update time; when
-				// times are equal (including both zero on client-side reduce), keep the
-				// better-ranked copy. maxLutByDigest outlives heap eviction so a newer
-				// copy that fell out of the top-k cannot lose to an older re-scan.
-				if (maxLutByDigest.TryGetValue(digest, out long seenLut) &&
-					candidate.lastUpdateTime < seenLut)
-				{
-					return;
-				}
-
+				// record). Keep the copy with the later last-update time; when times are
+				// equal (including both zero on client-side reduce), keep the better-ranked
+				// copy. Last-update time is forgotten once a digest is evicted from the heap.
 				if (byDigest.TryGetValue(digest, out Entry existingEntry))
 				{
 					if (!Replaces(candidate, existingEntry.orderKey))
@@ -169,10 +156,9 @@ namespace Aerospike.Client
 					heap.Remove(existingEntry.orderKey);
 					byDigest.Remove(digest);
 				}
-
-				if (candidate.lastUpdateTime >= seenLut)
+				else if (heap.Count == limit && candidate.CompareTo(heap.Min) >= 0)
 				{
-					maxLutByDigest[digest] = candidate.lastUpdateTime;
+					return; // would be evicted at once
 				}
 
 				heap.Add(candidate);
@@ -232,6 +218,26 @@ namespace Aerospike.Client
 			lock (sync)
 			{
 				return GetResultUnlocked();
+			}
+		}
+
+		/// <summary>
+		/// Return the kept key/record pairs, best first, sorting the heap once.
+		/// Used by the query executor to fill the <see cref="RecordSet"/>.
+		/// </summary>
+		internal KeyRecord[] GetResultKeyRecords()
+		{
+			lock (sync)
+			{
+				OrderKey[] sorted = SortedBestFirst();
+				KeyRecord[] output = new KeyRecord[sorted.Length];
+
+				for (int i = 0; i < sorted.Length; i++)
+				{
+					Entry entry = byDigest[sorted[i].digest];
+					output[i] = new KeyRecord(entry.key, entry.record);
+				}
+				return output;
 			}
 		}
 

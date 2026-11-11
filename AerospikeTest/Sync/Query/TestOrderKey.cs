@@ -36,7 +36,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void NegativeZeroEqualsPositiveZero()
 		{
-			// PRD R29 / reduce-design: −0.0 equals 0.0; tie breaks by digest.
+			// −0.0 equals 0.0; tie breaks by digest.
 			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.DOUBLE, Order.ASC, 2);
 			reducer.AcceptPartial(Record(0.0), Key("pos"));
 			reducer.AcceptPartial(Record(-0.0), Key("neg"));
@@ -68,7 +68,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void DedupEqualLutKeepsBetterRanked()
 		{
-			// R29: when last-update times are equal (including both zero), keep the
+			// When last-update times are equal (including both zero), keep the
 			// better-ranked copy — generation is not the tie-breaker.
 			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, 1);
 			Key key = Key("same");

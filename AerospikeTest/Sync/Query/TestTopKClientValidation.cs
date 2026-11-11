@@ -19,8 +19,7 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	/// <summary>
-	/// Client-side Top-K request validation that runs before anything is sent (R28),
-	/// aligned with the Node.js Top-K plan cases TK-K1, TK-R*, and TK-S*.
+	/// Client-side Top-K request validation that runs before anything is sent.
 	/// Live-cluster tests require every node to advertise query-order-by.
 	/// </summary>
 	[TestClass]
@@ -28,6 +27,12 @@ namespace Aerospike.Test
 	{
 		private const string Set = "topKClientVal";
 		private const string Bin = "rank";
+
+		[ClassInitialize]
+		public static void Prepare(TestContext testContext)
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "Top-K");
+		}
 
 		private static void RequireCapableCluster()
 		{
@@ -137,6 +142,12 @@ namespace Aerospike.Test
 			Assert.IsFalse(AerospikeClient.PartitionFilterHasResumePoints(PartitionFilter.Id(0)));
 		}
 
+		/// <summary>
+		/// Top-K skips partition-round TIMEOUT retries. Per-node query commands also
+		/// use SyncCommand maxRetries 0 (scan/query ctor), so a socket/server TIMEOUT
+		/// fails that node attempt immediately; <see cref="QueryPolicy.maxRetries"/>
+		/// only governs PartitionTracker rounds.
+		/// </summary>
 		[TestMethod]
 		public void TopKDoesNotRetryOnTimeout()
 		{
@@ -152,7 +163,7 @@ namespace Aerospike.Test
 			Assert.IsTrue(plainTracker.RetryOnTimeout);
 		}
 
-		/// <summary>TK-K1 / TK-R3 / TK-R4: reject huge or zero k before allocating.</summary>
+		/// <summary>Reject huge or zero k before allocating.</summary>
 		[TestMethod]
 		public void RejectsKOutsideOneToThousand()
 		{
@@ -167,7 +178,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		/// <summary>TK-R5: k without an order key.</summary>
+		/// <summary>Reject k without an order key.</summary>
 		[TestMethod]
 		public void RejectsTopKWithoutOrderBy()
 		{
@@ -182,7 +193,7 @@ namespace Aerospike.Test
 			Assert.AreEqual("Top-K requires an order key; call SetOrderBy()", ae.BaseMessage);
 		}
 
-		/// <summary>TK-S3: thenOrderBy before orderBy.</summary>
+		/// <summary>Reject thenOrderBy before orderBy.</summary>
 		[TestMethod]
 		public void RejectsThenOrderByBeforeOrderBy()
 		{
@@ -193,7 +204,7 @@ namespace Aerospike.Test
 			Assert.AreEqual("thenOrderBy must follow orderBy", ae.BaseMessage);
 		}
 
-		/// <summary>TK-R7: at most two order keys.</summary>
+		/// <summary>Reject a third order key.</summary>
 		[TestMethod]
 		public void RejectsThirdOrderKey()
 		{
@@ -207,7 +218,7 @@ namespace Aerospike.Test
 			Assert.AreEqual("orderBy supports at most two keys", ae.BaseMessage);
 		}
 
-		/// <summary>TK-S3b / TK-S4: a later orderBy replaces keys; a later topK replaces k.</summary>
+		/// <summary>A later orderBy replaces keys; a later topK replaces k.</summary>
 		[TestMethod]
 		public void OrderByReplacementClearsThenKeepsLatestTopK()
 		{
@@ -232,7 +243,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(7, stmt.TopKLimit);
 		}
 
-		/// <summary>TK-R6: unsupported order type (STRING is not in BinDataType for this release).</summary>
+		/// <summary>Reject unsupported order type.</summary>
 		[TestMethod]
 		public void RejectsUnsupportedOrderByType()
 		{
@@ -246,7 +257,7 @@ namespace Aerospike.Test
 			Assert.AreEqual("orderBy type must be INTEGER, DOUBLE, or BYTES; got 5", ae.BaseMessage);
 		}
 
-		/// <summary>TK-R6: empty / oversized / NUL bin names.</summary>
+		/// <summary>Reject empty, oversized, or NUL bin names.</summary>
 		[TestMethod]
 		public void RejectsInvalidOrderByBinName()
 		{
@@ -266,7 +277,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		/// <summary>TK-R13: same bin as both order keys.</summary>
+		/// <summary>Reject the same bin as both order keys.</summary>
 		[TestMethod]
 		public void RejectsDuplicateOrderByBins()
 		{
@@ -281,7 +292,7 @@ namespace Aerospike.Test
 			Assert.AreEqual("orderBy keys must use different bins", ae.BaseMessage);
 		}
 
-		/// <summary>TK-R9: order key missing from projection.</summary>
+		/// <summary>Reject an order key missing from the projection.</summary>
 		[TestMethod]
 		public void RejectsOrderKeyNotInProjection()
 		{
@@ -300,7 +311,7 @@ namespace Aerospike.Test
 				ae.BaseMessage);
 		}
 
-		/// <summary>TK-R9: two ops producing the order key.</summary>
+		/// <summary>Reject an order key produced by more than one op.</summary>
 		[TestMethod]
 		public void RejectsOrderKeyProducedByMultipleOps()
 		{
@@ -323,7 +334,7 @@ namespace Aerospike.Test
 				ae.BaseMessage);
 		}
 
-		/// <summary>TK-R1: Top-K incompatible with aggregate UDFs.</summary>
+		/// <summary>Reject Top-K combined with an aggregate UDF.</summary>
 		[TestMethod]
 		public void RejectsAggregateUdf()
 		{
@@ -338,7 +349,7 @@ namespace Aerospike.Test
 				ae.BaseMessage);
 		}
 
-		/// <summary>TK-R2: Top-K on a background execute is rejected before send.</summary>
+		/// <summary>Reject Top-K on a background execute before send.</summary>
 		[TestMethod]
 		public void RejectsBackgroundExecuteTopK()
 		{
@@ -351,7 +362,7 @@ namespace Aerospike.Test
 		}
 
 		/// <summary>
-		/// TK-R10: statement maxRecords conflicts with Top-K (policy maxRecords covered above).
+		/// Statement maxRecords conflicts with Top-K (policy maxRecords covered above).
 		/// </summary>
 		[TestMethod]
 		public void RejectsStatementMaxRecords()
@@ -384,11 +395,17 @@ namespace Aerospike.Test
 	}
 
 	/// <summary>
-	/// Wire-level LUT field parsing (FieldType 14) used by Top-K merge (R29).
+	/// Wire-level LUT field parsing (FieldType 14) used by Top-K merge.
 	/// </summary>
 	[TestClass]
-	public class TestLutFieldParsing
+	public class TestLutFieldParsing : TestSync
 	{
+		[ClassInitialize]
+		public static void Prepare(TestContext testContext)
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "Top-K");
+		}
+
 		[TestMethod]
 		public void ParseLutFieldReadsBigEndianInt64()
 		{

@@ -19,9 +19,7 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	/// <summary>
-	/// Live Top-K ordering / path cases aligned with the Node.js Top-K QE plan
-	/// (TK-O*, TK-P1, TK-P11) for behaviours the C# unit suite did not cover
-	/// against a real 8.2.1+ cluster.
+	/// Live Top-K ordering and query-path cases against a capable cluster.
 	/// </summary>
 	[TestClass]
 	public class TestTopKOrdering : TestSync
@@ -82,7 +80,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		/// <summary>TK-O2b: NaN ranks above +∞; missing ranks last (both directions).</summary>
+		/// <summary>NaN ranks above +∞; missing ranks last (both directions).</summary>
 		[TestMethod]
 		public void DoubleNanInfAndMissingOrder()
 		{
@@ -126,7 +124,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		/// <summary>TK-O6 live: −0.0 equals 0.0 under Top-K pushdown (tie → digest).</summary>
+		/// <summary>−0.0 equals 0.0 under Top-K pushdown (tie → digest).</summary>
 		[TestMethod]
 		public void NegativeZeroTiesWithPositiveZero()
 		{
@@ -156,7 +154,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		/// <summary>TK-O4: BYTES lexicographic order; a prefix ranks before the longer value.</summary>
+		/// <summary>BYTES lexicographic order; a prefix ranks before the longer value.</summary>
 		[TestMethod]
 		public void BytesOrderPrefixRules()
 		{
@@ -194,7 +192,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		/// <summary>TK-O7 / thenOrderBy: primary DESC, secondary ASC breaks ties.</summary>
+		/// <summary>Primary DESC with secondary ASC breaks ties.</summary>
 		[TestMethod]
 		public void ThenOrderByBreaksTiesLive()
 		{
@@ -235,7 +233,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		/// <summary>TK-O17: list and map order values rank last (wrong type), like missing.</summary>
+		/// <summary>List and map order values rank last (wrong type), like missing.</summary>
 		[TestMethod]
 		public void ListAndMapOrderValuesRankLast()
 		{
@@ -285,7 +283,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		/// <summary>TK-P1: secondary-index filter + Top-K.</summary>
+		/// <summary>Secondary-index filter combined with Top-K.</summary>
 		[TestMethod]
 		public void SecondaryIndexFilterWithTopK()
 		{
@@ -315,8 +313,8 @@ namespace Aerospike.Test
 		}
 
 		/// <summary>
-		/// TK-P11 / drift #16: project only a computed order bin. RESPOND_ALL_OPS
-		/// must keep incomparable records when EVAL_NO_FAIL is set.
+		/// Project only a computed order bin. RESPOND_ALL_OPS must keep
+		/// incomparable records when EVAL_NO_FAIL is set.
 		/// </summary>
 		[TestMethod]
 		public void ProjectOnlyComputedOrderKeyRespondAllOps()

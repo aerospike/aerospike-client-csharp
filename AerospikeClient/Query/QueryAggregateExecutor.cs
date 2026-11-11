@@ -149,7 +149,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Convert a stream-UDF argument for client-side Lua. Vectors are passed as bytes
-		/// (wire layout), matching HyperLogLog (PRD R72).
+		/// (wire layout), matching HyperLogLog.
 		/// </summary>
 		private static object ValueToLuaArg(Value value)
 		{

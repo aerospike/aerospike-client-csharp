@@ -24,6 +24,12 @@ namespace Aerospike.Test
 	[TestClass]
 	public class TestTopKRequestEncoding : TestSync
 	{
+		[ClassInitialize]
+		public static void Prepare(TestContext testContext)
+		{
+			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "Top-K");
+		}
+
 		[TestMethod]
 		public void TopKFieldsAreEncodedOnlyForPushdown()
 		{

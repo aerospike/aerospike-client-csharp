@@ -131,12 +131,9 @@ namespace Aerospike.Client
 				{
 					if (reducer is TopKReduceSpec topK)
 					{
-						Record[] records = topK.GetResult();
-						Key[] keys = topK.GetResultKeys();
-
-						for (int i = 0; i < records.Length; i++)
+						foreach (KeyRecord keyRecord in topK.GetResultKeyRecords())
 						{
-							recordSet.Put(new KeyRecord(keys[i], records[i]));
+							recordSet.Put(keyRecord);
 						}
 					}
 					// All partitions received.

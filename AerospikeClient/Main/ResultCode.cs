@@ -107,7 +107,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Invalid client API parameter or client parse error.
-		/// Used for Top-K / vector checks made before anything is sent (R28, R30);
+		/// Used for Top-K / vector checks made before anything is sent;
 		/// server rejections keep <see cref="PARAMETER_ERROR"/> (4).
 		/// Value: -2
 		/// </summary>

@@ -2718,7 +2718,7 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Whether a partition filter carries resume state from an earlier paged query.
-		/// Top-K rejects such filters before send (R28).
+		/// Top-K rejects such filters before send.
 		/// </summary>
 		internal static bool PartitionFilterHasResumePoints(PartitionFilter filter)
 		{

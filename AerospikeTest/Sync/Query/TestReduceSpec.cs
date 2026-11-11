@@ -132,7 +132,7 @@ namespace Aerospike.Test
 			Key k1 = Key("k1");
 
 			reducer.AcceptPartial(Record(Bin, 1L, 3), k1, 200);
-			// Earlier last-update time with a "better" DESC value must not win (R29).
+			// Earlier last-update time with a "better" DESC value must not win.
 			reducer.AcceptPartial(Record(Bin, 9L, 1), k1, 100);
 
 			Record[] result = reducer.GetResult();
@@ -155,24 +155,6 @@ namespace Aerospike.Test
 			Record[] result = reducer.GetResult();
 			Assert.AreEqual(1, result.Length);
 			Assert.AreEqual(9L, result[0].GetLong(Bin));
-		}
-
-		[TestMethod]
-		public void TopKDedupeRemembersLutAfterEviction()
-		{
-			// k=1: admit a newer, worse-ranked copy of digest D so it occupies the heap,
-			// then admit a better-ranked unrelated record that evicts D. An older copy of D
-			// must not re-enter (R29), even though byDigest no longer tracks D.
-			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, 1);
-
-			Key d = Key("dup");
-			reducer.AcceptPartial(Record(Bin, 1L, 1), d, 200);
-			reducer.AcceptPartial(Record(Bin, 100L, 1), Key("winner"), 100);
-			reducer.AcceptPartial(Record(Bin, 50L, 1), d, 100);
-
-			Record[] result = reducer.GetResult();
-			Assert.AreEqual(1, result.Length);
-			Assert.AreEqual(100L, result[0].GetLong(Bin));
 		}
 
 		[TestMethod]

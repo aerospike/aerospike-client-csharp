@@ -47,8 +47,8 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			// Top-K on async is rejected at the entry point (R28/R68). Order-by without
-			// top-k is still sent so the server can reject it (R20).
+			// Top-K on async is rejected at the entry point. Order-by without
+			// top-k is still sent so the server can reject it.
 			bool sendTopK = statement.ShouldSendOrderByFields(node);
 			SetQuery(cluster, policy, statement, taskId, false, null, node, sendTopK);
 		}

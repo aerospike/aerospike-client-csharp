@@ -47,7 +47,7 @@ namespace Aerospike.Client
 		protected internal override void WriteBuffer()
 		{
 			// Sync Query() validates full Top-K; order-by without top-k is still sent so
-			// the server can reject it (R20).
+			// the server can reject it.
 			bool sendTopK = statement.ShouldSendOrderByFields(GetNode());
 			SetQuery(cluster, policy, statement, taskId, false, null, GetNode(), sendTopK);
 		}

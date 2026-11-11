@@ -113,7 +113,7 @@ namespace Aerospike.Client
 		};
 
 		/// <summary>
-		/// Maximum dimensions allowed for the given element type (R6).
+		/// Maximum dimensions allowed for the given element type.
 		/// </summary>
 		public static int GetMaxDimensions(ElementType elementType) => elementType switch
 		{
@@ -336,7 +336,7 @@ namespace Aerospike.Client
 			new(ResultCode.PARSE_ERROR, message);
 
 		/// <summary>
-		/// Reject null and empty arrays; empty vectors are invalid (PRD R30).
+		/// Reject null and empty arrays; empty vectors are invalid.
 		/// </summary>
 		private static T[] RequireNonEmpty<T>(T[] data, string paramName)
 		{

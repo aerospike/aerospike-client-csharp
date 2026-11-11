@@ -2592,7 +2592,7 @@ namespace Aerospike.Client
 		private static TopKFields GetTopKFields(Statement statement, bool sendTopK)
 		{
 			// sendTopK means the cluster supports ORDER_BY / TOP_K fields.
-			// Order-by without top-k is still sent so the server can reject it (PRD decision 2026-10-13).
+			// Order-by without top-k is still sent so the server can reject it.
 			if (!sendTopK || !statement.HasOrderBy)
 			{
 				return null;

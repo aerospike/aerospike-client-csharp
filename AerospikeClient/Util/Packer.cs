@@ -112,7 +112,7 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Pack a value as a nested list/map element. Vectors are rejected (PRD R71).
+		/// Pack a value as a nested list/map element. Vectors are rejected.
 		/// </summary>
 		internal void PackNested(Value value)
 		{
@@ -186,7 +186,7 @@ namespace Aerospike.Client
 				// corrupt its in-progress serialization.
 				Packer packer = new(256);
 				packer.sortMaps = true;
-				// Keys are nested map elements; reject vector keys (PRD R71).
+				// Keys are nested map elements; reject vector keys.
 				packer.nestDepth = 1;
 				packer.PackObject(entry.Key);
 				keys[i] = packer.ToByteArray();
@@ -764,7 +764,7 @@ namespace Aerospike.Client
 
 		private void PackParticleVector(Vector val, ParticleType type)
 		{
-			// Nested VECTOR particles (list/map elements or keys) are not in Phase 1 (PRD R71).
+			// Nested VECTOR particles (list/map elements or keys) are not supported.
 			// PackVectorAsBlob uses BLOB and remains valid for distance expression literals.
 			if (type == ParticleType.VECTOR && nestDepth > 0)
 			{

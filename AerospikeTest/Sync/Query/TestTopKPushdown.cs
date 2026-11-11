@@ -121,8 +121,8 @@ namespace Aerospike.Test
 
 		/// <summary>
 		/// Order-by without top-k is sent unchanged; a vector-capable server rejects
-		/// with <see cref="ResultCode.PARAMETER_ERROR"/> and an error detail (R20).
-		/// Top-K request rejections use <see cref="SubCode.NONE"/> (CLIENT-5745 withdrawn).
+		/// with <see cref="ResultCode.PARAMETER_ERROR"/> and an error detail.
+		/// Top-K request rejections use <see cref="SubCode.NONE"/>.
 		/// </summary>
 		[TestMethod]
 		public void OrderByWithoutTopKReturnsParameterError()
@@ -134,7 +134,7 @@ namespace Aerospike.Test
 			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
 			Assert.AreEqual(SubCode.NONE, ae.SubCode);
 			Assert.IsTrue(ae.BaseMessage.Contains("top-k needs both order-by and top-k fields"),
-				"Expected R20 detail in: " + ae.BaseMessage);
+				"Expected server detail in: " + ae.BaseMessage);
 			string prefix = "Error " + ResultCode.PARAMETER_ERROR + "," + SubCode.NONE;
 			Assert.IsTrue(ae.Message.StartsWith(prefix), "Expected message to start with \"" + prefix + "\": " + ae.Message);
 		}

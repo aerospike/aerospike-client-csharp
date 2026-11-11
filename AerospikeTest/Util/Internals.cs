@@ -21,8 +21,8 @@ namespace Aerospike.Test
 {
 	/// <summary>
 	/// Reflection helpers for white-box unit tests against internal client APIs.
-	/// Prefer public APIs when possible; use these only where Java tests rely on
-	/// package-private access that C# expresses as <c>internal</c>.
+	/// Prefer public APIs when possible; use these only for package-private /
+	/// <c>internal</c> surfaces the tests need to exercise.
 	/// </summary>
 	internal static class Internals
 	{

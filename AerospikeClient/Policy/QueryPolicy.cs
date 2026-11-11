@@ -213,9 +213,12 @@ namespace Aerospike.Client
 		/// </para>
 		/// <para>
 		/// Top-K queries (<see cref="Statement.SetTopK(int)"/>) do not retry on
-		/// <see cref="ResultCode.TIMEOUT"/> regardless of maxRetries. Use a socket
-		/// timeout longer than the expected run (or 0) and a total timeout as the
-		/// deadline.
+		/// <see cref="ResultCode.TIMEOUT"/> (client socket or server) at the
+		/// partition-tracker layer, regardless of maxRetries. Per-node query
+		/// commands already use command maxRetries of 0, so a timeout fails that
+		/// node attempt immediately rather than re-issuing the same scan.
+		/// Use a socket timeout longer than the expected run (or 0) and a total
+		/// timeout as the deadline.
 		/// </para>
 		/// </summary>
 		public QueryPolicy() : base()
