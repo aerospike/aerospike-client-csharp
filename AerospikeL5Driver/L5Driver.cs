@@ -25,12 +25,12 @@ namespace Aerospike.L5Driver
 {
 	/// <summary>
 	/// Driver for the l5-aws harness in aerospike-client-conformance (l5-aws/DRIVER.md there, contract
-	/// version 1): builds a client from the flags, runs a retrying load, and writes what the client sees
+	/// version 3): builds a client from the flags, runs a retrying load, and writes what the client sees
 	/// to stdout as JSON lines while it answers the commands it reads from stdin.
 	/// </summary>
 	public sealed class L5Driver
 	{
-		public const int Contract = 1;
+		public const int Contract = 3;
 		public const long PollMs = 10;
 		public const long HeartbeatMs = 100;
 		public const long ReachIntervalMs = 500;
@@ -139,12 +139,16 @@ namespace Aerospike.L5Driver
 			Quit();
 		}
 
+		// Set after ready is written so load failures before ready count in failed only.
+		private int failuresEnabled;
+
 		private void Ready()
 		{
 			string version = typeof(AerospikeClient).Assembly.GetName().Version?.ToString() ?? "development";
 			output.Open(new Json("ready", Now()).Put("contract", Contract)
 				.Put("epochMs", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
 				.Put("client", "csharp").Put("clientVersion", version).Put("shape", options.Shape).ToString());
+			Volatile.Write(ref failuresEnabled, 1);
 			routingPoll = new Timer(_ => routing.Poll(), null, 0, PollMs);
 		}
 
@@ -782,6 +786,9 @@ namespace Aerospike.L5Driver
 
 					while (true)
 					{
+						// Contract 3: startedAt is this attempt, not the command's first try.
+						long attemptStartedAt = Now();
+
 						try
 						{
 							if (i % 2 == 0)
@@ -797,8 +804,18 @@ namespace Aerospike.L5Driver
 						}
 						catch (Exception e)
 						{
+							string message = Message(e);
 							Interlocked.Increment(ref failed);
-							Volatile.Write(ref lastError, Message(e));
+							Volatile.Write(ref lastError, message);
+
+							// Failures before ready count in failed but must not emit failure lines.
+							if (Volatile.Read(ref driver.failuresEnabled) == 1)
+							{
+								driver.Write(new Json("failure", Now())
+									.Put("startedAt", attemptStartedAt)
+									.Put("message", message)
+									.ToString());
+							}
 						}
 
 						if (stop)
