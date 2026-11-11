@@ -766,6 +766,13 @@ namespace Aerospike.Client
 		/// </summary>
 		protected internal void RefreshAddress(Peers peers)
 		{
+			if (!cluster.nodesMap.TryGetValue(name, out Node mapped) || !object.ReferenceEquals(mapped, this))
+			{
+				// Another node with the same name replaced this node (or it was already removed).
+				peers.RemoveNode(this);
+				return;
+			}
+
 			if (failures <= 0 || !active || hostname == null)
 			{
 				return;

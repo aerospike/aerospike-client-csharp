@@ -37,9 +37,16 @@ namespace Aerospike.L5Driver
 		public const int ReachTimeoutMs = 1000;
 		public const long ProbeIntervalMs = 10;
 		public const int ProbeConnectMs = 50;
+		public const int ServingRounds = 3;
 		public const long WatchBoundMs = 60000;
 		public const long QuitMs = 30000;
 		public const int KeySearchLimit = 1000000;
+
+		// INFO lines the harness keeps for scale/outage debugging (DRIVER.md requires WARN+).
+		private static readonly string[] NodeEvents =
+		{
+			"Add node", "Remove node", "Replace node", "Move node"
+		};
 
 		private static readonly long StartTicks = Stopwatch.GetTimestamp();
 		private static readonly string Usage =
@@ -63,9 +70,27 @@ namespace Aerospike.L5Driver
 			}
 
 			Output output = new Output();
-			Log.SetLevel(Log.Level.WARN);
+			Log.SetLevel(Log.Level.INFO);
 			Log.SetCallback((level, message) =>
-				output.Write(new Json("log", Now()).Put("level", level.ToString()).Put("message", message).ToString()));
+			{
+				if (!Forward(level, message))
+				{
+					return;
+				}
+
+				string line = new Json("log", Now()).Put("level", level.ToString())
+					.Put("message", message).ToString();
+
+				// Node-event INFO must not precede ready (same as Java writeIfOpen).
+				if (level == Log.Level.INFO)
+				{
+					output.WriteIfOpen(line);
+				}
+				else
+				{
+					output.Write(line);
+				}
+			});
 
 			AerospikeClient client;
 
@@ -92,6 +117,44 @@ namespace Aerospike.L5Driver
 		internal static string Message(Exception e)
 		{
 			return e.Message ?? e.ToString();
+		}
+
+		internal static string ReadyLine(long t, long epochMs, string clientVersion, string shape)
+		{
+			return new Json("ready", t).Put("contract", Contract)
+				.Put("epochMs", epochMs)
+				.Put("client", "csharp").Put("clientVersion", clientVersion).Put("shape", shape).ToString();
+		}
+
+		internal static string FailureLine(long t, long startedAt, string message)
+		{
+			return new Json("failure", t).Put("startedAt", startedAt).Put("message", message).ToString();
+		}
+
+		/// <summary>
+		/// Forward WARN and above, and the INFO lines that add, remove, replace or move a node.
+		/// </summary>
+		internal static bool Forward(Log.Level level, string message)
+		{
+			if (level <= Log.Level.WARN)
+			{
+				return true;
+			}
+
+			if (level != Log.Level.INFO)
+			{
+				return false;
+			}
+
+			foreach (string eventName in NodeEvents)
+			{
+				if (message.StartsWith(eventName, StringComparison.Ordinal))
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		private readonly Options options;
@@ -145,9 +208,7 @@ namespace Aerospike.L5Driver
 		private void Ready()
 		{
 			string version = typeof(AerospikeClient).Assembly.GetName().Version?.ToString() ?? "development";
-			output.Open(new Json("ready", Now()).Put("contract", Contract)
-				.Put("epochMs", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
-				.Put("client", "csharp").Put("clientVersion", version).Put("shape", options.Shape).ToString());
+			output.Open(ReadyLine(Now(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), version, options.Shape));
 			Volatile.Write(ref failuresEnabled, 1);
 			routingPoll = new Timer(_ => routing.Poll(), null, 0, PollMs);
 		}
@@ -619,96 +680,96 @@ namespace Aerospike.L5Driver
 		}
 
 		/// <summary>
-		/// Probes HOST:PORT every <see cref="ProbeIntervalMs"/> until it accepts a connection, then
-		/// checks every <see cref="ProbeIntervalMs"/> whether the node is usable, and replies.
+		/// Probes every address of HOST:PORT every <see cref="ProbeIntervalMs"/> until all accept a
+		/// connection in <see cref="ServingRounds"/> consecutive rounds, then checks whether the node
+		/// is usable. Rounds never overlap (contract 2+).
 		/// </summary>
 		internal sealed class Watch
 		{
 			private readonly L5Driver driver;
 			private readonly string address;
-			private readonly Host host;
 			private readonly string node;
-			private Timer timer;
-			private long? servingAt;
-			private long? lastClosedAt;
+			private readonly Probe probe;
+			private Thread thread;
+			private volatile bool done;
 
 			public Watch(L5Driver driver, string address, Host host, string node)
 			{
 				this.driver = driver;
 				this.address = address;
-				this.host = host;
 				this.node = node;
+				probe = new Probe(host.name, host.port);
 			}
 
 			public void Start()
 			{
-				timer = new Timer(_ => Tick(), null, 0, ProbeIntervalMs);
+				thread = new Thread(Run)
+				{
+					IsBackground = true,
+					Name = "l5-watch"
+				};
+				thread.Start();
 			}
 
 			public void Stop(long deadlineTicks)
 			{
+				done = true;
 				long remainingMs = Math.Max(0,
 					(deadlineTicks - Stopwatch.GetTimestamp()) * 1000L / Stopwatch.Frequency);
-				ManualResetEvent done = new ManualResetEvent(false);
-				timer?.Dispose(done);
-				done.WaitOne((int)Math.Min(remainingMs, int.MaxValue));
+				thread?.Join((int)Math.Min(remainingMs, int.MaxValue));
+			}
+
+			private void Run()
+			{
+				while (!done)
+				{
+					long begin = Stopwatch.GetTimestamp();
+
+					try
+					{
+						Tick();
+					}
+					catch (Exception e)
+					{
+						driver.Error("watch " + address + ' ' + node + ": " + Message(e));
+						Finish();
+						return;
+					}
+
+					if (done)
+					{
+						return;
+					}
+
+					long elapsedMs = (Stopwatch.GetTimestamp() - begin) * 1000L / Stopwatch.Frequency;
+					long delayMs = Math.Max(0, ProbeIntervalMs - elapsedMs);
+
+					if (delayMs > 0)
+					{
+						Thread.Sleep((int)delayMs);
+					}
+				}
 			}
 
 			private void Tick()
 			{
-				try
+				if (probe.ServingAt == null)
 				{
-					if (servingAt == null)
-					{
-						long t = Now();
+					probe.Round(Now());
+				}
 
-						if (!Connects())
-						{
-							lastClosedAt = t;
-							return;
-						}
-
-						servingAt = t;
-					}
-
-					long now = Now();
+				if (probe.ServingAt != null)
+				{
+					long t = Now();
 
 					if (Usable())
 					{
-						Reply(now);
+						Reply(t);
 					}
-					else if (now - servingAt >= WatchBoundMs)
+					else if (t - probe.ServingAt >= WatchBoundMs)
 					{
 						Reply(null);
 					}
-				}
-				catch (Exception e)
-				{
-					driver.Error("watch " + address + ' ' + node + ": " + Message(e));
-					Finish();
-				}
-			}
-
-			private bool Connects()
-			{
-				try
-				{
-					using Socket socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-					IAsyncResult result = socket.BeginConnect(host.name, host.port, null, null);
-					bool ok = result.AsyncWaitHandle.WaitOne(ProbeConnectMs);
-
-					if (!ok)
-					{
-						try { socket.Close(); } catch { /* ignore */ }
-						return false;
-					}
-
-					socket.EndConnect(result);
-					return true;
-				}
-				catch (Exception)
-				{
-					return false;
 				}
 			}
 
@@ -722,16 +783,179 @@ namespace Aerospike.L5Driver
 			private void Reply(long? usableAt)
 			{
 				driver.Write(new Json("watch", Now()).Put("address", address).Put("node", node)
-					.Put("servingAt", servingAt).Put("lastClosedAt", lastClosedAt).Put("usableAt", usableAt)
-					.Put("usableMs", usableAt == null || servingAt == null ? null : usableAt - servingAt)
+					.Put("servingAt", probe.ServingAt).Put("lastClosedAt", probe.LastClosedAt)
+					.Raw("addresses", probe.AddressesJson())
+					.Put("usableAt", usableAt)
+					.Put("usableMs", usableAt == null || probe.ServingAt == null ? null : usableAt - probe.ServingAt)
 					.Put("ownershipChecked", true).ToString());
 				Finish();
 			}
 
 			private void Finish()
 			{
-				timer?.Dispose();
+				done = true;
 				driver.ClearWatch(this);
+			}
+		}
+
+		/// <summary>
+		/// One watch probe round: resolve the host and connect to every address within
+		/// <see cref="ProbeConnectMs"/> concurrently.
+		/// </summary>
+		internal sealed class Probe
+		{
+			internal delegate IPAddress[] Resolver(string host);
+
+			private readonly string host;
+			private readonly int port;
+			private readonly Resolver resolver;
+			private readonly Dictionary<IPAddress, long?> firstConnectedAt =
+				new Dictionary<IPAddress, long?>();
+			private readonly object gate = new object();
+			private int servingRounds;
+			private long servingStart;
+
+			internal long? ServingAt { get; private set; }
+			internal long? LastClosedAt { get; private set; }
+
+			public Probe(string host, int port)
+				: this(host, port, Dns.GetHostAddresses)
+			{
+			}
+
+			internal Probe(string host, int port, Resolver resolver)
+			{
+				this.host = host;
+				this.port = port;
+				this.resolver = resolver;
+			}
+
+			internal void Round(long t)
+			{
+				if (ConnectAll(t))
+				{
+					if (servingRounds++ == 0)
+					{
+						servingStart = t;
+					}
+
+					if (servingRounds == ServingRounds)
+					{
+						ServingAt = servingStart;
+					}
+				}
+				else
+				{
+					servingRounds = 0;
+					LastClosedAt = t;
+				}
+			}
+
+			internal string AddressesJson()
+			{
+				lock (gate)
+				{
+					StringBuilder sb = new StringBuilder("[");
+
+					foreach (KeyValuePair<IPAddress, long?> entry in firstConnectedAt)
+					{
+						if (sb.Length > 1)
+						{
+							sb.Append(',');
+						}
+
+						sb.Append(new Json().Put("address", entry.Key.ToString())
+							.Put("firstConnectedAt", entry.Value));
+					}
+
+					return sb.Append(']').ToString();
+				}
+			}
+
+			private bool ConnectAll(long t)
+			{
+				IPAddress[] addresses;
+
+				try
+				{
+					addresses = resolver(host);
+				}
+				catch (Exception)
+				{
+					return false;
+				}
+
+				lock (gate)
+				{
+					foreach (IPAddress address in addresses)
+					{
+						if (!firstConnectedAt.ContainsKey(address))
+						{
+							firstConnectedAt[address] = null;
+						}
+					}
+				}
+
+				if (addresses.Length == 0)
+				{
+					return false;
+				}
+
+				Task<bool>[] tasks = new Task<bool>[addresses.Length];
+
+				for (int i = 0; i < addresses.Length; i++)
+				{
+					IPAddress address = addresses[i];
+					tasks[i] = ConnectOne(address, t);
+				}
+
+				try
+				{
+					Task.WaitAll(tasks, ProbeConnectMs);
+				}
+				catch (AggregateException)
+				{
+				}
+
+				int connected = 0;
+
+				foreach (Task<bool> task in tasks)
+				{
+					if (task.Status == TaskStatus.RanToCompletion && task.Result)
+					{
+						connected++;
+					}
+				}
+
+				return connected == addresses.Length;
+			}
+
+			private async Task<bool> ConnectOne(IPAddress address, long t)
+			{
+				using Socket socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+				try
+				{
+					using CancellationTokenSource cts = new CancellationTokenSource(ProbeConnectMs);
+					await socket.ConnectAsync(new IPEndPoint(address, port), cts.Token).ConfigureAwait(false);
+					Connected(address, t);
+					return true;
+				}
+				catch (Exception)
+				{
+					return false;
+				}
+			}
+
+			private void Connected(IPAddress address, long t)
+			{
+				lock (gate)
+				{
+					if (!firstConnectedAt.TryGetValue(address, out long? existing) || existing == null)
+					{
+						firstConnectedAt[address] = t;
+					}
+				}
 			}
 		}
 
@@ -811,10 +1035,7 @@ namespace Aerospike.L5Driver
 							// Failures before ready count in failed but must not emit failure lines.
 							if (Volatile.Read(ref driver.failuresEnabled) == 1)
 							{
-								driver.Write(new Json("failure", Now())
-									.Put("startedAt", attemptStartedAt)
-									.Put("message", message)
-									.ToString());
+								driver.Write(FailureLine(Now(), attemptStartedAt, message));
 							}
 						}
 
@@ -1123,13 +1344,22 @@ namespace Aerospike.L5Driver
 		/// </summary>
 		internal sealed class Output
 		{
-			private readonly TextWriter stdout = Console.Out;
+			private readonly TextWriter stdout;
 			private List<string> held = new List<string>();
 			private readonly object gate = new object();
 
 			public Output()
+				: this(Console.Out)
 			{
 				Console.SetOut(Console.Error);
+			}
+
+			/// <summary>
+			/// Test constructor: writes to the given stream and does not touch Console.Out.
+			/// </summary>
+			internal Output(TextWriter stdout)
+			{
+				this.stdout = stdout;
 			}
 
 			public void Write(string line)
@@ -1141,6 +1371,20 @@ namespace Aerospike.L5Driver
 						held.Add(line);
 					}
 					else
+					{
+						Print(line);
+					}
+				}
+			}
+
+			/// <summary>
+			/// Print once ready is out; otherwise drop it so a held line cannot precede ready's t.
+			/// </summary>
+			public void WriteIfOpen(string line)
+			{
+				lock (gate)
+				{
+					if (held == null)
 					{
 						Print(line);
 					}

@@ -32,5 +32,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
+    <ProjectReference Include="..\AerospikeL5Driver\AerospikeL5Driver.csproj" />
   </ItemGroup>
 </Project>
