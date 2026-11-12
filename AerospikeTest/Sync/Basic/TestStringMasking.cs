@@ -93,6 +93,9 @@ namespace Aerospike.Test
 				Assert.Inconclusive("Skipping: admin credentials not provided");
 			}
 
+			// CreateUser needs user-admin; Cloud omits that role.
+			Suite.RequireFullSecurityAdmin();
+
 			// Probe the cluster for security; bail out cleanly if it isn't enabled.
 			try
 			{
@@ -108,6 +111,12 @@ namespace Aerospike.Test
 				if (e.Result == ResultCode.NOT_AUTHENTICATED)
 				{
 					Assert.Inconclusive("Skipping: admin credentials rejected by cluster");
+				}
+				if (e.Result == ResultCode.ROLE_VIOLATION)
+				{
+					Assert.Inconclusive(
+						"Skipping: test user lacks admin privileges to QueryRoles " +
+						"(Aerospike Cloud does not expose sys-admin/user-admin)");
 				}
 				throw;
 			}

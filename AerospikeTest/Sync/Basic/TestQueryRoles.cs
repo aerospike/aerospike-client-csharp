@@ -82,7 +82,8 @@ namespace Aerospike.Test
 			{
 				if (e.Result == ResultCode.SECURITY_NOT_ENABLED ||
 					e.Result == ResultCode.SECURITY_NOT_SUPPORTED ||
-					e.Result == ResultCode.NOT_AUTHENTICATED)
+					e.Result == ResultCode.NOT_AUTHENTICATED ||
+					e.Result == ResultCode.ROLE_VIOLATION)
 				{
 					securityEnabled = false;
 				}
@@ -93,18 +94,26 @@ namespace Aerospike.Test
 			}
 		}
 
-		[TestMethod]
-		public void TestQueryRolesAll()
+		private static void RequireSecurityAdmin()
 		{
 			if (!credentialsProvided)
 			{
 				Assert.Inconclusive("Skipping test: Credentials not provided");
 			}
 
+			// Cloud omits sys-admin / user-admin (or returns ROLE_VIOLATION for QueryRoles).
+			Suite.RequireFullSecurityAdmin();
+
 			if (!securityEnabled)
 			{
 				Assert.Inconclusive("Skipping test: Security is not enabled on the server");
 			}
+		}
+
+		[TestMethod]
+		public void TestQueryRolesAll()
+		{
+			RequireSecurityAdmin();
 
 			AdminPolicy policy = new();
 			List<Role> roles = client.QueryRoles(policy);
@@ -114,15 +123,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TestPreVersion8_1_1_Roles()
 		{
-			if (!credentialsProvided)
-			{
-				Assert.Inconclusive("Skipping test: Credentials not provided");
-			}
-
-			if (!securityEnabled)
-			{
-				Assert.Inconclusive("Skipping test: Security is not enabled on the server");
-			}
+			RequireSecurityAdmin();
 
 			if (serverVersion == null || serverVersion >= Node.SERVER_VERSION_8_1_1)
 			{
@@ -158,15 +159,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TestVersion8_1_1_AndAbove_Roles()
 		{
-			if (!credentialsProvided)
-			{
-				Assert.Inconclusive("Skipping test: Credentials not provided");
-			}
-
-			if (!securityEnabled)
-			{
-				Assert.Inconclusive("Skipping test: Security is not enabled on the server");
-			}
+			RequireSecurityAdmin();
 
 			if (serverVersion == null || serverVersion < Node.SERVER_VERSION_8_1_1)
 			{
@@ -201,15 +194,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TestRolesByServerVersion()
 		{
-			if (!credentialsProvided)
-			{
-				Assert.Inconclusive("Skipping test: Credentials not provided");
-			}
-
-			if (!securityEnabled)
-			{
-				Assert.Inconclusive("Skipping test: Security is not enabled on the server");
-			}
+			RequireSecurityAdmin();
 
 			AdminPolicy policy = new();
 			List<Role> roles = client.QueryRoles(policy);
@@ -252,15 +237,7 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TestPredefinedRoles()
 		{
-			if (!credentialsProvided)
-			{
-				Assert.Inconclusive("Skipping test: Credentials not provided");
-			}
-
-			if (!securityEnabled)
-			{
-				Assert.Inconclusive("Skipping test: Security is not enabled on the server");
-			}
+			RequireSecurityAdmin();
 
 			AdminPolicy policy = new();
 			List<Role> roles = client.QueryRoles(policy);

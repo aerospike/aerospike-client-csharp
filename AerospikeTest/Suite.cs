@@ -196,6 +196,66 @@ namespace Aerospike.Test
 
 			int nsupPeriod = ParseInt(namespaceTokens, "nsup-period");
 			SuiteHelpers.hasTtl = nsupPeriod != 0 || ParseBoolean(namespaceTokens, "allow-ttl-without-nsup");
+			SuiteHelpers.fullSecurityAdmin = DetectFullSecurityAdmin();
+		}
+
+		/// <summary>
+		/// Skip when the cluster does not expose sys-admin/user-admin (e.g. Aerospike Cloud).
+		/// </summary>
+		public static void RequireFullSecurityAdmin()
+		{
+			if (!SuiteHelpers.fullSecurityAdmin)
+			{
+				Assert.Inconclusive(
+					"Skipping test: sys-admin and user-admin roles are not available " +
+					"(Aerospike Cloud does not expose these roles)");
+			}
+		}
+
+		private static bool DetectFullSecurityAdmin()
+		{
+			if (string.IsNullOrEmpty(SuiteHelpers.user) || string.IsNullOrEmpty(SuiteHelpers.password))
+			{
+				return false;
+			}
+
+			try
+			{
+				List<Role> roles = SuiteHelpers.client.QueryRoles(new AdminPolicy());
+				bool hasSysAdmin = false;
+				bool hasUserAdmin = false;
+
+				foreach (Role role in roles)
+				{
+					if (role.name == Role.SysAdmin)
+					{
+						hasSysAdmin = true;
+					}
+					else if (role.name == Role.UserAdmin)
+					{
+						hasUserAdmin = true;
+					}
+
+					if (hasSysAdmin && hasUserAdmin)
+					{
+						return true;
+					}
+				}
+
+				return false;
+			}
+			catch (AerospikeException e)
+			{
+				if (e.Result == ResultCode.SECURITY_NOT_ENABLED ||
+					e.Result == ResultCode.SECURITY_NOT_SUPPORTED ||
+					e.Result == ResultCode.NOT_AUTHENTICATED ||
+					e.Result == ResultCode.ROLE_VIOLATION)
+				{
+					return false;
+				}
+
+				throw;
+			}
 		}
 
 		public static void RequireTtlSupport()
