@@ -13,9 +13,13 @@
     <Platforms>AnyCPU</Platforms>
     <IsTestProject>true</IsTestProject>
     <EnableMSTestRunner>true</EnableMSTestRunner>
+    <SignAssembly>True</SignAssembly>
+    <DelaySign>True</DelaySign>
+    <AssemblyOriginatorKeyFile>../AerospikePublicKey.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="MSTest" Version="4.4.0" />
+    <PackageReference Include="YamlDotNet" Version="13.0.1" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="LuaResources\average_example.lua" />
@@ -24,6 +28,10 @@
     <EmbeddedResource Include="LuaResources\sum_example.lua" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="conformance\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />
+    <ProjectReference Include="..\AerospikeL5Driver\AerospikeL5Driver.csproj" />
   </ItemGroup>
 </Project>

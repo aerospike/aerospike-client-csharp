@@ -24,6 +24,43 @@ namespace Aerospike.Test
 		[AssemblyInitialize()]
 		public static void AssemblyInit(TestContext context)
 		{
+			// L2 discovery CI: seed/peers only reachable through translators; each TestL2* builds
+			// its own client. Skip the shared suite clients (mirrors Java SuiteDiscovery).
+			// AWS tags real suite (run_aws_tags_real.sh): TestAwsTagsReal builds its own client from
+			// the EC2 tag provider; there is no static seed Host for AssemblyInit.
+			// L1 conformance: fixture runner only; no Aerospike cluster.
+			// L0 discovery unit: server-free SPI / merge / tend tests; no Aerospike cluster.
+			bool discoveryUnit = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_UNIT")) ||
+				string.Equals(Prop(context, "DiscoveryUnit", ""), "true", StringComparison.OrdinalIgnoreCase);
+
+			if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_KUBECONFIG")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_ENDPOINT_HOSTNAME")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TLS_CASE")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TLS_NODES")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_TAGS_REAL_REGION")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CONFORMANCE_DIR")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FIXTURES_DIRECTORY")) ||
+				discoveryUnit)
+			{
+				SuiteHelpers.ns = Prop(context, "Namespace", "test");
+				SuiteHelpers.set = Prop(context, "Set", "test");
+				SuiteHelpers.timeout = int.Parse(Prop(context, "Timeout", "25000"));
+				SuiteHelpers.useServicesAlternate = false;
+				SuiteHelpers.authMode = AuthMode.INTERNAL;
+				string mode = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_KUBECONFIG"))
+					? "L3 discovery"
+					: (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_ENDPOINT_HOSTNAME"))
+						? "L2 discovery"
+						: ((!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TLS_CASE")) ||
+							!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TLS_NODES")))
+							? "TLS matching"
+							: (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_TAGS_REAL_REGION"))
+								? "AWS tags real"
+								: (discoveryUnit ? "L0 discovery unit" : "L1 conformance"))));
+				Console.WriteLine(mode + " mode: skipping shared suite client connect");
+				return;
+			}
+
 			SuiteHelpers.port = int.Parse(context.Properties["Port"].ToString());
 			Console.WriteLine($"Port {SuiteHelpers.port}");
 			Log.Info($"Port {SuiteHelpers.port}");
@@ -62,6 +99,26 @@ namespace Aerospike.Test
 			ConnectSync();
 			Util.Sleep(1000); // Wait a little bit so if dynamic config with metrics is enabled, the async and sync clients don't use the same file
 			ConnectAsync();
+		}
+
+		private static string Prop(TestContext context, string name, string fallback)
+		{
+			try
+			{
+				object value = context.Properties[name];
+				if (value != null)
+				{
+					string text = value.ToString();
+					if (!string.IsNullOrEmpty(text))
+					{
+						return text;
+					}
+				}
+			}
+			catch (KeyNotFoundException)
+			{
+			}
+			return fallback;
 		}
 
 		[AssemblyCleanup()]
@@ -139,6 +196,66 @@ namespace Aerospike.Test
 
 			int nsupPeriod = ParseInt(namespaceTokens, "nsup-period");
 			SuiteHelpers.hasTtl = nsupPeriod != 0 || ParseBoolean(namespaceTokens, "allow-ttl-without-nsup");
+			SuiteHelpers.fullSecurityAdmin = DetectFullSecurityAdmin();
+		}
+
+		/// <summary>
+		/// Skip when the cluster does not expose sys-admin/user-admin (e.g. Aerospike Cloud).
+		/// </summary>
+		public static void RequireFullSecurityAdmin()
+		{
+			if (!SuiteHelpers.fullSecurityAdmin)
+			{
+				Assert.Inconclusive(
+					"Skipping test: sys-admin and user-admin roles are not available " +
+					"(Aerospike Cloud does not expose these roles)");
+			}
+		}
+
+		private static bool DetectFullSecurityAdmin()
+		{
+			if (string.IsNullOrEmpty(SuiteHelpers.user) || string.IsNullOrEmpty(SuiteHelpers.password))
+			{
+				return false;
+			}
+
+			try
+			{
+				List<Role> roles = SuiteHelpers.client.QueryRoles(new AdminPolicy());
+				bool hasSysAdmin = false;
+				bool hasUserAdmin = false;
+
+				foreach (Role role in roles)
+				{
+					if (role.name == Role.SysAdmin)
+					{
+						hasSysAdmin = true;
+					}
+					else if (role.name == Role.UserAdmin)
+					{
+						hasUserAdmin = true;
+					}
+
+					if (hasSysAdmin && hasUserAdmin)
+					{
+						return true;
+					}
+				}
+
+				return false;
+			}
+			catch (AerospikeException e)
+			{
+				if (e.Result == ResultCode.SECURITY_NOT_ENABLED ||
+					e.Result == ResultCode.SECURITY_NOT_SUPPORTED ||
+					e.Result == ResultCode.NOT_AUTHENTICATED ||
+					e.Result == ResultCode.ROLE_VIOLATION)
+				{
+					return false;
+				}
+
+				throw;
+			}
 		}
 
 		public static void RequireTtlSupport()

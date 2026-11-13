@@ -15,6 +15,9 @@
  * the License.
  */
 using Aerospike.Client.Config;
+using System.Collections.Concurrent;
+using System.Net;
+using System.Reflection;
 using System.Text;
 
 namespace Aerospike.Client
@@ -53,8 +56,32 @@ namespace Aerospike.Client
 		// Hints for best node for a partition
 		protected internal volatile Dictionary<string, Partitions> partitionMap;
 
-		// IP translations.
-		protected internal readonly Dictionary<string, string> ipMap;
+		// Source of seed hosts.
+		protected internal readonly ISeedCandidateProvider seedCandidateProvider;
+
+		// Advertised address translation.
+		protected internal readonly IAddressTranslator addressTranslator;
+
+		// Action when the address translator has no mapping.
+		protected internal readonly TranslationMissMode translationOnMiss;
+
+		// Pass-through miss warnings once per node and advertised address when addressTranslator is set.
+		private readonly ConcurrentDictionary<string, string> translationMisses;
+
+		/// <summary>
+		/// Last validated address per host:port, preferred on the next multi-address connect race.
+		/// </summary>
+		internal readonly ConcurrentDictionary<string, IPAddress> validAddresses =
+			new ConcurrentDictionary<string, IPAddress>();
+
+		// Seed candidate refresh manager (FR-41).
+		internal readonly SeedCandidateManager seedCandidateManager;
+
+		// Cluster view change counter passed to the address translator.
+		private int viewChange;
+
+		// True when the address translator overrides OnClusterViewChanged.
+		internal readonly bool notifyViewChange;
 
 		// TLS connection policy.
 		protected internal readonly TlsPolicy tlsPolicy;
@@ -120,7 +147,7 @@ namespace Aerospike.Client
 		private int invalidNodeCount;
 
 		// Interval in milliseconds between cluster tends.
-		private int tendInterval;
+		internal int tendInterval;
 
 		private bool failIfNotConnected;
 
@@ -186,18 +213,7 @@ namespace Aerospike.Client
 			// Default TLS names when TLS enabled.
 			if (tlsPolicy != null)
 			{
-				bool useClusterName = HasClusterName;
-
-				for (int i = 0; i < hosts.Length; i++)
-				{
-					Host host = hosts[i];
-
-					if (host.tlsName == null)
-					{
-						string tlsName = useClusterName ? clusterName : host.name;
-						hosts[i] = new Host(host.name, tlsName, host.port);
-					}
-				}
+				DefaultTlsNames(hosts);
 			}
 			else
 			{
@@ -207,62 +223,87 @@ namespace Aerospike.Client
 				}
 			}
 
-			this.seeds = hosts;
+			this.seedCandidateProvider = policy.seedCandidateProvider ?? new StaticSeedCandidateProvider(hosts);
+			this.addressTranslator = policy.addressTranslator ?? new StaticMapAddressTranslator(policy.ipMap);
+			this.notifyViewChange = OverridesViewChange(addressTranslator);
+			this.translationOnMiss = policy.translationOnMiss;
+			// The default translator is the legacy ipMap, which misses unmapped hosts by design.
+			this.translationMisses = policy.addressTranslator != null ?
+				new ConcurrentDictionary<string, string>() : null;
+			this.seedCandidateManager = new SeedCandidateManager(
+				seedCandidateProvider, policy, hosts, SetSeeds, context);
 
-			if (policy.authMode == AuthMode.PKI)
+			try
 			{
-				this.authEnabled = true;
-				if (!string.IsNullOrEmpty(policy.password))
-				{
-					throw new AerospikeException(ResultCode.INVALID_CREDENTIAL, "Authentication failed (65): Password authentication is disabled for PKI-only users. Please authenticate using your certificate.");
-				}
-				this.user = ByteUtil.StringToUtf8(policy.user);
-			}
-			else if (policy.user != null && policy.user.Length > 0)
-			{
-				this.authEnabled = true;
-				this.user = ByteUtil.StringToUtf8(policy.user);
+				this.seedCandidateManager.Start();
+				this.seedCandidateManager.AwaitInitialRefresh();
 
-				// Only store clear text password if external authentication is used.
-				if (authMode != AuthMode.INTERNAL)
+				// seeds are published by the manager; ensure a non-null array for force-single-node.
+				if (seeds == null)
 				{
-					this.password = ByteUtil.StringToUtf8(policy.password);
-				}
-
-				string pass = policy.password;
-
-				if (pass == null)
-				{
-					pass = "";
+					this.seeds = hosts;
 				}
 
-				pass = AdminCommand.HashPassword(pass);
-				this.passwordHash = ByteUtil.StringToUtf8(pass);
+				if (policy.authMode == AuthMode.PKI)
+				{
+					this.authEnabled = true;
+					if (!string.IsNullOrEmpty(policy.password))
+					{
+						throw new AerospikeException(ResultCode.INVALID_CREDENTIAL, "Authentication failed (65): Password authentication is disabled for PKI-only users. Please authenticate using your certificate.");
+					}
+					this.user = ByteUtil.StringToUtf8(policy.user);
+				}
+				else if (policy.user != null && policy.user.Length > 0)
+				{
+					this.authEnabled = true;
+					this.user = ByteUtil.StringToUtf8(policy.user);
+
+					// Only store clear text password if external authentication is used.
+					if (authMode != AuthMode.INTERNAL)
+					{
+						this.password = ByteUtil.StringToUtf8(policy.password);
+					}
+
+					string pass = policy.password;
+
+					if (pass == null)
+					{
+						pass = "";
+					}
+
+					pass = AdminCommand.HashPassword(pass);
+					this.passwordHash = ByteUtil.StringToUtf8(pass);
+				}
+				else
+				{
+					this.authEnabled = false;
+					this.user = null;
+				}
+
+				minConnsPerNode = policy.minConnsPerNode;
+				maxConnsPerNode = policy.maxConnsPerNode;
+
+				if (minConnsPerNode > maxConnsPerNode)
+				{
+					throw new AerospikeException("Invalid connection range: " + minConnsPerNode + " - " + maxConnsPerNode);
+				}
+
+				connPoolsPerNode = policy.connPoolsPerNode;
+				nodesMap = new Dictionary<string, Node>();
+				nodes = new Node[0];
+				partitionMap = new Dictionary<string, Partitions>();
+				recoverCount = 0;
+				recoverQueue = new Pool<ConnectionRecover>(256, 10000);
+				cancel = new CancellationTokenSource();
+				cancelToken = cancel.Token;
+
+				configInterval = client.configProvider != null ? client.configProvider.Interval : IConfigProvider.DEFAULT_CONFIG_INTERVAL;
 			}
-			else
+			catch
 			{
-				this.authEnabled = false;
-				this.user = null;
+				seedCandidateManager.Close();
+				throw;
 			}
-
-			minConnsPerNode = policy.minConnsPerNode;
-			maxConnsPerNode = policy.maxConnsPerNode;
-
-			if (minConnsPerNode > maxConnsPerNode)
-			{
-				throw new AerospikeException("Invalid connection range: " + minConnsPerNode + " - " + maxConnsPerNode);
-			}
-
-			connPoolsPerNode = policy.connPoolsPerNode;
-			nodesMap = new Dictionary<string, Node>();
-			nodes = new Node[0];
-			partitionMap = new Dictionary<string, Partitions>();
-			recoverCount = 0;
-			recoverQueue = new Pool<ConnectionRecover>(256, 10000);
-			cancel = new CancellationTokenSource();
-			cancelToken = cancel.Token;
-
-			configInterval = client.configProvider != null ? client.configProvider.Interval : IConfigProvider.DEFAULT_CONFIG_INTERVAL;
 		}
 
 		public void StartTendThread(ClientPolicy policy)
@@ -380,6 +421,154 @@ namespace Aerospike.Client
 			tendThread.Start();
 		}
 
+		private void SetSeeds(Host[] hosts)
+		{
+			hosts ??= Array.Empty<Host>();
+
+			if (tlsPolicy != null)
+			{
+				DefaultTlsNames(hosts);
+			}
+
+			this.seeds = hosts;
+		}
+
+		private void DefaultTlsNames(Host[] hosts)
+		{
+			bool useClusterName = HasClusterName;
+
+			for (int i = 0; i < hosts.Length; i++)
+			{
+				Host host = hosts[i];
+
+				if (host.tlsName == null)
+				{
+					string tlsName = useClusterName ? clusterName : host.name;
+					hosts[i] = new Host(host.name, tlsName, host.port);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Translate a server advertised address. The advertised TLS name is always kept.
+		/// Throw <see cref="AerospikeException.TranslationMiss"/> on a strict miss.
+		/// </summary>
+		internal Host TranslateAddress(string nodeName, string tlsName, string host, int port)
+		{
+			Endpoint.SourceList sourceList = useServicesAlternate ?
+				Endpoint.SourceList.ALTERNATE : Endpoint.SourceList.STANDARD;
+
+			return Translate(addressTranslator, translationOnMiss,
+				new Endpoint(nodeName, tlsName, host, port, sourceList), translationMisses);
+		}
+
+		internal static Host Translate(IAddressTranslator translator, Endpoint advertised)
+		{
+			return Translate(translator, TranslationMissMode.PASS_THROUGH, advertised, null);
+		}
+
+		internal static Host Translate(IAddressTranslator translator, TranslationMissMode onMiss, Endpoint advertised)
+		{
+			return Translate(translator, onMiss, advertised, null);
+		}
+
+		/// <summary>
+		/// Translate an advertised address. On a pass-through miss, warn once per node and advertised
+		/// address when <paramref name="misses"/> is not null.
+		/// </summary>
+		private static Host Translate(
+			IAddressTranslator translator,
+			TranslationMissMode onMiss,
+			Endpoint advertised,
+			ConcurrentDictionary<string, string> misses)
+		{
+			Host result = translator.Translate(advertised);
+
+			if (result == null)
+			{
+				if (onMiss == TranslationMissMode.STRICT)
+				{
+					throw new AerospikeException.TranslationMiss(advertised, SeedCandidateManager.TranslatorName(translator));
+				}
+
+				if (misses != null)
+				{
+					string address = advertised.host + ':' + advertised.port;
+					string key = advertised.nodeName ?? "";
+					string previous = null;
+
+					misses.AddOrUpdate(key,
+						_ =>
+						{
+							previous = null;
+							return address;
+						},
+						(_, old) =>
+						{
+							previous = old;
+							return address;
+						});
+
+					if (!address.Equals(previous) && Log.WarnEnabled())
+					{
+						Log.Warn("Address translator " + SeedCandidateManager.TranslatorName(translator) +
+							" has no mapping for node " + advertised.nodeName + " advertised address " +
+							address + " in the " +
+							(advertised.sourceList == Endpoint.SourceList.ALTERNATE ? "alternate" : "standard") +
+							" list. Connecting to the advertised address because translation.on_miss is pass_through");
+					}
+				}
+
+				return new Host(advertised.host, advertised.tlsName, advertised.port);
+			}
+
+			// FR-40: never rewrite TLS identity.
+			if (result.tlsName != advertised.tlsName)
+			{
+				return new Host(result.name, advertised.tlsName, result.port);
+			}
+
+			return result;
+		}
+
+		internal string TranslatorName()
+		{
+			return SeedCandidateManager.TranslatorName(addressTranslator);
+		}
+
+		private static bool OverridesViewChange(IAddressTranslator translator)
+		{
+			InterfaceMapping map = translator.GetType().GetInterfaceMap(typeof(IAddressTranslator));
+
+			for (int i = 0; i < map.InterfaceMethods.Length; i++)
+			{
+				if (map.InterfaceMethods[i].Name == nameof(IAddressTranslator.OnClusterViewChanged))
+				{
+					return map.TargetMethods[i].DeclaringType != typeof(IAddressTranslator);
+				}
+			}
+
+			return false;
+		}
+
+		private void ClusterViewChanged()
+		{
+			viewChange++;
+
+			try
+			{
+				addressTranslator.OnClusterViewChanged(viewChange);
+			}
+			catch (Exception e)
+			{
+				if (Log.WarnEnabled())
+				{
+					Log.Warn(context, "Address translator " + TranslatorName() +
+						" OnClusterViewChanged failed: " + Util.GetErrorMessage(e));
+				}
+			}
+		}
+
 		public void AddSeeds(Host[] hosts)
 		{
 			// Use copy on write semantics.
@@ -483,7 +672,9 @@ namespace Aerospike.Client
 		/// </summary>
 		private void Tend(bool isInit)
 		{
+			// All node additions/deletions are performed in tend thread.
 			// Initialize tend iteration node statistics.
+			Node[] nodesBefore = nodes;
 			Peers peers = new Peers(nodes.Length + 16);
 
 			// Clear node reference counts.
@@ -494,10 +685,10 @@ namespace Aerospike.Client
 				node.rebalanceChanged = false;
 			}
 
-			// All node additions/deletions are performed in tend thread.		
 			// If active nodes don't exist, seed cluster.
 			if (nodes.Length == 0)
 			{
+				seedCandidateManager.RequestUrgentRefresh();
 				SeedNode(peers);
 
 				// Abort cluster init if all peers of the seed are not reachable and failIfNotConnected is true.
@@ -514,6 +705,11 @@ namespace Aerospike.Client
 					node.Refresh(peers);
 				}
 
+				foreach (Node node in nodes)
+				{
+					node.RefreshAddress(peers);
+				}
+
 				// Refresh peers when necessary.
 				if (peers.genChanged)
 				{
@@ -527,20 +723,31 @@ namespace Aerospike.Client
 
 					// Handle nodes changes determined from refreshes.
 					FindNodesToRemove(peers);
-
-					// Remove nodes in a batch.
-					if (peers.removeNodes.Count > 0)
-					{
-						RemoveNodes(peers.removeNodes);
-					}
 				}
 
-				// Add peer nodes to cluster.
-				if (peers.nodes.Count > 0)
+				// Add peer nodes to cluster before removing the nodes they replace.
+				bool added = peers.nodes.Count > 0;
+
+				if (added)
 				{
 					AddNodes(peers.nodes);
+				}
+
+				// Remove nodes in a batch.
+				if (peers.nodesToRemove.Count > 0)
+				{
+					RemoveNodes(peers);
+				}
+
+				if (added)
+				{
 					RefreshPeers(peers);
 				}
+			}
+
+			if (notifyViewChange && !isInit && (!object.ReferenceEquals(nodes, nodesBefore) || peers.addressChanged))
+			{
+				ClusterViewChanged();
 			}
 
 			invalidNodeCount += peers.InvalidCount;
@@ -560,6 +767,13 @@ namespace Aerospike.Client
 			}
 
 			tendCount++;
+
+			// Periodic seed refresh in tend execution mode (FR-41). Skip on init —
+			// Start() already refreshed once.
+			if (!isInit)
+			{
+				seedCandidateManager.Tend(tendCount, tendInterval);
+			}
 
 			// Balance connections every 30 tend intervals.
 			if (tendCount % 30 == 0)
@@ -726,12 +940,20 @@ namespace Aerospike.Client
 					node.RefreshPeers(peers);
 				}
 
-				if (peers.nodes.Count > 0)
+				bool added = peers.nodes.Count > 0;
+
+				if (added)
 				{
-					// Add new peer nodes to cluster.
+					// Add new peer nodes to cluster before removing the nodes they replace.
 					AddNodes(peers.nodes);
 				}
-				else
+
+				if (peers.nodesToRemove.Count > 0)
+				{
+					RemoveNodes(peers);
+				}
+
+				if (!added)
 				{
 					break;
 				}
@@ -752,14 +974,13 @@ namespace Aerospike.Client
 		private void FindNodesToRemove(Peers peers)
 		{
 			int refreshCount = peers.refreshCount;
-			HashSet<Node> removeNodes = peers.removeNodes;
 
 			foreach (Node node in nodes)
 			{
 				if (!node.Active)
 				{
 					// Inactive nodes must be removed.
-					removeNodes.Add(node);
+					peers.RemoveNode(node);
 					continue;
 				}
 
@@ -768,7 +989,7 @@ namespace Aerospike.Client
 					// All node info requests failed and this node had 5 consecutive failures.
 					// Remove node.  If no nodes are left, seeds will be tried in next cluster
 					// tend iteration.
-					removeNodes.Add(node);
+					peers.RemoveNode(node);
 					continue;
 				}
 
@@ -783,13 +1004,13 @@ namespace Aerospike.Client
 						{
 							// Node doesn't have any partitions mapped to it.
 							// There is no point in keeping it in the cluster.
-							removeNodes.Add(node);
+							peers.RemoveNode(node);
 						}
 					}
 					else
 					{
 						// Node not responding. Remove it.
-						removeNodes.Add(node);
+						peers.RemoveNode(node);
 					}
 				}
 			}
@@ -875,8 +1096,10 @@ namespace Aerospike.Client
 			nodesMap[node.Name] = node;
 		}
 
-		private void RemoveNodes(HashSet<Node> nodesToRemove)
+		private void RemoveNodes(Peers peers)
 		{
+			HashSet<Node> nodesToRemove = peers.nodesToRemove;
+
 			// There is no need to delete nodes from partitionWriteMap because the nodes 
 			// have already been set to inactive. Further connection requests will result 
 			// in an exception and a different node will be tried.
@@ -884,8 +1107,11 @@ namespace Aerospike.Client
 			// Cleanup node resources.
 			foreach (Node node in nodesToRemove)
 			{
-				// Remove node from map.
-				nodesMap.Remove(node.Name);
+				// Remove from map unless a replacement node already took its name.
+				if (nodesMap.TryGetValue(node.Name, out Node mapped) && object.ReferenceEquals(mapped, node))
+				{
+					nodesMap.Remove(node.Name);
+				}
 
 				lock (metricsLock)
 				{
@@ -909,12 +1135,16 @@ namespace Aerospike.Client
 				}
 				else
 				{
+					peers.removeNodes.Clear();
+					nodesToRemove.Clear();
 					return;
 				}
 			}
 
 			// Remove all nodes at once to avoid copying entire array multiple times.
 			RemoveNodesCopy(nodesToRemove);
+			peers.removeNodes.Clear();
+			nodesToRemove.Clear();
 		}
 
 		/// <summary>
@@ -929,7 +1159,7 @@ namespace Aerospike.Client
 			Node[] nodeArray = new Node[nodes.Length - nodesToRemove.Count];
 			int count = 0;
 
-			// Add nodes that are not in remove list.
+			// Add nodes that are not in remove list (reference equality).
 			foreach (Node node in nodes)
 			{
 				if (nodesToRemove.Contains(node))
@@ -1599,6 +1829,8 @@ namespace Aerospike.Client
 
 			tendValid = false;
 			cancel.Cancel();
+			seedCandidateManager.Close();
+			validAddresses.Clear();
 
 			lock (metricsLock)
 			{

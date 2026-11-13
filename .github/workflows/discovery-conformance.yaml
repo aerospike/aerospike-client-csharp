@@ -1,0 +1,116 @@
+name: Discovery conformance
+
+# L0: server-free discovery unit tests (SPI, merge, tend, translators, YAML).
+# L1: aerospike-client-conformance fixture set through ConformanceTest.
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches:
+      - stage
+      - CLIENT-5734_pluggable-discovery
+      - pluggable-discovery
+    types:
+      - opened
+      - reopened
+      - synchronize
+  push:
+    branches:
+      - stage
+      - CLIENT-5734_pluggable-discovery
+      - pluggable-discovery
+  workflow_dispatch:
+
+jobs:
+  l0:
+    name: L0 discovery unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.ref }}
+
+      # global.json pins SDK 8.0.x so preinstalled .NET 10 does not take over (MTP exit 5).
+      - name: Setup .NET
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Run discovery unit tests
+        env:
+          DISCOVERY_UNIT: "1"
+        run: |
+          set -euo pipefail
+          mkdir -p TestResults
+          # Server-free discovery coverage. MSTest.Sdk needs the filter after -- as well.
+          # l0.runsettings also sets DISCOVERY_UNIT so AssemblyInit skips the suite client.
+          filter='FullyQualifiedName~TestDiscovery|FullyQualifiedName~TestSeedMergePolicy|FullyQualifiedName~TestSeedCandidateManager|FullyQualifiedName~TestDiscoverySpi|FullyQualifiedName~TestTranslateLatency|FullyQualifiedName~TestIdleReap|FullyQualifiedName~TestClusterViewChange|FullyQualifiedName~TestDiscoveryNaming|FullyQualifiedName~TestDnsSeedCandidateProvider|FullyQualifiedName~TestAwsEc2TagSeedCandidateProvider|FullyQualifiedName~TestAwsCredentialChain|FullyQualifiedName~TestAwsSigV4|FullyQualifiedName~TestDiscoveryYaml|FullyQualifiedName~TestPeerParser|FullyQualifiedName~TestZeroNodeReseed|FullyQualifiedName~TestAddressTranslatorNoIo'
+          dotnet test AerospikeTest/AerospikeTest.csproj \
+            -c Release \
+            --settings AerospikeTest/conformance/l0.runsettings \
+            --filter "${filter}" \
+            --logger "console;verbosity=normal" \
+            --results-directory TestResults \
+            -- \
+            --filter "${filter}"
+
+  l1:
+    name: L1 conformance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Checkout conformance fixtures
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: aerospike/aerospike-client-conformance
+          ref: f66304f36d1cded608e4d6c199622266e2db1dc3 # main, fixture set 1.1.0
+          path: conformance-fixtures
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Run conformance fixtures
+        env:
+          FIXTURES_DIRECTORY: ${{ github.workspace }}/conformance-fixtures
+          CONFORMANCE_REPORT: ${{ github.workspace }}/TestResults/conformance-report.json
+        run: |
+          set -euo pipefail
+          mkdir -p TestResults
+          # MSTest.Sdk / Microsoft.Testing.Platform: pass filter after -- as well.
+          filter='FullyQualifiedName~ConformanceTest'
+          dotnet test AerospikeTest/AerospikeTest.csproj \
+            -c Release \
+            --filter "${filter}" \
+            --logger "console;verbosity=normal" \
+            --results-directory TestResults \
+            -- \
+            --filter "${filter}"
+
+      - name: Upload conformance report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: conformance-report-csharp
+          path: TestResults/conformance-report.json
+
+      - name: Collect conformance report
+        if: ${{ always() }}
+        uses: aerospike/aerospike-client-conformance/.github/actions/collect-conformance-report@f66304f36d1cded608e4d6c199622266e2db1dc3 # main
+        with:
+          reports-directory: TestResults
+          fixtures-directory: ${{ github.workspace }}/conformance-fixtures
+          declarations-directory: AerospikeTest/conformance

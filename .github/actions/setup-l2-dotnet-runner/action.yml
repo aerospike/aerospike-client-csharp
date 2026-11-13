@@ -1,0 +1,110 @@
+name: Setup L2 .NET client runner
+description: >
+  Restore and warm ~/.nuget/packages, then export the digest-pinned .NET 8 SDK
+  image and bind-mount outputs. The caller starts the client with docker run.
+
+inputs:
+  client-image:
+    description: Client container image (.NET 8 SDK), pinned by digest
+    required: false
+    # mcr.microsoft.com/dotnet/sdk:8.0 index digest (2026-10)
+    default: mcr.microsoft.com/dotnet/sdk:8.0@sha256:6ba9644da07bb5b560a402acec9ca38711a0762969f1b61da261df5c9f6f85da
+  skip-warm:
+    description: Skip dotnet restore/build inside the client image (restore/save still run)
+    required: false
+    default: "false"
+
+outputs:
+  client-image:
+    description: Client container image for the caller to docker run
+    value: ${{ steps.export.outputs.client-image }}
+  client-volumes:
+    description: Semicolon-delimited host:container mounts (workspace + ~/.nuget)
+    value: ${{ steps.export.outputs.client-volumes }}
+  client-workdir:
+    description: Working directory inside the client container
+    value: ${{ steps.export.outputs.client-workdir }}
+  nuget-packages-container:
+    description: NuGet packages path inside the client image
+    value: ${{ steps.export.outputs.nuget-packages-container }}
+
+runs:
+  using: composite
+  steps:
+    - name: Export L2 client runner outputs
+      id: export
+      shell: bash
+      env:
+        CLIENT_IMAGE: ${{ inputs.client-image }}
+      run: |
+        set -euo pipefail
+        nuget_packages_container="/root/.nuget/packages"
+        # GitHub cache keys allow [A-Za-z0-9._-]; Docker refs use : / @.
+        cache_image_key=$(printf '%s' "${CLIENT_IMAGE}" | tr ':/@' '---')
+        {
+          echo "client-image=${CLIENT_IMAGE}"
+          echo "cache-image-key=${cache_image_key}"
+          echo "client-workdir=${GITHUB_WORKSPACE}"
+          echo "client-volumes=${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE};${HOME}/.nuget:${HOME}/.nuget;${HOME}/.nuget/packages:${nuget_packages_container}"
+          echo "nuget-packages-container=${nuget_packages_container}"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Restore NuGet packages cache
+      id: nuget-cache
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ~/.nuget/packages
+        key: nuget-l2-${{ steps.export.outputs.cache-image-key }}-${{ hashFiles('**/*.csproj', '**/nuget.config', '**/NuGet.Config') }}
+        restore-keys: |
+          nuget-l2-${{ steps.export.outputs.cache-image-key }}-
+
+    - name: Warm NuGet cache in the client image
+      if: ${{ inputs.skip-warm != 'true' }}
+      shell: bash
+      env:
+        CLIENT_IMAGE: ${{ inputs.client-image }}
+        CLIENT_WORKDIR: ${{ steps.export.outputs.client-workdir }}
+        CLIENT_VOLUMES: ${{ steps.export.outputs.client-volumes }}
+      run: |
+        set -euo pipefail
+        mkdir -p "${HOME}/.nuget/packages"
+        echo "Pulling client image: ${CLIENT_IMAGE}"
+        docker pull "${CLIENT_IMAGE}"
+
+        run_args=(
+          --rm
+          --workdir "${CLIENT_WORKDIR}"
+        )
+        remainder="${CLIENT_VOLUMES}"
+        while [[ -n "${remainder}" ]]; do
+          mount="${remainder%%;*}"
+          if [[ "${remainder}" == *";"* ]]; then
+            remainder="${remainder#*;}"
+          else
+            remainder=""
+          fi
+          [[ -z "${mount}" ]] && continue
+          run_args+=(-v "${mount}")
+        done
+
+        echo "Warming NuGet cache: dotnet restore + build AerospikeTest"
+        docker run "${run_args[@]}" "${CLIENT_IMAGE}" \
+          bash -lc 'dotnet restore AerospikeClient/AerospikeClient.csproj &&
+            dotnet restore AerospikeTest/AerospikeTest.csproj &&
+            dotnet build AerospikeTest/AerospikeTest.csproj -c Release --no-restore'
+
+    - name: Fix bind-mount ownership
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        sudo chown -R "$(id -u):$(id -g)" "${GITHUB_WORKSPACE}"
+        if [[ -d "${HOME}/.nuget" ]]; then
+          sudo chown -R "$(id -u):$(id -g)" "${HOME}/.nuget"
+        fi
+
+    - name: Save NuGet packages cache
+      if: ${{ success() && steps.nuget-cache.outputs.cache-hit != 'true' && inputs.skip-warm != 'true' }}
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ~/.nuget/packages
+        key: ${{ steps.nuget-cache.outputs.cache-primary-key }}

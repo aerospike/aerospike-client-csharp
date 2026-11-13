@@ -59,6 +59,14 @@ namespace Aerospike.Client.Config
 		}
 	}
 
+	public class ConfigurationDatav1_2_0 : ConfigurationDatav1_1_0
+	{
+		public ConfigurationDatav1_2_0()
+		{
+			version = "1.2.0";
+		}
+	}
+
 	public class StaticConfig
 	{
 		public StaticConfig()
@@ -76,6 +84,101 @@ namespace Aerospike.Client.Config
 		public int? min_connections_per_node { get; set; }
 		public int? async_max_connections_per_node { get; set; }
 		public int? async_min_connections_per_node { get; set; }
+
+		[ConfigIntroducedIn("1.2.0")]
+		public Dictionary<string, string> ip_map { get; set; }
+
+		[ConfigIntroducedIn("1.2.0")]
+		public bool? use_services_alternate { get; set; }
+
+		[ConfigIntroducedIn("1.2.0")]
+		public StaticDiscoveryConfig discovery { get; set; }
+
+		[ConfigIntroducedIn("1.2.0")]
+		public StaticTranslationConfig translation { get; set; }
+	}
+
+	/// <summary>
+	/// Settings under <c>static.client.discovery</c> (schema 1.2.0+).
+	/// </summary>
+	public class StaticDiscoveryConfig
+	{
+		public const string Static = "static";
+		public const string Dns = "dns";
+		public const string AwsTags = "aws-tags";
+
+		public string provider { get; set; }
+		public string merge_policy { get; set; }
+		public int? refresh_interval_ms { get; set; }
+		public int? tend_refresh_deadline_ms { get; set; }
+		public string execution_mode { get; set; }
+		public int? refresh_timeout_ms { get; set; }
+		public DnsDiscoveryConfig dns { get; set; }
+		public AwsDiscoveryConfig aws { get; set; }
+
+		/// <summary>
+		/// Options for a registered provider (every key of the block except <c>provider</c>).
+		/// Null for built-in providers.
+		/// </summary>
+		public Dictionary<string, object> options { get; set; }
+	}
+
+	/// <summary>
+	/// Settings under <c>static.client.discovery.dns</c>.
+	/// </summary>
+	public class DnsDiscoveryConfig
+	{
+		public string[] names { get; set; }
+		public string record_type { get; set; }
+		public int? port { get; set; }
+		public string tls_name { get; set; }
+		public int? timeout_ms { get; set; }
+		public string[] servers { get; set; }
+	}
+
+	/// <summary>
+	/// Settings under <c>static.client.discovery.aws</c>.
+	/// </summary>
+	public class AwsDiscoveryConfig
+	{
+		public string region { get; set; }
+		public AwsDiscoveryFilterConfig[] filters { get; set; }
+		public string address_field { get; set; }
+		public int? port { get; set; }
+		public string tls_name { get; set; }
+		public int? timeout_ms { get; set; }
+		public int? init_timeout_ms { get; set; }
+		public string endpoint { get; set; }
+	}
+
+	/// <summary>
+	/// One entry under <c>static.client.discovery.aws.filters</c>.
+	/// </summary>
+	public class AwsDiscoveryFilterConfig
+	{
+		public string name { get; set; }
+		public string[] values { get; set; }
+	}
+
+	/// <summary>
+	/// Settings under <c>static.client.translation</c> (schema 1.2.0+).
+	/// </summary>
+	public class StaticTranslationConfig
+	{
+		public const string StaticMap = "static-map";
+		public const string PortMap = "port-map";
+		public const string PassThrough = "pass-through";
+
+		public string provider { get; set; }
+		public string on_miss { get; set; }
+		public Dictionary<string, string> static_map { get; set; }
+		public Dictionary<string, string> port_map { get; set; }
+
+		/// <summary>
+		/// Options for a registered translator (every key of the block except <c>provider</c>).
+		/// Null for built-in providers.
+		/// </summary>
+		public Dictionary<string, object> options { get; set; }
 	}
 
 	public class DynamicConfig

@@ -14,7 +14,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Diagnostics;
 using System.Net;
+using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace Aerospike.Client
 {
@@ -22,6 +25,7 @@ namespace Aerospike.Client
 	{
 		internal Node fallback;
 		internal string name;
+		internal string hostname;
 		internal Host primaryHost;
 		internal IPEndPoint primaryAddress;
 		internal Connection primaryConn;
@@ -38,6 +42,7 @@ namespace Aerospike.Client
 		public Node SeedNode(Cluster cluster, Host host, Peers peers)
 		{
 			name = null;
+			hostname = null;
 			primaryHost = null;
 			primaryAddress = null;
 			primaryConn = null;
@@ -54,6 +59,7 @@ namespace Aerospike.Client
 				try
 				{
 					ValidateAddress(cluster, address, host.tlsName, host.port, true);
+					SetHostname(host, address);
 
 					Node node = cluster.CreateNode(this, false);
 
@@ -140,6 +146,12 @@ namespace Aerospike.Client
 		public void ValidateNode(Cluster cluster, Host host)
 		{
 			IPAddress[] addresses = Connection.GetHostAddresses(host.name, cluster.connectionTimeout);
+
+			if (addresses.Length > 1)
+			{
+				addresses = ConnectAll(cluster, host, addresses);
+			}
+
 			Exception exception = null;
 
 			foreach (IPAddress address in addresses)
@@ -147,6 +159,8 @@ namespace Aerospike.Client
 				try
 				{
 					ValidateAddress(cluster, address, host.tlsName, host.port, false);
+					SetHostname(host, address);
+					cluster.validAddresses[host.name + ':' + host.port] = address;
 					return;
 				}
 				catch (Exception e)
@@ -167,6 +181,239 @@ namespace Aerospike.Client
 			// Exception can't be null here because Connection.GetHostAddresses()
 			// will throw exception if aliases length is zero.
 			throw exception;
+		}
+
+		/// <summary>
+		/// Start a connect to every address at once and wait until one completes or
+		/// min(connectTimeout, tendInterval) passes. Return the addresses that completed by then,
+		/// the last validated address first, then in DNS order.
+		/// </summary>
+		internal static IPAddress[] ConnectAll(Cluster cluster, Host host, IPAddress[] addresses)
+		{
+			cluster.validAddresses.TryGetValue(host.name + ':' + host.port, out IPAddress preferred);
+			int bound = cluster.connectionTimeout > 0
+				? Math.Min(cluster.connectionTimeout, cluster.tendInterval)
+				: cluster.tendInterval;
+			return ConnectAll(bound, host.port, preferred, addresses);
+		}
+
+		/// <summary>
+		/// Race TCP connects across <paramref name="addresses"/> and return those that completed
+		/// within <paramref name="boundMs"/>, preferred first then DNS order.
+		/// </summary>
+		internal static IPAddress[] ConnectAll(int boundMs, int port, IPAddress preferred, IPAddress[] addresses)
+		{
+			List<IPAddress> connected = new List<IPAddress>(addresses.Length);
+			List<(IPAddress Address, Socket Socket, Task Task)> pending = new List<(IPAddress, Socket, Task)>();
+			object gate = new object();
+
+			void Start(IPAddress address)
+			{
+				Socket socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+				try
+				{
+					socket.NoDelay = true;
+					Task task = ConnectSocketAsync(socket, new IPEndPoint(address, port));
+					pending.Add((address, socket, task));
+				}
+				catch (Exception e)
+				{
+					try
+					{
+						socket.Dispose();
+					}
+					catch
+					{
+					}
+
+					if (Log.DebugEnabled())
+					{
+						Log.Debug("Address " + address + ' ' + port + " failed: " + Util.GetErrorMessage(e));
+					}
+				}
+			}
+
+			if (preferred != null)
+			{
+				foreach (IPAddress address in addresses)
+				{
+					if (address.Equals(preferred))
+					{
+						Start(preferred);
+						break;
+					}
+				}
+			}
+
+			foreach (IPAddress address in addresses)
+			{
+				if (!address.Equals(preferred))
+				{
+					Start(address);
+				}
+			}
+
+			if (pending.Count == 0)
+			{
+				throw new AerospikeException.Connection("No connection to port " + port + " started for " +
+					addresses.Length + " addresses");
+			}
+
+			Stopwatch sw = Stopwatch.StartNew();
+
+			while (connected.Count == 0)
+			{
+				int remaining = boundMs - (int)sw.ElapsedMilliseconds;
+
+				if (remaining <= 0)
+				{
+					break;
+				}
+
+				List<Task> running = new List<Task>();
+
+				foreach ((IPAddress Address, Socket Socket, Task Task) item in pending)
+				{
+					if (!item.Task.IsCompleted)
+					{
+						running.Add(item.Task);
+					}
+				}
+
+				if (running.Count == 0)
+				{
+					break;
+				}
+
+				try
+				{
+					Task.WhenAny(running).Wait(remaining);
+				}
+				catch
+				{
+				}
+
+				Harvest(pending, connected, gate, port);
+
+				if (connected.Count > 0)
+				{
+					// Collect any other connects that finished in the same window.
+					Harvest(pending, connected, gate, port);
+					break;
+				}
+			}
+
+			Harvest(pending, connected, gate, port);
+
+			foreach ((IPAddress Address, Socket Socket, Task Task) item in pending)
+			{
+				if (!item.Task.IsCompleted && Log.DebugEnabled())
+				{
+					Log.Debug("Address " + item.Address + ' ' + port +
+						" failed: connect did not complete within " + boundMs + "ms");
+				}
+
+				try
+				{
+					item.Socket.Dispose();
+				}
+				catch
+				{
+				}
+			}
+
+			if (connected.Count == 0)
+			{
+				throw new AerospikeException.Connection("No connection to port " + port + " completed for " +
+					addresses.Length + " addresses within " + boundMs + "ms");
+			}
+
+			connected.Sort((a, b) => Rank(addresses, preferred, a).CompareTo(Rank(addresses, preferred, b)));
+			return connected.ToArray();
+		}
+
+		private static void Harvest(
+			List<(IPAddress Address, Socket Socket, Task Task)> pending,
+			List<IPAddress> connected,
+			object gate,
+			int port)
+		{
+			foreach ((IPAddress Address, Socket Socket, Task Task) item in pending)
+			{
+				if (item.Task.Status != TaskStatus.RanToCompletion)
+				{
+					if (item.Task.IsFaulted && Log.DebugEnabled())
+					{
+						Log.Debug("Address " + item.Address + ' ' + port + " failed: " +
+							Util.GetErrorMessage(item.Task.Exception.GetBaseException()));
+					}
+					continue;
+				}
+
+				lock (gate)
+				{
+					if (!connected.Contains(item.Address))
+					{
+						connected.Add(item.Address);
+					}
+				}
+			}
+		}
+
+		private static int Rank(IPAddress[] addresses, IPAddress preferred, IPAddress address)
+		{
+			if (preferred != null && address.Equals(preferred))
+			{
+				return -1;
+			}
+
+			for (int i = 0; i < addresses.Length; i++)
+			{
+				if (addresses[i].Equals(address))
+				{
+					return i;
+				}
+			}
+
+			return addresses.Length;
+		}
+
+		private static async Task ConnectSocketAsync(Socket socket, IPEndPoint endpoint)
+		{
+			await socket.ConnectAsync(endpoint).ConfigureAwait(false);
+		}
+
+		/// <summary>
+		/// Verify that one address of a host references a valid node.
+		/// </summary>
+		internal void ValidateAlias(Cluster cluster, Host host, IPAddress address)
+		{
+			ValidateAddress(cluster, address, host.tlsName, host.port, false);
+			SetHostname(host, address);
+		}
+
+		private void SetHostname(Host host, IPAddress address)
+		{
+			hostname = (IsHostname(host.name) && address.Equals(primaryAddress.Address)) ? host.name : null;
+		}
+
+		private static bool IsHostname(string name)
+		{
+			if (name.IndexOf(':') >= 0)
+			{
+				return false;
+			}
+
+			foreach (char c in name)
+			{
+				if (c != '.' && !char.IsDigit(c))
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		private static string BuildUserAgentCommand(Cluster cluster)
@@ -209,7 +456,7 @@ namespace Aerospike.Client
 					if (cluster.tlsPolicy != null && cluster.tlsPolicy.forLoginOnly)
 					{
 						// Switch to using non-TLS socket.
-						SwitchClear sc = new SwitchClear(cluster, conn, sessionToken);
+						SwitchClear sc = new SwitchClear(cluster, conn, tlsName, sessionToken);
 						conn.Close();
 						address = sc.clearAddress;
 						socketAddress = sc.clearSocketAddress;
@@ -246,9 +493,10 @@ namespace Aerospike.Client
 					}
 				}
 
-				if (detectLoadBalancer)
+				if (detectLoadBalancer || cluster.useServicesAlternate)
 				{
 					// Seed may be load balancer with changing address. Determine real address.
+					// The alternate address list must also contain the node itself.
 					addressCommand = (cluster.tlsPolicy != null) ?
 						cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :
 						cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
@@ -281,7 +529,12 @@ namespace Aerospike.Client
 					ValidateClusterName(cluster, map);
 				}
 
-				if (addressCommand != null)
+				if (cluster.useServicesAlternate)
+				{
+					ValidateAlternateAddress(map, addressCommand);
+				}
+
+				if (detectLoadBalancer)
 				{
 					SetAddress(cluster, map, addressCommand, tlsName);
 				}
@@ -393,6 +646,16 @@ namespace Aerospike.Client
 			}
 		}
 
+		private void ValidateAlternateAddress(Dictionary<string, string> map, string addressCommand)
+		{
+			string result;
+
+			if (!map.TryGetValue(addressCommand, out result) || result == null || result.Length == 0)
+			{
+				throw new AerospikeException.AlternateAddressMissing(this.name, this.primaryHost);
+			}
+		}
+
 		private void SetAddress(Cluster cluster, Dictionary<string, string> map, string addressCommand, string tlsName)
 		{
 			string result;
@@ -410,12 +673,17 @@ namespace Aerospike.Client
 			// Search real hosts for seed.
 			foreach (Host host in hosts)
 			{
-				h = host;
-
-				string alt;
-				if (cluster.ipMap != null && cluster.ipMap.TryGetValue(h.name, out alt))
+				try
 				{
-					h = new Host(alt, h.port);
+					h = TranslateServiceHost(cluster, host);
+				}
+				catch (AerospikeException.TranslationMiss tm)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn(cluster.context, tm.Message);
+					}
+					continue;
 				}
 
 				if (h.Equals(this.primaryHost))
@@ -431,12 +699,17 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					h = host;
-
-					string alt;
-					if (cluster.ipMap != null && cluster.ipMap.TryGetValue(h.name, out alt))
+					try
 					{
-						h = new Host(alt, h.port);
+						h = TranslateServiceHost(cluster, host);
+					}
+					catch (AerospikeException.TranslationMiss tm)
+					{
+						if (Log.WarnEnabled())
+						{
+							Log.Warn(cluster.context, tm.Message);
+						}
+						continue;
 					}
 
 					IPAddress[] addresses = Connection.GetHostAddresses(h.name, cluster.connectionTimeout);
@@ -492,6 +765,12 @@ namespace Aerospike.Client
 				Log.Info(cluster.context, "Invalid address " + result + ". access-address is probably not configured on server.");
 			}
 		}
+
+		private Host TranslateServiceHost(Cluster cluster, Host host)
+		{
+			string tls = host.tlsName ?? primaryHost?.tlsName;
+			return cluster.TranslateAddress(name, tls, host.name, host.port);
+		}
 	}
 
 	sealed class SwitchClear
@@ -501,11 +780,18 @@ namespace Aerospike.Client
 		internal Connection clearConn;
 
 		// Switch from TLS connection to non-TLS connection.
-		internal SwitchClear(Cluster cluster, Connection conn, byte[] sessionToken)
+		internal SwitchClear(Cluster cluster, Connection conn, string tlsName, byte[] sessionToken)
 		{
 			// Obtain non-TLS addresses.
 			string command = cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
-			string result = Info.Request(conn, command);
+			Dictionary<string, string> map = Info.Request(conn, command, "node");
+
+			if (!map.TryGetValue(command, out string result) || result == null)
+			{
+				throw new AerospikeException("Invalid non-TLS address response for " + command);
+			}
+
+			map.TryGetValue("node", out string nodeName);
 			List<Host> hosts = Host.ParseServiceHosts(result);
 			Host clearHost;
 
@@ -514,12 +800,17 @@ namespace Aerospike.Client
 			{
 				try
 				{
-					clearHost = host;
-
-					string alternativeHost;
-					if (cluster.ipMap != null && cluster.ipMap.TryGetValue(clearHost.name, out alternativeHost))
+					try
 					{
-						clearHost = new Host(alternativeHost, clearHost.port);
+						clearHost = cluster.TranslateAddress(nodeName, tlsName, host.name, host.port);
+					}
+					catch (AerospikeException.TranslationMiss tm)
+					{
+						if (Log.WarnEnabled())
+						{
+							Log.Warn(cluster.context, tm.Message);
+						}
+						continue;
 					}
 
 					IPAddress[] addresses = Connection.GetHostAddresses(clearHost.name, cluster.connectionTimeout);

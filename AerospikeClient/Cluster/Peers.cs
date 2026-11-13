@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2025 Aerospike, Inc.
+ * Copyright 2012-2026 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Aerospike.Client
@@ -23,9 +24,22 @@ namespace Aerospike.Client
 		public readonly List<Peer> peers;
 		public readonly Dictionary<string, Node> nodes;
 		public readonly HashSet<Node> removeNodes;
+		/// <summary>
+		/// Nodes to remove by reference. <see cref="Node"/> equality is by name, so a move that
+		/// replaces a node must not collapse the old and new instances in one set.
+		/// </summary>
+		internal readonly HashSet<Node> nodesToRemove;
 		private readonly HashSet<Host> invalidHosts;
+		/// <summary>
+		/// Maps validated node name to the peer node name that first collided with it this tend.
+		/// </summary>
+		internal readonly Dictionary<string, string> collided;
 		public int refreshCount;
 		public bool genChanged;
+		/// <summary>
+		/// True when a live node's advertised host list changed this tend (view-change notify).
+		/// </summary>
+		internal bool addressChanged;
 
 		public Peers(int peerCapacity)
 		{
@@ -33,6 +47,17 @@ namespace Aerospike.Client
 			nodes = new Dictionary<string, Node>();
 			invalidHosts = new HashSet<Host>();
 			removeNodes = new HashSet<Node>();
+			nodesToRemove = new HashSet<Node>(ReferenceEqualityComparer<Node>.Instance);
+			collided = new Dictionary<string, string>();
+		}
+
+		/// <summary>
+		/// Mark node for removal. Nodes are equal by name, so the node is also kept by reference.
+		/// </summary>
+		internal void RemoveNode(Node node)
+		{
+			removeNodes.Add(node);
+			nodesToRemove.Add(node);
 		}
 
 		public bool HasFailed(Host host)
@@ -78,6 +103,27 @@ namespace Aerospike.Client
 		internal String nodeName;
 		internal String tlsName;
 		internal List<Host> hosts;
+		/// <summary>
+		/// Pre-translation advertised hosts for view-change detection. Null when unused.
+		/// </summary>
+		internal List<Host> advertised;
 		internal Node replaceNode;
+		/// <summary>
+		/// True when useServicesAlternate is set and this peer has no alternate-access-address.
+		/// </summary>
+		internal bool alternateMissing;
+	}
+
+	/// <summary>
+	/// Reference equality for node remove sets. <see cref="Node"/> overrides equality by name.
+	/// </summary>
+	internal sealed class ReferenceEqualityComparer<T> : IEqualityComparer<T>
+		where T : class
+	{
+		internal static readonly ReferenceEqualityComparer<T> Instance = new ReferenceEqualityComparer<T>();
+
+		public bool Equals(T x, T y) => ReferenceEquals(x, y);
+
+		public int GetHashCode(T obj) => RuntimeHelpers.GetHashCode(obj);
 	}
 }

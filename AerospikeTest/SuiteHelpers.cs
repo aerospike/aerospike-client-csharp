@@ -36,5 +36,12 @@ internal static class SuiteHelpers
 	public static bool enterprise;
 	public static bool hasTtl;
 	public static bool scMode;
+	/// <summary>
+	/// True when QueryRoles succeeds and both <c>sys-admin</c> and <c>user-admin</c>
+	/// are present. Aerospike Cloud omits those roles (and often returns ROLE_VIOLATION
+	/// for admin APIs), so tests that create users/roles or assert those predefined
+	/// roles should skip when this is false.
+	/// </summary>
+	public static bool fullSecurityAdmin;
 	public static Version serverVersion;
 }

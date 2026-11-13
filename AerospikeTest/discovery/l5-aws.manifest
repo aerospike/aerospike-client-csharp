@@ -1,0 +1,11 @@
+# Manifest for the l5-aws harness in aerospike-client-conformance (l5-aws/README.md).
+# Each command runs with bash on the runner (Amazon Linux 2023) from the repository root.
+# Amazon Linux's dotnet-sdk-8.0 package is too old for global.json (8.0.400); install that SDK.
+# dotnet-install.sh does not pull ICU; without libicu, dotnet build aborts on globalization init.
+L5_SETUP='sudo dnf install -y libicu && curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && bash /tmp/dotnet-install.sh --version 8.0.400 && export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && dotnet --list-sdks'
+# dotnet build accepts one project (or a solution); build both for L5_DRIVER and the L5_RUN fallback.
+L5_BUILD='export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && dotnet build AerospikeL5Driver/AerospikeL5Driver.csproj -c Release --nologo -v q && dotnet build AerospikeTest/AerospikeTest.csproj -c Release --nologo -v q'
+# Invoke via bash so the driver still starts if git file mode is not preserved as +x.
+L5_DRIVER='export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && bash AerospikeTest/discovery/l5_driver.sh'
+# Fallback when a harness revision does not use L5_DRIVER: MSTest rows via L5_ROW.
+L5_RUN='export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && bash AerospikeTest/discovery/run_l5.sh'

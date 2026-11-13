@@ -1,0 +1,202 @@
+name: Discovery L2 run
+
+on:
+  workflow_call:
+    inputs:
+      subset:
+        description: ce runs a community cluster without TLS, ee an enterprise cluster with TLS
+        type: string
+        required: true
+      server-container-repo:
+        description: Aerospike image repository path
+        type: string
+        required: true
+      server-tag:
+        description: Aerospike image tag
+        type: string
+        required: true
+      tls-listen-port-base:
+        description: First TLS proxy listen port. Empty skips TLS proxies.
+        type: string
+        required: false
+        default: ""
+      profile:
+        description: >-
+          A discovery-l2-topology profile: default, reachable, pass-through-names,
+          pass-through-ports, port-map-range, cn-only, low-mtu, port-range,
+          idle-reset or unresolved-access
+        type: string
+        required: false
+        default: default
+      verbatim-access-address:
+        description: >-
+          For unresolved-access, whether the server under test advertises
+          access-address hostnames verbatim (SERVER-1839). true or false.
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  l2:
+    name: cluster
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Profile suite
+        id: suite
+        env:
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          set -euo pipefail
+          case "${PROFILE}" in
+            # N-* topology plus F-4 silent-drop / circuit breaker (TestL2FaultInjection).
+            default) filter='FullyQualifiedName~TestL2Topology|FullyQualifiedName~TestL2FaultInjection' ;;
+            port-range) filter='FullyQualifiedName~TestL2SourcePortRange' ;;
+            reachable) filter='FullyQualifiedName~TestL2ReachableNode' ;;
+            pass-through-names | pass-through-ports) filter='FullyQualifiedName~TestL2PassThrough' ;;
+            port-map-range) filter='FullyQualifiedName~TestL2PortMapRange' ;;
+            cn-only) filter='FullyQualifiedName~TestL2CnOnlyCertificate' ;;
+            low-mtu) filter='FullyQualifiedName~TestL2LowMtu' ;;
+            # Sync F-1 only: async pool still surfaces ConnectionReset to the caller after idle RST.
+            idle-reset) filter='FullyQualifiedName~TestL2IdleReset' ;;
+            unresolved-access) filter='FullyQualifiedName~TestL2UnresolvedAccessAddress|FullyQualifiedName~TestL2PortMapNoAccessAddress' ;;
+            *)
+              echo "::error::Unknown profile ${PROFILE}"
+              exit 1
+              ;;
+          esac
+          echo "filter=${filter}" >> "${GITHUB_OUTPUT}"
+
+      - name: Setup L2 topology
+        id: l2
+        # CLIENT-5791 — pin SHA (not branch/tag). 83959d02 adds unresolved-access + verbatim-access-address (CLIENT-5858).
+        uses: aerospike/aerospike-client-conformance/.github/actions/discovery-l2-topology@83959d02eb6bca719d71ba70e72648c528847b69
+        with:
+          profile: ${{ inputs.profile }}
+          subset: ${{ inputs.subset }}
+          server-edition: ${{ inputs.subset == 'ee' && 'enterprise' || 'community' }}
+          server-container-repo: ${{ inputs.server-container-repo }}
+          server-tag: ${{ inputs.server-tag }}
+          enable-tls: ${{ inputs.subset == 'ee' }}
+          tls-listen-port-base: ${{ inputs.tls-listen-port-base }}
+          features-content: ${{ inputs.subset == 'ee' && secrets.AES_FEATURES_CONF || '' }}
+          oidc-provider: gh-aerospike
+          oidc-audience: aerospike
+          verbatim-access-address: ${{ inputs.verbatim-access-address }}
+
+      - name: Build DNS zone
+        id: zone
+        if: ${{ inputs.profile == 'default' }}
+        env:
+          CLIENT_NETWORK: ${{ steps.l2.outputs.client-network }}
+          ENV_FILE: ${{ steps.l2.outputs.env-file }}
+        run: |
+          set -euo pipefail
+          setting() { sed -n "s/^$1=//p" "${ENV_FILE}"; }
+          host="$(setting DISCOVERY_ENDPOINT_HOSTNAME)"
+          proxy_ip="$(docker inspect -f "{{(index .NetworkSettings.Networks \"${CLIENT_NETWORK}\").IPAddress}}" "$(setting TOXIPROXY_HOST)")"
+          {
+            echo "zone-name=${host}"
+            echo "zone-content<<EOF"
+            echo "\$ORIGIN ${host}."
+            echo "@ 3600 IN SOA ns.${host}. admin.${host}. 1 60 60 60 1"
+            echo "@ 1 IN A ${proxy_ip}"
+            IFS=',' read -r -a ports <<< "$(setting DISCOVERY_ENDPOINT_PORTS)"
+            for port in "${ports[@]}"; do
+              echo "_aerospike._tcp 1 IN SRV 10 10 ${port} ${host}."
+            done
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Setup DNS server
+        id: dns
+        if: ${{ inputs.profile == 'default' }}
+        uses: aerospike/shared-workflows/.github/actions/setup-dns-server@308f37e0cd5c7a6386a99ea7afc379d5a4ea9256 # v5.1.0
+        with:
+          network-name: ${{ steps.l2.outputs.client-network }}
+          zone-name: ${{ steps.zone.outputs.zone-name }}
+          zone-content: ${{ steps.zone.outputs.zone-content }}
+
+      - name: Setup L2 .NET client runner
+        id: runner
+        uses: ./.github/actions/setup-l2-dotnet-runner
+
+      - name: Run L2 discovery suite
+        # Legacy CN fallback until the next major, so cn-only cannot pass yet (matches Java).
+        continue-on-error: ${{ inputs.profile == 'cn-only' }}
+        env:
+          CLIENT_IMAGE: ${{ steps.runner.outputs.client-image }}
+          CLIENT_VOLUMES: ${{ steps.runner.outputs.client-volumes }}
+          CLIENT_WORKDIR: ${{ steps.runner.outputs.client-workdir }}
+          CLIENT_NETWORK: ${{ steps.l2.outputs.client-network }}
+          ENV_FILE: ${{ steps.l2.outputs.env-file }}
+          CLIENT_HOSTS: ${{ steps.l2.outputs.client-hosts }}
+          TLS_CERT_DIR: ${{ steps.l2.outputs.tls-cert-dir }}
+          DISCOVERY_SUBSET: ${{ inputs.subset }}
+          DISCOVERY_DNS_SERVER: ${{ steps.dns.outputs.server-address }}
+          L2_SUITE: ${{ steps.suite.outputs.filter }}
+        run: |
+          set -euo pipefail
+          run_args=(
+            --rm
+            --network "${CLIENT_NETWORK}"
+            --workdir "${CLIENT_WORKDIR}"
+            --env-file "${ENV_FILE}"
+            -e L2_SUITE
+            -e DISCOVERY_SUBSET
+            -e DISCOVERY_DNS_SERVER
+          )
+          remainder="${CLIENT_VOLUMES}"
+          while [[ -n "${remainder}" ]]; do
+            mount="${remainder%%;*}"
+            if [[ "${remainder}" == *";"* ]]; then
+              remainder="${remainder#*;}"
+            else
+              remainder=""
+            fi
+            [[ -z "${mount}" ]] && continue
+            run_args+=(-v "${mount}")
+          done
+          if [[ "${DISCOVERY_SUBSET}" == "ee" ]]; then
+            run_args+=(-v "${TLS_CERT_DIR}:/aerospike-tls:ro")
+            run_args+=(-e "AEROSPIKE_CA_CERT=/aerospike-tls/ca.crt")
+          fi
+          IFS=',' read -r -a client_hosts <<< "${CLIENT_HOSTS}"
+          for host in "${client_hosts[@]}"; do
+            [[ -z "${host}" ]] && continue
+            run_args+=(--add-host "${host}")
+          done
+          docker run "${run_args[@]}" "${CLIENT_IMAGE}" bash .github/discovery/run-l2-suite.sh
+
+      - name: Show the node server log
+        if: ${{ always() && steps.l2.outputs.node-server-log != '' }}
+        env:
+          LOG_FILE: ${{ steps.l2.outputs.node-server-log }}
+        run: cat "${LOG_FILE}"
+
+      - name: Fix bind-mount ownership
+        if: ${{ always() }}
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" "${GITHUB_WORKSPACE}"
+          if [[ -d "${HOME}/.nuget" ]]; then
+            sudo chown -R "$(id -u):$(id -g)" "${HOME}/.nuget"
+          fi
+
+      - name: Publish Test Results
+        if: ${{ always() && hashFiles('**/TestResults/**/*.trx') != '' }}
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
+        with:
+          files: "**/TestResults/**/*.trx"
+          check_name: "L2 discovery (${{ inputs.subset }}${{ inputs.profile != 'default' && format(', {0}', inputs.profile) || '' }}${{ inputs.profile == 'unresolved-access' && format(', verbatim={0}', inputs.verbatim-access-address) || '' }})"
+          fail_on: ${{ inputs.profile == 'cn-only' && 'nothing' || 'test failures' }}

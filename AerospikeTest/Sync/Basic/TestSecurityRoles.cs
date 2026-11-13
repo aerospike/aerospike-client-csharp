@@ -32,7 +32,8 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void Setup(TestContext testContext)
 		{
-			securityEnabled = TryEnableSecurity();
+			// CreateRole/CreateUser need user-admin; Cloud omits that role.
+			securityEnabled = SuiteHelpers.fullSecurityAdmin && TryEnableSecurity();
 			if (!securityEnabled)
 			{
 				return;
@@ -412,7 +413,8 @@ namespace Aerospike.Test
 			{
 				if (e.Result == ResultCode.SECURITY_NOT_ENABLED
 					|| e.Result == ResultCode.SECURITY_NOT_SUPPORTED
-					|| e.Result == ResultCode.NOT_AUTHENTICATED)
+					|| e.Result == ResultCode.NOT_AUTHENTICATED
+					|| e.Result == ResultCode.ROLE_VIOLATION)
 				{
 					return false;
 				}
@@ -425,6 +427,7 @@ namespace Aerospike.Test
 		{
 			if (!securityEnabled)
 			{
+				Suite.RequireFullSecurityAdmin();
 				Assert.Inconclusive("Skipping test: security is not enabled or credentials were not provided");
 			}
 		}
