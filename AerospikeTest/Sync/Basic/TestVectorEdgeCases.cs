@@ -15,6 +15,7 @@
  * the License.
  */
 using System.Collections;
+using System.Reflection;
 using Aerospike.Client;
 
 namespace Aerospike.Test
@@ -166,6 +167,97 @@ namespace Aerospike.Test
 			AssertParseError(() => Vector.OfFloat64(new double[Vector.MaxDimensionsFloat64 + 1]));
 		}
 
+		/// <summary>AV-03: 1 and per-type maximum dimensions are accepted; 0 / max+1 refused.</summary>
+		[TestMethod]
+		public void MaxAndMinDimensionsAccepted()
+		{
+			Assert.AreEqual(1, Vector.OfFloat16(new short[1]).dimensions);
+			Assert.AreEqual(1, Vector.OfInt32(new int[1]).dimensions);
+			Assert.AreEqual(1, Vector.OfFloat32(new float[1]).dimensions);
+			Assert.AreEqual(1, Vector.OfFloat64(new double[1]).dimensions);
+
+			AssertAcceptedFrom(Vector.ElementType.FLOAT16, Vector.MaxDimensionsFloat16);
+			AssertAcceptedFrom(Vector.ElementType.INT32, Vector.MaxDimensionsInt32OrFloat32);
+			AssertAcceptedFrom(Vector.ElementType.FLOAT32, Vector.MaxDimensionsInt32OrFloat32);
+			AssertAcceptedFrom(Vector.ElementType.FLOAT64, Vector.MaxDimensionsFloat64);
+
+			Assert.AreEqual(Vector.MaxDimensionsFloat64, Vector.OfFloat64(new double[Vector.MaxDimensionsFloat64]).dimensions);
+		}
+
+		/// <summary>
+		/// AV-05: OfFloat16(float[]) matches round-ties-to-even for every finite float16 pattern.
+		/// </summary>
+		[TestMethod]
+		public void Float16FromFloatMatchesAllFiniteBitPatterns()
+		{
+			int finite = 0;
+
+			for (int i = 0; i < 65536; i++)
+			{
+				ushort bits = (ushort)i;
+				Half half = BitConverter.UInt16BitsToHalf(bits);
+				if (!Half.IsFinite(half))
+				{
+					continue;
+				}
+
+				finite++;
+				float asFloat = (float)half;
+				short[] data = Vector.OfFloat16([asFloat]).GetFloat16Data();
+				Assert.AreEqual(unchecked((short)bits), data[0],
+					"float16 bits 0x" + bits.ToString("x4") + " via float " + asFloat);
+			}
+
+			Assert.AreEqual(63488, finite);
+		}
+
+		/// <summary>AV-12: C# has no OfFloat32(double[]); callers narrow first. Infinity refused.</summary>
+		[TestMethod]
+		public void Float32HasNoDoubleArrayFactoryAndRejectsInfinity()
+		{
+			Assert.IsNull(typeof(Vector).GetMethod("OfFloat32", [typeof(double[])]));
+
+			// Language narrowing before OfFloat32: 16777217 → 16777216 (nearest even float32).
+			float narrowed = (float)16777217.0;
+			Assert.AreEqual(16777216f, narrowed);
+			Assert.AreEqual(16777216f, Vector.OfFloat32([narrowed]).GetFloat32Data()[0]);
+
+			AssertParseError(() => Vector.OfFloat32([float.PositiveInfinity]));
+		}
+
+		/// <summary>
+		/// AV-09: a vector cannot be used as a record key — refused before send.
+		/// </summary>
+		[TestMethod]
+		public void VectorRejectedAsRecordKey()
+		{
+			Vector v = Vector.OfFloat32([1f, 2f]);
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => new Key("test", "set", Value.Get(v)));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+			StringAssert.Contains(ae.BaseMessage, "Invalid key type: Vector");
+		}
+
+		/// <summary>
+		/// AV-10: INT32 extremes and finite FLOAT16 bit patterns accepted; numeric
+		/// factories refuse non-finite values (raw short[] bit interchange stays exact).
+		/// </summary>
+		[TestMethod]
+		public void Int32AndFloat16BitPatternBounds()
+		{
+			CollectionAssert.AreEqual(
+				new int[] { int.MinValue, int.MaxValue },
+				Vector.OfInt32([int.MinValue, int.MaxValue]).GetInt32Data());
+
+			short[] finiteBits = [0x0000, 0x7bff, unchecked((short)0xfbff)];
+			CollectionAssert.AreEqual(finiteBits, Vector.OfFloat16(finiteBits).GetFloat16Data());
+
+			AssertParseError(() => Vector.OfFloat16(new Half[] { Half.NaN }));
+			AssertParseError(() => Vector.OfFloat16(new float[] { float.PositiveInfinity }));
+			AssertParseError(() => Vector.OfFloat32([float.NaN]));
+			AssertParseError(() => Vector.OfFloat64([double.NegativeInfinity]));
+		}
+
 		[TestMethod]
 		public void Float16SpecialBitPatternsRoundTrip()
 		{
@@ -297,6 +389,18 @@ namespace Aerospike.Test
 			buffer[1] = (byte)elementType;
 			ByteUtil.IntToLittleBytes((uint)dimensions, buffer, 2);
 			AssertParseError(() => Vector.From(buffer, 0, buffer.Length));
+		}
+
+		private static void AssertAcceptedFrom(Vector.ElementType elementType, int dimensions)
+		{
+			int elemSize = Vector.GetElementByteSize(elementType);
+			byte[] buffer = new byte[Vector.HEADER_SIZE + dimensions * elemSize];
+			buffer[0] = Vector.VERSION;
+			buffer[1] = (byte)elementType;
+			ByteUtil.IntToLittleBytes((uint)dimensions, buffer, 2);
+			Vector v = Vector.From(buffer, 0, buffer.Length);
+			Assert.AreEqual(dimensions, v.dimensions);
+			Assert.AreEqual(elementType, v.elementType);
 		}
 
 		private static void AssertRoundTrip(Vector v)

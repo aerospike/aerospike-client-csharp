@@ -157,6 +157,144 @@ namespace Aerospike.Test
 			Assert.AreEqual(9L, result[0].GetLong(Bin));
 		}
 
+		//-------------------------------------------------------
+		// QE Top-K merge arrival-order scenarios (k=3)
+		// Records: A 90, B 80, C 70, X 95 (later updated to 40).
+		//-------------------------------------------------------
+
+		/// <summary>
+		/// Case 1: newer lower-scoring X arrives, then C fills the heap — X is out.
+		/// </summary>
+		[TestMethod]
+		public void TopKMergeCase1NewerLowerScoreThenBetterRecord()
+		{
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, 3);
+
+			Accept(reducer, "X", 95L, 1000);
+			Accept(reducer, "A", 90L, 500);
+			Accept(reducer, "B", 80L, 500);
+			Accept(reducer, "X", 40L, 2000);
+			Accept(reducer, "C", 70L, 500);
+
+			AssertMerge(reducer, [90L, 80L, 70L], ["A", "B", "C"]);
+		}
+
+		/// <summary>
+		/// Case 2 (accepted limitation): C is dropped while X95 holds a slot; X40 then
+		/// replaces X95. C does not come back.
+		/// </summary>
+		[TestMethod]
+		public void TopKMergeCase2AcceptedLimitationDropsEvictedCandidate()
+		{
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, 3);
+
+			Accept(reducer, "X", 95L, 1000);
+			Accept(reducer, "A", 90L, 500);
+			Accept(reducer, "B", 80L, 500);
+			Accept(reducer, "C", 70L, 500);
+			Accept(reducer, "X", 40L, 2000);
+
+			AssertMerge(reducer, [90L, 80L, 40L], ["A", "B", "X"]);
+		}
+
+		/// <summary>
+		/// Case 3: stale higher-scoring X arrives after the newer lower-scoring copy.
+		/// </summary>
+		[TestMethod]
+		public void TopKMergeCase3StaleCopyAfterNewerIsIgnored()
+		{
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, 3);
+
+			Accept(reducer, "X", 40L, 2000);
+			Accept(reducer, "X", 95L, 1000);
+			Accept(reducer, "A", 90L, 500);
+			Accept(reducer, "B", 80L, 500);
+
+			AssertMerge(reducer, [90L, 80L, 40L], ["A", "B", "X"]);
+		}
+
+		/// <summary>
+		/// Case 4: equal / missing LUT — better rank wins (also servers that omit field 14).
+		/// </summary>
+		[TestMethod]
+		public void TopKMergeCase4EqualLutKeepsBetterRank()
+		{
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, 3);
+
+			Accept(reducer, "X", 40L, 0);
+			Accept(reducer, "X", 95L, 0);
+			Accept(reducer, "A", 90L, 0);
+			Accept(reducer, "B", 80L, 0);
+
+			AssertMerge(reducer, [95L, 90L, 80L], ["X", "A", "B"]);
+		}
+
+		/// <summary>
+		/// Rudresh Case 5 (accepted limitation): a newer low-scoring X is rejected while
+		/// the heap is full of better scores (LUT forgotten). A later stale high-scoring
+		/// X re-enters and evicts C.
+		/// </summary>
+		[TestMethod]
+		public void TopKMergeCase5StaleReentersAfterNewerWasRankedOut()
+		{
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, 3);
+
+			Accept(reducer, "A", 90L, 500);
+			Accept(reducer, "B", 80L, 500);
+			Accept(reducer, "C", 70L, 500);
+			Accept(reducer, "X", 40L, 2000);
+			Accept(reducer, "X", 95L, 1000);
+
+			AssertMerge(reducer, [95L, 90L, 80L], ["X", "A", "B"]);
+		}
+
+		/// <summary>A vector in a scalar order bin ranks last (wrong type / NIL), like list/map.</summary>
+		[TestMethod]
+		public void TopKVectorOrderValueRanksLast()
+		{
+			ReduceSpec<Record, Record> reducer = Reduce.TopK(Bin, BinDataType.INTEGER, Order.DESC, 3);
+
+			Accept(reducer, "hi", 3L, 0);
+			reducer.AcceptPartial(
+				Record(Bin, Vector.OfFloat32([1f, 2f, 3f])),
+				Key("vec"),
+				0);
+			Accept(reducer, "lo", 1L, 0);
+
+			Record[] result = reducer.GetResult();
+			Assert.AreEqual(3, result.Length);
+			Assert.AreEqual(3L, result[0].GetLong(Bin));
+			Assert.AreEqual(1L, result[1].GetLong(Bin));
+			Assert.IsTrue(result[2].GetValue(Bin) is Vector);
+		}
+
+		private static void Accept(ReduceSpec<Record, Record> reducer, string userKey, long score, long lut)
+		{
+			reducer.AcceptPartial(Record(Bin, score), Key(userKey), lut);
+		}
+
+		private static void AssertMerge(
+			ReduceSpec<Record, Record> reducer,
+			long[] expectedScores,
+			string[] expectedUserKeys)
+		{
+			Record[] result = reducer.GetResult();
+			Assert.AreEqual(expectedScores.Length, result.Length);
+
+			for (int i = 0; i < expectedScores.Length; i++)
+			{
+				Assert.AreEqual(expectedScores[i], result[i].GetLong(Bin), "score at " + i);
+			}
+
+			Key[] keys = ((TopKReduceSpec)reducer).GetResultKeys();
+			Assert.AreEqual(expectedUserKeys.Length, keys.Length);
+
+			for (int i = 0; i < expectedUserKeys.Length; i++)
+			{
+				Assert.AreEqual(expectedUserKeys[i], keys[i].userKey.ToString(), "key at " + i);
+			}
+		}
+
 		[TestMethod]
 		public void TopKNegativeZeroEqualsPositiveZero()
 		{

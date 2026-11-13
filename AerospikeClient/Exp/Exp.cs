@@ -648,6 +648,19 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Create vector value (particle type 16).
+		/// </summary>
+		public static Exp Val(Vector val)
+		{
+			if (val is null)
+			{
+				throw new ArgumentNullException(nameof(val));
+			}
+
+			return new VectorVal(val);
+		}
+
+		/// <summary>
 		/// Create list value.
 		/// </summary>
 		public static Exp Val(IList list)
@@ -1726,6 +1739,10 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
+				if (type == Type.VECTOR)
+				{
+					packer.MarkVector();
+				}
 				packer.PackArrayBegin(3);
 				packer.PackNumber(BIN);
 				packer.PackNumber((int)type);
@@ -2014,6 +2031,21 @@ namespace Aerospike.Client
 			{
 				packer.PackParticleBytes(val);
 
+			}
+		}
+
+		private sealed class VectorVal : Exp
+		{
+			internal readonly Vector val;
+
+			internal VectorVal(Vector val)
+			{
+				this.val = val;
+			}
+
+			public override void Pack(Packer packer)
+			{
+				packer.PackVector(val);
 			}
 		}
 

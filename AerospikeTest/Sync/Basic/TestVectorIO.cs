@@ -31,7 +31,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void ServerVersionCheck(TestContext testContext)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "vector");
+			RequireVectorSupport();
 		}
 
 		[TestMethod]
@@ -194,6 +194,215 @@ namespace Aerospike.Test
 			Record record = client.Get(null, key);
 			AssertRecordFound(key, record);
 			CollectionAssert.AreEqual(v.GetInt32Data(), record.GetVector(BinName).GetInt32Data());
+		}
+
+		/// <summary>AW-03: typed vector reads across Get / selected bins / operate / exp / batch / query / scan / txn.</summary>
+		[TestMethod]
+		public void ReadPathsReturnVectorNotBytes()
+		{
+			const string set = "vecReadPaths";
+			const string marker = "vecpath";
+			Key key = new(SuiteHelpers.ns, set, "read1");
+			Vector v = Vector.OfFloat32([9f, 8f, 7f]);
+
+			client.Delete(null, key);
+			client.Put(null, key, new Bin(BinName, v), new Bin(marker, 1));
+
+			try
+			{
+				AssertVector(client.Get(null, key).GetVector(BinName), v);
+				AssertVector(client.Get(null, key, BinName).GetVector(BinName), v);
+
+				Record operate = client.Operate(null, key, Operation.Get(BinName));
+				AssertVector(operate.GetVector(BinName), v);
+
+				Record expRead = client.Operate(null, key,
+					ExpOperation.Read("copy", Exp.Build(Exp.VectorBin(BinName)), ExpReadFlags.DEFAULT));
+				AssertVector(expRead.GetVector("copy"), v);
+
+				Record[] batch = client.Get(null, [key]);
+				AssertVector(batch[0].GetVector(BinName), v);
+
+				Statement stmt = new();
+				stmt.SetNamespace(SuiteHelpers.ns);
+				stmt.SetSetName(set);
+				stmt.SetBinNames(BinName);
+				QueryPolicy qp = new()
+				{
+					filterExp = Exp.Build(Exp.EQ(Exp.IntBin(marker), Exp.Val(1)))
+				};
+				using (RecordSet rs = client.Query(qp, stmt))
+				{
+					Assert.IsTrue(rs.Next());
+					AssertVector(rs.Record.GetVector(BinName), v);
+					Assert.IsFalse(rs.Next());
+				}
+
+				int scanned = 0;
+				client.ScanAll(null, SuiteHelpers.ns, set, (k, record) =>
+				{
+					if (record.GetValue(BinName) != null)
+					{
+						AssertVector(record.GetVector(BinName), v);
+						scanned++;
+					}
+				}, BinName);
+				Assert.IsTrue(scanned >= 1);
+
+				using Txn txn = new();
+				Policy rp = client.ReadPolicyDefault.Clone();
+				rp.Txn = txn;
+				AssertVector(client.Get(rp, key).GetVector(BinName), v);
+				client.Abort(txn);
+			}
+			finally
+			{
+				client.Delete(null, key);
+			}
+		}
+
+		/// <summary>AW-04: vector writes via put / operate / batch / background query / expression write.</summary>
+		[TestMethod]
+		public void WritePathsStoreVectorParticle()
+		{
+			const string set = "vecWritePaths";
+			Vector v = Vector.OfFloat32([1f, 0f, -1f]);
+
+			Key putKey = new(SuiteHelpers.ns, set, "wput");
+			Key opKey = new(SuiteHelpers.ns, set, "wop");
+			Key batchKey = new(SuiteHelpers.ns, set, "wbatch");
+			Key expKey = new(SuiteHelpers.ns, set, "wexp");
+			Key bgKey = new(SuiteHelpers.ns, set, "wbg");
+
+			foreach (Key k in new[] { putKey, opKey, batchKey, expKey, bgKey })
+			{
+				client.Delete(null, k);
+			}
+
+			try
+			{
+				client.Put(null, putKey, new Bin(BinName, v));
+				AssertVector(client.Get(null, putKey).GetVector(BinName), v);
+
+				client.Operate(null, opKey, Operation.Put(new Bin(BinName, v)));
+				AssertVector(client.Get(null, opKey).GetVector(BinName), v);
+
+				List<BatchRecord> batchRecords = [new BatchWrite(batchKey, [Operation.Put(new Bin(BinName, v))])];
+				Assert.IsTrue(client.Operate(null, batchRecords));
+				AssertVector(client.Get(null, batchKey).GetVector(BinName), v);
+
+				// Expression write of a vector bin (copy). Constant Exp.Val(Vector) is not a
+				// server-supported write rtype in 8.2.1; bin-typed VECTOR expressions are.
+				client.Put(null, expKey, new Bin("src", v));
+				client.Operate(null, expKey,
+					ExpOperation.Write(BinName, Exp.Build(Exp.VectorBin("src")), ExpWriteFlags.DEFAULT));
+				AssertVector(client.Get(null, expKey).GetVector(BinName), v);
+
+				client.Put(null, bgKey, new Bin("id", 42));
+				Statement bg = new();
+				bg.SetNamespace(SuiteHelpers.ns);
+				bg.SetSetName(set);
+				WritePolicy bgPolicy = new()
+				{
+					filterExp = Exp.Build(Exp.EQ(Exp.IntBin("id"), Exp.Val(42)))
+				};
+				ExecuteTask task = client.Execute(bgPolicy, bg, Operation.Put(new Bin(BinName, v)));
+				task.Wait(3000, 3000);
+				AssertVector(client.Get(null, bgKey).GetVector(BinName), v);
+			}
+			finally
+			{
+				foreach (Key k in new[] { putKey, opKey, batchKey, expKey, bgKey })
+				{
+					client.Delete(null, k);
+				}
+			}
+		}
+
+		/// <summary>AW-06: projection, partition page, and metadata-only reads keep vectors intact / decode-safe.</summary>
+		[TestMethod]
+		public void ProjectionPagingAndMetadataOnly()
+		{
+			const string set = "vecProjPage";
+			const int count = 8;
+			Key[] keys = new Key[count];
+			Vector[] vectors = new Vector[count];
+
+			for (int i = 0; i < count; i++)
+			{
+				keys[i] = new Key(SuiteHelpers.ns, set, "p" + i);
+				vectors[i] = Vector.OfFloat32([i, i + 0.25f]);
+				client.Delete(null, keys[i]);
+				client.Put(null, keys[i], new Bin(BinName, vectors[i]), new Bin("n", i));
+			}
+
+			try
+			{
+				Statement stmt = new();
+				stmt.SetNamespace(SuiteHelpers.ns);
+				stmt.SetSetName(set);
+				stmt.SetBinNames(BinName);
+				QueryPolicy qp = new()
+				{
+					filterExp = Exp.Build(Exp.BinExists("n"))
+				};
+
+				HashSet<long> seen = new();
+				using (RecordSet rs = client.Query(qp, stmt))
+				{
+					while (rs.Next())
+					{
+						Vector got = rs.Record.GetVector(BinName);
+						Assert.IsNotNull(got);
+						Assert.IsInstanceOfType(got, typeof(Vector));
+						seen.Add((long)got.GetFloat32Data()[0]);
+					}
+				}
+				Assert.AreEqual(count, seen.Count);
+
+				Statement pageStmt = new();
+				pageStmt.SetNamespace(SuiteHelpers.ns);
+				pageStmt.SetSetName(set);
+				pageStmt.SetBinNames(BinName);
+#pragma warning disable 0618
+				pageStmt.maxRecords = 3;
+#pragma warning restore 0618
+				PartitionFilter filter = PartitionFilter.All();
+				int paged = 0;
+				for (int page = 0; page < 8 && !filter.Done; page++)
+				{
+					using RecordSet rs = client.QueryPartitions(null, pageStmt, filter);
+					while (rs.Next())
+					{
+						Assert.IsInstanceOfType(rs.Record.GetVector(BinName), typeof(Vector));
+						paged++;
+					}
+				}
+				Assert.AreEqual(count, paged);
+
+				ScanPolicy meta = new() { includeBinData = false };
+				int metaCount = 0;
+				client.ScanAll(meta, SuiteHelpers.ns, set, (k, record) =>
+				{
+					Assert.IsNotNull(record);
+					metaCount++;
+				});
+				Assert.IsTrue(metaCount >= count);
+			}
+			finally
+			{
+				foreach (Key key in keys)
+				{
+					client.Delete(null, key);
+				}
+			}
+		}
+
+		private static void AssertVector(Vector actual, Vector expected)
+		{
+			Assert.IsNotNull(actual);
+			Assert.IsInstanceOfType(actual, typeof(Vector));
+			Assert.AreEqual(expected, actual);
 		}
 	}
 }

@@ -208,6 +208,14 @@ namespace Aerospike.Test
 			Assert.AreEqual(Vector.HEADER_SIZE + 2 * 8, Vector.OfFloat64(new double[2]).GetWireSize());
 		}
 
+		/// <summary>AV-01: 768 FLOAT32 elements serialize to 3,078 bytes (6-byte header + payload).</summary>
+		[TestMethod]
+		public void WireSize768Float32()
+		{
+			Assert.AreEqual(3078, Vector.OfFloat32(new float[768]).GetWireSize());
+			Assert.AreEqual(Vector.HEADER_SIZE + 768 * 4, Vector.OfFloat32(new float[768]).GetWireSize());
+		}
+
 		//-------------------------------------------------------
 		// equals / hashCode / toString
 		//-------------------------------------------------------
@@ -673,6 +681,36 @@ namespace Aerospike.Test
 			Assert.IsTrue(packed.Length > wire.Length);
 			Assert.IsTrue(packed.AsSpan().IndexOf(wire) >= 0, "Packed expression should embed query vector wire bytes");
 			Assert.IsTrue(packed.AsSpan().IndexOf((byte)54) >= 0, "Packed expression should include cosine distance opcode");
+		}
+
+		/// <summary>
+		/// AX-02 / AX-14: metrics pack as opcodes 52 / 53 / 54; unknown metric refused at build.
+		/// </summary>
+		[TestMethod]
+		public void VectorExpDistanceOpcodesAndRejectsUnknownMetric()
+		{
+			Vector query = Vector.OfFloat32([1f, 0f]);
+			Exp bin = Exp.VectorBin("emb");
+
+			AssertPackedOpcode(
+				VectorExp.Distance(VectorDistanceMetric.EUCLIDEAN_SQUARED, query, bin), 52);
+			AssertPackedOpcode(
+				VectorExp.Distance(VectorDistanceMetric.DOT_PRODUCT, query, bin), 53);
+			AssertPackedOpcode(
+				VectorExp.Distance(VectorDistanceMetric.COSINE_SIMILARITY, query, bin), 54);
+
+			Assert.Throws<ArgumentException>(() =>
+				VectorExp.Distance((VectorDistanceMetric)99, query, bin));
+			Assert.Throws<ArgumentNullException>(() =>
+				VectorExp.Distance(VectorDistanceMetric.DOT_PRODUCT, null, bin));
+		}
+
+		private static void AssertPackedOpcode(Exp distance, byte opcode)
+		{
+			Packer packer = new();
+			distance.Pack(packer);
+			Assert.IsTrue(packer.ToByteArray().AsSpan().IndexOf(opcode) >= 0,
+				"expected opcode " + opcode);
 		}
 
 		//-------------------------------------------------------

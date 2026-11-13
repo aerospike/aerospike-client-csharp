@@ -32,7 +32,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void Prepare(TestContext testContext)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "Top-K");
+			RequireQueryOrderBySupport();
 
 			for (int i = 1; i <= Count; i++)
 			{

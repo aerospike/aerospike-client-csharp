@@ -616,6 +616,13 @@ namespace Aerospike.Client
 					"orderBy is incompatible with aggregate UDFs; use the UDF's own reduce stage");
 			}
 
+			// Operation count is encoded as a uint16 on the wire; larger values wrap to 0.
+			if (operations != null && operations.Length > ushort.MaxValue)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"Query operation count exceeds maximum of " + ushort.MaxValue);
+			}
+
 			RequireProjected(orderByBin);
 
 			if (thenOrderBySet)

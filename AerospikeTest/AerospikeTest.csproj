@@ -25,6 +25,7 @@
     <EmbeddedResource Include="LuaResources\filter_example.lua" />
     <EmbeddedResource Include="LuaResources\record_example.lua" />
     <EmbeddedResource Include="LuaResources\sum_example.lua" />
+    <EmbeddedResource Include="LuaResources\vector_stream_example.lua" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AerospikeClient\AerospikeClient.csproj" />

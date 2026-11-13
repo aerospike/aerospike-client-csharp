@@ -2358,6 +2358,13 @@ namespace Aerospike.Client
 				operationCount = statement.binNames.Length;
 			}
 
+			// Operation count is encoded as a uint16; values above ushort.MaxValue wrap to 0.
+			if (operationCount > ushort.MaxValue)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"Query operation count exceeds maximum of " + ushort.MaxValue);
+			}
+
 			SizeBuffer();
 
 			if (background)

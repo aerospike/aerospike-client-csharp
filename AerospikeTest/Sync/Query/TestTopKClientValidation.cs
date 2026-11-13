@@ -31,27 +31,10 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void Prepare(TestContext testContext)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "Top-K");
+			// Statement-only validation needs no feature bit; live methods call RequireCapableCluster.
 		}
 
-		private static void RequireCapableCluster()
-		{
-			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "Top-K");
-
-			Node[] nodes = client.Nodes;
-			if (nodes.Length == 0)
-			{
-				Assert.Inconclusive("No cluster nodes");
-			}
-
-			foreach (Node node in nodes)
-			{
-				if (!node.HasQueryOrderBy)
-				{
-					Assert.Inconclusive("Cluster must advertise query-order-by");
-				}
-			}
-		}
+		private static void RequireCapableCluster() => RequireQueryOrderBySupport();
 
 		private static Statement TopKStatement()
 		{
@@ -146,7 +129,9 @@ namespace Aerospike.Test
 		/// Top-K skips partition-round TIMEOUT retries. Per-node query commands also
 		/// use SyncCommand maxRetries 0 (scan/query ctor), so a socket/server TIMEOUT
 		/// fails that node attempt immediately; <see cref="QueryPolicy.maxRetries"/>
-		/// only governs PartitionTracker rounds.
+		/// only governs PartitionTracker rounds. The partition executor only emits the
+		/// merged Top-K buffer after the cluster round completes, so a TIMEOUT yields
+		/// the error with no partial Top-K records.
 		/// </summary>
 		[TestMethod]
 		public void TopKDoesNotRetryOnTimeout()
@@ -155,6 +140,8 @@ namespace Aerospike.Test
 			PartitionTracker topKTracker = new(new QueryPolicy(), topK, (Node[])null);
 			Assert.IsFalse(topKTracker.RetryOnTimeout);
 			Assert.IsFalse(topKTracker.ShouldRetry(null, new AerospikeException(ResultCode.TIMEOUT)));
+			Assert.IsFalse(topKTracker.ShouldRetry(null, new AerospikeException(ResultCode.DEVICE_OVERLOAD)));
+			Assert.IsFalse(topKTracker.ShouldRetry(null, new AerospikeException(ResultCode.QUERY_ABORTED)));
 
 			Statement plain = new();
 			plain.SetNamespace("test");
@@ -378,6 +365,160 @@ namespace Aerospike.Test
 			Assert.AreEqual("Top-K is incompatible with maxRecords", ae.BaseMessage);
 		}
 
+		/// <summary>AE-05: more than 65,535 ops is rejected before send (uint16 wire count).</summary>
+		[TestMethod]
+		public void RejectsTooManyOperations()
+		{
+			Operation[] ops = new Operation[ushort.MaxValue + 1];
+			ops[0] = Operation.Get(Bin);
+			for (int i = 1; i < ops.Length; i++)
+			{
+				ops[i] = Operation.Get("x");
+			}
+
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(Set);
+			stmt.Operations = ops;
+			stmt.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+			stmt.SetTopK(3);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => Internals.ValidateTopK(stmt));
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+			Assert.IsTrue(ae.Message.Contains("65535"));
+		}
+
+		/// <summary>Exp.Val(Vector) and Exp.VectorBin mark hasVector for cluster guards (AG / AW).</summary>
+		[TestMethod]
+		public void ExpValVectorHasVector()
+		{
+			Vector v = Vector.OfFloat32([1f, 2f, 3f]);
+			Assert.IsTrue(Internals.HasVector(Exp.Build(Exp.Val(v))));
+			Assert.IsTrue(Internals.HasVector(Exp.Build(Exp.VectorBin("v"))));
+		}
+
+		/// <summary>AT-07: exactly 15-byte ASCII/UTF-8 order bins are accepted; longer/empty/NUL refused.</summary>
+		[TestMethod]
+		public void AcceptsFifteenByteOrderBinNames()
+		{
+			Statement stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(Set);
+			stmt.SetBinNames("abcdefghijklmno"); // 15 ASCII
+			stmt.SetOrderBy("abcdefghijklmno", BinDataType.INTEGER, Order.DESC);
+			stmt.SetTopK(1);
+			Internals.ValidateTopK(stmt);
+
+			stmt = new();
+			stmt.SetNamespace(SuiteHelpers.ns);
+			stmt.SetSetName(Set);
+			// 5 Cyrillic letters = 10 UTF-8 bytes; pad with ASCII to 15 bytes total.
+			string utf8Bin = "абвгд12345"; // 5*2 + 5 = 15 bytes
+			Assert.AreEqual(15, System.Text.Encoding.UTF8.GetByteCount(utf8Bin));
+			stmt.SetBinNames(utf8Bin);
+			stmt.SetOrderBy(utf8Bin, BinDataType.INTEGER, Order.ASC);
+			stmt.SetTopK(2);
+			Internals.ValidateTopK(stmt);
+		}
+
+		/// <summary>AE-01: representative server/client Top-K rejections surface PARAMETER/PARSE errors.</summary>
+		[TestMethod]
+		public void TopKRejectionCatalog()
+		{
+			RequireCapableCluster();
+
+			Statement orderOnly = new();
+			orderOnly.SetNamespace(SuiteHelpers.ns);
+			orderOnly.SetSetName(Set);
+			orderOnly.SetBinNames(Bin);
+			orderOnly.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+			AerospikeException orderWithoutK = Assert.Throws<AerospikeException>(
+				() => { using RecordSet rs = client.Query(null, orderOnly); while (rs.Next()) { } });
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, orderWithoutK.Result);
+
+			QueryPolicy noBins = new() { includeBinData = false };
+			AerospikeException include = Assert.Throws<AerospikeException>(
+				() => client.Query(noBins, TopKStatement()));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, include.Result);
+
+			Statement missingProj = new();
+			missingProj.SetNamespace(SuiteHelpers.ns);
+			missingProj.SetSetName(Set);
+			missingProj.SetBinNames("other");
+			missingProj.SetOrderBy(Bin, BinDataType.INTEGER, Order.DESC);
+			missingProj.SetTopK(2);
+			AerospikeException proj = Assert.Throws<AerospikeException>(
+				() => Internals.ValidateTopK(missingProj));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, proj.Result);
+		}
+
+		/// <summary>AM-04: concurrent Top-K queries remain exact (bounded client merge).</summary>
+		[TestMethod]
+		public void ConcurrentTopKQueriesAreExact()
+		{
+			RequireCapableCluster();
+
+			const int n = 200;
+			for (int i = 0; i < n; i++)
+			{
+				client.Put(null, new Key(SuiteHelpers.ns, Set, "c" + i), new Bin(Bin, i));
+			}
+
+			try
+			{
+				long[] expected = new long[10];
+				for (int i = 0; i < 10; i++)
+				{
+					expected[i] = n - 1 - i;
+				}
+
+				Exception failure = null;
+				Thread[] threads = new Thread[8];
+				for (int t = 0; t < threads.Length; t++)
+				{
+					threads[t] = new Thread(() =>
+					{
+						try
+						{
+							for (int q = 0; q < 5; q++)
+							{
+								Statement stmt = TopKStatement();
+								stmt.SetTopK(10);
+								List<long> values = new();
+								using RecordSet rs = client.Query(null, stmt);
+								while (rs.Next())
+								{
+									values.Add(rs.Record.GetLong(Bin));
+								}
+								CollectionAssert.AreEqual(expected, values.ToArray());
+							}
+						}
+						catch (Exception e)
+						{
+							Interlocked.CompareExchange(ref failure, e, null);
+						}
+					});
+					threads[t].Start();
+				}
+				foreach (Thread thread in threads)
+				{
+					thread.Join();
+				}
+				if (failure != null)
+				{
+					throw failure;
+				}
+			}
+			finally
+			{
+				for (int i = 0; i < n; i++)
+				{
+					client.Delete(null, new Key(SuiteHelpers.ns, Set, "c" + i));
+				}
+			}
+		}
+
 		private sealed class NullRecordSequenceListener : RecordSequenceListener
 		{
 			public void OnRecord(Key key, Record record)
@@ -403,7 +544,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void Prepare(TestContext testContext)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "Top-K");
+			// Wire LUT parse is pure client; no server feature required.
 		}
 
 		[TestMethod]

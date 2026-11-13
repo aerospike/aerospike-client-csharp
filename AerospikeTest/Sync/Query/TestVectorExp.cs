@@ -35,7 +35,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void Prepare(TestContext testContext)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "vector");
+			RequireVectorSupport();
 
 			for (int i = 0; i < Size; i++)
 			{

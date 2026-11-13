@@ -32,7 +32,7 @@ namespace Aerospike.Test
 		[ClassInitialize]
 		public static void Prepare(TestContext testContext)
 		{
-			CheckServerVersion(Node.SERVER_VERSION_8_2_1, "Top-K");
+			RequireQueryOrderBySupport();
 
 			Policy policy = new() { totalTimeout = 0 };
 
