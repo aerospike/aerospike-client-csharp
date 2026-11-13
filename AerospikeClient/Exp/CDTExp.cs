@@ -71,7 +71,7 @@ namespace Aerospike.Client
 			ValidateFlags((int)flags, "select");
 			byte[] bytes = PackCDTSelect(Type.SELECT, flags, ctx);
 
-			return new Exp.Module(bin, bytes, (int)returnType, MODULE);
+			return new Exp.Module(bin, bytes, (int)returnType, MODULE, PackUtil.ConsumeLastHasVector());
 		}
 
 		/// <summary>
@@ -107,7 +107,7 @@ namespace Aerospike.Client
 			ValidateFlags((int)modifyFlag, "modify");
 			byte[] bytes = PackCDTModify(Type.SELECT, modifyFlag, modifyExp, ctx);
 
-			return new Exp.Module(bin, bytes, (int)returnType, MODULE | MODIFY);
+			return new Exp.Module(bin, bytes, (int)returnType, MODULE | MODIFY, PackUtil.ConsumeLastHasVector());
 		}
 
 		// Bit 2 is reserved for the internal apply flag.
@@ -143,7 +143,7 @@ namespace Aerospike.Client
 			packer.PackNumber((int)modifyFlags | 4);
 			modifyExp.Pack(packer);
 
-			return packer.ToByteArray();
+			return PackUtil.Finish(packer);
 		}
 
 		private static byte[] PackCDTSelect(Type type, SelectFlag selectFlag, params CTX[] ctx)
@@ -169,7 +169,7 @@ namespace Aerospike.Client
 
 			packer.PackNumber((int)selectFlag);
 
-			return packer.ToByteArray();
+			return PackUtil.Finish(packer);
 		}
 	}
 }

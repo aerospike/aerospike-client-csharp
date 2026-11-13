@@ -2395,6 +2395,8 @@ namespace Aerospike.Client
 				policy = new WritePolicy(policy, configProvider);
 			}
 
+			RejectTopK(statement);
+
 			statement.PackageName = packageName;
 			statement.FunctionName = functionName;
 			statement.FunctionArgs = functionArgs;
@@ -2436,6 +2438,8 @@ namespace Aerospike.Client
 			{
 				policy = new WritePolicy(policy, configProvider);
 			}
+
+			RejectTopK(statement);
 
 			if (operations.Length > 0)
 			{
@@ -2498,6 +2502,8 @@ namespace Aerospike.Client
 				policy = new QueryPolicy(policy, configProvider);
 			}
 
+			ValidateTopK(policy, statement);
+
 			Node[] nodes = cluster.ValidateNodes();
 
 			if (cluster.hasPartitionQuery || statement.filter == null)
@@ -2540,6 +2546,8 @@ namespace Aerospike.Client
 			{
 				policy = new QueryPolicy(policy, configProvider);
 			}
+
+			RejectTopK(statement);
 
 			Node[] nodes = cluster.ValidateNodes();
 
@@ -2595,6 +2603,8 @@ namespace Aerospike.Client
 				policy = new QueryPolicy(policy, configProvider);
 			}
 
+			RejectTopK(statement);
+
 			Node[] nodes = cluster.ValidateNodes();
 
 			if (cluster.hasPartitionQuery || statement.filter == null)
@@ -2636,6 +2646,8 @@ namespace Aerospike.Client
 				policy = new QueryPolicy(policy, configProvider);
 			}
 
+			ValidateTopK(policy, statement, partitionFilter);
+
 			Node[] nodes = cluster.ValidateNodes();
 
 			if (cluster.hasPartitionQuery || statement.filter == null)
@@ -2648,6 +2660,99 @@ namespace Aerospike.Client
 			{
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "QueryPartitions() not supported");
 			}
+		}
+
+		private void ValidateTopK(QueryPolicy policy, Statement statement)
+		{
+			ValidateTopK(policy, statement, null);
+		}
+
+		private void ValidateTopK(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
+		{
+			// Order-by without k is left for the server to reject, but a node that predates
+			// Top-K skips the field and runs a plain query, so a mixed cluster fails up front.
+			CheckOrderBySupport(statement);
+
+			if (!statement.HasTopK)
+			{
+				return;
+			}
+
+			statement.ValidateTopK();
+
+			if (!policy.includeBinData)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"Top-K is incompatible with includeBinData=false");
+			}
+
+#pragma warning disable 0618
+			if (policy.maxRecords != 0)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"Top-K is incompatible with maxRecords");
+			}
+#pragma warning restore 0618
+
+			if (!cluster.hasPartitionQuery)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"Top-K requires partition query support");
+			}
+
+			if (partitionFilter != null && PartitionFilterHasResumePoints(partitionFilter))
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"Top-K can't resume a partition filter from an earlier query");
+			}
+		}
+
+		private void CheckOrderBySupport(Statement statement)
+		{
+			if (statement.HasOrderBy && !cluster.hasQueryOrderBy)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"orderBy/topK is not supported by all nodes in the cluster");
+			}
+		}
+
+		/// <summary>
+		/// Whether a partition filter carries resume state from an earlier paged query.
+		/// Top-K rejects such filters before send.
+		/// </summary>
+		internal static bool PartitionFilterHasResumePoints(PartitionFilter filter)
+		{
+			if (filter.Digest != null)
+			{
+				return true;
+			}
+
+			PartitionStatus[] partitions = filter.Partitions;
+
+			if (partitions == null)
+			{
+				return false;
+			}
+
+			foreach (PartitionStatus status in partitions)
+			{
+				if (status != null && (status.digest != null || status.bval != 0))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
+		protected void RejectTopK(Statement statement)
+		{
+			if (statement.HasTopK)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"Top-K is only supported by synchronous partition queries");
+			}
+
+			CheckOrderBySupport(statement);
 		}
 
 		/// <summary>
@@ -2728,6 +2833,8 @@ namespace Aerospike.Client
 			{
 				policy = new QueryPolicy(policy, configProvider);
 			}
+
+			RejectTopK(statement);
 
 			Node[] nodes = cluster.ValidateNodes();
 			QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, nodes);

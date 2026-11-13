@@ -38,6 +38,19 @@ namespace Aerospike.Client
 		internal ulong taskId;
 		internal long maxRecords;
 		internal int recordsPerSecond;
+		internal ReduceSpec<Record, Record>[] reduceSpecs;
+		internal ReduceSpec<Record, Record> resolvedReduce;
+		internal bool reduceResolved;
+		internal string orderByBin;
+		internal BinDataType orderByType;
+		internal Order orderByOrder;
+		internal bool orderBySet;
+		internal string thenOrderByBin;
+		internal BinDataType thenOrderByType;
+		internal Order thenOrderByOrder;
+		internal bool thenOrderBySet;
+		internal bool topKSet;
+		internal int topKLimitValue;
 
 		/// <summary>
 		/// Query namespace.
@@ -319,6 +332,492 @@ namespace Aerospike.Client
 		{
 			set { operations = value; }
 			get { return operations; }
+		}
+
+		/// <summary>
+		/// Set reduce spec(s) for this query. Accepts:
+		/// <list type="bullet">
+		/// <item>zero args - clear any reduce (stream all matching records; default behavior)</item>
+		/// <item>one Top-K spec - e.g. <c>SetReduce(Reduce.TopK("d", BinDataType.DOUBLE, Order.ASC, 10))</c></item>
+		/// <item>exactly one <see cref="Reduce.OrderBy"/> + one <see cref="Reduce.Limit"/> on the same bin -
+		/// split Top-K, equivalent to single-key <c>Reduce.TopK</c></item>
+		/// </list>
+		/// Mutually exclusive with <see cref="SetAggregateFunction(string, string, Value[])"/>. Replaces any
+		/// previously set reduce (this setter does not accumulate across calls, consistent with
+		/// <see cref="Operations"/> and <see cref="SetBinNames"/>).
+		/// <para>
+		/// Not public for now - <see cref="SetOrderBy(string, BinDataType, Order)"/> + <see cref="SetTopK"/>
+		/// are the only supported public entry points into the reduce framework while the API is still settling.
+		/// </para>
+		/// </summary>
+		internal void SetReduce(params ReduceSpec<Record, Record>[] reduceSpecs)
+		{
+			this.reduceSpecs = reduceSpecs;
+			this.resolvedReduce = null;
+			this.reduceResolved = false;
+			this.topKSet = false;
+		}
+
+		/// <summary>
+		/// Return reduce spec(s) set by <see cref="SetReduce"/>.
+		/// </summary>
+		internal ReduceSpec<Record, Record>[] GetReduce()
+		{
+			return reduceSpecs;
+		}
+
+		/// <summary>
+		/// Primary sort key for <see cref="SetTopK(int)"/>.
+		/// <para>
+		/// Calling this again replaces the primary key, clears any secondary key from
+		/// <see cref="ThenOrderBy(string, BinDataType, Order)"/>, and keeps k when Top-K
+		/// is already armed. Order-by without <see cref="SetTopK(int)"/> is sent to the
+		/// server, which rejects it.
+		/// </para>
+		/// </summary>
+		/// <param name="binName">bin name to order by</param>
+		/// <param name="type">
+		/// scalar type of <paramref name="binName"/>; Top-K accepts
+		/// <see cref="BinDataType.INTEGER"/>, <see cref="BinDataType.DOUBLE"/>, or
+		/// <see cref="BinDataType.BYTES"/>
+		/// </param>
+		/// <param name="order">sort direction</param>
+		public void SetOrderBy(string binName, BinDataType type, Order order)
+		{
+			if (thenOrderBySet && Log.InfoEnabled())
+			{
+				Log.Info("SetOrderBy replaces primary key and clears thenOrderBy");
+			}
+
+			this.orderByBin = binName;
+			this.orderByType = type;
+			this.orderByOrder = order;
+			this.orderBySet = true;
+			ClearThenOrderBy();
+
+			if (topKSet)
+			{
+				ApplyTopK(topKLimitValue);
+			}
+			else
+			{
+				ClearResolvedReduce();
+			}
+		}
+
+		/// <summary>
+		/// Secondary sort key for Top-K (tie-breaker).
+		/// <para>
+		/// Requires <see cref="SetOrderBy(string, BinDataType, Order)"/> first. Adds a
+		/// tie-breaker after the primary key. A third key fails immediately. When Top-K
+		/// is already armed, k is kept.
+		/// </para>
+		/// </summary>
+		/// <param name="binName">bin name to order by</param>
+		/// <param name="type">
+		/// scalar type of <paramref name="binName"/>; Top-K accepts
+		/// <see cref="BinDataType.INTEGER"/>, <see cref="BinDataType.DOUBLE"/>, or
+		/// <see cref="BinDataType.BYTES"/>
+		/// </param>
+		/// <param name="order">sort direction</param>
+		/// <exception cref="AerospikeException">
+		/// with <see cref="ResultCode.PARSE_ERROR"/> when called before
+		/// <see cref="SetOrderBy(string, BinDataType, Order)"/> ("thenOrderBy must follow orderBy")
+		/// or when a third key is added ("orderBy supports at most two keys")
+		/// </exception>
+		public void ThenOrderBy(string binName, BinDataType type, Order order)
+		{
+			if (!orderBySet)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"thenOrderBy must follow orderBy");
+			}
+
+			if (thenOrderBySet)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"orderBy supports at most two keys");
+			}
+
+			this.thenOrderByBin = binName;
+			this.thenOrderByType = type;
+			this.thenOrderByOrder = order;
+			this.thenOrderBySet = true;
+
+			if (topKSet)
+			{
+				ApplyTopK(topKLimitValue);
+			}
+		}
+
+		/// <summary>
+		/// Ordered LIMIT k query, ranked by the order keys from
+		/// <see cref="SetOrderBy(string, BinDataType, Order)"/> and optional
+		/// <see cref="ThenOrderBy(string, BinDataType, Order)"/>. Calling this again
+		/// replaces k. Validation runs when the query starts.
+		/// <para>
+		/// Every node in the cluster must support Top-K; otherwise the query fails with
+		/// <see cref="ResultCode.PARSE_ERROR"/> before sending. Each node returns its best
+		/// <paramref name="k"/> candidates and the client merges them with a bounded heap of
+		/// size k (retained memory about k × projected record size).
+		/// </para>
+		/// <para>
+		/// Project only the bins needed for ranking (and any bins required from the winners).
+		/// With no projection, each node returns every bin for each candidate — including large
+		/// vector bins. The client still receives up to nodes × k records per attempt even though
+		/// it retains only k. Concurrent Top-K queries multiply that footprint; this release has
+		/// no client-side concurrent Top-K or memory-budget policy. For heavy bins, run Top-K with
+		/// a minimal projection and batch-read the winners afterward (records may change between
+		/// the two steps).
+		/// </para>
+		/// <para>
+		/// Nodes send results only after finishing their scan. Set
+		/// <see cref="Policy.socketTimeout"/> longer than the expected run time (or 0 for no
+		/// socket idle limit), and set <see cref="Policy.totalTimeout"/> as the query deadline.
+		/// The client does not change the application's timeout policy, and does not retry a
+		/// Top-K query after a client or server <see cref="ResultCode.TIMEOUT"/> — each retry
+		/// would restart a full scan on the timed-out node. On timeout the application receives
+		/// the error and no records (results are delivered only after the merge completes into
+		/// an ordered buffer of at most k, not streamed like an ordinary query).
+		/// </para>
+		/// </summary>
+		/// <param name="k">maximum number of records to return, in [1, 1000]</param>
+		/// <exception cref="AerospikeException">
+		/// with <see cref="ResultCode.PARSE_ERROR"/> when <paramref name="k"/> is outside [1, 1000]
+		/// </exception>
+		public void SetTopK(int k)
+		{
+			if (k < 1 || k > 1000)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"topK must be in [1, 1000]; got " + k);
+			}
+
+			topKSet = true;
+			topKLimitValue = k;
+
+			if (orderBySet)
+			{
+				ApplyTopK(k);
+			}
+			else
+			{
+				ClearResolvedReduce();
+			}
+		}
+
+		/// <summary>
+		/// Return whether this statement has a Top-K specification.
+		/// </summary>
+		public bool HasTopK => topKSet;
+
+		/// <summary>
+		/// Return whether at least one order key is set via
+		/// <see cref="SetOrderBy(string, BinDataType, Order)"/> or
+		/// <see cref="ThenOrderBy(string, BinDataType, Order)"/>.
+		/// Order-by without <see cref="SetTopK(int)"/> is sent to the server, which rejects it.
+		/// </summary>
+		public bool HasOrderBy => orderBySet;
+
+		/// <summary>
+		/// Whether ORDER_BY / TOP_K wire fields should be encoded for this node.
+		/// Order-by without top-k is still sent so the server can reject it.
+		/// </summary>
+		internal bool ShouldSendOrderByFields(Node node) =>
+			HasOrderBy && node != null && node.HasQueryOrderBy;
+
+		/// <summary>
+		/// Return the primary order-by bin name, or null when no order key is set.
+		/// </summary>
+		internal string TopKBin => orderBySet ? orderByBin : null;
+
+		/// <summary>
+		/// Return the primary order-by type when an order key is set.
+		/// </summary>
+		internal BinDataType TopKType => orderBySet ? orderByType : default;
+
+		/// <summary>
+		/// Return the primary order direction when an order key is set.
+		/// </summary>
+		internal Order TopKOrder => orderBySet ? orderByOrder : default;
+
+		/// <summary>
+		/// Return the secondary order-by bin name, or null when absent.
+		/// </summary>
+		internal string TopKThenBin => thenOrderBySet ? thenOrderByBin : null;
+
+		/// <summary>
+		/// Return whether a second order key is set.
+		/// </summary>
+		internal bool HasTopKThen => thenOrderBySet;
+
+		/// <summary>
+		/// Return the secondary order-by type when a second key is set.
+		/// </summary>
+		internal BinDataType TopKThenType => thenOrderBySet ? thenOrderByType : default;
+
+		/// <summary>
+		/// Return the secondary order direction when a second key is set.
+		/// </summary>
+		internal Order TopKThenOrder => thenOrderBySet ? thenOrderByOrder : default;
+
+		/// <summary>
+		/// Return the Top-K limit, or zero when Top-K is not set.
+		/// </summary>
+		internal int TopKLimit => topKSet ? topKLimitValue : 0;
+
+		/// <summary>
+		/// Validate the Top-K specification. Does nothing unless k is set.
+		/// </summary>
+		/// <exception cref="AerospikeException">
+		/// with <see cref="ResultCode.PARSE_ERROR"/> when the specification is invalid
+		/// </exception>
+		internal void ValidateTopK()
+		{
+			if (!topKSet)
+			{
+				return;
+			}
+
+			if (!orderBySet)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"Top-K requires an order key; call SetOrderBy()");
+			}
+
+			ValidateOrderKey(orderByBin, orderByType);
+
+			if (thenOrderBySet)
+			{
+				ValidateOrderKey(thenOrderByBin, thenOrderByType);
+
+				if (orderByBin.Equals(thenOrderByBin))
+				{
+					throw new AerospikeException(ResultCode.PARSE_ERROR,
+						"orderBy keys must use different bins");
+				}
+			}
+
+			if (topKLimitValue < 1 || topKLimitValue > 1000)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"topK must be in [1, 1000]; got " + topKLimitValue);
+			}
+
+			if (maxRecords != 0)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"Top-K is incompatible with maxRecords");
+			}
+
+			if (functionName != null)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"orderBy is incompatible with aggregate UDFs; use the UDF's own reduce stage");
+			}
+
+			// Operation count is encoded as a uint16 on the wire; larger values wrap to 0.
+			if (operations != null && operations.Length > ushort.MaxValue)
+			{
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"Query operation count exceeds maximum of " + ushort.MaxValue);
+			}
+
+			RequireProjected(orderByBin);
+
+			if (thenOrderBySet)
+			{
+				RequireProjected(thenOrderByBin);
+			}
+
+			// Ensure the combiner matches the validated keys / limit.
+			ApplyTopK(topKLimitValue);
+		}
+
+		private void ApplyTopK(int k)
+		{
+			topKLimitValue = k;
+
+			if (thenOrderBySet)
+			{
+				SetReduce(Reduce.TopK(
+					orderByBin, orderByType, orderByOrder,
+					thenOrderByBin, thenOrderByType, thenOrderByOrder,
+					k));
+			}
+			else
+			{
+				SetReduce(Reduce.TopK(orderByBin, orderByType, orderByOrder, k));
+			}
+
+			// SetReduce clears topKSet; restore after installing the combiner.
+			topKSet = true;
+		}
+
+		private void ClearThenOrderBy()
+		{
+			thenOrderByBin = null;
+			thenOrderByType = default;
+			thenOrderByOrder = default;
+			thenOrderBySet = false;
+		}
+
+		private void ClearResolvedReduce()
+		{
+			reduceSpecs = null;
+			resolvedReduce = null;
+			reduceResolved = false;
+		}
+
+		private static void ValidateOrderKey(string bin, BinDataType type)
+		{
+			if (bin == null)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL");
+			}
+
+			int length = ByteUtil.EstimateSizeUtf8(bin);
+
+			if (length == 0 || length > 15 || bin.IndexOf('\0') >= 0)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"Top-K order-by bin name must be 1-15 UTF-8 bytes without NUL");
+			}
+
+			if (type != BinDataType.INTEGER && type != BinDataType.DOUBLE && type != BinDataType.BYTES)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"orderBy type must be INTEGER, DOUBLE, or BYTES; got " + type);
+			}
+		}
+
+		private void RequireProjected(string bin)
+		{
+			if (operations != null)
+			{
+				int matches = 0;
+
+				foreach (Operation operation in operations)
+				{
+					if (bin.Equals(operation.binName))
+					{
+						matches++;
+					}
+				}
+
+				if (matches == 0)
+				{
+					throw NotInProjection(bin);
+				}
+
+				if (matches > 1)
+				{
+					throw new AerospikeException(ResultCode.PARSE_ERROR,
+						"orderBy bin '" + bin + "' is produced by more than one operation");
+				}
+				return;
+			}
+
+			if (binNames != null)
+			{
+				int matches = 0;
+
+				foreach (string binName in binNames)
+				{
+					if (bin.Equals(binName))
+					{
+						matches++;
+					}
+				}
+
+				if (matches == 0)
+				{
+					throw NotInProjection(bin);
+				}
+
+				if (matches > 1)
+				{
+					throw new AerospikeException(ResultCode.PARSE_ERROR,
+						"orderBy bin '" + bin + "' is produced by more than one operation");
+				}
+			}
+		}
+
+		private static AerospikeException NotInProjection(string binName) =>
+			new(ResultCode.PARSE_ERROR,
+				"orderBy bin '" + binName +
+				"' is not in projection; add it to the projection or remove the projection");
+
+		/// <summary>
+		/// Resolve the reduce spec(s) set by <see cref="SetReduce"/> into a single combiner usable by a
+		/// query executor. Returns null if no reduce was set. Composes a split
+		/// <see cref="Reduce.OrderBy"/> + <see cref="Reduce.Limit"/> pair into a single Top-K combiner.
+		/// </summary>
+		/// <exception cref="AerospikeException">
+		/// with <see cref="ResultCode.PARSE_ERROR"/> if the reduce specs are not a single
+		/// reducer or a valid orderBy/limit pair on the same bin
+		/// </exception>
+		internal ReduceSpec<Record, Record> ResolveReduce()
+		{
+			if (!reduceResolved)
+			{
+				resolvedReduce = ComputeResolveReduce();
+				reduceResolved = true;
+			}
+			return resolvedReduce;
+		}
+
+		private ReduceSpec<Record, Record> ComputeResolveReduce()
+		{
+			if (reduceSpecs == null || reduceSpecs.Length == 0)
+			{
+				return null;
+			}
+
+			bool isSplit = reduceSpecs[0] is OrderByReduceSpec || reduceSpecs[0] is LimitReduceSpec;
+
+			if (reduceSpecs.Length == 1 && !isSplit)
+			{
+				return reduceSpecs[0];
+			}
+
+			ReduceSpec<Record, Record> orderBy = null;
+			ReduceSpec<Record, Record> limit = null;
+
+			foreach (ReduceSpec<Record, Record> spec in reduceSpecs)
+			{
+				if (spec is OrderByReduceSpec)
+				{
+					if (orderBy != null)
+					{
+						throw new AerospikeException(ResultCode.PARSE_ERROR,
+							"topK requires exactly one orderBy spec");
+					}
+					orderBy = spec;
+				}
+				else if (spec is LimitReduceSpec)
+				{
+					if (limit != null)
+					{
+						throw new AerospikeException(ResultCode.PARSE_ERROR,
+							"topK requires exactly one limit spec");
+					}
+					limit = spec;
+				}
+				else
+				{
+					throw new AerospikeException(ResultCode.PARSE_ERROR,
+						"Cannot mix topK parts (orderBy/limit) with other reducers");
+				}
+			}
+
+			if (orderBy == null || limit == null)
+			{
+				throw new AerospikeException(ResultCode.PARSE_ERROR,
+					"topK requires both an orderBy spec and a limit spec");
+			}
+			return TopKReduceSpec.Compose(orderBy, limit);
 		}
 
 		/// <summary>

@@ -27,6 +27,9 @@ namespace Aerospike.Client
 			public Value[] Array { get; }
 			public byte[] Bytes { get; set; }
 
+			private bool hasVector;
+			private bool hasVectorComputed;
+
 			public override ParticleType Type => ParticleType.LIST;
 
 			public override object Object { get => Array; }
@@ -38,7 +41,11 @@ namespace Aerospike.Client
 
 			public override int EstimateSize()
 			{
-				Bytes = Packer.Pack(Array);
+				Packer packer = new();
+				packer.PackValueArray(Array);
+				Bytes = packer.ToByteArray();
+				hasVector = packer.HasVector();
+				hasVectorComputed = true;
 				return Bytes.Length;
 			}
 
@@ -48,7 +55,33 @@ namespace Aerospike.Client
 				return Bytes.Length;
 			}
 
-			public override void Pack(Packer packer) => packer.PackValueArray(Array);
+			public override void Pack(Packer packer)
+			{
+				bool vectorPresent = packer.HasVector();
+				packer.PackValueArray(Array);
+
+				if (!vectorPresent)
+				{
+					hasVector = packer.HasVector();
+					hasVectorComputed = true;
+				}
+			}
+
+			internal override bool HasVector()
+			{
+				if (!hasVectorComputed && !hasVector)
+				{
+					foreach (Value v in Array)
+					{
+						if (v != null && v.HasVector())
+						{
+							hasVector = true;
+							break;
+						}
+					}
+				}
+				return hasVector;
+			}
 
 			public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: value[]");
 

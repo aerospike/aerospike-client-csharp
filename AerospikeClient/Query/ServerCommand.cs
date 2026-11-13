@@ -41,7 +41,10 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(cluster, policy, statement, taskId, true, null, GetNode());
+			// Top-K on background execute is rejected at the entry point. Order-by
+			// without top-k is still sent so the server can reject it.
+			bool sendTopK = statement.ShouldSendOrderByFields(GetNode());
+			SetQuery(cluster, policy, statement, taskId, true, null, GetNode(), sendTopK);
 		}
 
 		protected internal override bool ParseRow()

@@ -329,6 +329,19 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Constructor, specifying bin name and vector value.
+		/// The vector value will be serialized as a server vector type.
+		/// For servers configured as "single-bin", enter a null or empty name.
+		/// </summary>
+		/// <param name="name">bin name, current limit is 15 characters</param>
+		/// <param name="value">bin value</param>
+		public Bin(string name, Vector value)
+		{
+			this.name = name;
+			this.value = Value.Get(value);
+		}
+
+		/// <summary>
 		/// Return string representation of bin.
 		/// </summary>
 		public override string ToString()
