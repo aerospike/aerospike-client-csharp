@@ -28,10 +28,14 @@ namespace Aerospike.Test
 			// its own client. Skip the shared suite clients (mirrors Java SuiteDiscovery).
 			// AWS tags real suite (run_aws_tags_real.sh): TestAwsTagsReal builds its own client from
 			// the EC2 tag provider; there is no static seed Host for AssemblyInit.
+			// Conformance test-envs (providers / translation): each suite builds its own client from
+			// ENV_* values; ENV_HOST / ENV_NAME are always exported by envs/lib.sh.
 			// L1 conformance: fixture runner only; no Aerospike cluster.
 			// L0 discovery unit: server-free SPI / merge / tend tests; no Aerospike cluster.
 			bool discoveryUnit = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_UNIT")) ||
 				string.Equals(Prop(context, "DiscoveryUnit", ""), "true", StringComparison.OrdinalIgnoreCase);
+			bool conformanceEnv = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ENV_HOST")) ||
+				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ENV_NAME"));
 
 			if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_KUBECONFIG")) ||
 				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISCOVERY_ENDPOINT_HOSTNAME")) ||
@@ -40,6 +44,7 @@ namespace Aerospike.Test
 				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_TAGS_REAL_REGION")) ||
 				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CONFORMANCE_DIR")) ||
 				!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FIXTURES_DIRECTORY")) ||
+				conformanceEnv ||
 				discoveryUnit)
 			{
 				SuiteHelpers.ns = Prop(context, "Namespace", "test");
@@ -56,7 +61,8 @@ namespace Aerospike.Test
 							? "TLS matching"
 							: (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_TAGS_REAL_REGION"))
 								? "AWS tags real"
-								: (discoveryUnit ? "L0 discovery unit" : "L1 conformance"))));
+								: (conformanceEnv ? "conformance env"
+									: (discoveryUnit ? "L0 discovery unit" : "L1 conformance")))));
 				Console.WriteLine(mode + " mode: skipping shared suite client connect");
 				return;
 			}

@@ -81,7 +81,8 @@ namespace Aerospike.L5Driver
 					return;
 				}
 
-				string line = new Json("log", Now()).Put("level", level.ToString())
+				// Stamp t under the write lock (same as Java write(t -> ...)).
+				Func<long, string> line = t => new Json("log", t).Put("level", level.ToString())
 					.Put("message", message).ToString();
 
 				// Node-event INFO must not precede ready (same as Java writeIfOpen).
@@ -103,7 +104,7 @@ namespace Aerospike.L5Driver
 			}
 			catch (Exception e)
 			{
-				output.WriteNow(new Json("error", Now()).Put("message", "client not created: " + Message(e)).ToString());
+				output.WriteNow(t => new Json("error", t).Put("message", "client not created: " + Message(e)).ToString());
 				Console.Error.WriteLine("ERROR: client not created: " + e);
 				return 3;
 			}
@@ -211,7 +212,8 @@ namespace Aerospike.L5Driver
 		private void Ready()
 		{
 			string version = typeof(AerospikeClient).Assembly.GetName().Version?.ToString() ?? "development";
-			output.Open(ReadyLine(Now(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), version, options.Shape));
+			long epochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+			output.Open(t => ReadyLine(t, epochMs, version, options.Shape));
 			Volatile.Write(ref failuresEnabled, 1);
 			routingPoll = new Timer(_ => routing.Poll(), null, 0, PollMs);
 		}
@@ -318,7 +320,7 @@ namespace Aerospike.L5Driver
 
 		private void Error(string message)
 		{
-			output.Write(new Json("error", Now()).Put("message", message).ToString());
+			output.Write(t => new Json("error", t).Put("message", message).ToString());
 		}
 
 		private void Quit()
@@ -679,6 +681,10 @@ namespace Aerospike.L5Driver
 
 		internal void Write(string line) => output.Write(line);
 
+		internal void Write(Func<long, string> line) => output.Write(line);
+
+		internal void WriteIfOpen(Func<long, string> line) => output.WriteIfOpen(line);
+
 		/// <summary>
 		/// Polls the client's routing every <see cref="PollMs"/>, writes a change snapshot when it differs
 		/// and a heartbeat snapshot every <see cref="HeartbeatMs"/>.
@@ -926,7 +932,7 @@ namespace Aerospike.L5Driver
 
 			private void Reply(long? usableAt)
 			{
-				driver.Write(new Json("watch", Now()).Put("address", address).Put("node", node)
+				driver.Write(t => new Json("watch", t).Put("address", address).Put("node", node)
 					.Put("servingAt", probe.ServingAt).Put("lastClosedAt", probe.LastClosedAt)
 					.Raw("addresses", probe.AddressesJson())
 					.Put("usableAt", usableAt)
@@ -1179,7 +1185,7 @@ namespace Aerospike.L5Driver
 							// Failures before ready count in failed but must not emit failure lines.
 							if (Volatile.Read(ref driver.failuresEnabled) == 1)
 							{
-								driver.Write(FailureLine(Now(), attemptStartedAt, message));
+								driver.WriteIfOpen(t => FailureLine(t, attemptStartedAt, message));
 							}
 						}
 
@@ -1564,55 +1570,87 @@ namespace Aerospike.L5Driver
 		}
 
 		/// <summary>
-		/// Stdout, one JSON object per line, each flushed. Lines written before ready are held and
-		/// follow it. Anything else printing to System.out goes to stderr.
+		/// Stdout, one JSON object per line, each flushed. Before ready, writes go to stderr so
+		/// ready is always the first stdout line (same as Java). Stamp <c>t</c> under the write
+		/// lock via the Func overloads so concurrent emitters stay monotonic.
 		/// </summary>
 		internal sealed class Output
 		{
 			private readonly TextWriter stdout;
-			private List<string> held = new List<string>();
+			private readonly TextWriter stderr;
+			private bool open;
 			private readonly object gate = new object();
 
 			public Output()
-				: this(Console.Out)
+				: this(Console.Out, Console.Error)
 			{
 				Console.SetOut(Console.Error);
 			}
 
 			/// <summary>
 			/// Test constructor: writes to the given stream and does not touch Console.Out.
+			/// Pre-ready writes are discarded.
 			/// </summary>
 			internal Output(TextWriter stdout)
+				: this(stdout, TextWriter.Null)
+			{
+			}
+
+			internal Output(TextWriter stdout, TextWriter stderr)
 			{
 				this.stdout = stdout;
+				this.stderr = stderr;
+			}
+
+			public void Write(Func<long, string> line)
+			{
+				lock (gate)
+				{
+					WriteUnlocked(line(Now()));
+				}
 			}
 
 			public void Write(string line)
 			{
 				lock (gate)
 				{
-					if (held != null)
+					WriteUnlocked(line);
+				}
+			}
+
+			/// <summary>
+			/// Print once ready is out; otherwise drop it.
+			/// </summary>
+			public void WriteIfOpen(Func<long, string> line)
+			{
+				lock (gate)
+				{
+					if (open)
 					{
-						held.Add(line);
+						Print(line(Now()));
 					}
-					else
+				}
+			}
+
+			/// <summary>
+			/// Print once ready is out; otherwise drop it.
+			/// </summary>
+			public void WriteIfOpen(string line)
+			{
+				lock (gate)
+				{
+					if (open)
 					{
 						Print(line);
 					}
 				}
 			}
 
-			/// <summary>
-			/// Print once ready is out; otherwise drop it so a held line cannot precede ready's t.
-			/// </summary>
-			public void WriteIfOpen(string line)
+			public void WriteNow(Func<long, string> line)
 			{
 				lock (gate)
 				{
-					if (held == null)
-					{
-						Print(line);
-					}
+					Print(line(Now()));
 				}
 			}
 
@@ -1624,18 +1662,33 @@ namespace Aerospike.L5Driver
 				}
 			}
 
+			public void Open(Func<long, string> ready)
+			{
+				lock (gate)
+				{
+					Print(ready(Now()));
+					open = true;
+				}
+			}
+
 			public void Open(string ready)
 			{
 				lock (gate)
 				{
 					Print(ready);
+					open = true;
+				}
+			}
 
-					foreach (string line in held)
-					{
-						Print(line);
-					}
-
-					held = null;
+			private void WriteUnlocked(string line)
+			{
+				if (open)
+				{
+					Print(line);
+				}
+				else
+				{
+					stderr.WriteLine(line);
 				}
 			}
 

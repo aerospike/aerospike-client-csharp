@@ -584,7 +584,13 @@ namespace Aerospike.Test
 				ExpOperation.Read("result", Exp.Build(Exp.Add(Exp.IntBin(BIN_INT), Exp.Val(1))),
 					(ExpReadFlags)(int)ExpWriteFlags.CREATE_ONLY));
 
-			AssertNoDetails(ae, ResultCode.PARAMETER_ERROR);
+			Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+			Assert.AreEqual(SubCode.NONE, ae.SubCode);
+			Assert.IsNull(ae.ExpTrace, "Expected no expression trace");
+			// Older servers return the bare result-code string; newer ones add a structural detail.
+			AssertMessageContainsAny(ae,
+				ResultCode.GetResultString(ResultCode.PARAMETER_ERROR),
+				"invalid for a read");
 		}
 
 		[TestMethod]

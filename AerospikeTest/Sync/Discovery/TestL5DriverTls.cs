@@ -155,16 +155,28 @@ namespace Aerospike.Test
 		/// </summary>
 		private static Result DriverProcess(string stdin, params string[] args)
 		{
-			string dll = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
-				"AerospikeL5Driver", "bin", "Release", "net8.0", "AerospikeL5Driver.dll"));
-
-			if (!File.Exists(dll))
+			string baseDir = AppContext.BaseDirectory;
+			string[] candidates =
 			{
-				dll = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
-					"AerospikeL5Driver", "bin", "Debug", "net8.0", "AerospikeL5Driver.dll"));
+				// Published / test output (dotnet publish AerospikeTest copies the driver here).
+				Path.Combine(baseDir, "AerospikeL5Driver.dll"),
+				Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..",
+					"AerospikeL5Driver", "bin", "Release", "net8.0", "AerospikeL5Driver.dll")),
+				Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..",
+					"AerospikeL5Driver", "bin", "Debug", "net8.0", "AerospikeL5Driver.dll"))
+			};
+			string dll = null;
+
+			foreach (string candidate in candidates)
+			{
+				if (File.Exists(candidate))
+				{
+					dll = candidate;
+					break;
+				}
 			}
 
-			Assert.IsTrue(File.Exists(dll), "AerospikeL5Driver.dll not found; build AerospikeL5Driver first");
+			Assert.IsTrue(dll != null, "AerospikeL5Driver.dll not found; build AerospikeL5Driver first");
 
 			ProcessStartInfo psi = new ProcessStartInfo
 			{
@@ -174,6 +186,17 @@ namespace Aerospike.Test
 				RedirectStandardError = true,
 				UseShellExecute = false
 			};
+
+			string driverRuntimeConfig = Path.Combine(Path.GetDirectoryName(dll), "AerospikeL5Driver.runtimeconfig.json");
+			string testRuntimeConfig = Path.Combine(baseDir, "AerospikeTest.runtimeconfig.json");
+
+			if (!File.Exists(driverRuntimeConfig) && File.Exists(testRuntimeConfig))
+			{
+				psi.ArgumentList.Add("exec");
+				psi.ArgumentList.Add("--runtimeconfig");
+				psi.ArgumentList.Add(testRuntimeConfig);
+			}
+
 			psi.ArgumentList.Add(dll);
 
 			foreach (string arg in args)
