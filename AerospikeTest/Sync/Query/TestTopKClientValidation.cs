@@ -128,15 +128,14 @@ namespace Aerospike.Test
 		}
 
 		/// <summary>
-		/// AE-07 / AE-08 / CLIENT-5996: Top-K skips partition-round retries for
-		/// TIMEOUT (9), QUERY_TIMEOUT (212), and FAIL_FORBIDDEN (22,
-		/// order-by-jobs-limit). Per-node query commands also use SyncCommand
-		/// maxRetries 0, so a timeout fails that node attempt immediately;
-		/// <see cref="QueryPolicy.maxRetries"/> only governs PartitionTracker
-		/// rounds. The executor emits the merged Top-K buffer only after the
-		/// cluster round completes, so a timeout/refusal yields the error with
-		/// no partial Top-K records. Live AE-07/AE-08 are in
-		/// <see cref="TestQueryGuardrails"/>.
+		/// AE-07 / AE-08: Top-K skips partition-round retries for TIMEOUT (9),
+		/// QUERY_TIMEOUT (212), and FAIL_FORBIDDEN (22, order-by-jobs-limit).
+		/// Per-node query commands also use SyncCommand maxRetries 0, so a
+		/// timeout fails that node attempt immediately; <see cref="QueryPolicy.maxRetries"/>
+		/// only governs PartitionTracker rounds. The executor emits the merged
+		/// Top-K buffer only after the cluster round completes, so a
+		/// timeout/refusal yields the error with no partial Top-K records.
+		/// Live coverage is in <see cref="TestQueryGuardrails"/>.
 		/// </summary>
 		[TestMethod]
 		public void TopKDoesNotRetryOnTimeout()
