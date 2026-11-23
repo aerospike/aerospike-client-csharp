@@ -289,6 +289,56 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void AwsTagsIsThreadOnlyAndDefaultTimeoutIsFiveSeconds()
+		{
+			AwsEc2TagSeedCandidateProvider provider = AwsEc2TagSeedCandidateProvider.CreateBuilder()
+				.Region("us-east-1")
+				.TagFilter("aerospike-cluster", "prod-a")
+				.Build();
+
+			Assert.AreEqual(AwsEc2TagSeedCandidateProvider.DefaultTimeout, provider.Timeout);
+			Assert.IsTrue(provider.Timeout >= 5000, "aws.timeout_ms default must cover warm EC2 DescribeInstances");
+			Assert.IsFalse(provider.SupportsDeadline());
+
+			Host[] seeds = [new Host("127.0.0.1", 3000)];
+			ClientPolicy tend = new ClientPolicy
+			{
+				discoveryExecutionMode = DiscoveryExecutionMode.TEND,
+				tendInterval = 1000,
+				discoveryRefreshIntervalMs = 30000,
+				discoveryTendRefreshDeadlineMs = 100
+			};
+
+			AerospikeException ex = Assert.Throws<AerospikeException>(() =>
+				new SeedCandidateManager(provider, tend, seeds, _ => { }, Log.Context.Empty));
+			StringAssert.Contains(ex.Message, "deadline");
+		}
+
+		[TestMethod]
+		public void ThreadModeRejectsAwsTimeoutAboveRefreshTimeout()
+		{
+			AwsEc2TagSeedCandidateProvider provider = AwsEc2TagSeedCandidateProvider.CreateBuilder()
+				.Region("us-east-1")
+				.TagFilter("aerospike-cluster", "prod-a")
+				.Timeout(15000)
+				.InitTimeout(15000)
+				.Build();
+
+			Host[] seeds = [new Host("127.0.0.1", 3000)];
+			ClientPolicy policy = new ClientPolicy
+			{
+				discoveryExecutionMode = DiscoveryExecutionMode.THREAD,
+				tendInterval = 1000,
+				discoveryRefreshIntervalMs = 30000,
+				discoveryRefreshTimeoutMs = 10000
+			};
+
+			AerospikeException ex = Assert.Throws<AerospikeException>(() =>
+				new SeedCandidateManager(provider, policy, seeds, _ => { }, Log.Context.Empty));
+			StringAssert.Contains(ex.Message, "refresh timeout");
+		}
+
+		[TestMethod]
 		public void TendModeRejectsRefreshIntervalBelowTendInterval()
 		{
 			Host[] seeds = [new Host("127.0.0.1", 3000)];
@@ -360,7 +410,7 @@ namespace Aerospike.Test
 			Host host = new Host("127.0.0.1", 3000);
 			AerospikeException.AlternateAddressMissing ex = new AerospikeException.AlternateAddressMissing("BB1", host);
 
-			Assert.AreEqual(ResultCode.CLIENT_ERROR, ex.Result);
+			Assert.AreEqual(ResultCode.ALTERNATE_ADDRESS_MISSING, ex.Result);
 			StringAssert.Contains(ex.Message, "BB1");
 			StringAssert.Contains(ex.Message, "alternate-access-address");
 			StringAssert.Contains(ex.Message, "useServicesAlternate");

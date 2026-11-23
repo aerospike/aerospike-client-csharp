@@ -490,8 +490,8 @@ namespace Aerospike.Client
 
 		/// <summary>
 		/// Exception thrown when a peer's translated address has the same host and port as another peer
-		/// in the same peers reply or as a live node with a different node name. No node is created for
-		/// the colliding peers and an existing live node is kept. Not retryable.
+		/// in the same peers reply or as a live node with a different node name. The shared address is
+		/// skipped and the next address is tried; if none remain, the node is not added. Not retryable.
 		/// </summary>
 		public sealed class TranslationCollision : AerospikeException
 		{
@@ -499,8 +499,22 @@ namespace Aerospike.Client
 			/// Create translation collision exception.
 			/// </summary>
 			public TranslationCollision(string nodeName, string otherNodeName, Host host, string translator)
-				: base(ResultCode.TRANSLATION_COLLISION, "Address translator " + translator + " translated nodes " + nodeName +
-					" and " + otherNodeName + " to the same address " + host.name + ':' + host.port +
+				: this(nodeName, otherNodeName, host, translator, null)
+			{
+			}
+
+			/// <summary>
+			/// Create translation collision exception, naming other host:port options when present.
+			/// </summary>
+			public TranslationCollision(
+				string nodeName,
+				string otherNodeName,
+				Host host,
+				string translator,
+				string otherOptions)
+				: base(ResultCode.TRANSLATION_COLLISION, "Address translator " + translator + " translated nodes " +
+					nodeName + " and " + otherNodeName + " to the same address " + host.name + ':' + host.port +
+					(string.IsNullOrEmpty(otherOptions) ? "" : "; other addresses: " + otherOptions) +
 					". Give each node its own reachable address or mapping")
 			{
 			}
@@ -516,7 +530,8 @@ namespace Aerospike.Client
 			/// Create alternate address missing exception.
 			/// </summary>
 			public AlternateAddressMissing(string nodeName, Host host)
-				: base(ResultCode.CLIENT_ERROR, "Node " + nodeName + (host != null ? " " + host : "") +
+				: base(ResultCode.ALTERNATE_ADDRESS_MISSING, "Node " + nodeName +
+					(host != null ? " " + host : "") +
 					" has no alternate-access-address and useServicesAlternate is true. Configure " +
 					"alternate-access-address on the server or set useServicesAlternate to false")
 			{

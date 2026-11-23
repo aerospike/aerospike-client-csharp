@@ -85,6 +85,26 @@ namespace Aerospike.Client
 					"Invalid discovery refresh timeout: " + refreshTimeoutMs + ". Must be > 0");
 			}
 
+			if (executionMode == DiscoveryExecutionMode.THREAD && periodic)
+			{
+				if (provider is DnsSeedCandidateProvider dns && dns.Timeout > refreshTimeoutMs)
+				{
+					throw new AerospikeException("DNS seed provider timeout " + dns.Timeout +
+						" must be less or equal to the discovery refresh timeout " + refreshTimeoutMs);
+				}
+
+				if (provider is AwsEc2TagSeedCandidateProvider aws)
+				{
+					// Per-refresh timeout must fit the manager's refresh budget. InitTimeout may be
+					// longer so the first refresh can wait for a cold provider (aws-tags YAML).
+					if (aws.Timeout > refreshTimeoutMs)
+					{
+						throw new AerospikeException("AWS EC2 seed provider timeout " + aws.Timeout +
+							" must be less or equal to the discovery refresh timeout " + refreshTimeoutMs);
+					}
+				}
+			}
+
 			Validate(policy.tendInterval);
 		}
 

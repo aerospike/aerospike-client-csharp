@@ -27,6 +27,7 @@ namespace Aerospike.Test
 	{
 		private static readonly (int Code, string Message)[] KnownResultStrings =
 		[
+			(ResultCode.ALTERNATE_ADDRESS_MISSING, "Alternate address missing"),
 			(ResultCode.SEED_DISCOVERY_FAILED, "Seed discovery failed"),
 			(ResultCode.TRANSLATION_COLLISION, "Address translation collision"),
 			(ResultCode.TRANSLATION_MISS, "Address translation miss"),

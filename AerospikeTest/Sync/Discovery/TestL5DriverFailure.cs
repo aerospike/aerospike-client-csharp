@@ -60,10 +60,10 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void ReadyReportsContract3()
+		public void ReadyReportsContract5()
 		{
 			Assert.AreEqual(
-				"{\"type\":\"ready\",\"t\":5,\"contract\":3,\"epochMs\":1700000000000,\"client\":\"csharp\"," +
+				"{\"type\":\"ready\",\"t\":5,\"contract\":5,\"epochMs\":1700000000000,\"client\":\"csharp\"," +
 				"\"clientVersion\":\"8.5.1\",\"shape\":\"port-map\"}",
 				Driver.ReadyLine(5, 1700000000000L, "8.5.1", "port-map"));
 		}

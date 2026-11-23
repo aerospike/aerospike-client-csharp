@@ -16,6 +16,7 @@
  */
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
@@ -408,31 +409,30 @@ namespace Aerospike.Client
 
 					if (peer.alternateMissing)
 					{
-						Log.Error(cluster.context, new AerospikeException.AlternateAddressMissing(peer.nodeName, null).Message);
-						peersValidated = false;
-						continue;
-					}
-
-					AerospikeException.TranslationCollision collision = FindCollision(peers, peer);
-
-					if (collision != null)
-					{
 						if (Log.WarnEnabled())
 						{
-							Log.Warn(cluster.context, collision.Message);
+							Log.Warn(cluster.context,
+								new AerospikeException.AlternateAddressMissing(peer.nodeName, null).Message);
 						}
 						peersValidated = false;
 						continue;
 					}
 
 					bool nodeValidated = false;
-					collision = null;
 
-					// Find first host that connects.
+					// Try each address; skip a colliding host:port and continue (FR-46).
 					foreach (Host host in peer.hosts)
 					{
 						if (peers.HasFailed(host))
 						{
+							continue;
+						}
+
+						AerospikeException.TranslationCollision collision = FindCollision(peers, peer, host);
+
+						if (collision != null)
+						{
+							LogCollision(peer, host, collision);
 							continue;
 						}
 
@@ -447,7 +447,8 @@ namespace Aerospike.Client
 							if (collision != null)
 							{
 								nv.primaryConn.Close();
-								break;
+								LogCollision(peer, host, collision);
+								continue;
 							}
 
 							if (!peer.nodeName.Equals(nv.name))
@@ -484,22 +485,10 @@ namespace Aerospike.Client
 						{
 							peers.Fail(host);
 
-							if (e is AerospikeException.AlternateAddressMissing)
-							{
-								Log.Error(cluster.context, "Add node " + host + " failed: " + e.Message);
-							}
-							else if (Log.WarnEnabled())
+							if (Log.WarnEnabled())
 							{
 								Log.Warn(cluster.context, "Add node " + host + " failed: " + Util.GetErrorMessage(e));
 							}
-						}
-					}
-
-					if (collision != null)
-					{
-						if (Log.WarnEnabled())
-						{
-							Log.Warn(cluster.context, collision.Message);
 						}
 					}
 
@@ -556,39 +545,117 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Pre-connect host:port collision check against this node, peer list, and known nodes.
+		/// Pre-connect host:port collision check for one address against this node, peer list, and
+		/// known nodes. Returns a collision that names the peer's other addresses when present.
 		/// </summary>
-		private AerospikeException.TranslationCollision FindCollision(Peers peers, Peer peer)
+		private AerospikeException.TranslationCollision FindCollision(Peers peers, Peer peer, Host host)
 		{
-			foreach (Host host in peer.hosts)
-			{
-				if (!name.Equals(peer.nodeName) && this.host.Equals(host))
-				{
-					return new AerospikeException.TranslationCollision(peer.nodeName, name, host, cluster.TranslatorName());
-				}
+			string other = null;
 
-				foreach (Peer other in peers.peers)
+			if (!name.Equals(peer.nodeName) && this.host.Equals(host))
+			{
+				other = name;
+			}
+			else
+			{
+				foreach (Peer candidate in peers.peers)
 				{
-					if (!other.nodeName.Equals(peer.nodeName) && other.hosts != null && other.hosts.Contains(host))
+					if (!candidate.nodeName.Equals(peer.nodeName) &&
+						candidate.hosts != null &&
+						candidate.hosts.Contains(host))
 					{
-						return new AerospikeException.TranslationCollision(peer.nodeName, other.nodeName, host, cluster.TranslatorName());
+						other = candidate.nodeName;
+						break;
 					}
 				}
 
-				Node node = FindNodeByHost(cluster.nodesMap, peer.nodeName, host);
-
-				if (node == null)
+				if (other == null)
 				{
-					node = FindNodeByHost(peers.nodes, peer.nodeName, host);
-				}
+					Node node = FindNodeByHost(cluster.nodesMap, peer.nodeName, host);
 
-				if (node != null)
-				{
-					return new AerospikeException.TranslationCollision(peer.nodeName, node.name, host, cluster.TranslatorName());
+					if (node == null)
+					{
+						node = FindNodeByHost(peers.nodes, peer.nodeName, host);
+					}
+
+					if (node != null)
+					{
+						other = node.name;
+					}
 				}
 			}
 
-			return null;
+			if (other == null)
+			{
+				return null;
+			}
+
+			return new AerospikeException.TranslationCollision(
+				peer.nodeName, other, host, cluster.TranslatorName(), OtherHostOptions(peer.hosts, host));
+		}
+
+		/// <summary>
+		/// Log a skipped colliding address. INFO when the shared address is the server's own
+		/// unchanged advertisement; WARNING when a translator produced it (FR-46).
+		/// </summary>
+		private void LogCollision(Peer peer, Host host, AerospikeException.TranslationCollision collision)
+		{
+			bool unchanged = false;
+
+			if (peer.advertised != null)
+			{
+				foreach (Host advertised in peer.advertised)
+				{
+					if (advertised.name.Equals(host.name) && advertised.port == host.port)
+					{
+						unchanged = true;
+						break;
+					}
+				}
+			}
+			else if (cluster.addressTranslator is PassThroughAddressTranslator)
+			{
+				unchanged = true;
+			}
+
+			if (unchanged)
+			{
+				if (Log.InfoEnabled())
+				{
+					Log.Info(cluster.context, collision.Message);
+				}
+			}
+			else if (Log.WarnEnabled())
+			{
+				Log.Warn(cluster.context, collision.Message);
+			}
+		}
+
+		private static string OtherHostOptions(List<Host> hosts, Host shared)
+		{
+			if (hosts == null || hosts.Count <= 1)
+			{
+				return null;
+			}
+
+			StringBuilder sb = new StringBuilder();
+
+			foreach (Host host in hosts)
+			{
+				if (host.Equals(shared))
+				{
+					continue;
+				}
+
+				if (sb.Length > 0)
+				{
+					sb.Append(", ");
+				}
+
+				sb.Append(host.name).Append(':').Append(host.port);
+			}
+
+			return sb.Length == 0 ? null : sb.ToString();
 		}
 
 		/// <summary>
@@ -638,7 +705,8 @@ namespace Aerospike.Client
 			}
 
 			peers.collided[nv.name] = peer.nodeName;
-			return new AerospikeException.TranslationCollision(peer.nodeName, other, host, cluster.TranslatorName());
+			return new AerospikeException.TranslationCollision(
+				peer.nodeName, other, host, cluster.TranslatorName(), OtherHostOptions(peer.hosts, host));
 		}
 
 		private static Node FindValidatedNode(Dictionary<string, Node> nodes, string nodeName, NodeValidator nv)

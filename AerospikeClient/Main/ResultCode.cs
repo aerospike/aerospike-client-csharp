@@ -22,6 +22,12 @@ namespace Aerospike.Client
 	public sealed class ResultCode
 	{
 		/// <summary>
+		/// A node has no alternate-access-address while <c>useServicesAlternate</c> is true.
+		/// Value: -28
+		/// </summary>
+		public const int ALTERNATE_ADDRESS_MISSING = -28;
+
+		/// <summary>
 		/// Seed candidate provider failed at client initialization and no seed host is left to try.
 		/// Value: -27
 		/// </summary>
@@ -641,6 +647,9 @@ namespace Aerospike.Client
 		{
 			switch (resultCode)
 			{
+				case ALTERNATE_ADDRESS_MISSING:
+					return "Alternate address missing";
+
 				case SEED_DISCOVERY_FAILED:
 					return "Seed discovery failed";
 

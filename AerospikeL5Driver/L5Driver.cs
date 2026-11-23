@@ -18,6 +18,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Aerospike.Client;
 
@@ -25,12 +26,13 @@ namespace Aerospike.L5Driver
 {
 	/// <summary>
 	/// Driver for the l5-aws harness in aerospike-client-conformance (l5-aws/DRIVER.md there, contract
-	/// version 3): builds a client from the flags, runs a retrying load, and writes what the client sees
-	/// to stdout as JSON lines while it answers the commands it reads from stdin.
+	/// version 5): builds a client from the flags, runs a retrying load, and writes what the client sees
+	/// to stdout as JSON lines while it answers the commands it reads from stdin. Contract 5 adds TLS
+	/// flags, HOST:PORT port-map keys, and the large command.
 	/// </summary>
 	public sealed class L5Driver
 	{
-		public const int Contract = 3;
+		public const int Contract = 5;
 		public const long PollMs = 10;
 		public const long HeartbeatMs = 100;
 		public const long ReachIntervalMs = 500;
@@ -52,7 +54,8 @@ namespace Aerospike.L5Driver
 		private static readonly string Usage =
 			"usage: L5Driver --seed HOST:PORT --shape pass-through|port-map " +
 			"[--port-map NODE=HOST:PORT,...] [--on-miss strict|pass-through] [--user USER] --tend-interval MS " +
-			"--timeout MS --namespace NS --set SET [--workers N] [--keys N]";
+			"--timeout MS --namespace NS --set SET [--workers N] [--keys N] " +
+			"[--tls-name NAME [--tls-ca-file PATH]]";
 
 		public static int Main(string[] args)
 		{
@@ -236,6 +239,29 @@ namespace Aerospike.L5Driver
 					}
 					return true;
 
+				case "large":
+					Large large = words.Length == 4 ? Large.Of(words[1], words[2], words[3]) : null;
+
+					if (large == null)
+					{
+						Error("malformed command: " + line);
+					}
+					else
+					{
+						WritePolicy wp = options.WritePolicy();
+						Policy rp = options.ReadPolicy();
+
+						large.Run(options.Namespace, options.Set,
+							(key, value) => client.Put(wp, key, new Bin("v", value)),
+							key =>
+							{
+								Record record = client.Get(rp, key);
+								return record == null ? null : record.GetValue("v");
+							});
+						output.Write(large.Reply(Now()));
+					}
+					return true;
+
 				case "reset":
 					if (words.Length != 1)
 					{
@@ -386,6 +412,124 @@ namespace Aerospike.L5Driver
 				.Put("written", written).Put("read", read).Put("mismatched", mismatched)
 				.Put("failures", failures).Put("firstFailure", firstFailure)
 				.Put("elapsedMs", sw.ElapsedMilliseconds).ToString());
+		}
+
+		/// <summary>
+		/// Contract 5: write and read <see cref="Keys"/> records of <see cref="Bytes"/> each under
+		/// <see cref="Step"/>.
+		/// </summary>
+		internal sealed class Large
+		{
+			public string Step { get; }
+			public int Bytes { get; }
+			public int Keys { get; }
+
+			private int written;
+			private int read;
+			private int mismatched;
+			private int failures;
+			private string firstFailure;
+			private long maxNanos;
+			private long elapsedNanos;
+
+			private Large(string step, int bytes, int keys)
+			{
+				Step = step;
+				Bytes = bytes;
+				Keys = keys;
+			}
+
+			/// <summary>
+			/// Parse the command's arguments, or return null when they are malformed or a key's name
+			/// is longer than <paramref name="bytes"/>.
+			/// </summary>
+			internal static Large Of(string step, string bytes, string keys)
+			{
+				if (!int.TryParse(bytes, out int b) || !int.TryParse(keys, out int k) ||
+					b <= 0 || k <= 0 || (step + '-' + (k - 1)).Length > b)
+				{
+					return null;
+				}
+
+				return new Large(step, b, k);
+			}
+
+			internal static string Value(string name, int bytes)
+			{
+				StringBuilder sb = new StringBuilder(bytes).Append(name);
+
+				while (sb.Length < bytes)
+				{
+					sb.Append('x');
+				}
+
+				return sb.ToString();
+			}
+
+			internal void Run(string ns, string set, Action<Key, string> put, Func<Key, object> get)
+			{
+				long start = Stopwatch.GetTimestamp();
+
+				for (int i = 0; i < Keys; i++)
+				{
+					string name = Step + '-' + i;
+					Key key = new Key(ns, set, name);
+					string value = Value(name, Bytes);
+					long begin = Stopwatch.GetTimestamp();
+
+					try
+					{
+						put(key, value);
+						written++;
+					}
+					catch (Exception e)
+					{
+						failures++;
+						firstFailure ??= name + " put: " + Message(e);
+						continue;
+					}
+					finally
+					{
+						maxNanos = Math.Max(maxNanos, Stopwatch.GetTimestamp() - begin);
+					}
+
+					begin = Stopwatch.GetTimestamp();
+
+					try
+					{
+						if (value.Equals(get(key)))
+						{
+							read++;
+						}
+						else
+						{
+							mismatched++;
+						}
+					}
+					catch (Exception e)
+					{
+						failures++;
+						firstFailure ??= name + " get: " + Message(e);
+					}
+					finally
+					{
+						maxNanos = Math.Max(maxNanos, Stopwatch.GetTimestamp() - begin);
+					}
+				}
+
+				elapsedNanos = Stopwatch.GetTimestamp() - start;
+			}
+
+			internal string Reply(long t)
+			{
+				long maxMs = maxNanos * 1000L / Stopwatch.Frequency;
+				long elapsedMs = elapsedNanos * 1000L / Stopwatch.Frequency;
+
+				return new Json("large", t).Put("step", Step).Put("bytes", Bytes).Put("keys", Keys)
+					.Put("written", written).Put("read", read).Put("mismatched", mismatched)
+					.Put("failures", failures).Put("firstFailure", firstFailure)
+					.Put("maxMs", maxMs).Put("elapsedMs", elapsedMs).ToString();
+			}
 		}
 
 		private void CheckReachable()
@@ -1124,6 +1268,9 @@ namespace Aerospike.L5Driver
 			public string Set { get; private set; }
 			public int Workers { get; private set; } = 4;
 			public int Keys { get; private set; } = 1000;
+			public string TlsName { get; private set; }
+			public string TlsCaFile { get; private set; }
+			public TlsPolicy TlsPolicy { get; private set; }
 
 			public Options(string[] args, string password)
 			{
@@ -1219,6 +1366,14 @@ namespace Aerospike.L5Driver
 							Keys = Positive(flag.Key, value);
 							break;
 
+						case "--tls-name":
+							TlsName = value;
+							break;
+
+						case "--tls-ca-file":
+							TlsCaFile = value;
+							break;
+
 						default:
 							throw new ArgumentException("unknown flag: " + flag.Key);
 					}
@@ -1248,6 +1403,74 @@ namespace Aerospike.L5Driver
 				{
 					throw new ArgumentException("--port-map only with --shape port-map");
 				}
+
+				if (TlsName != null)
+				{
+					Seed = new Host(Seed.name, TlsName, Seed.port);
+					TlsPolicy = BuildTlsPolicy(TlsCaFile);
+				}
+				else if (TlsCaFile != null)
+				{
+					throw new ArgumentException("--tls-ca-file only with --tls-name");
+				}
+			}
+
+			/// <summary>
+			/// Trust the CAs in the PEM file (or the process default trust store when there is no
+			/// file). On Linux, SslStream uses OpenSSL's <c>SSL_CERT_FILE</c>, so a CA file is merged
+			/// into a temporary bundle. On Windows, Schannel has no equivalent hook and importing into
+			/// Root can prompt; the harness runs on Linux, so the file is only validated here.
+			/// </summary>
+			private static TlsPolicy BuildTlsPolicy(string caFile)
+			{
+				TlsPolicy policy = new TlsPolicy();
+
+				if (caFile == null)
+				{
+					return policy;
+				}
+
+				if (!File.Exists(caFile))
+				{
+					throw new ArgumentException("--tls-ca-file not found: " + caFile);
+				}
+
+				X509Certificate2Collection certs = new X509Certificate2Collection();
+				certs.ImportFromPemFile(caFile);
+
+				if (certs.Count == 0)
+				{
+					throw new ArgumentException("--tls-ca-file has no certificate: " + caFile);
+				}
+
+				if (OperatingSystem.IsWindows())
+				{
+					return policy;
+				}
+
+				string system = Environment.GetEnvironmentVariable("SSL_CERT_FILE");
+
+				if (string.IsNullOrEmpty(system) || !File.Exists(system))
+				{
+					system = "/etc/ssl/certs/ca-certificates.crt";
+				}
+
+				string combined = Path.Combine(Path.GetTempPath(),
+					"aerospike-l5-ca-" + Guid.NewGuid().ToString("N") + ".crt");
+
+				using (StreamWriter writer = new StreamWriter(combined))
+				{
+					if (File.Exists(system))
+					{
+						writer.Write(File.ReadAllText(system));
+						writer.Write('\n');
+					}
+
+					writer.Write(File.ReadAllText(caFile));
+				}
+
+				Environment.SetEnvironmentVariable("SSL_CERT_FILE", combined);
+				return policy;
 			}
 
 			private static void Require(object value, string flag)
@@ -1278,7 +1501,8 @@ namespace Aerospike.L5Driver
 
 					if (eq <= 0 || HostPort(entry.Substring(eq + 1)) == null)
 					{
-						throw new ArgumentException("--port-map entry must be NODE=HOST:PORT: " + entry);
+						throw new ArgumentException(
+							"--port-map entry must be NODE=HOST:PORT or HOST:PORT=HOST:PORT: " + entry);
 					}
 
 					if (!map.TryAdd(entry.Substring(0, eq), entry.Substring(eq + 1)))
@@ -1299,6 +1523,7 @@ namespace Aerospike.L5Driver
 					user = User,
 					password = Password,
 					translationOnMiss = OnMiss,
+					tlsPolicy = TlsPolicy,
 					readPolicyDefault = ReadPolicy(),
 					writePolicyDefault = WritePolicy()
 				};

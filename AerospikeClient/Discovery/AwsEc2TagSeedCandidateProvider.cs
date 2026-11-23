@@ -51,10 +51,11 @@ namespace Aerospike.Client
 	/// when they are within five minutes of expiry, never on a timer.
 	/// </para>
 	/// <para>
-	/// All I/O of one refresh, credentials included, is bounded by <see cref="Builder.Timeout"/>, or
-	/// <see cref="Builder.InitTimeout"/> for the first refresh. The provider starts no thread and uses
-	/// no HTTP proxy. Eligible for <see cref="DiscoveryExecutionMode.TEND"/> when timeout does not
-	/// exceed <see cref="ClientPolicy.discoveryTendRefreshDeadlineMs"/>.
+	/// All I/O of one refresh, credentials included, is bounded by <see cref="Builder.Timeout"/>
+	/// (default 5000 ms), including the first refresh. <see cref="Builder.InitTimeout"/> may still
+	/// override the first-refresh budget. The provider starts no thread and uses no HTTP proxy.
+	/// <see cref="SupportsDeadline"/> is false: use <see cref="DiscoveryExecutionMode.THREAD"/>
+	/// (default). <c>timeout_ms</c> must not exceed <see cref="ClientPolicy.discoveryRefreshTimeoutMs"/>.
 	/// </para>
 	/// </summary>
 	public sealed class AwsEc2TagSeedCandidateProvider : ISeedCandidateProvider
@@ -149,11 +150,11 @@ namespace Aerospike.Client
 		/// <summary>Default port set on every host.</summary>
 		public const int DefaultPort = 3000;
 
-		/// <summary>Default tend refresh timeout in milliseconds.</summary>
-		public const int DefaultTimeout = 80;
+		/// <summary>Default refresh timeout in milliseconds (tech spec <c>aws.timeout_ms</c>).</summary>
+		public const int DefaultTimeout = 5000;
 
 		/// <summary>Default first refresh timeout in milliseconds.</summary>
-		public const int DefaultInitTimeout = 10000;
+		public const int DefaultInitTimeout = 5000;
 
 		internal const string ApiVersion = "2016-11-15";
 		internal const string StateFilter = "instance-state-name";
@@ -480,7 +481,7 @@ namespace Aerospike.Client
 		/// <summary>TLS name set on every host. May be null.</summary>
 		public string TlsName => tlsName;
 
-		/// <summary>Total timeout in milliseconds for one tend refresh, credentials included.</summary>
+		/// <summary>Total timeout in milliseconds for one refresh, credentials included.</summary>
 		public int Timeout => timeout;
 
 		/// <summary>Total timeout in milliseconds for the first refresh, credentials included.</summary>
@@ -493,7 +494,8 @@ namespace Aerospike.Client
 		public bool NeedsPeriodicRefresh() => true;
 
 		/// <inheritdoc/>
-		public bool SupportsDeadline() => true;
+		/// <remarks>aws-tags is thread-mode only; tend mode is rejected at construction.</remarks>
+		public bool SupportsDeadline() => false;
 
 		public override string ToString()
 		{
@@ -606,10 +608,9 @@ namespace Aerospike.Client
 			}
 
 			/// <summary>
-			/// Total time in milliseconds for one tend refresh, credentials and every page included.
-			/// Must be greater than zero, and must not exceed
-			/// <see cref="ClientPolicy.discoveryTendRefreshDeadlineMs"/> when
-			/// <see cref="DiscoveryExecutionMode.TEND"/> is used. Default: <see cref="DefaultTimeout"/>.
+			/// Total time in milliseconds for one refresh, credentials and every page included.
+			/// Must be greater than zero and must not exceed
+			/// <see cref="ClientPolicy.discoveryRefreshTimeoutMs"/>. Default: <see cref="DefaultTimeout"/>.
 			/// </summary>
 			public Builder Timeout(int timeout)
 			{

@@ -26,12 +26,12 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	/// <summary>
-	/// L2 topology built by .github/workflows/discovery-l2.yaml: a three-node cluster on a private
-	/// network with no published ports, reachable from the client only through one Toxiproxy listener
-	/// per node behind one endpoint hostname. Topology arrives as environment variables matching the
-	/// aerospike-client-conformance discovery-l2-topology env-file contract, including
-	/// DISCOVERY_UNRESOLVED_HOSTNAME / DISCOVERY_VERBATIM_ACCESS_ADDRESS for the unresolved-access
-	/// profile (CLIENT-5858 / SERVER-1839).
+	/// L2 topology from the l2-proxy harness in aerospike-client-conformance (run as L2_RUN via
+	/// AerospikeTest/discovery/l2_run.sh): a three-node cluster on a private network with no published
+	/// ports, reachable from the client only through one Toxiproxy listener per node behind one
+	/// endpoint hostname. Topology arrives as environment variables matching the harness values-file
+	/// contract, including DISCOVERY_UNRESOLVED_HOSTNAME / DISCOVERY_VERBATIM_ACCESS_ADDRESS for the
+	/// unresolved-access profile.
 	/// </summary>
 	internal static class L2Topology
 	{
@@ -284,7 +284,7 @@ namespace Aerospike.Test
 				string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TOXIPROXY_URL")) ||
 				string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AEROSPIKE_CONTAINER_NAMES")))
 			{
-				Assert.Inconclusive("L2 discovery env not set. Run via discovery-l2 workflow / run-l2-suite.sh.");
+				Assert.Inconclusive("L2 discovery env not set. Run via l2-proxy L2_RUN (AerospikeTest/discovery/l2_run.sh).");
 			}
 			Ensure();
 		}
@@ -973,7 +973,7 @@ namespace Aerospike.Test
 			{
 				// Inconclusive (not fail) so a normal local/unit-test run without the L2 harness skips.
 				Assert.Inconclusive("Environment variable " + name +
-					" is not set. Run .github/discovery/run-l2-suite.sh or the discovery-l2 workflow");
+					" is not set. Run via l2-proxy L2_RUN (AerospikeTest/discovery/l2_run.sh)");
 			}
 			return value;
 		}
