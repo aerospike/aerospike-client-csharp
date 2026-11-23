@@ -101,6 +101,7 @@ namespace Aerospike.Test
 			Assert.IsTrue(ae.Message.Contains("synchronous"));
 		}
 
+		/// <summary>AT-09: async Top-K is refused before send (C# has no async Top-K).</summary>
 		[TestMethod]
 		public void RejectsAsyncTopK()
 		{
@@ -118,6 +119,7 @@ namespace Aerospike.Test
 			Assert.IsTrue(ae.Message.Contains("synchronous"));
 		}
 
+		/// <summary>AT-10: a fresh partition filter is clean (no resume points).</summary>
 		[TestMethod]
 		public void PartitionFilterWithoutResumePointsIsClean()
 		{
@@ -126,12 +128,15 @@ namespace Aerospike.Test
 		}
 
 		/// <summary>
-		/// Top-K skips partition-round TIMEOUT retries. Per-node query commands also
-		/// use SyncCommand maxRetries 0 (scan/query ctor), so a socket/server TIMEOUT
-		/// fails that node attempt immediately; <see cref="QueryPolicy.maxRetries"/>
-		/// only governs PartitionTracker rounds. The partition executor only emits the
-		/// merged Top-K buffer after the cluster round completes, so a TIMEOUT yields
-		/// the error with no partial Top-K records.
+		/// AE-07 / AE-08 / CLIENT-5996: Top-K skips partition-round retries for
+		/// TIMEOUT (9), QUERY_TIMEOUT (212), and FAIL_FORBIDDEN (22,
+		/// order-by-jobs-limit). Per-node query commands also use SyncCommand
+		/// maxRetries 0, so a timeout fails that node attempt immediately;
+		/// <see cref="QueryPolicy.maxRetries"/> only governs PartitionTracker
+		/// rounds. The executor emits the merged Top-K buffer only after the
+		/// cluster round completes, so a timeout/refusal yields the error with
+		/// no partial Top-K records. Live AE-07/AE-08 are in
+		/// <see cref="TestQueryGuardrails"/>.
 		/// </summary>
 		[TestMethod]
 		public void TopKDoesNotRetryOnTimeout()
@@ -140,6 +145,8 @@ namespace Aerospike.Test
 			PartitionTracker topKTracker = new(new QueryPolicy(), topK, (Node[])null);
 			Assert.IsFalse(topKTracker.RetryOnTimeout);
 			Assert.IsFalse(topKTracker.ShouldRetry(null, new AerospikeException(ResultCode.TIMEOUT)));
+			Assert.IsFalse(topKTracker.ShouldRetry(null, new AerospikeException(ResultCode.QUERY_TIMEOUT)));
+			Assert.IsFalse(topKTracker.ShouldRetry(null, new AerospikeException(ResultCode.FAIL_FORBIDDEN)));
 			Assert.IsFalse(topKTracker.ShouldRetry(null, new AerospikeException(ResultCode.DEVICE_OVERLOAD)));
 			Assert.IsFalse(topKTracker.ShouldRetry(null, new AerospikeException(ResultCode.QUERY_ABORTED)));
 
@@ -148,9 +155,12 @@ namespace Aerospike.Test
 			plain.SetSetName(Set);
 			PartitionTracker plainTracker = new(new QueryPolicy(), plain, (Node[])null);
 			Assert.IsTrue(plainTracker.RetryOnTimeout);
+			// Guardrail deadlines use 212, which is never retried even for plain queries.
+			Assert.IsFalse(plainTracker.ShouldRetry(null, new AerospikeException(ResultCode.QUERY_TIMEOUT)));
+			Assert.IsFalse(plainTracker.ShouldRetry(null, new AerospikeException(ResultCode.FAIL_FORBIDDEN)));
 		}
 
-		/// <summary>Reject huge or zero k before allocating.</summary>
+		/// <summary>AT-01: Reject huge or zero k before allocating.</summary>
 		[TestMethod]
 		public void RejectsKOutsideOneToThousand()
 		{
@@ -165,7 +175,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		/// <summary>Reject k without an order key.</summary>
+		/// <summary>AT-02: Reject k without an order key.</summary>
 		[TestMethod]
 		public void RejectsTopKWithoutOrderBy()
 		{
@@ -180,7 +190,7 @@ namespace Aerospike.Test
 			Assert.AreEqual("Top-K requires an order key; call SetOrderBy()", ae.BaseMessage);
 		}
 
-		/// <summary>Reject thenOrderBy before orderBy.</summary>
+		/// <summary>AT-04: Reject thenOrderBy before orderBy.</summary>
 		[TestMethod]
 		public void RejectsThenOrderByBeforeOrderBy()
 		{
@@ -191,7 +201,7 @@ namespace Aerospike.Test
 			Assert.AreEqual("thenOrderBy must follow orderBy", ae.BaseMessage);
 		}
 
-		/// <summary>Reject a third order key.</summary>
+		/// <summary>AT-05: Reject a third order key or duplicate bins.</summary>
 		[TestMethod]
 		public void RejectsThirdOrderKey()
 		{
@@ -205,7 +215,7 @@ namespace Aerospike.Test
 			Assert.AreEqual("orderBy supports at most two keys", ae.BaseMessage);
 		}
 
-		/// <summary>A later orderBy replaces keys; a later topK replaces k.</summary>
+		/// <summary>AT-06: A later orderBy replaces keys; a later topK replaces k.</summary>
 		[TestMethod]
 		public void OrderByReplacementClearsThenKeepsLatestTopK()
 		{
@@ -279,7 +289,7 @@ namespace Aerospike.Test
 			Assert.AreEqual("orderBy keys must use different bins", ae.BaseMessage);
 		}
 
-		/// <summary>Reject an order key missing from the projection.</summary>
+		/// <summary>AT-08: Reject an order key missing from the projection.</summary>
 		[TestMethod]
 		public void RejectsOrderKeyNotInProjection()
 		{
@@ -321,7 +331,7 @@ namespace Aerospike.Test
 				ae.BaseMessage);
 		}
 
-		/// <summary>Reject Top-K combined with an aggregate UDF.</summary>
+		/// <summary>AT-09: Reject Top-K combined with an aggregate UDF.</summary>
 		[TestMethod]
 		public void RejectsAggregateUdf()
 		{

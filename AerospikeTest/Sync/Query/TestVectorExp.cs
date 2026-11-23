@@ -271,8 +271,11 @@ namespace Aerospike.Test
 				Assert.IsNull(ranked[Size]);
 				Assert.IsNull(ranked[Size + 1]);
 
-				// Without eval-no-fail, a distance that can't be computed leaves the record out.
-				Assert.AreEqual(Size, Distances(ExpReadFlags.DEFAULT, k).Count);
+				// Without eval-no-fail, an uncomputable order-key fails the Top-K query
+				// (OP_NOT_APPLICABLE) rather than silently dropping those records.
+				AerospikeException ae = Assert.Throws<AerospikeException>(
+					() => Distances(ExpReadFlags.DEFAULT, k));
+				Assert.AreEqual(ResultCode.OP_NOT_APPLICABLE, ae.Result);
 			}
 			finally
 			{

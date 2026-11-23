@@ -256,6 +256,11 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Operation not allowed at this time.
 		/// Value: 22
+		/// <para>
+		/// Also returned when a Top-K / order-by query is refused because the node is at
+		/// <c>order-by-jobs-limit</c>. The client does not retry that refusal; the
+		/// application may retry later.
+		/// </para>
 		/// </summary>
 		public const int FAIL_FORBIDDEN = 22;
 
@@ -583,8 +588,14 @@ namespace Aerospike.Client
 		public const int QUERY_QUEUEFULL = 211;
 
 		/// <summary>
-		/// Secondary index query timed out on server.
+		/// Query timed out on the server.
 		/// Value: 212
+		/// <para>
+		/// Used by query-run-time guardrails (<c>query-max-run-time-ms</c>) for Top-K and
+		/// long queries. Partition trackers do not retry this code (unlike
+		/// <see cref="TIMEOUT"/> on non–Top-K queries), so the error reaches the application
+		/// without re-scanning timed-out nodes.
+		/// </para>
 		/// </summary>
 		public const int QUERY_TIMEOUT = 212;
 

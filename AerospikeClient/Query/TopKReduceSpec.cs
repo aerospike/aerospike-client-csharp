@@ -142,10 +142,12 @@ namespace Aerospike.Client
 			{
 				byte[] digest = key.digest;
 
-				// Dedup: at most one row per digest (partition migration may re-scan a
-				// record). Keep the copy with the later last-update time; when times are
-				// equal (including both zero on client-side reduce), keep the better-ranked
-				// copy. Last-update time is forgotten once a digest is evicted from the heap.
+				// Dedup (8.2.1): at most one row per digest (partition migration / replica
+				// retry may re-scan a record). Later last-update time (Field 14 / LUT) wins
+				// even if that copy ranks worse; equal LUT (including both zero) keeps the
+				// better-ranked copy; equal rank keeps the existing entry. Generation and
+				// staged-admission conflict resolution are deferred post-8.2.1. LUT is
+				// forgotten once a digest is evicted from the heap.
 				if (byDigest.TryGetValue(digest, out Entry existingEntry))
 				{
 					if (!Replaces(candidate, existingEntry.orderKey))

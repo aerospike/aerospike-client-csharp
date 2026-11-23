@@ -91,7 +91,7 @@ namespace Aerospike.Test
 
 		private static void RequireCapableCluster() => RequireQueryOrderBySupport();
 
-		/// <summary>NaN ranks above +∞; missing ranks last (both directions).</summary>
+		/// <summary>AO-02: NaN ranks above +∞; missing ranks last (both directions).</summary>
 		[TestMethod]
 		public void DoubleNanInfAndMissingOrder()
 		{
@@ -135,7 +135,7 @@ namespace Aerospike.Test
 			}
 		}
 
-		/// <summary>−0.0 equals 0.0 under Top-K pushdown (tie → digest).</summary>
+		/// <summary>AO-03: −0.0 equals 0.0 under Top-K pushdown (tie → digest).</summary>
 		[TestMethod]
 		public void NegativeZeroTiesWithPositiveZero()
 		{
@@ -1144,8 +1144,10 @@ namespace Aerospike.Test
 		}
 
 		/// <summary>
-		/// Project only a computed order bin. RESPOND_ALL_OPS must keep
-		/// incomparable records when EVAL_NO_FAIL is set.
+		/// AO-09 (8.2.1): project only a computed order bin. EVAL_NO_FAIL keeps
+		/// incomparable records (null order key, ranked last). Without it Top-K
+		/// fails with OP_NOT_APPLICABLE — the plan's older "drop records, no
+		/// error" expectation does not match current server behaviour.
 		/// </summary>
 		[TestMethod]
 		public void ProjectOnlyComputedOrderKeyRespondAllOps()
@@ -1168,9 +1170,11 @@ namespace Aerospike.Test
 
 			try
 			{
-				List<object> withFail = ComputedNegScores(set, ExpReadFlags.DEFAULT, 5);
-				Assert.AreEqual(3, withFail.Count);
-				CollectionAssert.AreEqual(new object[] { -1L, -2L, -3L }, withFail.ToArray());
+				// Without EVAL_NO_FAIL, an uncomputable order-key fails the Top-K
+				// query (OP_NOT_APPLICABLE) rather than dropping those records.
+				AerospikeException ae = Assert.Throws<AerospikeException>(
+					() => ComputedNegScores(set, ExpReadFlags.DEFAULT, 5));
+				Assert.AreEqual(ResultCode.OP_NOT_APPLICABLE, ae.Result);
 
 				List<object> noFail = ComputedNegScores(set, ExpReadFlags.EVAL_NO_FAIL, 5);
 				Assert.AreEqual(5, noFail.Count);

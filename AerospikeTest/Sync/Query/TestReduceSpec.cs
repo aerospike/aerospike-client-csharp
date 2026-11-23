@@ -164,6 +164,7 @@ namespace Aerospike.Test
 
 		/// <summary>
 		/// Case 1: newer lower-scoring X arrives, then C fills the heap — X is out.
+		/// 8.2.1 rule: later LUT wins; generation / staged admission deferred.
 		/// </summary>
 		[TestMethod]
 		public void TopKMergeCase1NewerLowerScoreThenBetterRecord()

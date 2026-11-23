@@ -217,8 +217,13 @@ namespace Aerospike.Client
 		/// partition-tracker layer, regardless of maxRetries. Per-node query
 		/// commands already use command maxRetries of 0, so a timeout fails that
 		/// node attempt immediately rather than re-issuing the same scan.
-		/// Use a socket timeout longer than the expected run (or 0) and a total
-		/// timeout as the deadline.
+		/// Server query-run-time guardrails stop a Top-K or long query with
+		/// <see cref="ResultCode.QUERY_TIMEOUT"/> (212), which is also never
+		/// retried. A Top-K concurrency refusal (<c>order-by-jobs-limit</c>)
+		/// surfaces as <see cref="ResultCode.FAIL_FORBIDDEN"/> (22) and is
+		/// returned to the application without backoff retry. Use a socket
+		/// timeout longer than the expected run (or 0) and a total timeout as
+		/// the deadline.
 		/// </para>
 		/// </summary>
 		public QueryPolicy() : base()

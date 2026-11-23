@@ -398,18 +398,6 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
-		public void FromIgnoresTrailingBytes()
-		{
-			Vector v = Vector.OfInt32(new int[] { 1, 2, 3 });
-
-			byte[] buffer = new byte[v.GetWireSize() + 10];
-			v.WriteTo(buffer, 0);
-
-			Vector parsed = Vector.From(buffer, 0, buffer.Length);
-			Assert.AreEqual(v, parsed);
-		}
-
-		[TestMethod]
 		public void FromRejectsShortBuffer()
 		{
 			AerospikeException e = Assert.Throws<AerospikeException>(() => Vector.From(new byte[4], 0, 4));
@@ -675,16 +663,14 @@ namespace Aerospike.Test
 			byte[] packed = packer.ToByteArray();
 			byte[] wire = query.GetWireBytes();
 
-			// VectorExp packs the query as particle bytes (BLOB + wire payload) plus the
-			// cosine-distance opcode. Asserting the public byte stream avoids relying on
-			// Packer.HasVector(), which is internal-only.
+			// [52, metric, bin, queryBlob]. Cosine metric = 2; ops 53/54 unused.
 			Assert.IsTrue(packed.Length > wire.Length);
 			Assert.IsTrue(packed.AsSpan().IndexOf(wire) >= 0, "Packed expression should embed query vector wire bytes");
-			Assert.IsTrue(packed.AsSpan().IndexOf((byte)54) >= 0, "Packed expression should include cosine distance opcode");
+			AssertPackedDistance(packed, metric: 2);
 		}
 
 		/// <summary>
-		/// AX-02 / AX-14: metrics pack as opcodes 52 / 53 / 54; unknown metric refused at build.
+		/// AX-02 / AX-14: one op 52 with metric 0/1/2; unknown metric refused at build.
 		/// </summary>
 		[TestMethod]
 		public void VectorExpDistanceOpcodesAndRejectsUnknownMetric()
@@ -692,12 +678,12 @@ namespace Aerospike.Test
 			Vector query = Vector.OfFloat32([1f, 0f]);
 			Exp bin = Exp.VectorBin("emb");
 
-			AssertPackedOpcode(
-				VectorExp.Distance(VectorDistanceMetric.EUCLIDEAN_SQUARED, query, bin), 52);
-			AssertPackedOpcode(
-				VectorExp.Distance(VectorDistanceMetric.DOT_PRODUCT, query, bin), 53);
-			AssertPackedOpcode(
-				VectorExp.Distance(VectorDistanceMetric.COSINE_SIMILARITY, query, bin), 54);
+			AssertPackedDistance(
+				VectorExp.Distance(VectorDistanceMetric.EUCLIDEAN_SQUARED, query, bin), 0);
+			AssertPackedDistance(
+				VectorExp.Distance(VectorDistanceMetric.DOT_PRODUCT, query, bin), 1);
+			AssertPackedDistance(
+				VectorExp.Distance(VectorDistanceMetric.COSINE_SIMILARITY, query, bin), 2);
 
 			Assert.Throws<ArgumentException>(() =>
 				VectorExp.Distance((VectorDistanceMetric)99, query, bin));
@@ -705,12 +691,21 @@ namespace Aerospike.Test
 				VectorExp.Distance(VectorDistanceMetric.DOT_PRODUCT, null, bin));
 		}
 
-		private static void AssertPackedOpcode(Exp distance, byte opcode)
+		private static void AssertPackedDistance(Exp distance, int metric)
 		{
 			Packer packer = new();
 			distance.Pack(packer);
-			Assert.IsTrue(packer.ToByteArray().AsSpan().IndexOf(opcode) >= 0,
-				"expected opcode " + opcode);
+			AssertPackedDistance(packer.ToByteArray(), metric);
+		}
+
+		/// <summary>Assert wire prefix <c>0x94, 52, metric</c> (4-element array, op 52).</summary>
+		private static void AssertPackedDistance(byte[] packed, int metric)
+		{
+			// msgpack fixarray(4)=0x94, positive fixints for 52 and metric (0/1/2).
+			// Distance uses a single op 52; 53/54 are not distance opcodes.
+			byte[] prefix = [0x94, 52, (byte)metric];
+			Assert.IsTrue(packed.AsSpan().StartsWith(prefix) || packed.AsSpan().IndexOf(prefix) >= 0,
+				"expected [52, metric=" + metric + ", ...] encoding");
 		}
 
 		//-------------------------------------------------------

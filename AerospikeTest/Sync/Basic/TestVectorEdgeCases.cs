@@ -226,6 +226,25 @@ namespace Aerospike.Test
 		}
 
 		/// <summary>
+		/// AV-06: trailing bytes after the declared element payload are refused.
+		/// </summary>
+		[TestMethod]
+		public void FromRejectsTrailingBytes()
+		{
+			Vector v = Vector.OfFloat32([1f, 2f, 3f]);
+			int exact = v.GetWireSize();
+			byte[] buffer = new byte[exact + 2];
+			v.WriteTo(buffer, 0);
+
+			AerospikeException ae = Assert.Throws<AerospikeException>(
+				() => Vector.From(buffer, 0, buffer.Length));
+			Assert.AreEqual(ResultCode.PARSE_ERROR, ae.Result);
+			StringAssert.Contains(ae.BaseMessage, "does not match");
+
+			Assert.AreEqual(v, Vector.From(buffer, 0, exact));
+		}
+
+		/// <summary>
 		/// AV-09: a vector cannot be used as a record key — refused before send.
 		/// </summary>
 		[TestMethod]

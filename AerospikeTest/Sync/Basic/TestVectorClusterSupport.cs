@@ -142,6 +142,7 @@ namespace Aerospike.Test
 			Assert.IsFalse(Internals.HasVector(Operation.Get("v").value));
 		}
 
+		/// <summary>AS-01: a vector inside a list/map is refused before send.</summary>
 		[TestMethod]
 		public void ListOperationVectorRejected()
 		{

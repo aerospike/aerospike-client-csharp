@@ -236,14 +236,16 @@ namespace Aerospike.Client
 			// Use long math so a large dimensions count cannot overflow the int size computation
 			// (which could otherwise bypass the bounds check and trigger a huge allocation).
 			long dataSizeLong = (long)dimensions * GetElementByteSize(elementType);
+			long expectedLength = HEADER_SIZE + dataSizeLong;
 
-			if (length < HEADER_SIZE + dataSizeLong)
+			// Exact size required (AV-06): too short or trailing extra bytes are refused.
+			if (length != expectedLength)
 			{
 				throw ParseError("Invalid vector length: " + length +
-					", expected at least " + (HEADER_SIZE + dataSizeLong));
+					" does not match " + expectedLength);
 			}
 
-			// Safe to narrow: dataSizeLong <= length - HEADER_SIZE, and length is an int.
+			// Safe to narrow: dataSizeLong == length - HEADER_SIZE, and length is an int.
 			int dataSize = (int)dataSizeLong;
 			object data = ReadElements(elementType, dimensions, buffer.AsSpan(pos, dataSize));
 

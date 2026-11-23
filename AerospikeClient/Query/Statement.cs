@@ -475,8 +475,12 @@ namespace Aerospike.Client
 		/// <see cref="Policy.socketTimeout"/> longer than the expected run time (or 0 for no
 		/// socket idle limit), and set <see cref="Policy.totalTimeout"/> as the query deadline.
 		/// The client does not change the application's timeout policy, and does not retry a
-		/// Top-K query after a client or server <see cref="ResultCode.TIMEOUT"/> — each retry
-		/// would restart a full scan on the timed-out node. On timeout the application receives
+		/// Top-K query after a client or server <see cref="ResultCode.TIMEOUT"/> or
+		/// <see cref="ResultCode.QUERY_TIMEOUT"/> (212, server query-max-run-time guardrail) —
+		/// each retry would restart a full scan on the timed-out node. When a node refuses the
+		/// query because <c>order-by-jobs-limit</c> is exhausted, the application receives
+		/// <see cref="ResultCode.FAIL_FORBIDDEN"/> (22) with the server detail text; the client
+		/// does not backoff-retry that refusal. On timeout or refusal the application receives
 		/// the error and no records (results are delivered only after the merge completes into
 		/// an ordered buffer of at most k, not streamed like an ordinary query).
 		/// </para>

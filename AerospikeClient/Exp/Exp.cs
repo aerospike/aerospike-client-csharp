@@ -1655,9 +1655,8 @@ namespace Aerospike.Client
 		private const int INT_RSCAN = 41;
 		private const int MIN = 50;
 		private const int MAX = 51;
-		private const int VECTOR_EUCLIDEAN_DIST = 52;
-		private const int VECTOR_DOT_PRODUCT = 53;
-		private const int VECTOR_COSINE_SIM = 54;
+		/// <summary>Single vector-distance op; metric is packed as the next array element (0/1/2).</summary>
+		private const int VECTOR_DISTANCE = 52;
 		private const int DIGEST_MODULO = 64;
 		private const int DEVICE_SIZE = 65;
 		private const int LAST_UPDATE = 66;
@@ -1774,25 +1773,27 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Internal vector distance expression.
+		/// Internal vector distance expression. Wire form is
+		/// <c>[52, metric, bin, queryBlob]</c>
 		/// </summary>
 		internal sealed class VectorDist : Exp
 		{
-			private readonly int opcode;
+			private readonly VectorDistanceMetric metric;
 			private readonly Vector query;
 			private readonly Exp bin;
 
-			internal VectorDist(int opcode, Vector query, Exp bin)
+			internal VectorDist(VectorDistanceMetric metric, Vector query, Exp bin)
 			{
-				this.opcode = opcode;
+				this.metric = metric;
 				this.query = query;
 				this.bin = bin;
 			}
 
 			public override void Pack(Packer packer)
 			{
-				packer.PackArrayBegin(3);
-				packer.PackNumber(opcode);
+				packer.PackArrayBegin(4);
+				packer.PackNumber(VECTOR_DISTANCE);
+				packer.PackNumber(VectorDistMetricCode(metric));
 				bin.Pack(packer);
 				// VectorDist: pack wire bytes as BLOB (not VECTOR particle type).
 				// Server build_vector_distance requires BLOB rtypes; build_value_blob
@@ -1801,11 +1802,15 @@ namespace Aerospike.Client
 			}
 		}
 
-		internal static int VectorDistOpcode(VectorDistanceMetric metric) => metric switch
+		/// <summary>
+		/// Map public metric enum to the server's <c>as_vector_distance_metric</c> codes
+		/// (0 squared Euclidean, 1 dot product, 2 cosine similarity).
+		/// </summary>
+		internal static int VectorDistMetricCode(VectorDistanceMetric metric) => metric switch
 		{
-			VectorDistanceMetric.EUCLIDEAN_SQUARED => VECTOR_EUCLIDEAN_DIST,
-			VectorDistanceMetric.DOT_PRODUCT => VECTOR_DOT_PRODUCT,
-			VectorDistanceMetric.COSINE_SIMILARITY => VECTOR_COSINE_SIM,
+			VectorDistanceMetric.EUCLIDEAN_SQUARED => 0,
+			VectorDistanceMetric.DOT_PRODUCT => 1,
+			VectorDistanceMetric.COSINE_SIMILARITY => 2,
 			_ => throw new ArgumentException("Unsupported vector distance metric: " + metric)
 		};
 

@@ -52,7 +52,9 @@ namespace Aerospike.Client
 				throw new ArgumentNullException(nameof(bin));
 			}
 
-			return new Exp.VectorDist(Exp.VectorDistOpcode(metric), query, bin);
+			// Validate metric before packing; wire form is [52, metric, bin, query].
+			_ = Exp.VectorDistMetricCode(metric);
+			return new Exp.VectorDist(metric, query, bin);
 		}
 
 		private VectorExp()
