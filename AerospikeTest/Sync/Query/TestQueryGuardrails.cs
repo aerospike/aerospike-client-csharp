@@ -31,24 +31,30 @@ namespace Aerospike.Test
 		private const int NRecords = 400;
 		private const int TopK = 5;
 
-		// A node applies the rate per query thread (default 4), so 400 records at
-		// RPS 2 outlast the limits and timeouts below.
+		// The rate keeps a query running past the limits and timeouts below. With
+		// 400 records, about 5 s on one node and about 2 s per node on three.
 		private const int Rps = 2;
 
-		private const string ServerRunTimeLimitName = "query-max-run-time-ms";
+		private const string ServerQueryRunTimeLimitName = "query-max-run-time-ms";
 		private const string ServerTimeoutStat = "pi_query_long_basic_timeout";
+		private const string ServerTopKJobsCapName = "order-by-jobs-limit";
+		private const string ServerRefusedStat = "order_by_jobs_refused";
+
 		private const string ServerRunTimeLimitMs = "500";
 		private const string ServerBlockerRunTimeLimitMs = "3000";
-		private const string ServerSocketTimeoutRunTimeLimitMs = "1000";
+		// Above the socket timeout so the client gives up first; without a
+		// deadline a hung-up Top-K job can hold a cap slot for seconds.
+		private const string ServerAbandonedJobRunTimeLimitMs = "1000";
 
 		private const int TotalTimeoutMs = 800;
-		private const int SocketTimeoutMs = 500;
-		private const int SocketTimeoutMaxElapsedMs = 1500;
-		private const int RefusedMaxElapsedMs = 1000;
+		// A retry that restarts the total timeout runs another full timeout, so
+		// the query must end less than half of that past the first one.
+		private const int TotalTimeoutMaxElapsedMs = TotalTimeoutMs * 3 / 2;
 
-		// Server builds have used both names for the Top-K concurrency cap.
-		private static readonly string[] ServerJobsCapNames =
-			["order-by-jobs-limit", "top-k-max-jobs"];
+		private const int SocketTimeoutMs = 500;
+		// A retry waits for another socket timeout, so the query must end less
+		// than half of that past the first one.
+		private const int SocketTimeoutMaxElapsedMs = SocketTimeoutMs * 3 / 2;
 
 		private static void RequireCapableCluster() => RequireQueryOrderBySupport();
 
@@ -58,37 +64,30 @@ namespace Aerospike.Test
 
 		/// <summary>
 		/// A long plain query stopped by <c>query-max-run-time-ms</c> returns
-		/// <see cref="ResultCode.QUERY_TIMEOUT"/> and is not retried (one timeout
-		/// per node in the server statistic, not one per retry).
+		/// <see cref="ResultCode.QUERY_TIMEOUT"/> and is not retried. Each node
+		/// that runs the query counts one timeout.
 		/// </summary>
 		[TestMethod]
 		public void PlainQueryHitsQueryMaxRunTimeReturnsQueryTimeout()
 		{
 			RequireCapableCluster();
-			if (!TrySetNamespaceConfig(ServerRunTimeLimitName, ServerRunTimeLimitMs, out string restoreMs))
+			if (!TrySetNamespaceConfig(ServerQueryRunTimeLimitName, ServerRunTimeLimitMs,
+				out string restoreMs))
 			{
-				Assert.Inconclusive("Server does not expose " + ServerRunTimeLimitName);
+				Assert.Inconclusive("Server does not expose " + ServerQueryRunTimeLimitName);
 			}
 
 			string set = SetPrefix + "Plain212";
 			Key[] keys = SeedScores(set, NRecords);
 			try
 			{
-				Statement stmt = Plain(set);
-				ulong timeoutsBefore = SumNamespaceStat(ServerTimeoutStat);
-
-				AerospikeException ae = Assert.Throws<AerospikeException>(() => DrainQuery(stmt));
-				Assert.AreEqual(ResultCode.QUERY_TIMEOUT, ae.Result);
-
-				Thread.Sleep(500);
-				ulong timeouts = SumNamespaceStat(ServerTimeoutStat) - timeoutsBefore;
-				Assert.IsTrue(timeouts >= 1, "expected at least one server long-query timeout");
-				Assert.IsTrue(timeouts <= (ulong)client.Nodes.Length,
-					"timeouts=" + timeouts + " exceeds cluster size (client retried?)");
+				ulong timeouts = RunAndCountServerTimeouts(() => DrainQuery(Plain(set)));
+				Assert.AreEqual((ulong)client.Nodes.Length, timeouts,
+					"expected one server timeout per node (no retry)");
 			}
 			finally
 			{
-				TrySetNamespaceConfig(ServerRunTimeLimitName, restoreMs, out _);
+				TrySetNamespaceConfig(ServerQueryRunTimeLimitName, restoreMs, out _);
 				DeleteAll(keys);
 			}
 		}
@@ -101,65 +100,52 @@ namespace Aerospike.Test
 		public void TopKHitsQueryMaxRunTimeReturnsQueryTimeout()
 		{
 			RequireCapableCluster();
-			if (!TrySetNamespaceConfig(ServerRunTimeLimitName, ServerRunTimeLimitMs, out string restoreMs))
+			if (!TrySetNamespaceConfig(ServerQueryRunTimeLimitName, ServerRunTimeLimitMs,
+				out string restoreMs))
 			{
-				Assert.Inconclusive("Server does not expose " + ServerRunTimeLimitName);
+				Assert.Inconclusive("Server does not expose " + ServerQueryRunTimeLimitName);
 			}
 
 			string set = SetPrefix + "TopK212";
 			Key[] keys = SeedScores(set, NRecords);
 			try
 			{
-				Statement stmt = Ordered(set, TopK);
-				ulong timeoutsBefore = SumNamespaceStat(ServerTimeoutStat);
-
-				AerospikeException ae = Assert.Throws<AerospikeException>(() => DrainQuery(stmt));
-				Assert.AreEqual(ResultCode.QUERY_TIMEOUT, ae.Result,
-					"guardrail deadline must surface as QUERY_TIMEOUT (212), not TIMEOUT (9)");
-
-				Thread.Sleep(500);
-				ulong timeouts = SumNamespaceStat(ServerTimeoutStat) - timeoutsBefore;
-				Assert.IsTrue(timeouts >= 1, "expected at least one server long-query timeout");
-				Assert.IsTrue(timeouts <= (ulong)client.Nodes.Length,
-					"timeouts=" + timeouts + " exceeds cluster size (client retried?)");
+				ulong timeouts = RunAndCountServerTimeouts(() => DrainQuery(Ordered(set, TopK)));
+				Assert.AreEqual((ulong)client.Nodes.Length, timeouts,
+					"expected one server timeout per node (no retry)");
 			}
 			finally
 			{
-				TrySetNamespaceConfig(ServerRunTimeLimitName, restoreMs, out _);
+				TrySetNamespaceConfig(ServerQueryRunTimeLimitName, restoreMs, out _);
 				DeleteAll(keys);
 			}
 		}
 
 		/// <summary>
-		/// A scan stopped by <c>query-max-run-time-ms</c> returns 212 and is not retried.
+		/// A scan stopped by <c>query-max-run-time-ms</c> returns 212 and is not
+		/// retried. A scan runs one node at a time and stops at the first timeout,
+		/// so the servers count one.
 		/// </summary>
 		[TestMethod]
 		public void ScanHitsQueryMaxRunTimeReturnsQueryTimeout()
 		{
 			RequireCapableCluster();
-			if (!TrySetNamespaceConfig(ServerRunTimeLimitName, ServerRunTimeLimitMs, out string restoreMs))
+			if (!TrySetNamespaceConfig(ServerQueryRunTimeLimitName, ServerRunTimeLimitMs,
+				out string restoreMs))
 			{
-				Assert.Inconclusive("Server does not expose " + ServerRunTimeLimitName);
+				Assert.Inconclusive("Server does not expose " + ServerQueryRunTimeLimitName);
 			}
 
 			string set = SetPrefix + "Scan212";
 			Key[] keys = SeedScores(set, NRecords);
 			try
 			{
-				ulong timeoutsBefore = SumNamespaceStat(ServerTimeoutStat);
-
-				AerospikeException ae = Assert.Throws<AerospikeException>(() => DrainScan(set));
-				Assert.AreEqual(ResultCode.QUERY_TIMEOUT, ae.Result);
-
-				Thread.Sleep(500);
-				ulong timeouts = SumNamespaceStat(ServerTimeoutStat) - timeoutsBefore;
-				Assert.IsTrue(timeouts >= 1, "expected at least one server long-query timeout");
-				Assert.IsTrue(timeouts <= (ulong)client.Nodes.Length,
-					"timeouts=" + timeouts + " exceeds cluster size (client retried?)");
+				ulong timeouts = RunAndCountServerTimeouts(() => DrainScan(set));
+				Assert.AreEqual(1UL, timeouts, "expected one server timeout for a scan (no retry)");
 			}
 			finally
 			{
-				TrySetNamespaceConfig(ServerRunTimeLimitName, restoreMs, out _);
+				TrySetNamespaceConfig(ServerQueryRunTimeLimitName, restoreMs, out _);
 				DeleteAll(keys);
 			}
 		}
@@ -176,34 +162,31 @@ namespace Aerospike.Test
 		public void PlainQueryTotalTimeoutReturnsTimeout()
 		{
 			RequireCapableCluster();
-			if (!TrySetNamespaceConfig(ServerRunTimeLimitName, "0", out string restoreMs))
+			if (!TrySetNamespaceConfig(ServerQueryRunTimeLimitName, "0", out string restoreMs))
 			{
-				Assert.Inconclusive("Server does not expose " + ServerRunTimeLimitName);
+				Assert.Inconclusive("Server does not expose " + ServerQueryRunTimeLimitName);
 			}
 
 			string set = SetPrefix + "PlainTT";
 			Key[] keys = SeedScores(set, NRecords);
 			try
 			{
-				QueryPolicy policy = new()
-				{
-					totalTimeout = TotalTimeoutMs
-				};
-				Statement stmt = Plain(set);
-
+				QueryPolicy policy = new() { totalTimeout = TotalTimeoutMs };
 				Stopwatch sw = Stopwatch.StartNew();
-				AerospikeException ae = Assert.Throws<AerospikeException>(() => DrainQuery(stmt, policy));
+				AerospikeException ae = Assert.Throws<AerospikeException>(
+					() => DrainQuery(Plain(set), policy));
 				sw.Stop();
 
 				Assert.IsTrue(
 					ae.Result == ResultCode.TIMEOUT || ae.Result == ResultCode.QUERY_TIMEOUT,
 					"expected TIMEOUT or QUERY_TIMEOUT, got " + ae.Result);
-				Assert.IsTrue(sw.ElapsedMilliseconds < TotalTimeoutMs * 3,
-					"elapsed " + sw.ElapsedMilliseconds + " ms exceeds 3× total timeout");
+				Assert.IsTrue(sw.ElapsedMilliseconds < TotalTimeoutMaxElapsedMs,
+					"elapsed " + sw.ElapsedMilliseconds +
+					" ms suggests a retry (expected under " + TotalTimeoutMaxElapsedMs + " ms)");
 			}
 			finally
 			{
-				TrySetNamespaceConfig(ServerRunTimeLimitName, restoreMs, out _);
+				TrySetNamespaceConfig(ServerQueryRunTimeLimitName, restoreMs, out _);
 				DeleteAll(keys);
 			}
 		}
@@ -217,34 +200,31 @@ namespace Aerospike.Test
 		public void TopKTotalTimeoutReturnsTimeout()
 		{
 			RequireCapableCluster();
-			if (!TrySetNamespaceConfig(ServerRunTimeLimitName, "0", out string restoreMs))
+			if (!TrySetNamespaceConfig(ServerQueryRunTimeLimitName, "0", out string restoreMs))
 			{
-				Assert.Inconclusive("Server does not expose " + ServerRunTimeLimitName);
+				Assert.Inconclusive("Server does not expose " + ServerQueryRunTimeLimitName);
 			}
 
 			string set = SetPrefix + "TopKTT";
 			Key[] keys = SeedScores(set, NRecords);
 			try
 			{
-				QueryPolicy policy = new()
-				{
-					totalTimeout = TotalTimeoutMs
-				};
-				Statement stmt = Ordered(set, TopK);
-
+				QueryPolicy policy = new() { totalTimeout = TotalTimeoutMs };
 				Stopwatch sw = Stopwatch.StartNew();
-				AerospikeException ae = Assert.Throws<AerospikeException>(() => DrainQuery(stmt, policy));
+				AerospikeException ae = Assert.Throws<AerospikeException>(
+					() => DrainQuery(Ordered(set, TopK), policy));
 				sw.Stop();
 
 				Assert.IsTrue(
 					ae.Result == ResultCode.TIMEOUT || ae.Result == ResultCode.QUERY_TIMEOUT,
 					"expected TIMEOUT or QUERY_TIMEOUT, got " + ae.Result);
-				Assert.IsTrue(sw.ElapsedMilliseconds < TotalTimeoutMs * 3,
-					"elapsed " + sw.ElapsedMilliseconds + " ms exceeds 3× total timeout");
+				Assert.IsTrue(sw.ElapsedMilliseconds < TotalTimeoutMaxElapsedMs,
+					"elapsed " + sw.ElapsedMilliseconds +
+					" ms suggests a retry (expected under " + TotalTimeoutMaxElapsedMs + " ms)");
 			}
 			finally
 			{
-				TrySetNamespaceConfig(ServerRunTimeLimitName, restoreMs, out _);
+				TrySetNamespaceConfig(ServerQueryRunTimeLimitName, restoreMs, out _);
 				DeleteAll(keys);
 			}
 		}
@@ -255,36 +235,27 @@ namespace Aerospike.Test
 
 		/// <summary>
 		/// A Top-K query that exceeds its socket timeout returns
-		/// <see cref="ResultCode.TIMEOUT"/> and is not retried. A large
-		/// <c>sleepBetweenRetries</c> would make any retry exceed the elapsed bound.
+		/// <see cref="ResultCode.TIMEOUT"/> and is not retried. A retry waits for
+		/// another socket timeout, so the elapsed bound is 1.5× the first one.
 		/// </summary>
 		[TestMethod]
 		public void TopKSocketTimeoutNotRetried()
 		{
 			RequireCapableCluster();
-			// Keep a server deadline above the socket timeout so the client gives
-			// up first; without it a hung-up Top-K job can hold a cap slot for seconds.
-			if (!TrySetNamespaceConfig(ServerRunTimeLimitName, ServerSocketTimeoutRunTimeLimitMs,
+			if (!TrySetNamespaceConfig(ServerQueryRunTimeLimitName, ServerAbandonedJobRunTimeLimitMs,
 				out string restoreMs))
 			{
-				Assert.Inconclusive("Server does not expose " + ServerRunTimeLimitName);
+				Assert.Inconclusive("Server does not expose " + ServerQueryRunTimeLimitName);
 			}
 
 			string set = SetPrefix + "SockTO";
 			Key[] keys = SeedScores(set, NRecords);
 			try
 			{
-				QueryPolicy policy = new()
-				{
-					socketTimeout = SocketTimeoutMs,
-					// Any partition-tracker retry would sleep this long first.
-					sleepBetweenRetries = SocketTimeoutMs * 10,
-					maxRetries = 5
-				};
-				Statement stmt = Ordered(set, TopK);
-
+				QueryPolicy policy = new() { socketTimeout = SocketTimeoutMs };
 				Stopwatch sw = Stopwatch.StartNew();
-				AerospikeException ae = Assert.Throws<AerospikeException>(() => DrainQuery(stmt, policy));
+				AerospikeException ae = Assert.Throws<AerospikeException>(
+					() => DrainQuery(Ordered(set, TopK), policy));
 				sw.Stop();
 
 				Assert.AreEqual(ResultCode.TIMEOUT, ae.Result);
@@ -294,7 +265,7 @@ namespace Aerospike.Test
 			}
 			finally
 			{
-				TrySetNamespaceConfig(ServerRunTimeLimitName, restoreMs, out _);
+				TrySetNamespaceConfig(ServerQueryRunTimeLimitName, restoreMs, out _);
 				DeleteAll(keys);
 			}
 		}
@@ -305,23 +276,25 @@ namespace Aerospike.Test
 
 		/// <summary>
 		/// AE-08: a Top-K query refused by the job cap returns
-		/// <see cref="ResultCode.FAIL_FORBIDDEN"/> with the server's reason and
-		/// is not retried.
+		/// <see cref="ResultCode.FAIL_FORBIDDEN"/> and is not retried. Each node
+		/// that refuses counts one in <c>order_by_jobs_refused</c>; a retry
+		/// raises the count.
 		/// </summary>
 		[TestMethod]
 		public void ConcurrentTopKHitsOrderByJobsLimitReturnsForbidden()
 		{
 			RequireCapableCluster();
-			if (!TrySetNamespaceConfig(ServerRunTimeLimitName, ServerBlockerRunTimeLimitMs,
+			if (!TrySetNamespaceConfig(ServerQueryRunTimeLimitName, ServerBlockerRunTimeLimitMs,
 				out string restoreMs))
 			{
-				Assert.Inconclusive("Server does not expose " + ServerRunTimeLimitName);
+				Assert.Inconclusive("Server does not expose " + ServerQueryRunTimeLimitName);
 			}
 
-			if (!TrySetJobsCap("1", out string jobsCapName, out string restoreCap))
+			if (!TrySetServiceConfig(ServerTopKJobsCapName, "1", out string restoreCap))
 			{
-				TrySetNamespaceConfig(ServerRunTimeLimitName, restoreMs, out _);
-				Assert.Inconclusive("Server does not expose a Top-K job cap setting");
+				TrySetNamespaceConfig(ServerQueryRunTimeLimitName, restoreMs, out _);
+				Assert.Fail("Server exposes " + ServerQueryRunTimeLimitName +
+					" but not " + ServerTopKJobsCapName);
 			}
 
 			string set = SetPrefix + "JobsCap";
@@ -347,36 +320,22 @@ namespace Aerospike.Test
 				blocker.Start();
 				Thread.Sleep(500);
 
-				QueryPolicy refusedPolicy = new()
-				{
-					errorDetailVerbosity = 2,
-					sleepBetweenRetries = 500,
-					maxRetries = 5
-				};
-				Statement refusedStmt = Ordered(set, TopK);
-
-				Stopwatch sw = Stopwatch.StartNew();
+				ulong refusedBefore = SumServiceStat(ServerRefusedStat);
 				AerospikeException ae = Assert.Throws<AerospikeException>(
-					() => DrainQuery(refusedStmt, refusedPolicy));
-				sw.Stop();
+					() => DrainQuery(Ordered(set, TopK)));
+				ulong nRefused = SumServiceStat(ServerRefusedStat) - refusedBefore;
 
 				blocker.Join(TimeSpan.FromMinutes(2));
 
 				Assert.AreEqual(ResultCode.FAIL_FORBIDDEN, ae.Result,
-					"expected FAIL_FORBIDDEN (22) from " + jobsCapName + "; blocker=" +
-					Describe(blockerError));
-				Assert.IsTrue(
-					ae.BaseMessage.Contains("retry later", StringComparison.OrdinalIgnoreCase) ||
-					ae.Message.Contains("retry later", StringComparison.OrdinalIgnoreCase),
-					"expected server 'retry later' detail; got: " + ae.BaseMessage);
-				Assert.IsTrue(sw.ElapsedMilliseconds < RefusedMaxElapsedMs,
-					"elapsed " + sw.ElapsedMilliseconds +
-					" ms suggests a retry (expected under " + RefusedMaxElapsedMs + " ms)");
+					"expected FAIL_FORBIDDEN (22); blocker=" + Describe(blockerError));
+				Assert.AreEqual((ulong)client.Nodes.Length, nRefused,
+					"expected one refusal per node (no retry); blocker=" + Describe(blockerError));
 			}
 			finally
 			{
-				TrySetServiceConfig(jobsCapName, restoreCap, out _);
-				TrySetNamespaceConfig(ServerRunTimeLimitName, restoreMs, out _);
+				TrySetServiceConfig(ServerTopKJobsCapName, restoreCap, out _);
+				TrySetNamespaceConfig(ServerQueryRunTimeLimitName, restoreMs, out _);
 				DeleteAll(keys);
 			}
 		}
@@ -403,15 +362,29 @@ namespace Aerospike.Test
 			return stmt;
 		}
 
-		private static int DrainQuery(Statement stmt, QueryPolicy policy = null)
+		/// <summary>
+		/// Run an action expected to throw QUERY_TIMEOUT and return how many
+		/// long-query timeouts the servers counted for it.
+		/// </summary>
+		private static ulong RunAndCountServerTimeouts(Action action)
 		{
-			int count = 0;
+			ulong timeoutsBefore = SumNamespaceStat(ServerTimeoutStat);
+			AerospikeException ae = Assert.Throws<AerospikeException>(action);
+			Assert.AreEqual(ResultCode.QUERY_TIMEOUT, ae.Result,
+				"guardrail deadline must surface as QUERY_TIMEOUT (212), not TIMEOUT (9)");
+
+			// A node may count the timeout after it has sent the error.
+			Thread.Sleep(500);
+			return SumNamespaceStat(ServerTimeoutStat) - timeoutsBefore;
+		}
+
+		private static void DrainQuery(Statement stmt, QueryPolicy policy = null)
+		{
 			using RecordSet rs = client.Query(policy, stmt);
 			while (rs.Next())
 			{
-				count++;
+				// consume
 			}
-			return count;
 		}
 
 		private static void DrainScan(string set)
@@ -452,18 +425,23 @@ namespace Aerospike.Test
 			return e == null ? "(none)" : e.GetType().Name + ": " + e.Message;
 		}
 
+		private static ulong SumNamespaceStat(string name) =>
+			SumStat("namespace/" + SuiteHelpers.ns, name);
+
+		private static ulong SumServiceStat(string name) =>
+			SumStat("statistics", name);
+
 		/// <summary>
-		/// Sum a namespace statistic over every node (best-effort; missing stats count as 0).
+		/// Sum a statistic over every node (best-effort; missing stats count as 0).
 		/// </summary>
-		private static ulong SumNamespaceStat(string name)
+		private static ulong SumStat(string command, string name)
 		{
 			ulong sum = 0;
-			string req = "namespace/" + SuiteHelpers.ns;
 			foreach (Node node in client.Nodes)
 			{
 				try
 				{
-					string res = Info.Request(null, node, req);
+					string res = Info.Request(null, node, command);
 					if (res == null)
 					{
 						continue;
@@ -488,27 +466,8 @@ namespace Aerospike.Test
 		}
 
 		/// <summary>
-		/// Set the Top-K / order-by jobs cap, trying each known config name.
-		/// </summary>
-		private static bool TrySetJobsCap(string value, out string nameUsed, out string previous)
-		{
-			nameUsed = null;
-			previous = "0";
-			foreach (string name in ServerJobsCapNames)
-			{
-				if (TrySetServiceConfig(name, value, out previous))
-				{
-					nameUsed = name;
-					return true;
-				}
-			}
-			return false;
-		}
-
-		/// <summary>
 		/// Set a service-context dynamic config on every node. Returns false when the
-		/// knob is unknown (older servers). <paramref name="previous"/> is best-effort
-		/// ("0" when unread) for restore in finally.
+		/// knob is unknown (older servers).
 		/// </summary>
 		private static bool TrySetServiceConfig(string name, string value, out string previous)
 		{
@@ -521,8 +480,7 @@ namespace Aerospike.Test
 					return false;
 				}
 
-				string cmd = "set-config:context=service;" + name + "=" + value;
-				return ApplyConfigOnAllNodes(cmd);
+				return ApplyConfigOnAllNodes("set-config:context=service;" + name + "=" + value);
 			}
 			catch (AerospikeException)
 			{
@@ -543,8 +501,8 @@ namespace Aerospike.Test
 					return false;
 				}
 
-				string cmd = "set-config:context=namespace;id=" + ns + ";" + name + "=" + value;
-				return ApplyConfigOnAllNodes(cmd);
+				return ApplyConfigOnAllNodes(
+					"set-config:context=namespace;id=" + ns + ";" + name + "=" + value);
 			}
 			catch (AerospikeException)
 			{
@@ -560,18 +518,16 @@ namespace Aerospike.Test
 				return false;
 			}
 
-			bool found = false;
 			foreach (string part in getConfigResponse.Split(';'))
 			{
 				string[] kv = part.Split('=', 2);
 				if (kv.Length == 2 && kv[0] == name)
 				{
 					previous = kv[1];
-					found = true;
-					break;
+					return true;
 				}
 			}
-			return found;
+			return false;
 		}
 
 		private static bool ApplyConfigOnAllNodes(string command)
