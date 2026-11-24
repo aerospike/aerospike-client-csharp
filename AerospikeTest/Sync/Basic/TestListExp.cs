@@ -416,6 +416,21 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void SortDescendingExpression()
+		{
+			IList<Value> list = [Value.Get(30), Value.Get(10), Value.Get(20)];
+			client.Put(null, keyA, new Bin(binA, list));
+
+			Expression exp = Exp.Build(
+				ListExp.GetByIndex(ListReturnType.VALUE, Exp.Type.INT, Exp.Val(0),
+					ListExp.Sort(ListSortFlags.DESCENDING, Exp.ListBin(binA))));
+			Record record = client.Operate(null, keyA,
+				ExpOperation.Read("max", exp, ExpReadFlags.DEFAULT));
+
+			Assert.AreEqual(30L, record.GetLong("max"));
+		}
+
+		[TestMethod]
 		public void NestedListInMapExpression()
 		{
 			Dictionary<string, object> map = new()

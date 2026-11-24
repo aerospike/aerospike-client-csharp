@@ -577,6 +577,39 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void OperateListSortDesc()
+		{
+			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey10d");
+
+			client.Delete(null, key);
+
+			IList itemList = new List<Value>
+			{
+				Value.Get(1),
+				Value.Get(-11),
+				Value.Get(12),
+				Value.Get(11)
+			};
+
+			Record record = client.Operate(null, key,
+				ListOperation.AppendItems(ListPolicy.Default, binName, itemList),
+				ListOperation.Sort(binName, ListSortFlags.DESCENDING),
+				ListOperation.Get(binName, 0)
+				);
+
+			AssertRecordFound(key, record);
+
+			IList results = record.GetList(binName);
+			int i = 0;
+
+			long size = (long)results[i++];
+			Assert.AreEqual(4L, size);
+
+			long val = (long)results[i++];
+			Assert.AreEqual(12L, val);
+		}
+
+		[TestMethod]
 		public void OperateListRemove()
 		{
 			Key key = new(SuiteHelpers.ns, SuiteHelpers.set, "oplkey11");
