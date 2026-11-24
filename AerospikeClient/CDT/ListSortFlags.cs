@@ -27,6 +27,11 @@ namespace Aerospike.Client
 		DEFAULT = 0,
 
 		/// <summary>
+		/// Sort in descending order.
+		/// </summary>
+		DESCENDING = 1,
+
+		/// <summary>
 		/// Drop duplicate values when sorting list.
 		/// </summary>
 		DROP_DUPLICATES = 2

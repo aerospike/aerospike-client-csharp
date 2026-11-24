@@ -54,6 +54,21 @@ namespace Aerospike.Client
 		SINDEX_ADMIN = 4,
 
 		/// <summary>
+		/// User can perform backup administration actions.
+		/// Examples include starting and aborting a backup. Global scope only.
+		/// Requires server version 8.2.1+. This privilege is only returned by query roles and
+		/// query users when the server is started with "--preview backup-restore".
+		/// </summary>
+		BACKUP_ADMIN = 5,
+
+		/// <summary>
+		/// User can perform restore administration actions.
+		/// Examples include starting and aborting a restore. Global scope only.
+		/// See BACKUP_ADMIN for server version and preview requirements.
+		/// </summary>
+		RESTORE_ADMIN = 6,
+
+		/// <summary>
 		/// User can read data.
 		/// </summary>
 		READ = 10,

@@ -62,6 +62,8 @@ namespace Aerospike.Test
 			Assert.AreEqual(Role.DataAdmin, CodeString(PrivilegeCode.DATA_ADMIN));
 			Assert.AreEqual(Role.UDFAdmin, CodeString(PrivilegeCode.UDF_ADMIN));
 			Assert.AreEqual(Role.SIndexAdmin, CodeString(PrivilegeCode.SINDEX_ADMIN));
+			Assert.AreEqual(Role.BackupAdmin, CodeString(PrivilegeCode.BACKUP_ADMIN));
+			Assert.AreEqual(Role.RestoreAdmin, CodeString(PrivilegeCode.RESTORE_ADMIN));
 			Assert.AreEqual(Role.Read, CodeString(PrivilegeCode.READ));
 			Assert.AreEqual(Role.Write, CodeString(PrivilegeCode.WRITE));
 			Assert.AreEqual(Role.ReadWrite, CodeString(PrivilegeCode.READ_WRITE));
@@ -75,10 +77,29 @@ namespace Aerospike.Test
 		public void PrivilegeCanScopeReturnsFalseForGlobalAdminCodes()
 		{
 			Privilege sysAdmin = new() { code = PrivilegeCode.SYS_ADMIN };
+			Privilege backupAdmin = new() { code = PrivilegeCode.BACKUP_ADMIN };
+			Privilege restoreAdmin = new() { code = PrivilegeCode.RESTORE_ADMIN };
 			Privilege read = new() { code = PrivilegeCode.READ, ns = "test" };
 
 			Assert.IsFalse(sysAdmin.CanScope());
+			Assert.IsFalse(backupAdmin.CanScope());
+			Assert.IsFalse(restoreAdmin.CanScope());
 			Assert.IsTrue(read.CanScope());
+		}
+
+		[TestMethod]
+		public void BackupAndRestoreAdminPrivilegeCodesAreGlobalOnly()
+		{
+			Privilege backup = new() { code = PrivilegeCode.BACKUP_ADMIN };
+			Privilege restore = new() { code = PrivilegeCode.RESTORE_ADMIN };
+
+			Assert.AreEqual(Role.BackupAdmin, backup.ToString());
+			Assert.AreEqual(Role.RestoreAdmin, restore.ToString());
+			Assert.IsFalse(backup.CanScope());
+			Assert.IsFalse(restore.CanScope());
+
+			Assert.IsTrue(new Role { name = Role.BackupAdmin }.isPredefined());
+			Assert.IsTrue(new Role { name = Role.RestoreAdmin }.isPredefined());
 		}
 
 		private static string CodeString(PrivilegeCode code)
