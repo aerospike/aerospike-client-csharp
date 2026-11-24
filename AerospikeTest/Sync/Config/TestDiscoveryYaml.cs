@@ -225,6 +225,54 @@ namespace Aerospike.Test
 			}
 		}
 
+		/// <summary>
+		/// Conformance aws-tags/dns client.yaml files are static-only (no dynamic section).
+		/// Missing dynamic must not discard static discovery.
+		/// </summary>
+		[TestMethod]
+		public void StaticOnlyYamlAppliesDiscovery()
+		{
+			// No dynamic: section — same shape as conformance aws-tags/dns client.yaml.
+			const string yaml = """
+				version: 1.2.0
+				static:
+				  client:
+				    discovery:
+				      provider: aws-tags
+				      execution_mode: thread
+				      refresh_timeout_ms: 1000
+				      aws:
+				        region: us-east-1
+				        filters:
+				          - name: tag:aerospike-cluster
+				            values:
+				              - prod-a
+				        port: 4710
+				        timeout_ms: 80
+				        init_timeout_ms: 100
+				        endpoint: http://127.0.0.1:59999
+				""";
+
+			(AerospikeClient client, string path) = Open(yaml);
+
+			try
+			{
+				Assert.IsNotNull(ConfigTestHelpers.GetConfigProvider(client));
+				Assert.IsNotNull(ConfigTestHelpers.GetConfigProvider(client).ConfigurationData);
+				ClientPolicy policy = ConfigTestHelpers.GetClientPolicy(client);
+				Assert.IsInstanceOfType(policy.seedCandidateProvider, typeof(AwsEc2TagSeedCandidateProvider));
+				AwsEc2TagSeedCandidateProvider aws = (AwsEc2TagSeedCandidateProvider)policy.seedCandidateProvider;
+				Assert.AreEqual("us-east-1", aws.Region);
+				Assert.AreEqual(4710, aws.Port);
+				Assert.AreEqual(DiscoveryExecutionMode.THREAD, policy.discoveryExecutionMode);
+				Assert.AreEqual(1000, policy.discoveryRefreshTimeoutMs);
+			}
+			finally
+			{
+				Close(client, path);
+			}
+		}
+
 		[TestMethod]
 		public void AwsTagsWithoutAwsBlockRejected()
 		{

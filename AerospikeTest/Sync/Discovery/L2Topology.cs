@@ -19,6 +19,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 using Aerospike.Client;
@@ -376,6 +377,48 @@ namespace Aerospike.Test
 				tendInterval = TendInterval,
 				timeout = 1000
 			};
+		}
+
+		/// <summary>
+		/// <see cref="TlsPolicy"/> that trusts <c>DISCOVERY_TLS_CA_FILE</c> via
+		/// <see cref="TlsPolicy.certificateChainPolicy"/> (CustomRootTrust), matching L5Driver.
+		/// </summary>
+		public static TlsPolicy TlsPolicyFromCaFile()
+		{
+			string caFile = Optional("DISCOVERY_TLS_CA_FILE");
+			TlsPolicy policy = new TlsPolicy();
+
+			if (string.IsNullOrEmpty(caFile))
+			{
+				return policy;
+			}
+
+			if (!File.Exists(caFile))
+			{
+				throw new InvalidOperationException("DISCOVERY_TLS_CA_FILE not found: " + caFile);
+			}
+
+			X509Certificate2Collection certs = new X509Certificate2Collection();
+			certs.ImportFromPemFile(caFile);
+
+			if (certs.Count == 0)
+			{
+				throw new InvalidOperationException("DISCOVERY_TLS_CA_FILE has no certificate: " + caFile);
+			}
+
+			X509ChainPolicy chainPolicy = new X509ChainPolicy
+			{
+				TrustMode = X509ChainTrustMode.CustomRootTrust,
+				RevocationMode = X509RevocationMode.NoCheck
+			};
+
+			foreach (X509Certificate2 cert in certs)
+			{
+				chainPolicy.CustomTrustStore.Add(cert);
+			}
+
+			policy.certificateChainPolicy = chainPolicy;
+			return policy;
 		}
 
 		public static Dictionary<string, string> PortMapByEndpoint(List<L2Node> list)

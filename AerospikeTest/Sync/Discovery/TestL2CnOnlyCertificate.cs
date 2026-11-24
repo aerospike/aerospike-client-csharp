@@ -61,7 +61,7 @@ namespace Aerospike.Test
 			Assert.IsNotNull(first.TlsName, "No tls-name for " + first);
 
 			ClientPolicy policy = L2Topology.Policy();
-			policy.tlsPolicy = new TlsPolicy();
+			policy.tlsPolicy = L2Topology.TlsPolicyFromCaFile();
 			policy.addressTranslator = new PortMapAddressTranslator(L2Topology.TlsPortMap(nodes));
 			TestL2Topology.CaptureWarnings();
 

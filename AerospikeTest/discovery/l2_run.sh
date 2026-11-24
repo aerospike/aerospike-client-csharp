@@ -118,16 +118,14 @@ for port in "${port_list[@]}"; do
 	timeout 10 bash -c "echo >/dev/tcp/${host}/${port}"
 done
 
-# Mirror Java l2_run.sh keytool import: put the topology CA into the system trust store so
-# SslStream / OpenSSL accept the server cert (TlsPolicy has no CA hook).
+# Trust the topology CA via TlsPolicy.certificateChainPolicy (CustomRootTrust) in L2 TLS
+# tests — not the container system store (Amazon Linux has no ca-certificates path here).
 if [[ -n "${ca_file}" ]]; then
 	[[ -f "${ca_file}" ]] || {
 		echo "DISCOVERY_TLS_CA_FILE is set but not a file: ${ca_file}" >&2
 		exit 1
 	}
-	echo "Trusting Aerospike CA: ${ca_file}"
-	cp "${ca_file}" /usr/local/share/ca-certificates/aerospike-ca.crt
-	update-ca-certificates
+	echo "L2 TLS CA file: ${ca_file} (CustomRootTrust in client)"
 fi
 
 [[ "$filter" =~ ^[A-Za-z0-9~=_.|-]+$ ]] || {

@@ -368,7 +368,7 @@ namespace Aerospike.Test
 			Assert.IsFalse(first.TlsName.Equals(L2Topology.Host), "tls-name " + first.TlsName + " is the endpoint hostname");
 
 			ClientPolicy policy = L2Topology.Policy();
-			policy.tlsPolicy = new TlsPolicy();
+			policy.tlsPolicy = L2Topology.TlsPolicyFromCaFile();
 			policy.addressTranslator = new PortMapAddressTranslator(L2Topology.TlsPortMap(nodes));
 			CaptureWarnings();
 
@@ -895,10 +895,13 @@ namespace Aerospike.Test
 		{
 			Warnings.Clear();
 			Errors.Clear();
-			Log.SetLevel(Log.Level.WARN);
+			// INFO so FR-46 pass-through / unchanged-advertisement collisions are emitted;
+			// those are logged at INFO, translator-produced collisions at WARN.
+			Log.SetLevel(Log.Level.INFO);
 			Log.SetCallback((level, message) =>
 			{
-				if (level == Log.Level.WARN)
+				if (level == Log.Level.WARN ||
+					(level == Log.Level.INFO && message.Contains("to the same address")))
 				{
 					Warnings.Enqueue(message);
 				}

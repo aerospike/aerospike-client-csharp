@@ -331,9 +331,10 @@ namespace Aerospike.Client
 			var dynamicSection = configRoot.GetSection("dynamic");
 			if (!dynamicSection.Exists())
 			{
-				// disable dynamic config
-				ConfigurationData = null;
-				Log.Info("Dynamic configuration has been disabled.");
+				// Keep static ConfigurationData (discovery, translation, ip_map, …). An absent
+				// dynamic section means no dynamic overrides — not "discard the whole YAML".
+				// Conformance aws-tags/dns client.yaml files are static-only.
+				Log.Info("Dynamic configuration section absent; applying static config only.");
 			}
 			else
 			{
