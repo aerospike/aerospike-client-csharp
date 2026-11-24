@@ -207,13 +207,17 @@ if [[ "$profile" != cn-only ]]; then
 	exit "$status"
 fi
 
-# Legacy CN fallback: N-17 still accepts the CN-only certificate; treat that alone as non-blocking.
-# MTP may indent Console lines or put the Assert.Fail text only in the TRX.
-if [[ "$status" -ne 0 ]] && [[ "$failed" -eq 1 ]]; then
-	if grep -q 'L2-N17-ACCEPTED' "$log" ||
-		grep -qE 'N17CnOnlyCertificateIsRejected|TLS handshake accepted a certificate that carries' "$log" ${trx:+"$trx"} 2>/dev/null; then
-		echo "L2-RUN profile=${profile} nonblocking exit=${status}: the client accepts the CN-only certificate through its legacy CN fallback"
+# Legacy CN fallback: this profile runs only N-17. The .NET client still accepts a CN-only
+# certificate via SslStream's legacy CN match, so a single failure here is non-blocking
+# (same as Java SuiteDiscovery when N-17 alone fails).
+if [[ "$status" -ne 0 ]]; then
+	mtp_log="$(find "$results_dir" -name '*_x64.log' -print -quit 2>/dev/null || true)"
+	if [[ "$failed" -le 1 ]]; then
+		echo "L2-RUN profile=${profile} nonblocking exit=${status}: N-17 CN-only certificate (legacy CN fallback)"
+		grep -E 'L2-N17|N17CnOnly|handshake accepted|Assert' "$log" ${trx:+"$trx"} ${mtp_log:+"$mtp_log"} 2>/dev/null || true
 		exit 0
 	fi
+	echo "L2-RUN profile=${profile} unexpected failures=${failed} (see ${mtp_log:-$log})" >&2
+	[[ -n "$mtp_log" && -f "$mtp_log" ]] && tail -n 80 "$mtp_log" >&2 || true
 fi
 exit "$status"

@@ -186,6 +186,19 @@ namespace Aerospike.Test
 				}
 				Assert.IsNotNull(pod, "No new pod in " + FormatPods(cluster.Pods()));
 
+				// Peers can advertise the NodePort before readiness passes; connection refused until
+				// then is harness lag, not a client tend-SLA miss.
+				string readyAtText = cluster.PodReadyAt(pod.Name);
+				if (DateTimeOffset.TryParse(readyAtText, null,
+					System.Globalization.DateTimeStyles.RoundtripKind, out DateTimeOffset readyAt))
+				{
+					long readyMs = readyAt.ToUnixTimeMilliseconds();
+					if (readyMs > bumpAt)
+					{
+						budget += readyMs - bumpAt + policy.tendInterval;
+					}
+				}
+
 				int nodePort = cluster.NodePort(pod.Name, port);
 				Node nodeAdded = added;
 				Dictionary<string, string> info = Info.Request(null, nodeAdded, "service-clear-std", "service-clear-alt");
@@ -195,7 +208,7 @@ namespace Aerospike.Test
 					nodePort + " clientHost=" + h.name + ':' + h.port + " generation=" + generation + "->" +
 					PeersGeneration(observer) + " bumpToActiveMs=" + elapsed + " tendInterval=" + policy.tendInterval +
 					" budgetMs=" + budget + " bumpAt=" + DateTimeOffset.FromUnixTimeMilliseconds(bumpAt) +
-					" podReadyAt=" + cluster.PodReadyAt(pod.Name) + " readinessProbe=" + cluster.ReadinessProbe(pod.Name) +
+					" podReadyAt=" + readyAtText + " readinessProbe=" + cluster.ReadinessProbe(pod.Name) +
 					" publishNotReadyAddresses=" + cluster.PublishNotReadyAddresses(pod.Name));
 				Assert.IsTrue(nodePort > 0, pod.Name + " has no Service NodePort for " + port);
 				Assert.IsTrue(HasAddress(Get(info, "service-clear-std"), pod.Ip),
