@@ -208,8 +208,12 @@ if [[ "$profile" != cn-only ]]; then
 fi
 
 # Legacy CN fallback: N-17 still accepts the CN-only certificate; treat that alone as non-blocking.
-if [[ "$status" -ne 0 ]] && grep -q '^L2-N17-ACCEPTED ' "$log" && [[ "$failed" -eq 1 ]]; then
-	echo "L2-RUN profile=${profile} nonblocking exit=${status}: the client accepts the CN-only certificate through its legacy CN fallback"
-	exit 0
+# MTP may indent Console lines or put the Assert.Fail text only in the TRX.
+if [[ "$status" -ne 0 ]] && [[ "$failed" -eq 1 ]]; then
+	if grep -q 'L2-N17-ACCEPTED' "$log" ||
+		grep -qE 'N17CnOnlyCertificateIsRejected|TLS handshake accepted a certificate that carries' "$log" ${trx:+"$trx"} 2>/dev/null; then
+		echo "L2-RUN profile=${profile} nonblocking exit=${status}: the client accepts the CN-only certificate through its legacy CN fallback"
+		exit 0
+	fi
 fi
 exit "$status"

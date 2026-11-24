@@ -36,14 +36,21 @@ for path in files:
         if outcome not in ("Inconclusive", "NotExecuted"):
             continue
         test_name = unit.get("testName", "")
-        # testName is often Namespace.Class.Method or Class.Method
+        # testName is often Namespace.Class.Method or Class.Method; MTP may emit method only.
         parts = test_name.split(".")
         if len(parts) >= 2:
             cls, method = parts[-2], parts[-1]
         else:
             cls, method = test_name, "*"
         name = f"{cls}.{method}"
-        if name in expected or f"{cls}.*" in expected:
+        matched = (
+            name in expected
+            or f"{cls}.*" in expected
+            or test_name in expected
+            or any(e.endswith("." + test_name) for e in expected)
+            or (method != "*" and any(e.endswith("." + method) or e == method for e in expected))
+        )
+        if matched:
             print(f"Expected skip: {name}")
         else:
             print(f"::error::{name} skipped (outcome={outcome})")

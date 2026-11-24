@@ -176,7 +176,8 @@ namespace Aerospike.Client
 					ConfigurationData = ResolveConfigurationData();
 					ValidateSchemaVersion(configRoot, schemaVersion);
 					ProcessStaticConfig();
-					ProcessDynamicConfig();
+					// Keep static when dynamic is absent (conformance aws-tags/dns are static-only).
+					ProcessDynamicConfig(retainStaticWithoutDynamic: true);
 					LogConfigChanges(true);
 
 					Watch();
@@ -192,7 +193,8 @@ namespace Aerospike.Client
 			{
 				ConfigurationData = ResolveConfigurationData();
 				ValidateSchemaVersion(configRoot, schemaVersion);
-				ProcessDynamicConfig();
+				// Reload does not re-bind static; removing dynamic disables YAML-driven config.
+				ProcessDynamicConfig(retainStaticWithoutDynamic: false);
 				LogConfigChanges(false);
 				modified = false;
 				return true;
@@ -326,15 +328,25 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void ProcessDynamicConfig()
+		/// <param name="retainStaticWithoutDynamic">
+		/// Initial load: true — keep static ConfigurationData when <c>dynamic</c> is absent
+		/// (static-only YAML). Reload: false — clearing dynamic disables YAML-driven config
+		/// (<see cref="ConfigurationData"/> becomes null); static is not re-bound on reload.
+		/// </param>
+		private void ProcessDynamicConfig(bool retainStaticWithoutDynamic)
 		{
 			var dynamicSection = configRoot.GetSection("dynamic");
 			if (!dynamicSection.Exists())
 			{
-				// Keep static ConfigurationData (discovery, translation, ip_map, …). An absent
-				// dynamic section means no dynamic overrides — not "discard the whole YAML".
-				// Conformance aws-tags/dns client.yaml files are static-only.
-				Log.Info("Dynamic configuration section absent; applying static config only.");
+				if (retainStaticWithoutDynamic)
+				{
+					Log.Info("Dynamic configuration section absent; applying static config only.");
+				}
+				else
+				{
+					ConfigurationData = null;
+					Log.Info("Dynamic configuration has been disabled.");
+				}
 			}
 			else
 			{
