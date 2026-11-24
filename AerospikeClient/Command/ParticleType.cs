@@ -25,6 +25,7 @@ namespace Aerospike.Client
 		STRING = 3,
 		BLOB = 4,
 		CSHARP_BLOB = 8,
+		VECTOR = 16,
 		BOOL = 17,
 		HLL = 18,
 		MAP = 19,

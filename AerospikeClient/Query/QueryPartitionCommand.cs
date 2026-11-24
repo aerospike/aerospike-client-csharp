@@ -22,8 +22,10 @@ namespace Aerospike.Client
 		private readonly Statement statement;
 		private readonly ulong taskId;
 		private readonly RecordSet recordSet;
+		private readonly ReduceSpec<Record, Record> reducer;
 		private readonly PartitionTracker tracker;
 		private readonly NodePartitions nodePartitions;
+		private readonly bool sendTopK;
 
 		public QueryPartitionCommand
 		(
@@ -34,13 +36,30 @@ namespace Aerospike.Client
 			RecordSet recordSet,
 			PartitionTracker tracker,
 			NodePartitions nodePartitions
+		) : this(cluster, policy, statement, taskId, recordSet, null, tracker, nodePartitions, false)
+		{
+		}
+
+		internal QueryPartitionCommand
+		(
+			Cluster cluster,
+			Policy policy,
+			Statement statement,
+			ulong taskId,
+			RecordSet recordSet,
+			ReduceSpec<Record, Record> reducer,
+			PartitionTracker tracker,
+			NodePartitions nodePartitions,
+			bool sendTopK
 		) : base(cluster, policy, nodePartitions.node, statement.ns, tracker.socketTimeout, tracker.totalTimeout)
 		{
 			this.statement = statement;
 			this.taskId = taskId;
 			this.recordSet = recordSet;
+			this.reducer = reducer;
 			this.tracker = tracker;
 			this.nodePartitions = nodePartitions;
+			this.sendTopK = sendTopK;
 		}
 
 		public override void Execute()
@@ -65,7 +84,7 @@ namespace Aerospike.Client
 
 		protected internal override void WriteBuffer()
 		{
-			SetQuery(cluster, policy, statement, taskId, false, nodePartitions, nodePartitions.node);
+			SetQuery(cluster, policy, statement, taskId, false, nodePartitions, nodePartitions.node, sendTopK);
 		}
 
 		protected internal override bool ParseRow()
@@ -78,8 +97,13 @@ namespace Aerospike.Client
 				// When an error code is received, mark partition as unavailable
 				// for the current round. Unavailable partitions will be retried
 				// in the next round. Generation is overloaded as partitionId.
+				// Top-K must not retry TIMEOUT via that path.
 				if (resultCode != 0)
 				{
+					if (statement.HasTopK && resultCode == ResultCode.TIMEOUT)
+					{
+						throw CreateException(resultCode);
+					}
 					tracker.PartitionUnavailable(nodePartitions, generation);
 				}
 				return true;
@@ -99,13 +123,34 @@ namespace Aerospike.Client
 
 			if (tracker.AllowRecord())
 			{
-				if (!recordSet.Put(new KeyRecord(key, record)))
+				if (reducer != null)
+				{
+					// Feed the client-side global reduce combiner instead of streaming this
+					// partial result directly to the caller. The executor emits the merged
+					// result (if any) once all partitions have been received.
+					reducer.AcceptPartial(record, key, lastUpdateTime);
+
+					if (sendTopK)
+					{
+						// The server streams Top-K in rank order, not digest order, so
+						// resuming after this digest would skip ranked candidates not yet
+						// streamed. The merge drops the duplicates a full re-query returns.
+						tracker.CountRecord(nodePartitions);
+					}
+					else
+					{
+						tracker.SetLast(nodePartitions, key, bval);
+					}
+				}
+				else if (!recordSet.Put(new KeyRecord(key, record)))
 				{
 					Stop();
 					throw new AerospikeException.QueryTerminated();
 				}
-
-				tracker.SetLast(nodePartitions, key, bval);
+				else
+				{
+					tracker.SetLast(nodePartitions, key, bval);
+				}
 			}
 			return true;
 		}

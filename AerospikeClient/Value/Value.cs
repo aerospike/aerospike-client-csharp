@@ -59,6 +59,50 @@ namespace Aerospike.Client
 		public abstract object Object { get; }
 
 		/// <summary>
+		/// Does this value contain a vector? For internal use only.
+		/// </summary>
+		internal virtual bool HasVector() => false;
+
+		internal static bool ObjectHasVector(object obj)
+		{
+			if (obj is Vector)
+			{
+				return true;
+			}
+
+			if (obj is Value value)
+			{
+				return value.HasVector();
+			}
+
+			if (obj is IList list)
+			{
+				foreach (object item in list)
+				{
+					if (ObjectHasVector(item))
+					{
+						return true;
+					}
+				}
+				return false;
+			}
+
+			if (obj is IDictionary map)
+			{
+				foreach (DictionaryEntry entry in map)
+				{
+					if (ObjectHasVector(entry.Key) || ObjectHasVector(entry.Value))
+					{
+						return true;
+					}
+				}
+				return false;
+			}
+
+			return false;
+		}
+
+		/// <summary>
 		/// Infinity value to be used in CDT range comparisons only.
 		/// </summary>
 		public static readonly Value INFINITY = new InfinityValue();
@@ -130,7 +174,40 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Get byte array value instance.
 		/// </summary>
-		static public Value Get(byte[] value) => value is null ? NullValue.Instance : new BytesValue(value);
+		static public Value Get(byte[] value)
+		{
+			if (value is null)
+			{
+				return NullValue.Instance;
+			}
+			// Absorb PackUtil.Finish's ThreadStatic flag so CDT/bit/HLL ops that wrap
+			// packed bytes without an explicit hasVector argument neither drop vector
+			// presence nor leak a stale true into a later Exp.Module on this thread.
+			bool hasVector = PackUtil.ConsumeLastHasVector();
+			if (!hasVector)
+			{
+				return new BytesValue(value);
+			}
+			BytesValue bv = new(value);
+			bv.hasVector = true;
+			return bv;
+		}
+
+		/// <summary>
+		/// Get byte array with vector flag. For internal use only.
+		/// </summary>
+		static public Value Get(byte[] value, bool hasVector)
+		{
+			if (value is null)
+			{
+				return NullValue.Instance;
+			}
+			// Explicit flag wins; clear any leftover ThreadStatic from PackUtil.Finish.
+			PackUtil.ClearLastHasVector();
+			BytesValue bv = new(value);
+			bv.hasVector = hasVector;
+			return bv;
+		}
 
 		/// <summary>
 		/// Get byte array segment value instance.
@@ -213,6 +290,11 @@ namespace Aerospike.Client
 		static public Value GetAsHLL(byte[] value) => value is null ? NullValue.Instance : new HLLValue(value);
 
 		/// <summary>
+		/// Get vector or null value instance.
+		/// </summary>
+		static public Value Get(Vector value) => value is null ? NullValue.Instance : new VectorValue(value);
+
+		/// <summary>
 		/// Get ValueArray value instance.
 		/// </summary>
 		static public Value Get(Value[] value) => value is null ? NullValue.Instance : new ValueArray(value);
@@ -250,6 +332,7 @@ namespace Aerospike.Client
 			return obj switch
 			{
 				Value value => value,
+				Vector vectorValue => new VectorValue(vectorValue),
 				byte[] bValue => new BytesValue(bValue),
 				Memory<byte> memValue => new ReadOnlyMemoryBytesValue(memValue),
 				ReadOnlyMemory<byte> roMemValue => new ReadOnlyMemoryBytesValue(roMemValue),

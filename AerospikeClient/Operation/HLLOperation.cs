@@ -113,8 +113,14 @@ namespace Aerospike.Client
 		/// </param>
 		public static Operation Add(HLLPolicy policy, string binName, IList list, int indexBitCount, int minHashBitCount)
 		{
-			byte[] bytes = PackUtil.Pack(HLLOperation.ADD, list, indexBitCount, minHashBitCount, policy.flags);
-			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(bytes));
+			Packer packer = new Packer();
+			packer.PackArrayBegin(5);
+			packer.PackNumber(HLLOperation.ADD);
+			packer.PackList(list);
+			packer.PackNumber(indexBitCount);
+			packer.PackNumber(minHashBitCount);
+			packer.PackNumber(policy.flags);
+			return new Operation(Operation.Type.HLL_MODIFY, binName, Value.Get(packer.ToByteArray(), packer.HasVector()));
 		}
 
 		/// <summary>

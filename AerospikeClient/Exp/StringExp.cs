@@ -1021,12 +1021,12 @@ namespace Aerospike.Client
 
 		private static Exp.Module AddRead(Exp src, byte[] bytes, Exp.Type retType)
 		{
-			return new Exp.Module(src, bytes, (int)retType, MODULE);
+			return new Exp.Module(src, bytes, (int)retType, MODULE, PackUtil.ConsumeLastHasVector());
 		}
 
 		private static Exp.Module AddModify(Exp src, byte[] bytes)
 		{
-			return new Exp.Module(src, bytes, (int)Exp.Type.STRING, MODULE | Exp.MODIFY);
+			return new Exp.Module(src, bytes, (int)Exp.Type.STRING, MODULE | Exp.MODIFY, PackUtil.ConsumeLastHasVector());
 		}
 
 		// QUOTED opcode (mirrors Exp.QUOTED = 126).
@@ -1063,7 +1063,7 @@ namespace Aerospike.Client
 			}
 
 			packer.PackNumber(policyFlags);
-			return packer.ToByteArray();
+			return PackUtil.Finish(packer);
 		}
 
 	}

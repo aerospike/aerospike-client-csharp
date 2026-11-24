@@ -31,6 +31,11 @@ namespace Aerospike.Client
 		public const int PID_ARRAY = 11;
 		public const int DIGEST_ARRAY = 12;
 		public const int MAX_RECORDS = 13;
+		/// <summary>
+		/// Last-update time (milliseconds since the Citrusleaf epoch). Present on Top-K
+		/// pushdown rows so the client merge can keep the newer copy of a duplicate digest.
+		/// </summary>
+		public const int LUT = 14;
 		public const int BVAL_ARRAY = 15;
 		public const int INDEX_NAME = 21;
 		public const int INDEX_RANGE = 22;
@@ -45,5 +50,7 @@ namespace Aerospike.Client
 		public const int BATCH_INDEX = 41;
 		public const int FILTER_EXP = 43;
 		public const int ERROR_MESSAGE = 45;
+		public const int ORDER_BY = 46;
+		public const int TOP_K = 47;
 	}
 }

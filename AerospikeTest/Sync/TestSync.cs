@@ -94,5 +94,45 @@ namespace Aerospike.Test
 				Assert.Inconclusive($"{testType} tests require server version {version} or later");
 			}
 		}
+
+		/// <summary>
+		/// Skip when any node lacks the vector feature bit (prefer this over version-only gates).
+		/// </summary>
+		public static void RequireVectorSupport()
+		{
+			Node[] nodes = client.Nodes;
+			if (nodes.Length == 0)
+			{
+				Assert.Inconclusive("No cluster nodes");
+			}
+
+			foreach (Node node in nodes)
+			{
+				if (!node.HasVector)
+				{
+					Assert.Inconclusive("Cluster must advertise vector support on every node");
+				}
+			}
+		}
+
+		/// <summary>
+		/// Skip when any node lacks query ORDER BY / Top-K pushdown.
+		/// </summary>
+		public static void RequireQueryOrderBySupport()
+		{
+			Node[] nodes = client.Nodes;
+			if (nodes.Length == 0)
+			{
+				Assert.Inconclusive("No cluster nodes");
+			}
+
+			foreach (Node node in nodes)
+			{
+				if (!node.HasQueryOrderBy)
+				{
+					Assert.Inconclusive("Cluster must advertise query-order-by on every node");
+				}
+			}
+		}
 	}
 }

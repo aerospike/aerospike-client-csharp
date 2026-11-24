@@ -125,7 +125,7 @@ namespace Aerospike.Client
 		public static Operation Append(string binName, Value value, params CTX[] ctx)
 		{
 			byte[] bytes = PackUtil.Pack(ListOperation.APPEND, value, ctx);
-			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes, PackUtil.ConsumeLastHasVector()));
 		}
 
 		/// <summary>
@@ -136,7 +136,7 @@ namespace Aerospike.Client
 		public static Operation Append(ListPolicy policy, string binName, Value value, params CTX[] ctx)
 		{
 			byte[] bytes = PackUtil.Pack(ListOperation.APPEND, value, policy.attributes, policy.flags, ctx);
-			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes, PackUtil.ConsumeLastHasVector()));
 		}
 
 		/// <summary>
@@ -154,8 +154,7 @@ namespace Aerospike.Client
 			packer.PackArrayBegin(2);
 			packer.PackNumber(ListOperation.APPEND_ITEMS);
 			packer.PackList(list);
-			byte[] bytes = packer.ToByteArray();
-			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(packer.ToByteArray(), packer.HasVector()));
 		}
 
 		/// <summary>
@@ -165,8 +164,14 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation AppendItems(ListPolicy policy, string binName, IList list, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.APPEND_ITEMS, list, policy.attributes, policy.flags, ctx);
-			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
+			Packer packer = new Packer();
+			PackUtil.Init(packer, ctx);
+			packer.PackArrayBegin(4);
+			packer.PackNumber(ListOperation.APPEND_ITEMS);
+			packer.PackList(list);
+			packer.PackNumber(policy.attributes);
+			packer.PackNumber(policy.flags);
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(packer.ToByteArray(), packer.HasVector()));
 		}
 
 		/// <summary>
@@ -177,7 +182,7 @@ namespace Aerospike.Client
 		public static Operation Insert(string binName, int index, Value value, params CTX[] ctx)
 		{
 			byte[] bytes = PackUtil.Pack(ListOperation.INSERT, index, value, ctx);
-			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes, PackUtil.ConsumeLastHasVector()));
 		}
 
 		/// <summary>
@@ -188,7 +193,7 @@ namespace Aerospike.Client
 		public static Operation Insert(ListPolicy policy, string binName, int index, Value value, params CTX[] ctx)
 		{
 			byte[] bytes = PackUtil.Pack(ListOperation.INSERT, index, value, policy.flags, ctx);
-			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes, PackUtil.ConsumeLastHasVector()));
 		}
 
 		/// <summary>
@@ -198,8 +203,13 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation InsertItems(string binName, int index, IList list, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.INSERT_ITEMS, index, list, ctx);
-			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
+			Packer packer = new Packer();
+			PackUtil.Init(packer, ctx);
+			packer.PackArrayBegin(3);
+			packer.PackNumber(ListOperation.INSERT_ITEMS);
+			packer.PackNumber(index);
+			packer.PackList(list);
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(packer.ToByteArray(), packer.HasVector()));
 		}
 
 		/// <summary>
@@ -209,8 +219,14 @@ namespace Aerospike.Client
 		/// </summary>
 		public static Operation InsertItems(ListPolicy policy, string binName, int index, IList list, params CTX[] ctx)
 		{
-			byte[] bytes = PackUtil.Pack(ListOperation.INSERT_ITEMS, index, list, policy.flags, ctx);
-			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
+			Packer packer = new Packer();
+			PackUtil.Init(packer, ctx);
+			packer.PackArrayBegin(4);
+			packer.PackNumber(ListOperation.INSERT_ITEMS);
+			packer.PackNumber(index);
+			packer.PackList(list);
+			packer.PackNumber(policy.flags);
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(packer.ToByteArray(), packer.HasVector()));
 		}
 
 		/// <summary>
@@ -331,7 +347,7 @@ namespace Aerospike.Client
 		public static Operation Set(string binName, int index, Value value, params CTX[] ctx)
 		{
 			byte[] bytes = PackUtil.Pack(ListOperation.SET, index, value, ctx);
-			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes, PackUtil.ConsumeLastHasVector()));
 		}
 
 		/// <summary>
@@ -342,7 +358,7 @@ namespace Aerospike.Client
 		public static Operation Set(ListPolicy policy, string binName, int index, Value value, params CTX[] ctx)
 		{
 			byte[] bytes = PackUtil.Pack(ListOperation.SET, index, value, policy.flags, ctx);
-			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes));
+			return new Operation(Operation.Type.CDT_MODIFY, binName, Value.Get(bytes, PackUtil.ConsumeLastHasVector()));
 		}
 
 		/// <summary>

@@ -56,7 +56,7 @@ namespace Aerospike.Client
 		private static Operation CreateOperation(Operation.Type type, string name, Expression exp, int flags)
 		{
 			byte[] packedBytes = PackOperation(type, name, exp.Bytes, flags);
-			return new Operation(type, name, Value.Get(packedBytes));
+			return new Operation(type, name, Value.Get(packedBytes, exp.HasVector()));
 		}
 
 		private static Operation CreateOperation(Operation.Type type, string name, byte[] b, int flags)

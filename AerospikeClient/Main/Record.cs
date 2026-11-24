@@ -238,6 +238,14 @@ namespace Aerospike.Client
 			return (Value.HLLValue)GetValue(name);
 		}
 
+		/// <summary>
+		/// Get bin value as Vector. Returns null when the bin is missing or not a Vector.
+		/// </summary>
+		public Vector GetVector(string name)
+		{
+			return GetValue(name) as Vector;
+		}
+
 		/**
 		 * Convert record expiration (seconds from Jan 01 2010 00:00:00 GMT) to
 		 * ttl (seconds from now).

@@ -197,8 +197,8 @@ namespace Aerospike.Client
 				PackUtil.Init(packer, ctx);
 				packer.PackArrayBegin(5);
 				packer.PackNumber(MapOperation.PUT);
-				key.Pack(packer);
-				value.Pack(packer);
+				packer.PackNested(key);
+				packer.PackNested(value);
 				packer.PackNumber(policy.attributes);
 				packer.PackNumber(policy.flags);
 			}
@@ -210,21 +210,21 @@ namespace Aerospike.Client
 					PackUtil.Init(packer, ctx);
 					packer.PackArrayBegin(3);
 					packer.PackNumber(policy.itemCommand);
-					key.Pack(packer);
-					value.Pack(packer);
+					packer.PackNested(key);
+					packer.PackNested(value);
 				}
 				else
 				{
 					PackUtil.Init(packer, ctx);
 					packer.PackArrayBegin(4);
 					packer.PackNumber(policy.itemCommand);
-					key.Pack(packer);
-					value.Pack(packer);
+					packer.PackNested(key);
+					packer.PackNested(value);
 					packer.PackNumber(policy.attributes);
 				}
 			}
 			byte[] bytes = packer.ToByteArray();
-			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(bytes));
+			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(bytes, packer.HasVector()));
 		}
 
 		/// <summary>
@@ -269,7 +269,7 @@ namespace Aerospike.Client
 				}
 			}
 			byte[] bytes = packer.ToByteArray();
-			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(bytes));
+			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(bytes, packer.HasVector()));
 		}
 
 		/// <summary>
@@ -286,7 +286,7 @@ namespace Aerospike.Client
 		public static Operation Increment(MapPolicy policy, string binName, Value key, Value incr, params CTX[] ctx)
 		{
 			byte[] bytes = PackUtil.Pack(MapOperation.INCREMENT, key, incr, policy.attributes, ctx);
-			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(bytes));
+			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(bytes, PackUtil.ConsumeLastHasVector()));
 		}
 
 		/// <summary>
@@ -304,7 +304,7 @@ namespace Aerospike.Client
 		public static Operation Decrement(MapPolicy policy, string binName, Value key, Value decr, params CTX[] ctx)
 		{
 			byte[] bytes = PackUtil.Pack(MapOperation.DECREMENT, key, decr, policy.attributes, ctx);
-			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(bytes));
+			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.Get(bytes, PackUtil.ConsumeLastHasVector()));
 		}
 
 		/// <summary>

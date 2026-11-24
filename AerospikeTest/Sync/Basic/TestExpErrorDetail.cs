@@ -580,11 +580,25 @@ namespace Aerospike.Test
 		[TestMethod]
 		public void TestExpReadInvalidFlagsNoDetails()
 		{
+			// A write-only policy flag on a read op is rejected structurally
+			// before any expression is built: rc 4. Through 8.2.0 that path
+			// staged no field 45. AER-6984 (8.2.1) stages a message with no
+			// subcode or expression trace.
 			AerospikeException ae = ExpectOperateError(stdKey, 3, ResultCode.PARAMETER_ERROR,
 				ExpOperation.Read("result", Exp.Build(Exp.Add(Exp.IntBin(BIN_INT), Exp.Val(1))),
 					(ExpReadFlags)(int)ExpWriteFlags.CREATE_ONLY));
 
-			AssertNoDetails(ae, ResultCode.PARAMETER_ERROR);
+			if (client.Cluster.GetRandomNode().serverVersion >= Node.SERVER_VERSION_8_2_1)
+			{
+				Assert.AreEqual(ResultCode.PARAMETER_ERROR, ae.Result);
+				Assert.AreEqual(SubCode.NONE, ae.SubCode);
+				AssertMessageContains(ae, "invalid for a read");
+				Assert.IsNull(ae.ExpTrace, "Expected no expression trace");
+			}
+			else
+			{
+				AssertNoDetails(ae, ResultCode.PARAMETER_ERROR);
+			}
 		}
 
 		[TestMethod]

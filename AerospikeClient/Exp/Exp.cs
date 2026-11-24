@@ -37,7 +37,8 @@ namespace Aerospike.Client
 			BLOB = 6,
 			FLOAT = 7,
 			GEO = 8,
-			HLL = 9
+			HLL = 9,
+			VECTOR = 10
 		}
 
 		/// <summary>
@@ -306,6 +307,22 @@ namespace Aerospike.Client
 		public static Exp HLLBin(string name)
 		{
 			return new BinExp(name, Type.HLL);
+		}
+
+		/// <summary>
+		/// Create vector bin expression for use with <see cref="VectorExp"/>.
+		/// </summary>
+		/// <example>
+		/// <code>
+		/// // Cosine distance between vector bin "v" and a query vector > 0.8
+		/// Exp.GT(
+		///   VectorExp.Distance(VectorDistanceMetric.COSINE_SIMILARITY, query, Exp.VectorBin("v")),
+		///   Exp.Val(0.8))
+		/// </code>
+		/// </example>
+		public static Exp VectorBin(string name)
+		{
+			return new BinExp(name, Type.VECTOR);
 		}
 
 		/// <summary>
@@ -628,6 +645,19 @@ namespace Aerospike.Client
 		public static Exp Val(byte[] val)
 		{
 			return new Blob(val);
+		}
+
+		/// <summary>
+		/// Create vector value (particle type 16).
+		/// </summary>
+		public static Exp Val(Vector val)
+		{
+			if (val is null)
+			{
+				throw new ArgumentNullException(nameof(val));
+			}
+
+			return new VectorVal(val);
 		}
 
 		/// <summary>
@@ -1625,6 +1655,8 @@ namespace Aerospike.Client
 		private const int INT_RSCAN = 41;
 		private const int MIN = 50;
 		private const int MAX = 51;
+		/// <summary>Single vector-distance op; metric is packed as the next array element (0/1/2).</summary>
+		private const int VECTOR_DISTANCE = 52;
 		private const int DIGEST_MODULO = 64;
 		private const int DEVICE_SIZE = 65;
 		private const int LAST_UPDATE = 66;
@@ -1662,17 +1694,28 @@ namespace Aerospike.Client
 			internal readonly byte[] bytes;
 			internal readonly int retType;
 			internal readonly int module;
+			internal readonly bool hasVector;
 
 			public Module(Exp bin, byte[] bytes, int retType, int module)
+				: this(bin, bytes, retType, module, false)
+			{
+			}
+
+			public Module(Exp bin, byte[] bytes, int retType, int module, bool hasVector)
 			{
 				this.bin = bin;
 				this.bytes = bytes;
 				this.retType = retType;
 				this.module = module;
+				this.hasVector = hasVector;
 			}
 
 			public override void Pack(Packer packer)
 			{
+				if (hasVector)
+				{
+					packer.MarkVector();
+				}
 				packer.PackArrayBegin(5);
 				packer.PackNumber(Exp.CALL);
 				packer.PackNumber(retType);
@@ -1695,6 +1738,10 @@ namespace Aerospike.Client
 
 			public override void Pack(Packer packer)
 			{
+				if (type == Type.VECTOR)
+				{
+					packer.MarkVector();
+				}
 				packer.PackArrayBegin(3);
 				packer.PackNumber(BIN);
 				packer.PackNumber((int)type);
@@ -1724,6 +1771,48 @@ namespace Aerospike.Client
 				bin.Pack(packer);
 			}
 		}
+
+		/// <summary>
+		/// Internal vector distance expression. Wire form is
+		/// <c>[52, metric, bin, queryBlob]</c>
+		/// </summary>
+		internal sealed class VectorDist : Exp
+		{
+			private readonly VectorDistanceMetric metric;
+			private readonly Vector query;
+			private readonly Exp bin;
+
+			internal VectorDist(VectorDistanceMetric metric, Vector query, Exp bin)
+			{
+				this.metric = metric;
+				this.query = query;
+				this.bin = bin;
+			}
+
+			public override void Pack(Packer packer)
+			{
+				packer.PackArrayBegin(4);
+				packer.PackNumber(VECTOR_DISTANCE);
+				packer.PackNumber(VectorDistMetricCode(metric));
+				bin.Pack(packer);
+				// VectorDist: pack wire bytes as BLOB (not VECTOR particle type).
+				// Server build_vector_distance requires BLOB rtypes; build_value_blob
+				// strips the particle-type byte before as_vector_bytes_check.
+				packer.PackVectorAsBlob(query);
+			}
+		}
+
+		/// <summary>
+		/// Map public metric enum to the server's <c>as_vector_distance_metric</c> codes
+		/// (0 squared Euclidean, 1 dot product, 2 cosine similarity).
+		/// </summary>
+		internal static int VectorDistMetricCode(VectorDistanceMetric metric) => metric switch
+		{
+			VectorDistanceMetric.EUCLIDEAN_SQUARED => 0,
+			VectorDistanceMetric.DOT_PRODUCT => 1,
+			VectorDistanceMetric.COSINE_SIMILARITY => 2,
+			_ => throw new ArgumentException("Unsupported vector distance metric: " + metric)
+		};
 
 		private sealed class CmdExp : Exp
 		{
@@ -1950,6 +2039,21 @@ namespace Aerospike.Client
 			}
 		}
 
+		private sealed class VectorVal : Exp
+		{
+			internal readonly Vector val;
+
+			internal VectorVal(Vector val)
+			{
+				this.val = val;
+			}
+
+			public override void Pack(Packer packer)
+			{
+				packer.PackVector(val);
+			}
+		}
+
 		public sealed class ListVal : Exp
 		{
 			internal readonly IList list;
@@ -2031,14 +2135,20 @@ namespace Aerospike.Client
 		private sealed class ExpBytes : Exp
 		{
 			internal readonly byte[] bytes;
+			internal readonly bool hasVector;
 
 			internal ExpBytes(Expression e)
 			{
 				this.bytes = e.Bytes;
+				this.hasVector = e.HasVector();
 			}
 
 			public override void Pack(Packer packer)
 			{
+				if (hasVector)
+				{
+					packer.MarkVector();
+				}
 				packer.PackByteArray(bytes, 0, bytes.Length);
 			}
 		}

@@ -119,6 +119,7 @@ internal static class ExampleRegistry
 			validate: UserDefinedFunctionFixture.Validate,
 			cleanup: UserDefinedFunctionFixture.Cleanup)),
 		Sync<QueryInteger>(QueryCleanup<QueryInteger>("queryindexint", "querykeyint", 1, 50, setup: QueryExampleFixtures.SetupQueryInteger, validate: ExampleStateValidation.QueryInteger)),
+		Sync<QueryTopK>(QueryCleanup<QueryTopK>("topkindex", "topkkey", 1, 20)),
 		Sync<QueryString>(QueryCleanup<QueryString>("queryindex", "querykey", 1, 50, setup: QueryExampleFixtures.SetupQueryString, validate: ExampleStateValidation.QueryString)),
 		Sync<QueryList>(QueryCleanup<QueryList>("qlindex", "qlkey", 1, 50, setup: QueryExampleFixtures.SetupQueryList, validate: ExampleStateValidation.QueryList)),
 		Sync<QueryRegion>(QueryCleanup<QueryRegion>("queryindexloc", "querykeyloc", 0, 20, setup: QueryExampleFixtures.SetupQueryRegion, validate: ExampleStateValidation.QueryRegion)),

@@ -522,12 +522,12 @@ namespace Aerospike.Client
 			{
 				retType = ((ctx[0].id & 0x10) == 0) ? (int)Exp.Type.MAP : (int)Exp.Type.LIST;
 			}
-			return new Exp.Module(bin, bytes, retType, MODULE | Exp.MODIFY);
+			return new Exp.Module(bin, bytes, retType, MODULE | Exp.MODIFY, PackUtil.ConsumeLastHasVector());
 		}
 
 		private static Exp AddRead(Exp bin, byte[] bytes, Exp.Type retType)
 		{
-			return new Exp.Module(bin, bytes, (int)retType, MODULE);
+			return new Exp.Module(bin, bytes, (int)retType, MODULE, PackUtil.ConsumeLastHasVector());
 		}
 
 		private static Exp.Type GetValueType(ListReturnType returnType)
@@ -565,7 +565,7 @@ namespace Aerospike.Client
 			{
 				end.Pack(packer);
 			}
-			return packer.ToByteArray();
+			return PackUtil.Finish(packer);
 		}
 	}
 }

@@ -29,6 +29,9 @@ namespace Aerospike.Client
 			public MapOrder Order { get; }
 			public byte[] Bytes { get; private set; }
 
+			private bool hasVector;
+			private bool hasVectorComputed;
+
 			public override ParticleType Type => ParticleType.MAP;
 
 			public override object Object { get => Map; }
@@ -49,7 +52,11 @@ namespace Aerospike.Client
 
 			public override int EstimateSize()
 			{
-				Bytes = Packer.Pack(Map, Order);
+				Packer packer = new();
+				packer.PackMap(Map, Order);
+				Bytes = packer.ToByteArray();
+				hasVector = packer.HasVector();
+				hasVectorComputed = true;
 				return Bytes.Length;
 			}
 
@@ -59,7 +66,26 @@ namespace Aerospike.Client
 				return Bytes.Length;
 			}
 
-			public override void Pack(Packer packer) => packer.PackMap(Map, Order);
+			public override void Pack(Packer packer)
+			{
+				bool vectorPresent = packer.HasVector();
+				packer.PackMap(Map, Order);
+
+				if (!vectorPresent)
+				{
+					hasVector = packer.HasVector();
+					hasVectorComputed = true;
+				}
+			}
+
+			internal override bool HasVector()
+			{
+				if (!hasVectorComputed && !hasVector)
+				{
+					hasVector = ObjectHasVector(Map);
+				}
+				return hasVector;
+			}
 
 			public override void ValidateKeyType() => throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: map");
 

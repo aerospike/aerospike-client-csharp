@@ -211,6 +211,20 @@ namespace Aerospike.Client
 		/// default maxRetries is used because it's wasteful to invalidate
 		/// all query results because a single partition was missed.
 		/// </para>
+		/// <para>
+		/// Top-K queries (<see cref="Statement.SetTopK(int)"/>) do not retry on
+		/// <see cref="ResultCode.TIMEOUT"/> (client socket or server) at the
+		/// partition-tracker layer, regardless of maxRetries. Per-node query
+		/// commands already use command maxRetries of 0, so a timeout fails that
+		/// node attempt immediately rather than re-issuing the same scan.
+		/// Server query-run-time guardrails stop a Top-K or long query with
+		/// <see cref="ResultCode.QUERY_TIMEOUT"/> (212), which is also never
+		/// retried. A Top-K concurrency refusal (<c>order-by-jobs-limit</c>)
+		/// surfaces as <see cref="ResultCode.FAIL_FORBIDDEN"/> (22) and is
+		/// returned to the application without backoff retry. Use a socket
+		/// timeout longer than the expected run (or 0) and a total timeout as
+		/// the deadline.
+		/// </para>
 		/// </summary>
 		public QueryPolicy() : base()
 		{
