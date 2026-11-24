@@ -4,8 +4,8 @@ description: Runs the Aerospike .NET client test suite against a server containe
 inputs:
   server-tag:
     required: false
-    default: latest
-    description: Server docker image tag
+    default: 8.2.0.1
+    description: Server docker image tag (prefer pinned GA from .github/test_servers.json)
   oidc-provider:
     required: true
     description: OIDC provider
@@ -28,7 +28,7 @@ inputs:
     default: ""
     description: >
       Full Docker image repo path (e.g. database-docker-virtual/aerospike-server-enterprise).
-      When empty, defaults to the setup-aerospike-server action's built-in default.
+      When empty, defaults to database-docker-virtual/<server-type>.
   enable-tls:
     required: false
     default: "false"
