@@ -32,10 +32,13 @@ jobs:
         results="$PWD/TestResults/aws-tags"
         mkdir -p "${results}"
         filter='FullyQualifiedName~TestAwsTagsDiscovery'
+        # nuget.org occasionally 404s mid-download; restore with retries then --no-restore.
+        bash .github/discovery/dotnet-restore-retry.sh AerospikeTest/AerospikeTest.csproj
         # MTP ignores VSTest --logger; use --report-trx. Absolute results dir so output is
         # not buried under AerospikeTest/TestResults (see .github/actions/test).
         set +e
         dotnet test AerospikeTest/AerospikeTest.csproj -c Release \
+          --no-restore \
           --filter "${filter}" \
           -- \
           --filter "${filter}" \
@@ -69,10 +72,13 @@ jobs:
         results="$PWD/TestResults/dns"
         mkdir -p "${results}"
         filter='FullyQualifiedName~TestDnsDiscovery'
+        # nuget.org occasionally 404s mid-download; restore with retries then --no-restore.
+        bash .github/discovery/dotnet-restore-retry.sh AerospikeTest/AerospikeTest.csproj
         # MTP ignores VSTest --logger; use --report-trx. Absolute results dir so output is
         # not buried under AerospikeTest/TestResults (see .github/actions/test).
         set +e
         dotnet test AerospikeTest/AerospikeTest.csproj -c Release \
+          --no-restore \
           --filter "${filter}" \
           -- \
           --filter "${filter}" \

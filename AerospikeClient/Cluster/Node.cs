@@ -409,11 +409,9 @@ namespace Aerospike.Client
 
 					if (peer.alternateMissing)
 					{
-						if (Log.WarnEnabled())
-						{
-							Log.Warn(cluster.context,
-								new AerospikeException.AlternateAddressMissing(peer.nodeName, null).Message);
-						}
+						// Match Java: peer alternate-missing is ERROR (tests and ops treat it as ERROR).
+						Log.Error(cluster.context,
+							new AerospikeException.AlternateAddressMissing(peer.nodeName, null).Message);
 						peersValidated = false;
 						continue;
 					}
@@ -485,7 +483,11 @@ namespace Aerospike.Client
 						{
 							peers.Fail(host);
 
-							if (Log.WarnEnabled())
+							if (e is AerospikeException.AlternateAddressMissing)
+							{
+								Log.Error(cluster.context, "Add node " + host + " failed: " + e.Message);
+							}
+							else if (Log.WarnEnabled())
 							{
 								Log.Warn(cluster.context, "Add node " + host + " failed: " + Util.GetErrorMessage(e));
 							}

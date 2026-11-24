@@ -103,7 +103,7 @@ cat > "${runsettings}" <<EOF
 EOF
 
 echo "Running L3 suite filter=${filter} seed=${L3_SEED}"
-dotnet restore AerospikeTest/AerospikeTest.csproj
+bash .github/discovery/dotnet-restore-retry.sh AerospikeTest/AerospikeTest.csproj
 dotnet build AerospikeTest/AerospikeTest.csproj -c Release --no-restore
 set +e
 # MSTest.Sdk / Microsoft.Testing.Platform: pass filter after -- as well (same as run-l2-suite).

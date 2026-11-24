@@ -188,6 +188,16 @@ if [[ -n "$trx" && -f "$trx" ]]; then
 	passed="$(grep -c 'outcome="Passed"' "$trx" || true)"
 	failed="$(grep -c 'outcome="Failed"' "$trx" || true)"
 fi
+if [[ "$status" -ne 0 ]]; then
+	echo "::group::L2_RUN profile=${profile} failure details"
+	find "$results_dir" -type f \( -name '*.log' -o -name '*.trx' -o -name '*.diag' \) 2>/dev/null \
+		| while read -r f; do
+			echo "===== ${f} ====="
+			# Keep the harness artifact bounded; assertion text is near the top of MTP logs.
+			sed -n '1,400p' "${f}" || true
+		done
+	echo "::endgroup::"
+fi
 if [[ "$status" -eq 0 && "$passed" -eq 0 ]]; then
 	echo "ERROR: L2_RUN profile=${profile} executed no passing tests (all skipped or none matched)" >&2
 	exit 1

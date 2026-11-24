@@ -859,13 +859,13 @@ namespace Aerospike.Client
 						}
 						exceptions[i] = e;
 					}
-					else
+					else if (e is AerospikeException.AlternateAddressMissing)
 					{
-						if (Log.WarnEnabled())
-						{
-							Log.Warn(context, "Seed " + seed + " failed: " + Util.GetErrorMessage(e));
-						}
-
+						Log.Error(context, "Seed " + seed + " failed: " + e.Message);
+					}
+					else if (Log.WarnEnabled())
+					{
+						Log.Warn(context, "Seed " + seed + " failed: " + Util.GetErrorMessage(e));
 					}
 				}
 			}
