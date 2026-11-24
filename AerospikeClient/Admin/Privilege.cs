@@ -194,6 +194,12 @@ namespace Aerospike.Client
 				case PrivilegeCode.SINDEX_ADMIN:
 					return Role.SIndexAdmin;
 
+				case PrivilegeCode.BACKUP_ADMIN:
+					return Role.BackupAdmin;
+
+				case PrivilegeCode.RESTORE_ADMIN:
+					return Role.RestoreAdmin;
+
 				case PrivilegeCode.READ:
 					return Role.Read;
 

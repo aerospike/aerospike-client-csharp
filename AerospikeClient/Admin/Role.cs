@@ -54,6 +54,16 @@ namespace Aerospike.Client
 		public const string SIndexAdmin = "sindex-admin";
 
 		/// <summary>
+		/// Manage backup.
+		/// </summary>
+		public const string BackupAdmin = "backup-admin";
+
+		/// <summary>
+		/// Manage restore.
+		/// </summary>
+		public const string RestoreAdmin = "restore-admin";
+
+		/// <summary>
 		/// Allow read commands.
 		/// </summary>
 		public const string Read = "read";
@@ -126,6 +136,7 @@ namespace Aerospike.Client
 			return name.Equals(ReadWrite) || name.Equals(ReadWriteUdf) || name.Equals(Read)
 				|| name.Equals(SysAdmin) || name.Equals(UserAdmin) || name.Equals(DataAdmin)
 				|| name.Equals(UDFAdmin) || name.Equals(SIndexAdmin)
+				|| name.Equals(BackupAdmin) || name.Equals(RestoreAdmin)
 				|| name.Equals(Write) || name.Equals(Truncate)
 				|| name.Equals(MaskingAdmin) || name.Equals(ReadMasked) || name.Equals(WriteMasked);
 		}
