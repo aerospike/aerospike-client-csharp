@@ -46,6 +46,14 @@ namespace Aerospike.Test
 			Role.WriteMasked
 		};
 
+		// Present only when the server is started with "--preview backup-restore" (8.2.1+)
+		// or when the feature is GA in a later release.
+		private static readonly List<string> BackupRestoreRoles = new()
+		{
+			Role.BackupAdmin,
+			Role.RestoreAdmin
+		};
+
 		[ClassInitialize]
 		public static void Setup(TestContext testContext)
 		{
@@ -269,7 +277,8 @@ namespace Aerospike.Test
 			// Verify predefined roles are marked as predefined
 			foreach (Role role in roles)
 			{
-				if (BaseRoles.Contains(role.name) || MaskingRoles.Contains(role.name))
+				if (BaseRoles.Contains(role.name) || MaskingRoles.Contains(role.name)
+					|| BackupRestoreRoles.Contains(role.name))
 				{
 					Assert.IsTrue(role.isPredefined(),
 						$"Role '{role.name}' should be marked as predefined");
