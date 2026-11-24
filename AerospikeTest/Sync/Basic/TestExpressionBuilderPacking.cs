@@ -47,6 +47,7 @@ namespace Aerospike.Test
 			AssertExpBytes(ListExp.Set(listPolicy, Exp.Val(0), value, listBin));
 			AssertExpBytes(ListExp.Clear(listBin));
 			AssertExpBytes(ListExp.Sort(ListSortFlags.DEFAULT, listBin));
+			AssertExpBytes(ListExp.Sort(ListSortFlags.DESCENDING, listBin));
 			AssertExpBytes(ListExp.RemoveByValue(ListReturnType.NONE, value, listBin));
 			AssertExpBytes(ListExp.RemoveByValueList(ListReturnType.INVERTED, values, listBin));
 			AssertExpBytes(ListExp.RemoveByValueRange(ListReturnType.NONE, Exp.Val(0), Exp.Val(10), listBin));
