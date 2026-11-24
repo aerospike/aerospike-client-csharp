@@ -260,7 +260,7 @@ namespace Aerospike.L5Driver
 								Record record = client.Get(rp, key);
 								return record == null ? null : record.GetValue("v");
 							});
-						output.Write(large.Reply(Now()));
+						output.Write(t => large.Reply(t));
 					}
 					return true;
 
@@ -271,10 +271,12 @@ namespace Aerospike.L5Driver
 					}
 					else
 					{
-						long t = Now();
 						load.Reset();
-						routing.Reset(t);
-						output.Write(new Json("reset", t).ToString());
+						output.Write(t =>
+						{
+							routing.Reset(t);
+							return new Json("reset", t).ToString();
+						});
 					}
 					return true;
 
@@ -410,7 +412,7 @@ namespace Aerospike.L5Driver
 				}
 			}
 
-			output.Write(new Json("served", Now()).Put("step", step).Put("partitions", Node.PARTITIONS)
+			output.Write(t => new Json("served", t).Put("step", step).Put("partitions", Node.PARTITIONS)
 				.Put("written", written).Put("read", read).Put("mismatched", mismatched)
 				.Put("failures", failures).Put("firstFailure", firstFailure)
 				.Put("elapsedMs", sw.ElapsedMilliseconds).ToString());
@@ -819,7 +821,10 @@ namespace Aerospike.L5Driver
 					ownersJson.Put(entry.Key, entry.Value);
 				}
 
-				driver.Write(new Json("snapshot", t).Put("reason", reason).Raw("nodes", list.ToString())
+				// Stamp t at write under the Output lock. Poll time `t` can be older than a
+				// concurrent failure/log line stamped while this snapshot was being built.
+				driver.Write(writeT => new Json("snapshot", writeT).Put("reason", reason)
+					.Raw("nodes", list.ToString())
 					.Put("unowned", unowned).Raw("owners", ownersJson.ToString())
 					.Put("longestUnownedMs", longest).Put("clientErrors", errors)
 					.Put("clientTimeouts", timeouts).Put("succeeded", Interlocked.Read(ref driver.load.succeeded))

@@ -107,22 +107,25 @@ dotnet restore AerospikeTest/AerospikeTest.csproj
 dotnet build AerospikeTest/AerospikeTest.csproj -c Release --no-restore
 set +e
 # MSTest.Sdk / Microsoft.Testing.Platform: pass filter after -- as well (same as run-l2-suite).
+results="$PWD/TestResults"
+mkdir -p "${results}"
+# MTP ignores VSTest --logger; use --report-trx. Absolute results dir so output is
+# not buried under AerospikeTest/TestResults (see .github/actions/test).
 dotnet test AerospikeTest/AerospikeTest.csproj \
   -c Release \
   --no-build \
   --settings "${runsettings}" \
   --filter "${filter}" \
-  --logger "trx;LogFileName=l3-k8s.trx" \
-  --logger "console;verbosity=detailed" \
-  --results-directory TestResults \
   -- \
-  --filter "${filter}"
+  --filter "${filter}" \
+  --results-directory "${results}" \
+  --report-trx --report-trx-filename l3-k8s.trx
 status=$?
 set -e
 rm -f "${runsettings}"
 if [[ "${status}" -ne 0 ]]; then
   echo "::group::L3 test failure details"
-  find TestResults AerospikeTest/bin -type f \( -name '*.log' -o -name '*.trx' -o -name '*.diag' \) 2>/dev/null \
+  find "${results}" AerospikeTest/bin -type f \( -name '*.log' -o -name '*.trx' -o -name '*.diag' \) 2>/dev/null \
     | while read -r f; do
         echo "===== ${f} ====="
         head -n 400 "${f}" || true

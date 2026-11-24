@@ -29,16 +29,18 @@ jobs:
         bash /tmp/dotnet-install.sh --version 8.0.400
         export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH"
         sudo dnf install -y -q libicu || sudo apt-get install -y -qq libicu70 || true
-        mkdir -p TestResults/aws-tags
+        results="$PWD/TestResults/aws-tags"
+        mkdir -p "${results}"
         filter='FullyQualifiedName~TestAwsTagsDiscovery'
+        # MTP ignores VSTest --logger; use --report-trx. Absolute results dir so output is
+        # not buried under AerospikeTest/TestResults (see .github/actions/test).
         dotnet test AerospikeTest/AerospikeTest.csproj -c Release \
           --filter "${filter}" \
-          --logger "trx;LogFileName=aws-tags.trx" \
-          --logger "console;verbosity=normal" \
-          --results-directory TestResults/aws-tags \
           -- \
-          --filter "${filter}"
-        bash .github/discovery/check-skips.sh TestResults/aws-tags
+          --filter "${filter}" \
+          --results-directory "${results}" \
+          --report-trx --report-trx-filename aws-tags.trx
+        bash .github/discovery/check-skips.sh "${results}"
     secrets:
       features-conf: ${{ secrets.AES_FEATURES_CONF }}
 
@@ -55,15 +57,17 @@ jobs:
         bash /tmp/dotnet-install.sh --version 8.0.400
         export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH"
         sudo dnf install -y -q libicu || sudo apt-get install -y -qq libicu70 || true
-        mkdir -p TestResults/dns
+        results="$PWD/TestResults/dns"
+        mkdir -p "${results}"
         filter='FullyQualifiedName~TestDnsDiscovery'
+        # MTP ignores VSTest --logger; use --report-trx. Absolute results dir so output is
+        # not buried under AerospikeTest/TestResults (see .github/actions/test).
         dotnet test AerospikeTest/AerospikeTest.csproj -c Release \
           --filter "${filter}" \
-          --logger "trx;LogFileName=dns.trx" \
-          --logger "console;verbosity=normal" \
-          --results-directory TestResults/dns \
           -- \
-          --filter "${filter}"
-        bash .github/discovery/check-skips.sh TestResults/dns
+          --filter "${filter}" \
+          --results-directory "${results}" \
+          --report-trx --report-trx-filename dns.trx
+        bash .github/discovery/check-skips.sh "${results}"
     secrets:
       features-conf: ${{ secrets.AES_FEATURES_CONF }}

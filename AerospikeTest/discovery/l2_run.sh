@@ -169,16 +169,16 @@ EOF
 echo "Running L2 suite profile=${profile} filter=${filter} subset=${subset} host=${host} port=${seed_port}"
 log="$(mktemp /tmp/l2-run.XXXXXX.log)"
 set +e
+# MTP ignores VSTest --logger/--results-directory; use --report-trx (see .github/actions/test).
 dotnet test "$ROOT_DIR/AerospikeTest/AerospikeTest.csproj" \
 	-c Release \
 	--no-restore \
 	--settings "${runsettings}" \
 	--filter "${filter}" \
-	--logger "trx;LogFileName=l2-${profile}.trx" \
-	--logger "console;verbosity=detailed" \
-	--results-directory "${results_dir}" \
 	-- \
-	--filter "${filter}" 2>&1 | tee "$log"
+	--filter "${filter}" \
+	--results-directory "${results_dir}" \
+	--report-trx --report-trx-filename "l2-${profile}.trx" 2>&1 | tee "$log"
 status=${PIPESTATUS[0]}
 set -e
 

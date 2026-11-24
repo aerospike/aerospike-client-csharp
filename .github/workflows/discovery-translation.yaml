@@ -52,19 +52,20 @@ jobs:
         bash /tmp/dotnet-install.sh --version 8.0.400
         export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH"
         sudo dnf install -y -q libicu || sudo apt-get install -y -qq libicu70 || true
-        results="TestResults/${{ matrix.environment }}"
+        results="$PWD/TestResults/${{ matrix.environment }}"
         mkdir -p "${results}"
         run_filter() {
           local filter="$1"
           local name="$2"
           [[ -n "${filter}" ]] || return 0
+          # MTP ignores VSTest --logger; use --report-trx. Absolute results dir so output is
+          # not buried under AerospikeTest/TestResults (see .github/actions/test).
           dotnet test AerospikeTest/AerospikeTest.csproj -c Release \
             --filter "${filter}" \
-            --logger "trx;LogFileName=${name}.trx" \
-            --logger "console;verbosity=normal" \
-            --results-directory "${results}" \
             -- \
-            --filter "${filter}"
+            --filter "${filter}" \
+            --results-directory "${results}" \
+            --report-trx --report-trx-filename "${name}.trx"
         }
         run_filter '${{ matrix.filter }}' first
         run_filter '${{ matrix.filter2 }}' second
