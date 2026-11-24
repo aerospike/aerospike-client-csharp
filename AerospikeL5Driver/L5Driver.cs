@@ -1428,9 +1428,8 @@ namespace Aerospike.L5Driver
 
 			/// <summary>
 			/// Trust the CAs in the PEM file (or the process default trust store when there is no
-			/// file). On Linux, SslStream uses OpenSSL's <c>SSL_CERT_FILE</c>, so a CA file is merged
-			/// into a temporary bundle. On Windows, Schannel has no equivalent hook and importing into
-			/// Root can prompt; the harness runs on Linux, so the file is only validated here.
+			/// file). Sets <see cref="TlsPolicy.certificateChainPolicy"/> with CustomRootTrust so
+			/// SslStream accepts the harness CA (same role as Java <c>TlsPolicy.context</c>).
 			/// </summary>
 			private static TlsPolicy BuildTlsPolicy(string caFile)
 			{
@@ -1454,33 +1453,18 @@ namespace Aerospike.L5Driver
 					throw new ArgumentException("--tls-ca-file has no certificate: " + caFile);
 				}
 
-				if (OperatingSystem.IsWindows())
+				X509ChainPolicy chainPolicy = new X509ChainPolicy
 				{
-					return policy;
+					TrustMode = X509ChainTrustMode.CustomRootTrust,
+					RevocationMode = X509RevocationMode.NoCheck
+				};
+
+				foreach (X509Certificate2 cert in certs)
+				{
+					chainPolicy.CustomTrustStore.Add(cert);
 				}
 
-				string system = Environment.GetEnvironmentVariable("SSL_CERT_FILE");
-
-				if (string.IsNullOrEmpty(system) || !File.Exists(system))
-				{
-					system = "/etc/ssl/certs/ca-certificates.crt";
-				}
-
-				string combined = Path.Combine(Path.GetTempPath(),
-					"aerospike-l5-ca-" + Guid.NewGuid().ToString("N") + ".crt");
-
-				using (StreamWriter writer = new StreamWriter(combined))
-				{
-					if (File.Exists(system))
-					{
-						writer.Write(File.ReadAllText(system));
-						writer.Write('\n');
-					}
-
-					writer.Write(File.ReadAllText(caFile));
-				}
-
-				Environment.SetEnvironmentVariable("SSL_CERT_FILE", combined);
+				policy.certificateChainPolicy = chainPolicy;
 				return policy;
 			}
 

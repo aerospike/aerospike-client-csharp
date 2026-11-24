@@ -115,6 +115,10 @@ namespace Aerospike.Test
 			Assert.IsNotNull(options.Policy().tlsPolicy);
 			Assert.AreEqual(TlsName, options.Seed.tlsName);
 			Assert.AreEqual(caPem, options.TlsCaFile);
+			Assert.IsNotNull(options.Policy().tlsPolicy.certificateChainPolicy);
+			Assert.AreEqual(X509ChainTrustMode.CustomRootTrust,
+				options.Policy().tlsPolicy.certificateChainPolicy.TrustMode);
+			Assert.IsTrue(options.Policy().tlsPolicy.certificateChainPolicy.CustomTrustStore.Count > 0);
 		}
 
 		private static Driver.Options Options(string shape, string seed, params string[] flags)

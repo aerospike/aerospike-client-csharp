@@ -54,8 +54,8 @@ namespace Aerospike.Client
 
 			try
 			{
-				sslStream = new SslStream(new NetworkStream(socket, true), false, ValidateServerCertificate);
-				sslStream.AuthenticateAsClient(tlsName, cluster.tlsPolicy.clientCertificates, cluster.tlsPolicy.protocols, false);
+				sslStream = new SslStream(new NetworkStream(socket, true), false);
+				sslStream.AuthenticateAsClient(ClientOptions(cluster, tlsName, ValidateServerCertificate));
 			}
 			catch (Exception)
 			{
@@ -67,6 +67,39 @@ namespace Aerospike.Client
 				}
 				throw;
 			}
+		}
+
+		/// <summary>
+		/// Build <see cref="SslClientAuthenticationOptions"/> for an Aerospike TLS handshake.
+		/// Chain trust comes from <see cref="TlsPolicy.certificateChainPolicy"/> when set;
+		/// name matching stays in <paramref name="validate"/>.
+		/// </summary>
+		internal static SslClientAuthenticationOptions ClientOptions
+		(
+			Cluster cluster,
+			string tlsName,
+			RemoteCertificateValidationCallback validate
+		)
+		{
+			SslClientAuthenticationOptions options = new SslClientAuthenticationOptions
+			{
+				TargetHost = tlsName ?? string.Empty,
+				EnabledSslProtocols = cluster.tlsPolicy.protocols,
+				CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
+				RemoteCertificateValidationCallback = validate
+			};
+
+			if (cluster.tlsPolicy.clientCertificates != null)
+			{
+				options.ClientCertificates = cluster.tlsPolicy.clientCertificates;
+			}
+
+			if (cluster.tlsPolicy.certificateChainPolicy != null)
+			{
+				options.CertificateChainPolicy = cluster.tlsPolicy.certificateChainPolicy;
+			}
+
+			return options;
 		}
 
 		private bool ValidateServerCertificate
@@ -94,8 +127,8 @@ namespace Aerospike.Client
 			SslPolicyErrors errors = sslPolicyErrors & ~SslPolicyErrors.RemoteCertificateNameMismatch;
 
 			// RemoteCertificateChainErrors will be set if the certificate is self-signed and not
-			// placed in the Windows or Linux truststore. Install the CA (update-ca-certificates /
-			// certutil) before connecting; do not ignore chain errors here.
+			// placed in the trust store / TlsPolicy.certificateChainPolicy. Install the CA or set
+			// certificateChainPolicy (CustomRootTrust); do not ignore chain errors here.
 			if (errors != SslPolicyErrors.None)
 			{
 				if (Log.DebugEnabled())

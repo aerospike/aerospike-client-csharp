@@ -34,12 +34,21 @@ jobs:
         filter='FullyQualifiedName~TestAwsTagsDiscovery'
         # MTP ignores VSTest --logger; use --report-trx. Absolute results dir so output is
         # not buried under AerospikeTest/TestResults (see .github/actions/test).
+        set +e
         dotnet test AerospikeTest/AerospikeTest.csproj -c Release \
           --filter "${filter}" \
           -- \
           --filter "${filter}" \
           --results-directory "${results}" \
           --report-trx --report-trx-filename aws-tags.trx
+        status=$?
+        set -e
+        if [[ "${status}" -ne 0 ]]; then
+          echo "::group::aws-tags failure details"
+          find "${results}" -type f \( -name '*.log' -o -name '*.trx' \) -print -exec sed -n '1,200p' {} \;
+          echo "::endgroup::"
+          exit "${status}"
+        fi
         bash .github/discovery/check-skips.sh "${results}"
     secrets:
       features-conf: ${{ secrets.AES_FEATURES_CONF }}
@@ -62,12 +71,21 @@ jobs:
         filter='FullyQualifiedName~TestDnsDiscovery'
         # MTP ignores VSTest --logger; use --report-trx. Absolute results dir so output is
         # not buried under AerospikeTest/TestResults (see .github/actions/test).
+        set +e
         dotnet test AerospikeTest/AerospikeTest.csproj -c Release \
           --filter "${filter}" \
           -- \
           --filter "${filter}" \
           --results-directory "${results}" \
           --report-trx --report-trx-filename dns.trx
+        status=$?
+        set -e
+        if [[ "${status}" -ne 0 ]]; then
+          echo "::group::dns failure details"
+          find "${results}" -type f \( -name '*.log' -o -name '*.trx' \) -print -exec sed -n '1,200p' {} \;
+          echo "::endgroup::"
+          exit "${status}"
+        fi
         bash .github/discovery/check-skips.sh "${results}"
     secrets:
       features-conf: ${{ secrets.AES_FEATURES_CONF }}
