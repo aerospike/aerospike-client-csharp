@@ -27,6 +27,10 @@ namespace Aerospike.Client
 		protected internal readonly Socket socket;
 		protected internal readonly Pool<Connection> pool;
 		private DateTime lastUsed;
+		/// <summary>True when this connection was taken from the pool for the current command.</summary>
+		internal bool pooled;
+		/// <summary>True after any response bytes have been read on this checkout.</summary>
+		internal bool received;
 
 		/// <summary>
 		/// Create socket with connection timeout.
@@ -158,6 +162,7 @@ namespace Aerospike.Client
 				{
 					throw new SocketException((int)SocketError.ConnectionReset);
 				}
+				received = true;
 				pos += count;
 			}
 		}
@@ -197,6 +202,7 @@ namespace Aerospike.Client
 				{
 					throw new SocketException((int)SocketError.ConnectionReset);
 				}
+				received = true;
 				pos += count;
 			}
 		}

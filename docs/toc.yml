@@ -1,2 +1,6 @@
 - name: Introduction
   href: intro.md
+- name: Discovery plugin guide
+  href: discovery-plugin-guide.md
+- name: YAML discovery configuration
+  href: yaml-config-discovery.md

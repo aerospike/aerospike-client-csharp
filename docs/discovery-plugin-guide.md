@@ -1,0 +1,375 @@
+# Writing a seed candidate provider or address translator
+
+This guide is for writing a custom `ISeedCandidateProvider` or `IAddressTranslator`, both in
+`Aerospike.Client`. The YAML keys, the built-in names and reload are covered in
+[YAML configuration: discovery and translation](yaml-config-discovery.md).
+
+A provider returns the seed hosts the client tries when it initializes the cluster and when it
+re-seeds because no node is active. A translator rewrites each address a server advertises into
+the address the client connects to.
+
+A provider that needs periodic refresh runs in one of two execution modes,
+`ClientPolicy.discoveryExecutionMode` (YAML `discovery.execution_mode`):
+
+| Mode | Where refreshes run | Bound on a refresh |
+| --- | --- | --- |
+| `THREAD` (`thread`, default) | The client starts one daemon thread per client, named `aerospike-seed-refresh`, that makes every refresh, the first one included, and publishes the seed list. The tend thread only reads the published list and never calls the provider. | `ClientPolicy.discoveryRefreshTimeoutMs` (`discovery.refresh_timeout_ms`, default 10000 ms), measured, not enforced. |
+| `TEND` (`tend`) | No thread is started. The first refresh runs on the thread that constructs the client, later ones on the cluster tend thread. | `ClientPolicy.discoveryTendRefreshDeadlineMs` (`discovery.tend_refresh_deadline_ms`, default 100 ms), measured, not enforced. The provider must return true from `SupportsDeadline()`. |
+
+A provider that does not need periodic refresh is called once, on the thread that constructs the
+client, and no thread is started in either mode. A provider or translator must not start a thread
+of its own.
+
+`aws-tags` runs in `THREAD` mode only: a cold EC2 call takes several hundred milliseconds, more than
+a tend can give. `dns` runs in either mode; `static` is called once. A custom provider whose I/O does
+not fit a tend deadline must run in `THREAD` mode.
+
+## Thread context
+
+`ISeedCandidateProvider`:
+
+| Method | Thread | When | What it may do |
+| --- | --- | --- | --- |
+| `RefreshSeedCandidates(ctx)` | `THREAD` mode with periodic refresh: the `discovery` thread | At construction, with `ctx.tendIteration` 0, before the cluster is seeded; the constructor waits for it at most `discoveryRefreshTimeoutMs`. Then every `discoveryRefreshIntervalMs`, and on an urgent refresh when no node is active | Return the seed hosts within `discoveryRefreshTimeoutMs`. The call may block, for example on a cloud API. |
+| `RefreshSeedCandidates(ctx)` | Otherwise: the application thread that constructs the client | Once, at construction, with `ctx.tendIteration` 0, before the cluster is seeded | Return the seed hosts. No deadline is measured here, but the constructor waits for the call, so bound any I/O. |
+| `RefreshSeedCandidates(ctx)` | `TEND` mode with periodic refresh: the tend thread | Every `discoveryRefreshIntervalMs / tendInterval` tend iterations (integer division), until the provider is disabled | Return the seed hosts within `discoveryTendRefreshDeadlineMs`: in-memory work, or I/O bounded by that deadline. |
+| `NeedsPeriodicRefresh()` | The application thread that constructs the client | Once | Return a constant. |
+| `SupportsDeadline()` | The application thread that constructs the client | At most once, only when `NeedsPeriodicRefresh()` returned true | Return a constant. |
+| `Close()` | The `discovery` thread as it exits, when one runs; otherwise the tend thread as it exits, or the thread that calls `AerospikeClient.Close()` when no tend thread runs (`forceSingleNode`) | Once per client, after `AerospikeClient.Close()` and after the last refresh has returned. When a `discovery` thread runs, `AerospikeClient.Close()` waits at most `discoveryRefreshTimeoutMs` for it to exit; otherwise it does not wait for `Close()` | Release resources. An exception is logged at warning level and not thrown. A provider shared by several clients is closed by each of them. |
+
+`IAddressTranslator`:
+
+| Method | Thread | When | What it may do |
+| --- | --- | --- | --- |
+| `Translate(advertised)` | The application thread that constructs the client, while it seeds the cluster; the tend thread afterwards | For each advertised address the client reads: when it validates a seed, and when it reads a node's peers list after the list changed | In-memory lookup only. No I/O of any kind, including DNS resolution. |
+| `OnClusterViewChanged(viewChange)` | The tend thread | When a peers refresh adds or removes a node or changes the address a node advertises; never for the view established at construction. Called only when the translator overrides it | In-memory only, for example dropping cached state. An exception is logged at warning level and does not stop the tend. |
+| `Close()` | The tend thread as it exits; the thread that calls `AerospikeClient.Close()` when no tend thread runs (`forceSingleNode`); the thread that constructs the client when construction fails | Once per client, after the tend has stopped and every other call to the translator has returned. Optional: the default does nothing. `AerospikeClient.Close()` does not wait for it | Release resources. An exception is logged at warning level and not thrown, and the rest of the shutdown continues. A translator shared by several clients is closed by each of them. |
+
+A registered factory (see [Registered names](yaml-config-discovery.md#registered-names)) is called
+once, on the application thread that constructs the client. Build lookup tables there, so that
+`Translate()` only reads them.
+
+`SeedCandidateContext` carries `clusterName` (`ClientPolicy.clusterName`, may be null),
+`configuredSeeds` (the hosts passed to the client constructor, unmodifiable) and `tendIteration`
+(0 at construction, then the tend count; informational only).
+
+### Periodic refresh in thread mode
+
+A provider whose seeds can change returns true from `NeedsPeriodicRefresh()`. In `THREAD` mode,
+the default, the `discovery` thread refreshes it every `discoveryRefreshIntervalMs`. Client
+construction fails when:
+
+| Case | Error |
+| --- | --- |
+| `discoveryRefreshIntervalMs` is less than `tendInterval` | `Discovery refresh interval ... must be greater or equal to the tend interval ...` |
+| `discoveryRefreshTimeoutMs` is 0 or less | `Invalid discovery refresh timeout: ...` |
+| The `dns` or `aws-tags` provider timeout exceeds `discoveryRefreshTimeoutMs` | `DNS seed provider timeout 12000 must be less or equal to the discovery refresh timeout 10000` |
+
+The refresh timeout is measured, not enforced: the client never interrupts a call. A call that
+returns later than `discoveryRefreshTimeoutMs` logs the warning
+`Seed candidate refresh took 10400ms, exceeding refresh timeout 10000ms. Overruns: 1` and its
+result is still applied when the call succeeds. There is no limit on the number of overruns. A
+call that throws is logged as `Seed candidate refresh failed: <message>` and the previous seed
+list is kept.
+
+Client construction waits for the first refresh at most `discoveryRefreshTimeoutMs`. When it has not
+returned by then, the client continues with the seeds the merge policy leaves, or fails with
+`SEED_DISCOVERY_FAILED` (-27) when none are left; a first refresh that returns later is applied for
+later re-seeds.
+
+When a tend finds no active node, it re-seeds from the seed list it already has and asks the
+`discovery` thread for an urgent refresh, without waiting for it. The request wakes the thread when
+it is waiting for the next interval. It is honored at most once per `discoveryRefreshIntervalMs`, and
+does nothing when a refresh is already running. A refresh that the request starts is used by later
+re-seeds, never by the tend that asked for it.
+
+### Periodic refresh in tend mode
+
+In `TEND` mode, a provider that needs periodic refresh must also return true from
+`SupportsDeadline()` and bound all of its I/O to `ClientPolicy.discoveryTendRefreshDeadlineMs`
+(default 100 ms), because every refresh after construction runs on the tend thread. Client
+construction fails when:
+
+| Case | Error |
+| --- | --- |
+| `NeedsPeriodicRefresh()` is true and `SupportsDeadline()` is false | `A seed candidate provider that needs periodic refresh must support a deadline in discovery execution mode tend` |
+| `discoveryRefreshIntervalMs` is less than `tendInterval` | `Discovery refresh interval ... must be greater or equal to the tend interval ...` |
+| `discoveryTendRefreshDeadlineMs` is 0 or less, or greater than `tendInterval / 2` | `Invalid discovery tend refresh deadline: ...` |
+
+These checks apply only to a provider that needs periodic refresh. A provider that returns false
+from `NeedsPeriodicRefresh()` is called once, at construction, and never on the tend thread. In
+`TEND` mode no urgent refresh is made when no node is active.
+
+The deadline is measured, not preempted: the client times the call after it returns and never
+interrupts it, so an overrunning call blocks the tend for its full duration.
+
+| Case | Behaviour |
+| --- | --- |
+| The call returns within the deadline | Its result is merged into the seed list, see [Merge policy](#merge-policy). The overrun count is reset to 0. |
+| The call takes longer than the deadline (an overrun) | The result is discarded, even when the call succeeded, and the previous seed list is kept. The warning `Seed candidate refresh took 140ms, exceeding tend deadline 100ms. Consecutive overruns: 1` is logged. |
+| Three consecutive overruns | The provider is disabled for that client instance: it is not called from the tend again. The seed list is restored to the one established at construction, and `Seed candidate provider exceeded tend deadline 3 consecutive times. Provider disabled for this client and initial seeds restored` is logged at error level. A new client instance starts with no overruns. |
+
+A refresh that throws:
+
+| When | Behaviour |
+| --- | --- |
+| At construction | The warning `Seed candidate provider <name> failed: <message>` is logged, the call counts as an empty result and the client continues with the seeds the merge policy leaves. When none are left, construction fails with `SEED_DISCOVERY_FAILED` (-27). `<name>` is `static`, `dns` or the provider's class name. |
+| On the tend | The warning `Seed candidate refresh failed: <message>` is logged and the previous seed list is kept. A call that throws after the deadline also counts as an overrun; one that throws within it resets the count. |
+
+Returned hosts are used as seeds, so they must carry the TLS name when TLS is enabled. A null TLS
+name is defaulted as for the seeds passed to the constructor: the cluster name when
+`ClientPolicy.clusterName` is set, otherwise the host name.
+
+A returned host that is null, has a null or empty name or has a port outside 1 to 65535 fails the
+whole refresh, the same way as a refresh that throws: nothing from that call is used, and at
+construction it counts as an empty result. The message names the provider, the zero-based index of
+the host in the returned list and the host, for example
+`Seed candidate provider <name> returned invalid host at index 2: host 10.0.0.1 0 has port 0 outside 1-65535`.
+A host whose name and port are identical to a seed passed to the constructor is accepted without
+these checks. This applies to the built-in providers too.
+
+## Built-in providers
+
+| Provider | Periodic refresh | Deadline |
+| --- | --- | --- |
+| `static` (`StaticSeedCandidateProvider`) | No. `NeedsPeriodicRefresh()` returns false and the provider does no I/O; it is called once, at construction. | None applies. |
+| `dns` (`DnsSeedCandidateProvider`) | Yes, in either mode. `NeedsPeriodicRefresh()` and `SupportsDeadline()` return true, and all I/O of one refresh is bounded by its `timeout` (`dns.timeout_ms`, default 80 ms). | `timeout` must not exceed `discoveryRefreshTimeoutMs` in `THREAD` mode or `discoveryTendRefreshDeadlineMs` in `TEND` mode. This is checked at client construction, which fails otherwise: `DNS seed provider timeout 150 must be less or equal to the discovery tend refresh deadline 100`. |
+| `aws-tags` (`AwsEc2TagSeedCandidateProvider`) | Yes, in `THREAD` mode only. `NeedsPeriodicRefresh()` returns true and `SupportsDeadline()` returns false, so client construction fails in `TEND` mode. All I/O of one refresh is bounded by its `timeout` (`aws.timeout_ms`, default 5000 ms), and of the first by `initTimeout` (`aws.init_timeout_ms`, default 5000 ms). | `timeout` must not exceed `discoveryRefreshTimeoutMs`. This is checked at client construction, which fails otherwise: `AWS EC2 seed provider timeout 12000 must be less or equal to the discovery refresh timeout 10000`. |
+
+When no provider is configured, the client uses `StaticSeedCandidateProvider` over the hosts
+passed to its constructor.
+
+## Writing a translator
+
+`Translate(Endpoint advertised)` returns the host to connect to for an advertised endpoint:
+
+- Return `a non-null Host` for a hit, even when the host equals the advertised one.
+- Return `null` for a miss and let the client apply `translation.on_miss`
+  (`ClientPolicy.translationOnMiss`): `pass_through` connects to the advertised endpoint
+  unchanged; `strict` does not connect, fails the endpoint with `AerospikeException.TranslationMiss`
+  (`TRANSLATION_MISS`, -25) and, for a peer, logs a warning and retries it on the next tend. Do not
+  implement either behaviour in the translator.
+- Return null for a miss. Do not throw from `Translate` for an unmapped endpoint.
+- Return a port from 1 to 65535. A returned host with a port outside that range is a miss, and
+  `translation.on_miss` applies.
+
+`Translate()` and `OnClusterViewChanged()` run on the tend thread (`Translate()` also on the
+constructing thread while the cluster is seeded) and must work in memory only, with no I/O of
+any kind, including DNS resolution. A translator may return a host name: the client resolves it
+when it connects. Aim for a p99 under 1 ms per `Translate()` call.
+
+`Endpoint` fields:
+
+| Field | Meaning |
+| --- | --- |
+| `nodeName` | Name of the node that advertised the address. |
+| `tlsName` | TLS name of the node. May be null. |
+| `host`, `port` | The advertised host name or IP address, and port. |
+| `sourceList` | `ALTERNATE` when `ClientPolicy.useServicesAlternate` is true: the address comes from the alternate lists (`peers-clear-alt`, `peers-tls-alt`, `service-clear-alt`, `service-tls-alt`), set by the server's `alternate-access-address` and `alternate-access-port`. `STANDARD` otherwise: the standard lists (`peers-clear-std`, `peers-tls-std`, `service-clear-std`, `service-tls-std`). |
+
+Key the translator's table on the list in use: a table written against the standard list misses
+on every address when the client reads the alternate list. `use_services_alternate` is re-read on
+every config reload, so the list can change during the life of a client.
+
+The client rejects two peers translated to the same `host:port`, within one peers reply or
+against a live node with a different name, with `AerospikeException.TranslationCollision`
+(`TRANSLATION_COLLISION`, -26): the collision is logged at warning level, no node is created for
+the colliding peers and an existing live node is kept. A translator does not check for
+collisions.
+
+## TLS
+
+`Translate()` never changes the TLS name. The client always uses the advertised endpoint's TLS
+name, whatever TLS name the returned host carries; on a `pass_through` miss it uses the advertised
+endpoint unchanged. The certificate the server presents through the translated address is
+therefore matched against the node's advertised TLS name, not against the host the translator
+returned.
+
+The certificate is matched against the TLS name as follows:
+
+- A TLS name that is an IPv4 or IPv6 literal matches only an `iPAddress` subject alternative name
+  holding the same address.
+- Any other TLS name matches only a `dNSName` subject alternative name, compared
+  case-insensitively (ASCII).
+- The only wildcard is one left-most label of exactly `*`, matching one non-empty label:
+  `*.example.com` matches `a.example.com`, but not `example.com` or `a.b.example.com`.
+- The subject CN is not an identifier.
+
+Deprecated fallback: when those rules find no match, the certificate is still accepted if the TLS
+name exactly equals (case-sensitive) a subject CN or a `dNSName`, for example a CN-only
+certificate or an IP address present only as a `dNSName`. A warning is logged once per TLS name:
+
+```
+TLS name 'node1' matched the server certificate only by the legacy rule (subject CN or IP address as dNSName). This is not RFC 9525 conformant and will be rejected in the next major release.
+```
+
+The C# client keeps this fallback until its next major release, which will reject such
+certificates. The C client (and the Node.js and Python clients, which are built on it) and the C#
+client also keep CN acceptance until their next major release.
+
+## Merge policy
+
+`ClientPolicy.seedMergePolicy` (YAML `discovery.merge_policy`) combines the static seeds (the
+hosts passed to the client constructor) and the discovered seeds (the hosts the provider returns)
+into the seed list. Duplicate hosts (same name and port) are removed, keeping the first
+occurrence. The policy orders seed attempts only; it does not change node identity.
+
+| Policy | At initialization | On a periodic refresh | On re-seed with zero active nodes | Use when |
+| --- | --- | --- | --- | --- |
+| `MERGE` (`merge`, default) | Static seeds, then discovered seeds. | The list becomes the static seeds, then the discovered seeds. An empty result leaves only the static seeds. | Tries the static seeds, then the discovered seeds of the last refresh that was applied, or of initialization before the first one. | Moving an existing deployment to discovery: the static seeds stay a known-good endpoint while discovery catches up. |
+| `REPLACE` (`replace`) | Static seeds, then discovered seeds, as `MERGE`. An empty result leaves only the static seeds. | The discovered seeds replace the list, and the static seeds are no longer tried. An empty result keeps the previous list. | Tries the discovered seeds of the last refresh that was applied, none when it returned none; before the first one, the list from initialization. | A new cloud deployment where the static seeds only bootstrap the client, for example a seed name that is retired once discovery works. |
+| `DISCOVERY_ONLY` (`discovery_only`) | Discovered seeds only; the static seeds when discovery returns none. | The list becomes the discovered seeds; the static seeds when the result is empty. | Tries the seeds of the last refresh that was applied: discovered seeds, or the static seeds when that refresh returned none. | The static seeds are an emergency fallback only, for example a fixed address of a standby site that should be tried only when discovery comes back empty. |
+
+For every policy:
+
+- The seed list is rebuilt only when the provider is called. A re-seed does not call the provider:
+  it tries the current seed list in order.
+- A refresh that throws keeps the previous list, as does a refresh that overruns the tend
+  deadline in `TEND` mode. A refresh that returns an empty list is applied like any other result
+  under `MERGE` and `DISCOVERY_ONLY` (the list can become empty when no static seeds were passed
+  to the constructor); under `REPLACE`, an empty result after initialization keeps the previous
+  list.
+- A provider that throws at initialization counts as an empty result. When the merged list is
+  then empty, construction fails with `SEED_DISCOVERY_FAILED` (-27).
+- After construction, the client appends the addresses of the nodes it found to the seed list.
+  They are tried on re-seed until a refresh is applied, which replaces the whole list.
+- When the provider is disabled after three consecutive overruns, the list from initialization is
+  restored and kept for the life of the client.
+- Without a configured provider, every policy yields the static seeds.
+
+## DNS lookups
+
+The client resolves seed, peer and node hostnames with the platform resolver
+(`Dns.GetHostAddresses`), so `/etc/hosts` and the `resolv.conf` search list apply. The client
+does not bound a lookup: it starts no thread for one and has no timeout of its own, so a slow
+resolver holds up the tend, or the constructor while it seeds, for as long as the platform waits.
+
+Bound lookups in the resolver configuration:
+
+- On a host, set `options timeout:` (seconds per attempt) and `attempts:` in `/etc/resolv.conf`,
+  for example `options timeout:1 attempts:2`.
+- On Kubernetes, set the same options in the pod's `dnsConfig.options`:
+
+```
+dnsConfig:
+  options:
+    - name: timeout
+      value: "1"
+    - name: attempts
+      value: "2"
+```
+
+On .NET, DNS caching follows the OS resolver; there is no separate client-side TTL for these lookups.
+
+## Deployment limits
+
+The following applies to AWS only and comes from the load balancer, not from the client: neither
+translator limits the number of nodes.
+
+A Network Load Balancer has at most 50 listeners, a quota AWS does not raise, and each listener
+serves a single port. A layout that gives every node its own port on one endpoint therefore
+reaches at most 50 nodes per endpoint, whether clients reach the load balancer directly or through
+an AWS PrivateLink endpoint service. This applies to:
+
+- `pass-through` with `alternate-access-port`, where every node advertises the endpoint's name and
+  its own port;
+- `port-map`, where every node maps to the endpoint's name and its own port.
+
+Above 50 nodes, spread the nodes over several endpoint services, each with its own load balancer
+and endpoint name, or use VPC Lattice resource endpoints.
+
+## Examples
+
+A minimal provider and translator, registered in code and selected from YAML by name. The factory
+receives the keys of the YAML block other than `provider` as its options map, see
+[Registered names](yaml-config-discovery.md#registered-names).
+
+The provider returns a host list that the application updates through `SetHosts()`, for example
+from a service registry callback it already runs. `RefreshSeedCandidates()` only reads a field, so
+the provider returns true from both `NeedsPeriodicRefresh()` and `SupportsDeadline()`, runs in
+either execution mode, does no I/O and starts no thread:
+
+```csharp
+sealed class HostListSeedProvider : ISeedCandidateProvider
+{
+	private volatile List<Host> hosts;
+
+	public HostListSeedProvider(IDictionary<string, object> options)
+	{
+		List<Host> list = new List<Host>();
+
+		foreach (object host in (IEnumerable<object>)options["hosts"])
+		{
+			list.AddRange(Host.ParseServiceHosts((string)host));
+		}
+
+		hosts = list;
+	}
+
+	public void SetHosts(List<Host> next)
+	{
+		hosts = next;
+	}
+
+	public List<Host> RefreshSeedCandidates(SeedCandidateContext ctx) => hosts;
+
+	public bool NeedsPeriodicRefresh() => true;
+
+	public bool SupportsDeadline() => true;
+}
+```
+
+The translator maps an advertised `host:port` to the `host:port` to connect to. The table is
+built once by the constructor, and `Translate()` is a dictionary lookup. Returning `null` for an
+endpoint that is not in the table lets `on_miss` apply:
+
+```csharp
+sealed class NatTableTranslator : IAddressTranslator
+{
+	private readonly Dictionary<string, Host> table = new Dictionary<string, Host>();
+
+	public NatTableTranslator(IDictionary<string, object> options)
+	{
+		foreach (KeyValuePair<string, object> entry in (IDictionary<string, object>)options["table"])
+		{
+			table[entry.Key] = Host.ParseServiceHosts((string)entry.Value)[0];
+		}
+	}
+
+	public Host Translate(Endpoint advertised)
+	{
+		table.TryGetValue(advertised.host + ':' + advertised.port, out Host host);
+		return host;
+	}
+}
+```
+
+Register both names on the `ClientPolicy`, then pass it to the `AerospikeClient` constructor:
+
+```csharp
+ClientPolicy policy = new ClientPolicy();
+policy.RegisterSeedCandidateProvider("host-list", options => new HostListSeedProvider(options));
+policy.RegisterAddressTranslator("nat-table", options => new NatTableTranslator(options));
+```
+
+Select them from the YAML file:
+
+```yaml
+version: 1.2.0
+static:
+  client:
+    discovery:
+      provider: host-list
+      merge_policy: merge
+      hosts:
+        - "192.0.2.1:3000"
+        - "192.0.2.2:3000"
+    translation:
+      provider: nat-table
+      on_miss: strict
+      table:
+        "192.0.2.1:3000": "lb.example.com:30001"
+        "192.0.2.2:3000": "lb.example.com:30002"
+```
+
+With `on_miss: strict`, a node whose advertised address is not in `table` is not connected.

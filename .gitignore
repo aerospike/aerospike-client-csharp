@@ -9,6 +9,8 @@ project.lock.json
 *.suo
 *.nupkg
 TestResults/
+conformance-fixtures/
+_conformance_tmp/
 .vscode
 coverage/
 .config

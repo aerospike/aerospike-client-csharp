@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <DISCOVERY_UNIT>1</DISCOVERY_UNIT>
+    </EnvironmentVariables>
+  </RunConfiguration>
+  <TestRunParameters>
+    <Parameter name="DiscoveryUnit" value="true" />
+    <!-- Satisfy Suite.AssemblyInit property reads if skip logic fails. -->
+    <Parameter name="Host" value="" />
+    <Parameter name="Port" value="3000" />
+    <Parameter name="ClusterName" value="" />
+    <Parameter name="User" value="" />
+    <Parameter name="Password" value="" />
+    <Parameter name="Namespace" value="test" />
+    <Parameter name="Set" value="test" />
+    <Parameter name="Timeout" value="1000" />
+    <Parameter name="AuthMode" value="INTERNAL" />
+    <Parameter name="UseServicesAlternate" value="false" />
+    <Parameter name="TlsEnable" value="false" />
+  </TestRunParameters>
+</RunSettings>

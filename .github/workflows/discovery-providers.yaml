@@ -1,0 +1,97 @@
+name: Discovery providers
+
+# Runs TestAwsTagsDiscovery and TestDnsDiscovery, each against its
+# aerospike-client-conformance test environment (envs/aws-tags.sh, envs/dns.sh),
+# which starts a two node Enterprise cluster, so the jobs need AES_FEATURES_CONF.
+
+on:
+  workflow_call:
+    inputs:
+      server-tag:
+        description: Aerospike Enterprise image tag
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  aws-tags:
+    name: aws-tags
+    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@a30c0787dede434f15be3622e7007dc57b55209d # main
+    with:
+      environment: aws-tags
+      conformance-ref: a30c0787dede434f15be3622e7007dc57b55209d
+      server-image: aerospike/aerospike-server-enterprise:${{ inputs.server-tag }}
+      command: |
+        set -euo pipefail
+        curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+        bash /tmp/dotnet-install.sh --version 8.0.400
+        export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH"
+        sudo dnf install -y -q libicu || sudo apt-get install -y -qq libicu70 || true
+        results="$PWD/TestResults/aws-tags"
+        mkdir -p "${results}"
+        filter='FullyQualifiedName~TestAwsTagsDiscovery'
+        # nuget.org occasionally 404s mid-download; restore with retries then --no-restore.
+        bash .github/discovery/dotnet-restore-retry.sh AerospikeTest/AerospikeTest.csproj
+        # MTP ignores VSTest --logger; use --report-trx. Absolute results dir so output is
+        # not buried under AerospikeTest/TestResults (see .github/actions/test).
+        set +e
+        dotnet test AerospikeTest/AerospikeTest.csproj -c Release \
+          --no-restore \
+          --filter "${filter}" \
+          -- \
+          --filter "${filter}" \
+          --results-directory "${results}" \
+          --report-trx --report-trx-filename aws-tags.trx
+        status=$?
+        set -e
+        if [[ "${status}" -ne 0 ]]; then
+          echo "::group::aws-tags failure details"
+          find "${results}" -type f \( -name '*.log' -o -name '*.trx' \) -print -exec sed -n '1,200p' {} \;
+          echo "::endgroup::"
+          exit "${status}"
+        fi
+        bash .github/discovery/check-skips.sh "${results}"
+    secrets:
+      features-conf: ${{ secrets.AES_FEATURES_CONF }}
+
+  dns:
+    name: dns
+    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@a30c0787dede434f15be3622e7007dc57b55209d # main
+    with:
+      environment: dns
+      conformance-ref: a30c0787dede434f15be3622e7007dc57b55209d
+      server-image: aerospike/aerospike-server-enterprise:${{ inputs.server-tag }}
+      command: |
+        set -euo pipefail
+        curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+        bash /tmp/dotnet-install.sh --version 8.0.400
+        export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH"
+        sudo dnf install -y -q libicu || sudo apt-get install -y -qq libicu70 || true
+        results="$PWD/TestResults/dns"
+        mkdir -p "${results}"
+        filter='FullyQualifiedName~TestDnsDiscovery'
+        # nuget.org occasionally 404s mid-download; restore with retries then --no-restore.
+        bash .github/discovery/dotnet-restore-retry.sh AerospikeTest/AerospikeTest.csproj
+        # MTP ignores VSTest --logger; use --report-trx. Absolute results dir so output is
+        # not buried under AerospikeTest/TestResults (see .github/actions/test).
+        set +e
+        dotnet test AerospikeTest/AerospikeTest.csproj -c Release \
+          --no-restore \
+          --filter "${filter}" \
+          -- \
+          --filter "${filter}" \
+          --results-directory "${results}" \
+          --report-trx --report-trx-filename dns.trx
+        status=$?
+        set -e
+        if [[ "${status}" -ne 0 ]]; then
+          echo "::group::dns failure details"
+          find "${results}" -type f \( -name '*.log' -o -name '*.trx' \) -print -exec sed -n '1,200p' {} \;
+          echo "::endgroup::"
+          exit "${status}"
+        fi
+        bash .github/discovery/check-skips.sh "${results}"
+    secrets:
+      features-conf: ${{ secrets.AES_FEATURES_CONF }}

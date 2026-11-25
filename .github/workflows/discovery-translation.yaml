@@ -1,0 +1,75 @@
+name: Discovery translation
+
+# Runs each translation suite against its aerospike-client-conformance test
+# environment, which starts Community servers, so the jobs need no feature key
+# and run on fork pull requests too.
+
+on:
+  workflow_call:
+    inputs:
+      server-tag:
+        description: Aerospike Community image tag
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  translation:
+    name: ${{ matrix.environment }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - environment: port-map
+            # Node-join needs B stopped; TestPortMap starts B. Run node-join first.
+            filter: FullyQualifiedName~TestPortMapNodeJoin
+            filter2: FullyQualifiedName~Aerospike.Test.TestPortMap.
+          - environment: collision
+            filter: FullyQualifiedName~TestTranslationCollision
+            filter2: ""
+          - environment: yaml
+            filter: FullyQualifiedName~TestYamlTranslation
+            filter2: ""
+          - environment: pass-through
+            filter: FullyQualifiedName~TestPassThroughTranslation
+            filter2: ""
+          - environment: on-miss
+            filter: FullyQualifiedName~TestTranslationOnMiss
+            filter2: ""
+          - environment: alt-missing
+            filter: FullyQualifiedName~TestAlternateMissing
+            filter2: ""
+    uses: aerospike/aerospike-client-conformance/.github/workflows/test-envs.yaml@a30c0787dede434f15be3622e7007dc57b55209d # main
+    with:
+      environment: ${{ matrix.environment }}
+      conformance-ref: a30c0787dede434f15be3622e7007dc57b55209d
+      server-image: aerospike/aerospike-server:${{ inputs.server-tag }}
+      command: |
+        set -euo pipefail
+        curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+        bash /tmp/dotnet-install.sh --version 8.0.400
+        export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH"
+        sudo dnf install -y -q libicu || sudo apt-get install -y -qq libicu70 || true
+        results="$PWD/TestResults/${{ matrix.environment }}"
+        mkdir -p "${results}"
+        # nuget.org occasionally 404s mid-download; restore with retries then --no-restore.
+        bash .github/discovery/dotnet-restore-retry.sh AerospikeTest/AerospikeTest.csproj
+        run_filter() {
+          local filter="$1"
+          local name="$2"
+          [[ -n "${filter}" ]] || return 0
+          # MTP ignores VSTest --logger; use --report-trx. Absolute results dir so output is
+          # not buried under AerospikeTest/TestResults (see .github/actions/test).
+          dotnet test AerospikeTest/AerospikeTest.csproj -c Release \
+            --no-restore \
+            --filter "${filter}" \
+            -- \
+            --filter "${filter}" \
+            --results-directory "${results}" \
+            --report-trx --report-trx-filename "${name}.trx"
+        }
+        run_filter '${{ matrix.filter }}' first
+        run_filter '${{ matrix.filter2 }}' second
+        bash .github/discovery/check-skips.sh "${results}"

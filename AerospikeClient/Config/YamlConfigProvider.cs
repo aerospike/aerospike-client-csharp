@@ -88,7 +88,8 @@ namespace Aerospike.Client
 		private readonly Dictionary<Version, IConfigurationData> supportedVersions = new()
 		{
 			{ new Version(1, 0, 0), new ConfigurationDatav1_0_0() },
-			{ new Version(1, 1, 0), new ConfigurationDatav1_1_0() }
+			{ new Version(1, 1, 0), new ConfigurationDatav1_1_0() },
+			{ new Version(1, 2, 0), new ConfigurationDatav1_2_0() }
 		};
 
 		private Version schemaVersion = DefaultVersion;
@@ -175,7 +176,8 @@ namespace Aerospike.Client
 					ConfigurationData = ResolveConfigurationData();
 					ValidateSchemaVersion(configRoot, schemaVersion);
 					ProcessStaticConfig();
-					ProcessDynamicConfig();
+					// Keep static when dynamic is absent (conformance aws-tags/dns are static-only).
+					ProcessDynamicConfig(retainStaticWithoutDynamic: true);
 					LogConfigChanges(true);
 
 					Watch();
@@ -191,7 +193,8 @@ namespace Aerospike.Client
 			{
 				ConfigurationData = ResolveConfigurationData();
 				ValidateSchemaVersion(configRoot, schemaVersion);
-				ProcessDynamicConfig();
+				// Reload does not re-bind static; removing dynamic disables YAML-driven config.
+				ProcessDynamicConfig(retainStaticWithoutDynamic: false);
 				LogConfigChanges(false);
 				modified = false;
 				return true;
@@ -289,20 +292,61 @@ namespace Aerospike.Client
 		{
 			configRoot.GetSection("static").Bind(ConfigurationData.staticConfig);
 
-			if (ConfigurationData.staticConfig.client.config_interval.HasValue)
+			IConfigurationSection clientSection = configRoot.GetSection("static:client");
+			StaticClientConfig client = ConfigurationData.staticConfig.client;
+
+			if (client.discovery?.dns != null)
 			{
-				Interval = ConfigurationData.staticConfig.client.config_interval.Value;
+				IConfigurationSection dnsSection = clientSection.GetSection("discovery:dns");
+
+				if (dnsSection.GetSection("names").Exists())
+				{
+					client.discovery.dns.names = dnsSection.GetSection("names").Get<string[]>();
+				}
+
+				if (dnsSection.GetSection("servers").Exists())
+				{
+					client.discovery.dns.servers = dnsSection.GetSection("servers").Get<string[]>();
+				}
+			}
+
+			if (client.discovery?.aws != null)
+			{
+				IConfigurationSection filtersSection = clientSection.GetSection("discovery:aws:filters");
+
+				if (filtersSection.Exists())
+				{
+					client.discovery.aws.filters = filtersSection.Get<AwsDiscoveryFilterConfig[]>();
+				}
+			}
+
+			DiscoveryYaml.FinalizeAndValidate(client, clientSection, filePath);
+
+			if (client.config_interval.HasValue)
+			{
+				Interval = client.config_interval.Value;
 			}
 		}
 
-		private void ProcessDynamicConfig()
+		/// <param name="retainStaticWithoutDynamic">
+		/// Initial load: true — keep static ConfigurationData when <c>dynamic</c> is absent
+		/// (static-only YAML). Reload: false — clearing dynamic disables YAML-driven config
+		/// (<see cref="ConfigurationData"/> becomes null); static is not re-bound on reload.
+		/// </param>
+		private void ProcessDynamicConfig(bool retainStaticWithoutDynamic)
 		{
 			var dynamicSection = configRoot.GetSection("dynamic");
 			if (!dynamicSection.Exists())
 			{
-				// disable dynamic config
-				ConfigurationData = null;
-				Log.Info("Dynamic configuration has been disabled.");
+				if (retainStaticWithoutDynamic)
+				{
+					Log.Info("Dynamic configuration section absent; applying static config only.");
+				}
+				else
+				{
+					ConfigurationData = null;
+					Log.Info("Dynamic configuration has been disabled.");
+				}
 			}
 			else
 			{

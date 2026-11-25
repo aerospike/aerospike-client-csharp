@@ -1,0 +1,62 @@
+name: Discovery translate latency
+
+# Run TestTranslateLatency: translate() p99 under 1 ms for the built-in translators.
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches:
+      - stage
+      - CLIENT-5734_pluggable-discovery
+      - pluggable-discovery
+    types:
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      - AerospikeClient/Discovery/**
+      - AerospikeClient/Cluster/**
+      - AerospikeTest/Sync/Basic/TestTranslateLatency.cs
+  push:
+    branches:
+      - stage
+      - CLIENT-5734_pluggable-discovery
+      - pluggable-discovery
+    paths:
+      - AerospikeClient/Discovery/**
+      - AerospikeClient/Cluster/**
+      - AerospikeTest/Sync/Basic/TestTranslateLatency.cs
+  workflow_dispatch:
+
+jobs:
+  translate-latency:
+    name: Translate latency
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Run translate latency test
+        env:
+          DISCOVERY_UNIT: "1"
+        run: |
+          set -euo pipefail
+          mkdir -p TestResults
+          filter='FullyQualifiedName~TestTranslateLatency'
+          dotnet test AerospikeTest/AerospikeTest.csproj \
+            -c Release \
+            --settings AerospikeTest/conformance/l0.runsettings \
+            --filter "${filter}" \
+            --logger "console;verbosity=normal" \
+            --results-directory TestResults \
+            -- \
+            --filter "${filter}"

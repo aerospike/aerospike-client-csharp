@@ -16,6 +16,7 @@
  */
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using static Aerospike.Client.Latency;
 
 namespace Aerospike.Client
@@ -71,8 +72,14 @@ namespace Aerospike.Client
 		protected internal int partitionGeneration = -1;
 		protected internal int rebalanceGeneration = -1;
 		protected internal int peersCount;
+		private List<Host> advertisedHosts;
 		protected internal int referenceCount;
 		protected internal int failures;
+		/// <summary>Consecutive tend <see cref="Refresh"/> failures; used by FR-48 hostname move.</summary>
+		private int failedTends;
+		private const int MoveFailedTends = 3;
+		/// <summary>Last alternate address tried by <see cref="RefreshAddress"/>.</summary>
+		private IPAddress moveAddress;
 		protected internal readonly uint features;
 		private volatile int performLogin;
 		protected internal bool partitionChanged = true;
@@ -90,6 +97,7 @@ namespace Aerospike.Client
 		{
 			this.cluster = cluster;
 			this.name = nv.name;
+			this.hostname = nv.hostname;
 			this.host = nv.primaryHost;
 			this.address = nv.primaryAddress;
 			this.tendConnection = nv.primaryConn;
@@ -212,10 +220,13 @@ namespace Aerospike.Client
 					rebalanceChanged = cluster.rackAware;
 				}
 				failures = 0;
+				failedTends = 0;
+				moveAddress = null;
 			}
 			catch (Exception e)
 			{
 				peers.genChanged = true;
+				failedTends++;
 				RefreshFailed(e);
 			}
 		}
@@ -393,19 +404,41 @@ namespace Aerospike.Client
 
 				foreach (Peer peer in peers.peers)
 				{
+					if (cluster.notifyViewChange)
+					{
+						CompareAdvertised(peers, peer);
+					}
+
 					if (FindPeerNode(cluster, peers, peer))
 					{
 						// Node already exists. Do not even try to connect to hosts.				
 						continue;
 					}
 
+					if (peer.alternateMissing)
+					{
+						// Match Java: peer alternate-missing is ERROR (tests and ops treat it as ERROR).
+						Log.Error(cluster.context,
+							new AerospikeException.AlternateAddressMissing(peer.nodeName, null).Message);
+						peersValidated = false;
+						continue;
+					}
+
 					bool nodeValidated = false;
 
-					// Find first host that connects.
+					// Try each address; skip a colliding host:port and continue (FR-46).
 					foreach (Host host in peer.hosts)
 					{
 						if (peers.HasFailed(host))
 						{
+							continue;
+						}
+
+						AerospikeException.TranslationCollision collision = FindCollision(peers, peer, host);
+
+						if (collision != null)
+						{
+							LogCollision(peer, host, collision);
 							continue;
 						}
 
@@ -414,6 +447,15 @@ namespace Aerospike.Client
 							// Attempt connection to host.
 							NodeValidator nv = new NodeValidator();
 							nv.ValidateNode(cluster, host);
+
+							collision = FindCollision(peers, peer, host, nv);
+
+							if (collision != null)
+							{
+								nv.primaryConn.Close();
+								LogCollision(peer, host, collision);
+								continue;
+							}
 
 							if (!peer.nodeName.Equals(nv.name))
 							{
@@ -426,16 +468,22 @@ namespace Aerospike.Client
 
 							// Create new node.
 							Node node = cluster.CreateNode(nv, true);
+							node.advertisedHosts = peer.advertised;
 							peers.nodes[nv.name] = node;
 							nodeValidated = true;
 
 							if (peer.replaceNode != null)
 							{
-								if (Log.InfoEnabled())
+								if (host.name.Equals(peer.replaceNode.hostname) &&
+									peer.replaceNode.name.Equals(nv.name))
+								{
+									peer.replaceNode.LogMove(node);
+								}
+								else if (Log.InfoEnabled())
 								{
 									Log.Info("Replace node: " + peer.replaceNode);
 								}
-								peers.removeNodes.Add(peer.replaceNode);
+								peers.RemoveNode(peer.replaceNode);
 							}
 							break;
 						}
@@ -443,7 +491,11 @@ namespace Aerospike.Client
 						{
 							peers.Fail(host);
 
-							if (Log.WarnEnabled())
+							if (e is AerospikeException.AlternateAddressMissing)
+							{
+								Log.Error(cluster.context, "Add node " + host + " failed: " + e.Message);
+							}
+							else if (Log.WarnEnabled())
 							{
 								Log.Warn(cluster.context, "Add node " + host + " failed: " + Util.GetErrorMessage(e));
 							}
@@ -469,6 +521,249 @@ namespace Aerospike.Client
 			}
 		}
 
+		private void CompareAdvertised(Peers peers, Peer peer)
+		{
+			if (!cluster.nodesMap.TryGetValue(peer.nodeName, out Node node) || peer.advertised == null)
+			{
+				return;
+			}
+
+			if (node.advertisedHosts != null && !HostListsEqual(node.advertisedHosts, peer.advertised))
+			{
+				peers.addressChanged = true;
+			}
+
+			node.advertisedHosts = peer.advertised;
+		}
+
+		private static bool HostListsEqual(List<Host> a, List<Host> b)
+		{
+			if (a.Count != b.Count)
+			{
+				return false;
+			}
+
+			for (int i = 0; i < a.Count; i++)
+			{
+				if (!a[i].Equals(b[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		/// <summary>
+		/// Pre-connect host:port collision check for one address against this node, peer list, and
+		/// known nodes. Returns a collision that names the peer's other addresses when present.
+		/// </summary>
+		private AerospikeException.TranslationCollision FindCollision(Peers peers, Peer peer, Host host)
+		{
+			string other = null;
+
+			if (!name.Equals(peer.nodeName) && this.host.Equals(host))
+			{
+				other = name;
+			}
+			else
+			{
+				foreach (Peer candidate in peers.peers)
+				{
+					if (!candidate.nodeName.Equals(peer.nodeName) &&
+						candidate.hosts != null &&
+						candidate.hosts.Contains(host))
+					{
+						other = candidate.nodeName;
+						break;
+					}
+				}
+
+				if (other == null)
+				{
+					Node node = FindNodeByHost(cluster.nodesMap, peer.nodeName, host);
+
+					if (node == null)
+					{
+						node = FindNodeByHost(peers.nodes, peer.nodeName, host);
+					}
+
+					if (node != null)
+					{
+						other = node.name;
+					}
+				}
+			}
+
+			if (other == null)
+			{
+				return null;
+			}
+
+			return new AerospikeException.TranslationCollision(
+				peer.nodeName, other, host, cluster.TranslatorName(), OtherHostOptions(peer.hosts, host));
+		}
+
+		/// <summary>
+		/// Log a skipped colliding address. INFO when the shared address is the server's own
+		/// unchanged advertisement; WARNING when a translator produced it (FR-46).
+		/// </summary>
+		private void LogCollision(Peer peer, Host host, AerospikeException.TranslationCollision collision)
+		{
+			bool unchanged = false;
+
+			if (peer.advertised != null)
+			{
+				foreach (Host advertised in peer.advertised)
+				{
+					if (advertised.name.Equals(host.name) && advertised.port == host.port)
+					{
+						unchanged = true;
+						break;
+					}
+				}
+			}
+			else if (cluster.addressTranslator is PassThroughAddressTranslator)
+			{
+				unchanged = true;
+			}
+
+			if (unchanged)
+			{
+				if (Log.InfoEnabled())
+				{
+					Log.Info(cluster.context, collision.Message);
+				}
+			}
+			else if (Log.WarnEnabled())
+			{
+				Log.Warn(cluster.context, collision.Message);
+			}
+		}
+
+		private static string OtherHostOptions(List<Host> hosts, Host shared)
+		{
+			if (hosts == null || hosts.Count <= 1)
+			{
+				return null;
+			}
+
+			StringBuilder sb = new StringBuilder();
+
+			foreach (Host host in hosts)
+			{
+				if (host.Equals(shared))
+				{
+					continue;
+				}
+
+				if (sb.Length > 0)
+				{
+					sb.Append(", ");
+				}
+
+				sb.Append(host.name).Append(':').Append(host.port);
+			}
+
+			return sb.Length == 0 ? null : sb.ToString();
+		}
+
+		/// <summary>
+		/// Post-validate collision check: newcomer resolved to an already-known node/address.
+		/// </summary>
+		private AerospikeException.TranslationCollision FindCollision(Peers peers, Peer peer, Host host, NodeValidator nv)
+		{
+			string other;
+
+			if (name.Equals(nv.name) || address.Equals(nv.primaryAddress))
+			{
+				other = name;
+			}
+			else
+			{
+				Node node = FindValidatedNode(cluster.nodesMap, peer.nodeName, nv);
+
+				if (node == null)
+				{
+					node = FindValidatedNode(peers.nodes, peer.nodeName, nv);
+
+					if (node != null)
+					{
+						// Neither peer becomes a node when both validate as the same node in this tend.
+						peers.nodes.Remove(node.name);
+						node.Close();
+					}
+				}
+
+				if (node != null)
+				{
+					other = node.name;
+				}
+				else if (!peer.nodeName.Equals(nv.name) && FindPeer(peers, nv.name))
+				{
+					other = nv.name;
+				}
+				else if (!peers.collided.TryGetValue(nv.name, out other))
+				{
+					other = null;
+				}
+			}
+
+			if (other == null)
+			{
+				return null;
+			}
+
+			peers.collided[nv.name] = peer.nodeName;
+			return new AerospikeException.TranslationCollision(
+				peer.nodeName, other, host, cluster.TranslatorName(), OtherHostOptions(peer.hosts, host));
+		}
+
+		private static Node FindValidatedNode(Dictionary<string, Node> nodes, string nodeName, NodeValidator nv)
+		{
+			foreach (Node node in nodes.Values)
+			{
+				if (node.name.Equals(nodeName))
+				{
+					continue;
+				}
+
+				if (node.name.Equals(nv.name) ||
+					(node.active && node.failures == 0 && node.address.Equals(nv.primaryAddress)))
+				{
+					return node;
+				}
+			}
+
+			return null;
+		}
+
+		private static bool FindPeer(Peers peers, string nodeName)
+		{
+			foreach (Peer peer in peers.peers)
+			{
+				if (peer.nodeName.Equals(nodeName))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		private static Node FindNodeByHost(Dictionary<string, Node> nodes, string nodeName, Host host)
+		{
+			foreach (Node node in nodes.Values)
+			{
+				if (node.active && node.failures == 0 && !node.name.Equals(nodeName) && node.host.Equals(host))
+				{
+					return node;
+				}
+			}
+
+			return null;
+		}
+
 		private static bool FindPeerNode(Cluster cluster, Peers peers, Peer peer)
 		{
 			// Check global node map for existing cluster.
@@ -488,8 +783,8 @@ namespace Aerospike.Client
 				{
 					if (h.port == node.host.port)
 					{
-						// Check for IP address (node.host.name is an IP address) or hostname if it exists.
-						if (h.name.Equals(node.host.name) || (node.hostname != null && h.name == node.hostname))
+						// Check for IP address (node.host.name is an IP address).
+						if (h.name.Equals(node.host.name))
 						{
 							// Main node host is also the same as one of the peer hosts.
 							// Peer should not be added.
@@ -498,13 +793,16 @@ namespace Aerospike.Client
 						}
 
 						// Peer name might be a hostname. Get peer IP addresses and check with node IP address.
+						// When the hostname has several addresses, the node's address may be the one that
+						// failed, so let the peer be validated on the other addresses.
 						try
 						{
 							IPAddress[] addresses = Dns.GetHostAddresses(h.name);
+
 							foreach (IPAddress address in addresses)
 							{
-								if (address.Equals(node.address.Address) ||
-									IPAddress.IsLoopback(address))
+								if (IPAddress.IsLoopback(address) || (addresses.Length == 1 &&
+									(address.Equals(node.address.Address) || h.name.Equals(node.hostname))))
 								{
 									// Set peer hostname for faster future lookups.
 									node.hostname = h.name;
@@ -515,6 +813,12 @@ namespace Aerospike.Client
 						}
 						catch (Exception)
 						{
+							if (h.name.Equals(node.hostname))
+							{
+								node.referenceCount++;
+								return true;
+							}
+
 							// Peer name is invalid. replaceNode may be set, but that node will
 							// not be replaced because NodeValidator will reject it.
 							Log.Error("Invalid peer received by cluster tend: " + h.name);
@@ -533,6 +837,146 @@ namespace Aerospike.Client
 				return true;
 			}
 			return false;
+		}
+
+		/// <summary>
+		/// Replace a node whose refresh failed in consecutive tends with the same node on another
+		/// address of its hostname (FR-48). One address is tried per tend, within half the tend interval.
+		/// A hostname that now resolves to a single different address supplies a candidate.
+		/// </summary>
+		protected internal void RefreshAddress(Peers peers)
+		{
+			if (!cluster.nodesMap.TryGetValue(name, out Node mapped) || !object.ReferenceEquals(mapped, this))
+			{
+				// Another node with the same name replaced this node (or it was already removed).
+				peers.RemoveNode(this);
+				return;
+			}
+
+			if (failedTends < MoveFailedTends || !active || hostname == null)
+			{
+				return;
+			}
+
+			IPAddress[] addresses;
+
+			try
+			{
+				addresses = Dns.GetHostAddresses(hostname);
+			}
+			catch (Exception)
+			{
+				return;
+			}
+
+			IPAddress ia = NextAddress(addresses);
+
+			if (ia == null)
+			{
+				return;
+			}
+
+			moveAddress = ia;
+
+			int timeout = cluster.tendInterval / 2;
+
+			if (cluster.connectionTimeout > 0 && cluster.connectionTimeout < timeout)
+			{
+				timeout = cluster.connectionTimeout;
+			}
+
+			Host alias = new Host(hostname, host.tlsName, host.port);
+
+			try
+			{
+				NodeValidator nv = new NodeValidator();
+				nv.ValidateAlias(cluster, alias, ia, timeout);
+
+				if (!name.Equals(nv.name))
+				{
+					if (Log.DebugEnabled())
+					{
+						Log.Debug(cluster.context, "Address " + nv.primaryHost + " of " + hostname +
+							" is node " + nv.name + ", not node " + name);
+					}
+					nv.primaryConn.Close();
+					return;
+				}
+
+				Node colliding = FindValidatedNode(cluster.nodesMap, name, nv) ??
+					FindValidatedNode(peers.nodes, name, nv);
+
+				if (colliding != null)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn(cluster.context, new AerospikeException.TranslationCollision(
+							name, colliding.name, nv.primaryHost, cluster.TranslatorName()).Message);
+					}
+					nv.primaryConn.Close();
+					return;
+				}
+
+				Node node = cluster.CreateNode(nv, true);
+				node.advertisedHosts = advertisedHosts;
+				peers.nodes[name] = node;
+				peers.RemoveNode(this);
+				LogMove(node);
+			}
+			catch (Exception e)
+			{
+				if (Log.DebugEnabled())
+				{
+					Log.Debug(cluster.context, "Address " + ia + ' ' + host.port + " failed: " +
+						Util.GetErrorMessage(e));
+				}
+			}
+		}
+
+		/// <summary>
+		/// Return the address after the one tried last, skipping the node's current address.
+		/// A single different address is eligible (FR-48).
+		/// </summary>
+		private IPAddress NextAddress(IPAddress[] addresses)
+		{
+			if (addresses == null || addresses.Length == 0)
+			{
+				return null;
+			}
+
+			int start = 0;
+
+			if (moveAddress != null)
+			{
+				for (int i = 0; i < addresses.Length; i++)
+				{
+					if (addresses[i].Equals(moveAddress))
+					{
+						start = i + 1;
+						break;
+					}
+				}
+			}
+
+			for (int i = 0; i < addresses.Length; i++)
+			{
+				IPAddress ia = addresses[(start + i) % addresses.Length];
+
+				if (!ia.Equals(address.Address))
+				{
+					return ia;
+				}
+			}
+
+			return null;
+		}
+
+		private void LogMove(Node node)
+		{
+			if (Log.InfoEnabled())
+			{
+				Log.Info("Move node " + name + ' ' + hostname + " from " + host + " to " + node.host);
+			}
 		}
 
 		protected internal void RefreshPartitions(Peers peers)
@@ -734,6 +1178,8 @@ namespace Aerospike.Client
 						try
 						{
 							conn.SetTimeout(timeoutMillis);
+							conn.pooled = true;
+							conn.received = false;
 							return conn;
 						}
 						catch (Exception e)
@@ -748,67 +1194,15 @@ namespace Aerospike.Client
 				}
 				else if (pool.IncrTotal() <= pool.Capacity)
 				{
-					// Socket not found and queue has available slot.
-					// Create new connection.
 					try
 					{
-						conn = CreateConnection(timeoutMillis, pool);
+						return CreateAuthenticatedConnection(timeoutMillis, timeoutDelay, pool);
 					}
 					catch (Exception)
 					{
 						pool.DecrTotal();
 						throw;
 					}
-
-					if (cluster.authEnabled)
-					{
-						byte[] token = SessionToken;
-
-						if (token != null)
-						{
-							try
-							{
-								if (!AdminCommand.Authenticate(cluster, conn, token))
-								{
-									SignalLogin();
-									throw new AerospikeException("Authentication failed");
-								}
-							}
-							catch (Connection.ReadTimeout crt)
-							{
-								if (timeoutDelay > 0)
-								{
-									// The connection State is always STATE_READ_AUTH_HEADER here which does not reference
-									// isSingle, so just pass in true for isSingle in ConnectionRecover.
-									cluster.RecoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt, true));
-									conn = null;
-								}
-								else
-								{
-									CloseConnection(conn);
-								}
-								throw;
-							}
-							catch (SocketException se)
-							{
-								CloseConnection(conn);
-								if (se.SocketErrorCode == SocketError.TimedOut)
-								{
-									// This is really a socket write timeout, but the calling
-									// method's catch handler just identifies error as a client
-									// timeout, which is what we need.
-									throw new Connection.ReadTimeout(null, 0, 0, (byte)0);
-								}
-							}
-							catch (Exception)
-							{
-								// Socket not authenticated.  Do not put back into pool.
-								CloseConnectionOnError(conn);
-								throw;
-							}
-						}
-					}
-					return conn;
 				}
 				else
 				{
@@ -841,6 +1235,87 @@ namespace Aerospike.Client
 			}
 			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
 				"Node " + this + " max connections " + cluster.maxConnsPerNode + " would be exceeded.");
+		}
+
+		/// <summary>
+		/// Create a new socket without taking one from the pool. Counted in the pool and returned by
+		/// <see cref="PutConnection"/>. Used after a stale pooled connection is discarded.
+		/// </summary>
+		public Connection GetNewConnection(int timeoutMillis, int timeoutDelay)
+		{
+			foreach (Pool<Connection> pool in connectionPools)
+			{
+				if (pool.IncrTotal() <= pool.Capacity)
+				{
+					try
+					{
+						return CreateAuthenticatedConnection(timeoutMillis, timeoutDelay, pool);
+					}
+					catch (Exception)
+					{
+						pool.DecrTotal();
+						throw;
+					}
+				}
+
+				pool.DecrTotal();
+			}
+
+			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
+				"Node " + this + " max connections " + cluster.maxConnsPerNode + " would be exceeded.");
+		}
+
+		private Connection CreateAuthenticatedConnection(int timeoutMillis, int timeoutDelay, Pool<Connection> pool)
+		{
+			Connection conn = CreateConnection(timeoutMillis, pool);
+
+			if (cluster.authEnabled)
+			{
+				byte[] token = SessionToken;
+
+				if (token != null)
+				{
+					try
+					{
+						if (!AdminCommand.Authenticate(cluster, conn, token))
+						{
+							SignalLogin();
+							throw new AerospikeException("Authentication failed");
+						}
+					}
+					catch (Connection.ReadTimeout crt)
+					{
+						if (timeoutDelay > 0)
+						{
+							cluster.RecoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt, true));
+							conn = null;
+						}
+						else
+						{
+							CloseConnection(conn);
+						}
+						throw;
+					}
+					catch (SocketException se)
+					{
+						CloseConnection(conn);
+						if (se.SocketErrorCode == SocketError.TimedOut)
+						{
+							throw new Connection.ReadTimeout(null, 0, 0, (byte)0);
+						}
+						throw;
+					}
+					catch (Exception)
+					{
+						CloseConnectionOnError(conn);
+						throw;
+					}
+				}
+			}
+
+			conn.pooled = false;
+			conn.received = false;
+			return conn;
 		}
 
 		private Connection CreateConnection(int timeout, Pool<Connection> pool)
@@ -891,6 +1366,23 @@ namespace Aerospike.Client
 			{
 				CloseConnection(conn);
 			}
+		}
+
+		/// <summary>
+		/// Close a pooled connection that failed before any response was read, without counting an
+		/// error. Returns false if the connection was newly created or has already read response data.
+		/// </summary>
+		public bool CloseStaleConnection(Connection conn)
+		{
+			if (!conn.pooled || conn.received)
+			{
+				return false;
+			}
+
+			conn.pool.DecrTotal();
+			Interlocked.Increment(ref connsClosed);
+			conn.Close();
+			return true;
 		}
 
 		/// <summary>

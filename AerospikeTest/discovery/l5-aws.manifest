@@ -1,0 +1,13 @@
+# Manifest for the l5-aws harness in aerospike-client-conformance (l5-aws/README.md).
+# Each command runs with bash on the runner (Amazon Linux 2023) from the repository root.
+# Amazon Linux's dotnet-sdk-8.0 package is too old for global.json (8.0.400); install that SDK.
+# dotnet-install.sh does not pull ICU; without libicu, dotnet build aborts on globalization init.
+# L5_BUILD also compiles AerospikeTest so L2_RUN can run TestL2* with --no-restore (no network in the
+# driver container).
+L5_SETUP='sudo dnf install -y libicu && curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && bash /tmp/dotnet-install.sh --version 8.0.400 && export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && dotnet --list-sdks'
+# Retry restore/build: nuget.org occasionally 404s mid-download (NeoLua flake).
+L5_BUILD='export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && for i in 1 2 3; do dotnet build AerospikeL5Driver/AerospikeL5Driver.csproj -c Release --nologo -v q && dotnet build AerospikeTest/AerospikeTest.csproj -c Release --nologo -v q && break; echo "L5_BUILD retry $i after nuget/build failure" >&2; sleep 5; if [ "$i" -eq 3 ]; then exit 1; fi; done'
+# Invoke via bash so the driver still starts if git file mode is not preserved as +x.
+L5_DRIVER='export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && bash AerospikeTest/discovery/l5_driver.sh'
+# L2_RUN is the l2-proxy harness's hook for a client's own L2 tests (l2-proxy/README.md there).
+L2_RUN='export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH" && bash AerospikeTest/discovery/l2_run.sh'

@@ -97,9 +97,10 @@ namespace Aerospike.Client
 			{
 				if (args.SocketError == SocketError.Success)
 				{
-					sslStream = new SslStream(new NetworkStream(socket, true), false, ValidateServerCertificate);
-					TlsPolicy policy = node.cluster.tlsPolicy;
-					sslStream.BeginAuthenticateAsClient(node.host.tlsName, policy.clientCertificates, policy.protocols, false, HandshakeEvent, null);
+					sslStream = new SslStream(new NetworkStream(socket, true), false);
+					SslClientAuthenticationOptions options = TlsConnection.ClientOptions(
+						node.cluster, node.host.tlsName, ValidateServerCertificate);
+					sslStream.AuthenticateAsClientAsync(options).ContinueWith(HandshakeComplete);
 				}
 				else
 				{
@@ -123,11 +124,22 @@ namespace Aerospike.Client
 			return TlsConnection.ValidateCertificate(node.cluster, node.host.tlsName, cert, sslPolicyErrors);
 		}
 
-		private void HandshakeEvent(IAsyncResult result)
+		private void HandshakeComplete(Task task)
 		{
 			try
 			{
-				sslStream.EndAuthenticateAsClient(result);
+				if (task.IsFaulted)
+				{
+					command.OnError(task.Exception?.InnerException ?? task.Exception);
+					return;
+				}
+
+				if (task.IsCanceled)
+				{
+					command.OnError(new OperationCanceledException("TLS handshake canceled"));
+					return;
+				}
+
 				command.OnConnected();
 			}
 			catch (Exception e)

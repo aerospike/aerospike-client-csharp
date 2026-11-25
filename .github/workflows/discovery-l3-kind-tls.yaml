@@ -1,0 +1,41 @@
+name: Discovery L3 kind (tls)
+
+# Runs the tls profile of l3-kind in aerospike-client-conformance against this
+# commit through the L5 driver. Each l3-kind profile has its own workflow
+# because l3-kind.yaml names its results artifact after the run alone. The
+# job needs the Enterprise feature key (AES_FEATURES_CONF), so it fails on fork
+# pull requests.
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches:
+      - stage
+      - CLIENT-5734_pluggable-discovery
+      - pluggable-discovery
+    types:
+      - opened
+      - reopened
+      - synchronize
+  push:
+    branches:
+      - stage
+      - CLIENT-5734_pluggable-discovery
+      - pluggable-discovery
+  workflow_dispatch:
+
+jobs:
+  l3-kind:
+    name: L3 kind (tls)
+    uses: aerospike/aerospike-client-conformance/.github/workflows/l3-kind.yaml@a30c0787dede434f15be3622e7007dc57b55209d # main
+    with:
+      client-repository: ${{ github.repository }}
+      commit: ${{ github.event.pull_request.head.sha || github.sha }}
+      manifest: AerospikeTest/discovery/l5-aws.manifest
+      profile: tls
+      ako-version: 4.5.0
+      conformance-ref: a30c0787dede434f15be3622e7007dc57b55209d
+    secrets:
+      FEATURES_CONF: ${{ secrets.AES_FEATURES_CONF }}

@@ -61,6 +61,15 @@ namespace Aerospike.Client
 		public bool forLoginOnly;
 
 		/// <summary>
+		/// Optional certificate chain policy for SslStream authentication (for example
+		/// <see cref="X509ChainTrustMode.CustomRootTrust"/> with a private CA). When set, used as
+		/// <c>SslClientAuthenticationOptions.CertificateChainPolicy</c>. Same role as Java
+		/// <c>TlsPolicy.context</c> with a custom TrustManager.
+		/// <para>Default: null (operating system trust store)</para>
+		/// </summary>
+		public X509ChainPolicy certificateChainPolicy;
+
+		/// <summary>
 		/// Default constructor.
 		/// </summary>
 		public TlsPolicy()
@@ -76,6 +85,7 @@ namespace Aerospike.Client
 			this.revokeCertificates = other.revokeCertificates;
 			this.clientCertificates = other.clientCertificates;
 			this.forLoginOnly = other.forLoginOnly;
+			this.certificateChainPolicy = other.certificateChainPolicy;
 		}
 
 		/// <summary>

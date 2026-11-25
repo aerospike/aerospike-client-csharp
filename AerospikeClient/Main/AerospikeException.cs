@@ -469,6 +469,76 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
+		/// Exception thrown when the address translator has no mapping for a server advertised endpoint
+		/// and <see cref="ClientPolicy.translationOnMiss"/> is
+		/// <see cref="TranslationMissMode.STRICT"/>. No node is created for the
+		/// endpoint. Not retryable.
+		/// </summary>
+		public sealed class TranslationMiss : AerospikeException
+		{
+			/// <summary>
+			/// Create translation miss exception.
+			/// </summary>
+			public TranslationMiss(Endpoint advertised, string translator)
+				: base(ResultCode.TRANSLATION_MISS, "Address translator " + translator + " has no mapping for node " +
+					advertised.nodeName + " advertised address " + advertised.host + ':' + advertised.port + " in the " +
+					(advertised.sourceList == Endpoint.SourceList.ALTERNATE ? "alternate" : "standard") +
+					" list. Add a mapping for that endpoint or node, or set translation.on_miss to pass_through")
+			{
+			}
+		}
+
+		/// <summary>
+		/// Exception thrown when a peer's translated address has the same host and port as another peer
+		/// in the same peers reply or as a live node with a different node name. The shared address is
+		/// skipped and the next address is tried; if none remain, the node is not added. Not retryable.
+		/// </summary>
+		public sealed class TranslationCollision : AerospikeException
+		{
+			/// <summary>
+			/// Create translation collision exception.
+			/// </summary>
+			public TranslationCollision(string nodeName, string otherNodeName, Host host, string translator)
+				: this(nodeName, otherNodeName, host, translator, null)
+			{
+			}
+
+			/// <summary>
+			/// Create translation collision exception, naming other host:port options when present.
+			/// </summary>
+			public TranslationCollision(
+				string nodeName,
+				string otherNodeName,
+				Host host,
+				string translator,
+				string otherOptions)
+				: base(ResultCode.TRANSLATION_COLLISION, "Address translator " + translator + " translated nodes " +
+					nodeName + " and " + otherNodeName + " to the same address " + host.name + ':' + host.port +
+					(string.IsNullOrEmpty(otherOptions) ? "" : "; other addresses: " + otherOptions) +
+					". Give each node its own reachable address or mapping")
+			{
+			}
+		}
+
+		/// <summary>
+		/// Exception thrown when <see cref="ClientPolicy.useServicesAlternate"/>
+		/// is true and a node has no alternate-access-address. No node is created for it. Not retryable.
+		/// </summary>
+		public sealed class AlternateAddressMissing : AerospikeException
+		{
+			/// <summary>
+			/// Create alternate address missing exception.
+			/// </summary>
+			public AlternateAddressMissing(string nodeName, Host host)
+				: base(ResultCode.ALTERNATE_ADDRESS_MISSING, "Node " + nodeName +
+					(host != null ? " " + host : "") +
+					" has no alternate-access-address and useServicesAlternate is true. Configure " +
+					"alternate-access-address on the server or set useServicesAlternate to false")
+			{
+			}
+		}
+
+		/// <summary>
 		/// Exception thrown when namespace is invalid.
 		/// </summary>
 		public sealed class InvalidNamespace : AerospikeException
