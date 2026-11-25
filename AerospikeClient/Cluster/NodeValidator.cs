@@ -29,6 +29,7 @@ namespace Aerospike.Client
 		internal DateTime? sessionExpiration;
 		internal uint features;
 		internal Version serverVersion;
+		internal ConnectionMetricsHandle connectionMetrics;
 
 		/// <summary>
 		/// Return first valid node referenced by seed host aliases. In most cases, aliases
@@ -44,6 +45,7 @@ namespace Aerospike.Client
 			sessionToken = null;
 			sessionExpiration = null;
 			features = 0;
+			connectionMetrics = default;
 
 			IPAddress[] addresses = Connection.GetHostAddresses(host.name, cluster.connectionTimeout);
 			Exception exception = null;
@@ -194,22 +196,38 @@ namespace Aerospike.Client
 		private void ValidateAddress(Cluster cluster, IPAddress address, string tlsName, int port, bool detectLoadBalancer)
 		{
 			IPEndPoint socketAddress = new IPEndPoint(address, port);
-			Connection conn = (cluster.tlsPolicy != null) ?
-				new TlsConnection(cluster, tlsName, socketAddress, cluster.connectionTimeout, null) :
-				new Connection(socketAddress, cluster.connectionTimeout, null);
+			ConnectionMetricsHandle openingMetrics = cluster.StartConnectionMetrics();
+			connectionMetrics = default;
+			Connection conn = null;
+			bool authenticating = false;
+			bool semanticValidation = false;
 
 			try
 			{
+				conn = (cluster.tlsPolicy != null) ?
+					new TlsConnection(
+						cluster,
+						tlsName,
+						socketAddress,
+						cluster.connectionTimeout,
+						null,
+						null,
+						openingMetrics) :
+					new Connection(socketAddress, cluster.connectionTimeout, null);
+
 				if (cluster.authEnabled)
 				{
 					// Login
+					authenticating = true;
 					AdminCommand admin = new AdminCommand(ThreadLocalData.GetBuffer(), 0);
 					admin.Login(cluster, conn, out sessionToken, out sessionExpiration);
+					authenticating = false;
 
 					if (cluster.tlsPolicy != null && cluster.tlsPolicy.forLoginOnly)
 					{
 						// Switch to using non-TLS socket.
-						SwitchClear sc = new SwitchClear(cluster, conn, sessionToken);
+						SwitchClear sc =
+							new SwitchClear(cluster, conn, sessionToken, openingMetrics);
 						conn.Close();
 						address = sc.clearAddress;
 						socketAddress = sc.clearSocketAddress;
@@ -258,6 +276,7 @@ namespace Aerospike.Client
 
 				// Issue commands.
 				Dictionary<string, string> map = Info.Request(conn, commands);
+				semanticValidation = true;
 
 				// Node returned results.
 				this.primaryHost = new Host(address.ToString(), tlsName, port);
@@ -271,7 +290,9 @@ namespace Aerospike.Client
 				bool sendUserAgent = serverVersion >= Node.SERVER_VERSION_8_1;
 				if (sendUserAgent)
 				{
+					semanticValidation = false;
 					Info.Request(conn, BuildUserAgentCommand(cluster));
+					semanticValidation = true;
 				}
 
 				SetFeatures(serverVersion);
@@ -285,10 +306,28 @@ namespace Aerospike.Client
 				{
 					SetAddress(cluster, map, addressCommand, tlsName);
 				}
+				if (!connectionMetrics.Enabled)
+				{
+					connectionMetrics = openingMetrics;
+				}
 			}
 			catch (Exception)
 			{
-				conn.Close();
+				if (authenticating)
+				{
+					openingMetrics.Fail(ConnectionFailurePhase.Auth);
+				}
+				else if (semanticValidation)
+				{
+					// The transport/authenticated connection succeeded. Rejecting
+					// topology or server metadata is not an opening failure.
+					openingMetrics.Cancel();
+				}
+				else
+				{
+					openingMetrics.Fail(ConnectionFailurePhase.Open);
+				}
+				conn?.Close();
 				throw;
 			}
 		}
@@ -443,21 +482,34 @@ namespace Aerospike.Client
 
 					foreach (IPAddress address in addresses)
 					{
+						ConnectionMetricsHandle replacementMetrics =
+							cluster.StartConnectionMetrics();
+						bool authenticating = false;
+
 						try
 						{
 							IPEndPoint socketAddress = new IPEndPoint(address, h.port);
 							Connection conn = (cluster.tlsPolicy != null) ?
-								new TlsConnection(cluster, tlsName, socketAddress, cluster.connectionTimeout, null) :
+								new TlsConnection(
+									cluster,
+									tlsName,
+									socketAddress,
+									cluster.connectionTimeout,
+									null,
+									null,
+									replacementMetrics) :
 								new Connection(socketAddress, cluster.connectionTimeout, null);
 
 							try
 							{
 								if (this.sessionToken != null)
 								{
+									authenticating = true;
 									if (!AdminCommand.Authenticate(cluster, conn, this.sessionToken))
 									{
 										throw new AerospikeException("Authentication failed");
 									}
+									authenticating = false;
 								}
 
 								// Authenticated connection.  Set real host.
@@ -465,15 +517,20 @@ namespace Aerospike.Client
 								this.primaryAddress = socketAddress;
 								this.primaryConn.Close();
 								this.primaryConn = conn;
+								connectionMetrics = replacementMetrics;
 								return;
 							}
 							catch (Exception)
 							{
+								replacementMetrics.Fail(authenticating
+									? ConnectionFailurePhase.Auth
+									: ConnectionFailurePhase.Open);
 								conn.Close();
 							}
 						}
 						catch (Exception)
 						{
+							replacementMetrics.Fail(ConnectionFailurePhase.Open);
 							// Try next address.
 						}
 					}
@@ -501,7 +558,11 @@ namespace Aerospike.Client
 		internal Connection clearConn;
 
 		// Switch from TLS connection to non-TLS connection.
-		internal SwitchClear(Cluster cluster, Connection conn, byte[] sessionToken)
+		internal SwitchClear(
+			Cluster cluster,
+			Connection conn,
+			byte[] sessionToken,
+			ConnectionMetricsHandle openingMetrics)
 		{
 			// Obtain non-TLS addresses.
 			string command = cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
@@ -528,6 +589,7 @@ namespace Aerospike.Client
 					{
 						try
 						{
+							bool authenticating = false;
 							clearAddress = ia;
 							clearSocketAddress = new IPEndPoint(ia, clearHost.port);
 							clearConn = new Connection(clearSocketAddress, cluster.connectionTimeout, null);
@@ -536,15 +598,22 @@ namespace Aerospike.Client
 							{
 								if (sessionToken != null)
 								{
+									authenticating = true;
 									if (!AdminCommand.Authenticate(cluster, clearConn, sessionToken))
 									{
 										throw new AerospikeException("Authentication failed");
 									}
+									authenticating = false;
 								}
 								return; // Authenticated clear connection.
 							}
 							catch (Exception)
 							{
+								if (authenticating)
+								{
+									openingMetrics.FailPhase(
+										ConnectionFailurePhase.Auth);
+								}
 								clearConn.Close();
 							}
 						}

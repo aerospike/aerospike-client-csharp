@@ -46,7 +46,6 @@ namespace Aerospike.Client
 			}
 			catch (Exception e)
 			{
-				node.DecrAsyncConnTotal();
 				node.IncrErrorRate();
 				throw new AerospikeException.Connection(e);
 			}
@@ -79,7 +78,6 @@ namespace Aerospike.Client
 
 		protected void InitError(AsyncNode node)
 		{
-			node.DecrAsyncConnTotal();
 			node.IncrAsyncConnClosed();
 			node.IncrErrorRate();
 			socket.Dispose();
@@ -156,5 +154,11 @@ namespace Aerospike.Client
 		void ReceiveComplete();
 		void OnSocketError(SocketError se);
 		void OnError(Exception e);
+	}
+
+	internal interface IAsyncByteProgress
+	{
+		void OnBytesSent(int count);
+		void OnBytesReceived(int count);
 	}
 }

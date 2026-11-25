@@ -107,6 +107,11 @@ namespace Aerospike.Client
 			}
 		}
 
+		internal IReadOnlyList<string> GetNamespaces()
+		{
+			return Array.AsReadOnly(counterMap.Keys.ToArray());
+		}
+
 		protected virtual void Dispose(bool disposing)
 		{
 			if (!disposedValue)

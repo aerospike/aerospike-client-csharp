@@ -37,7 +37,12 @@ namespace Aerospike.Client
 		private byte[] buffer;
 		private int offset;
 		private int count;
+		private int sendCount;
 		private int state;
+		private int handshakeStarted;
+
+		internal bool HandshakeStarted =>
+			Volatile.Read(ref handshakeStarted) != 0;
 
 		public AsyncConnectionTls(AsyncNode node, IAsyncCommand command)
 			: base(node, command)
@@ -99,6 +104,7 @@ namespace Aerospike.Client
 				{
 					sslStream = new SslStream(new NetworkStream(socket, true), false, ValidateServerCertificate);
 					TlsPolicy policy = node.cluster.tlsPolicy;
+					Volatile.Write(ref handshakeStarted, 1);
 					sslStream.BeginAuthenticateAsClient(node.host.tlsName, policy.clientCertificates, policy.protocols, false, HandshakeEvent, null);
 				}
 				else
@@ -138,6 +144,7 @@ namespace Aerospike.Client
 
 		public override void Send(byte[] buffer, int offset, int count)
 		{
+			sendCount = count;
 			sslStream.BeginWrite(buffer, offset, count, writeHandler, null);
 		}
 
@@ -146,6 +153,10 @@ namespace Aerospike.Client
 			try
 			{
 				sslStream.EndWrite(result);
+				if (command is IAsyncByteProgress progress)
+				{
+					progress.OnBytesSent(sendCount);
+				}
 				command.SendComplete();
 			}
 			catch (Exception e)
@@ -212,6 +223,10 @@ namespace Aerospike.Client
 						error = new AerospikeException.Connection("Connection closed");
 						return;
 					}
+					if (command is IAsyncByteProgress progress)
+					{
+						progress.OnBytesReceived(received);
+					}
 
 					if (received < count)
 					{
@@ -240,6 +255,10 @@ namespace Aerospike.Client
 					{
 						command.OnError(new AerospikeException.Connection("Connection closed"));
 						return;
+					}
+					if (command is IAsyncByteProgress progress)
+					{
+						progress.OnBytesReceived(received);
 					}
 
 					if (received < count)

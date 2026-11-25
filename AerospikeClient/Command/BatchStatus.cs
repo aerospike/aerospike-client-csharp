@@ -22,7 +22,11 @@ namespace Aerospike.Client
 	{
 		private Exception exception;
 		private bool error;
+		private int rowError;
+		private int metricsAssigned;
+		private int partialFailureRecorded;
 		private readonly bool hasResultCode;
+		private CommandCountMetricsHandle commandMetrics;
 
 		public BatchStatus(bool hasResultCode)
 		{
@@ -37,6 +41,7 @@ namespace Aerospike.Client
 		public void BatchKeyError(AerospikeException e)
 		{
 			error = true;
+			RecordRowError();
 
 			if (!hasResultCode)
 			{
@@ -53,6 +58,40 @@ namespace Aerospike.Client
 		{
 			// Indicate that a key specific error occurred.
 			error = true;
+			RecordRowError();
+		}
+
+		internal void SetCommandMetrics(CommandCountMetricsHandle handle)
+		{
+			commandMetrics = handle;
+			Volatile.Write(ref metricsAssigned, 1);
+			TryRecordPartialFailure();
+		}
+
+		private void RecordRowError()
+		{
+			if (Interlocked.CompareExchange(ref rowError, 1, 0) == 0)
+			{
+				TryRecordPartialFailure();
+			}
+		}
+
+		private void TryRecordPartialFailure()
+		{
+			if (Volatile.Read(ref rowError) != 0 &&
+				Volatile.Read(ref metricsAssigned) != 0 &&
+				Interlocked.CompareExchange(
+					ref partialFailureRecorded,
+					1,
+					0) == 0)
+			{
+				commandMetrics.AddBatchPartialFailure();
+			}
+		}
+
+		internal bool HasRowError()
+		{
+			return Volatile.Read(ref rowError) != 0;
 		}
 
 		public bool GetStatus()

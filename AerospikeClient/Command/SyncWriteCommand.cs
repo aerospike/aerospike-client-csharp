@@ -24,12 +24,26 @@ namespace Aerospike.Client
 		private readonly Partition partition;
 
 		public SyncWriteCommand(Cluster cluster, WritePolicy writePolicy, Key key)
-			: base(cluster, writePolicy, key.ns)
+			: this(cluster, writePolicy, key, true)
 		{
+		}
+
+		private protected SyncWriteCommand(
+			Cluster cluster,
+			WritePolicy writePolicy,
+			Key key,
+			bool recordUserCall)
+			: base(cluster, writePolicy, key.ns, recordUserCall)
+		{
+			StartCommandMetrics();
 			this.writePolicy = writePolicy;
 			this.key = key;
 			this.partition = Partition.Write(cluster, writePolicy, key);
 			cluster.AddCommandCount();
+			if (recordUserCall)
+			{
+				cluster.RecordApiUsage(ApiExecutionMode.Blocking);
+			}
 		}
 
 		protected internal override bool IsWrite()

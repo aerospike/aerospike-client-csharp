@@ -33,6 +33,7 @@ namespace Aerospike.Client
 		private BatchRecord[] verifyRecords;
 		private BatchRecord[] rollRecords;
 		private AerospikeException verifyException;
+		private readonly MetricsCallContext apiMetricsContext;
 
 		public AsyncTxnRoll
 		(
@@ -48,6 +49,7 @@ namespace Aerospike.Client
 			this.writePolicy = new WritePolicy(rollPolicy);
 			this.txn = txn;
 			this.txnKey = TxnMonitor.GetTxnMonitorKey(txn);
+			this.apiMetricsContext = cluster.CaptureApiMetricsContext();
 		}
 
 		public void Verify(CommitListener listener)
@@ -114,7 +116,8 @@ namespace Aerospike.Client
 
 			this.verifyRecords = records;
 
-			AsyncBatchRecordArrayExecutor executor = new(cluster, verifyListener, records);
+			AsyncBatchRecordArrayExecutor executor = new(cluster, verifyListener, records, false);
+			executor.SetApiMetricsContext(apiMetricsContext);
 			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, verifyPolicy, keys, records, false, executor);
 			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
 
@@ -144,6 +147,7 @@ namespace Aerospike.Client
 			{
 				MarkRollForwardListener writeListener = new(this);
 				AsyncTxnMarkRollForward command = new(cluster, writeListener, writePolicy, txnKey);
+				command.SetApiMetricsContext(apiMetricsContext);
 				command.Execute();
 			}
 			catch (Exception e)
@@ -207,7 +211,8 @@ namespace Aerospike.Client
 			BatchAttr attr = new();
 			attr.SetTxn(txnAttr);
 
-			AsyncBatchRecordArrayExecutor executor = new(cluster, rollListener, records);
+			AsyncBatchRecordArrayExecutor executor = new(cluster, rollListener, records, false);
+			executor.SetApiMetricsContext(apiMetricsContext);
 			List<BatchNode> batchNodes = BatchNode.GenerateList(cluster, rollPolicy, keys, records, true, executor);
 			AsyncCommand[] commands = new AsyncCommand[batchNodes.Count];
 			int count = 0;
@@ -247,6 +252,7 @@ namespace Aerospike.Client
 			try
 			{
 				AsyncTxnClose command = new(cluster, txn, new CloseOnCommitListener(this, verified), writePolicy, txnKey);
+				command.SetApiMetricsContext(apiMetricsContext);
 				command.Execute();
 			}
 			catch (Exception e)
@@ -275,6 +281,7 @@ namespace Aerospike.Client
 			{
 				CloseOnAbortListener deleteListener = new(this);
 				AsyncTxnClose command = new(cluster, txn, deleteListener, writePolicy, txnKey);
+				command.SetApiMetricsContext(apiMetricsContext);
 				command.Execute();
 			}
 			catch (Exception)
@@ -286,6 +293,7 @@ namespace Aerospike.Client
 		private void NotifyCommitSuccess(CommitStatusType status)
 		{
 			txn.Clear();
+			apiMetricsContext.CompleteSuccess();
 
 			try
 			{
@@ -387,6 +395,7 @@ namespace Aerospike.Client
 		private void NotifyCommitFailure(AerospikeException.Commit aec)
 		{
 			txn.MarkCommitFailed(aec.InDoubt);
+			apiMetricsContext.CompleteFailure();
 
 			try
 			{
@@ -401,6 +410,7 @@ namespace Aerospike.Client
 		private void NotifyAbortSuccess(AbortStatusType status)
 		{
 			txn.Clear();
+			apiMetricsContext.CompleteSuccess();
 
 			try
 			{

@@ -30,6 +30,27 @@ namespace Aerospike.Test
 		}
 
 		[TestMethod]
+		public void HasMetricsWhenEnabledSet()
+		{
+			ConfigurationDatav1_2_0 data = new();
+			data.dynamicConfig.metrics.enabled = true;
+
+			Assert.IsTrue(data.HasMetrics());
+			Assert.IsTrue(data.GetMetricsEnabled().Value);
+			Assert.IsFalse(data.HasLegacyMetricsEnable());
+		}
+
+		[TestMethod]
+		public void LegacyMetricsEnableIsIdentified()
+		{
+			ConfigurationDatav1_0_0 data = new();
+			data.dynamicConfig.metrics.enable = false;
+
+			Assert.IsFalse(data.GetMetricsEnabled().Value);
+			Assert.IsTrue(data.HasLegacyMetricsEnable());
+		}
+
+		[TestMethod]
 		public void HasMetricsFalseWhenEnableUnset()
 		{
 			ConfigurationDatav1_0_0 data = new();

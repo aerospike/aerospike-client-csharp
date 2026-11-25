@@ -140,9 +140,11 @@ namespace Aerospike.Client
 		private readonly byte[] sessionToken;
 		private readonly byte[] dataBuffer;
 		private readonly Stopwatch watch;
+		private readonly ConnectionMetricsHandle connectionMetrics;
 		private AsyncConnection conn;
 		private int state;
 		private bool inHeader = true;
+		private bool authenticating;
 
 		public AsyncConnector(
 			AsyncCluster cluster,
@@ -166,18 +168,36 @@ namespace Aerospike.Client
 			}
 
 			this.watch = Stopwatch.StartNew();
-			AsyncTimeoutQueue.Instance.Add(this, cluster.connectionTimeout);
-
 			node.IncrAsyncConnTotal();
-			conn = node.CreateAsyncConnection(this);
+			bool reservationOwned = true;
+			this.connectionMetrics = cluster.StartConnectionMetrics(node);
+			AsyncTimeoutQueue.Instance.Add(this, cluster.connectionTimeout);
 
 			try
 			{
+				conn = node.CreateAsyncConnection(this);
+				reservationOwned = false;
 				conn.Connect(node.address);
 			}
 			catch (Exception)
 			{
-				node.CloseAsyncConnOnError(conn);
+				Interlocked.Exchange(ref state, 1);
+				if (IsTlsHandshake())
+				{
+					connectionMetrics.Fail(ConnectionFailurePhase.Tls);
+				}
+				else
+				{
+					connectionMetrics.Fail(ConnectionFailurePhase.Open);
+				}
+				if (conn != null)
+				{
+					node.CloseAsyncConnOnError(conn);
+				}
+				else if (reservationOwned)
+				{
+					node.DecrAsyncConnTotal();
+				}
 				throw;
 			}
 		}
@@ -186,9 +206,12 @@ namespace Aerospike.Client
 		{
 			if (sessionToken != null)
 			{
+				authenticating = true;
 				AdminCommand command = new AdminCommand(dataBuffer, 0);
 				int dataLength = command.SetAuthenticate(cluster, sessionToken);
 				conn.Send(dataBuffer, 0, dataLength);
+				// Authentication handshakes are outside command-attempt byte
+				// capture. Retain these writes for legacy compatibility only.
 				if (node.AreMetricsEnabled())
 				{
 					node.AddBytesOut(null, dataLength);
@@ -201,6 +224,7 @@ namespace Aerospike.Client
 		public void SendComplete()
 		{
 			conn.Receive(dataBuffer, 0, 8);
+			// See the authentication compatibility note above.
 			if (node.AreMetricsEnabled())
 			{
 				node.AddBytesIn(null, 8);
@@ -216,12 +240,13 @@ namespace Aerospike.Client
 
 				if (length <= 0 || length > dataBuffer.Length)
 				{
-					Fail("Invalid auth response: " + length);
+					Fail("Invalid auth response: " + length, true);
 					return;
 				}
 
 				inHeader = false;
 				conn.Receive(dataBuffer, 0, length);
+				// See the authentication compatibility note above.
 				if (node.AreMetricsEnabled())
 				{
 					node.AddBytesIn(null, length);
@@ -243,7 +268,7 @@ namespace Aerospike.Client
 					// Do not try to login on same socket because login can take
 					// a long time and thousands of simultaneous logins could
 					// overwhelm server.
-					Fail("Failed to authenticate: " + resultCode);
+					Fail("Failed to authenticate: " + resultCode, true);
 					return;
 				}
 				ConnectionReady();
@@ -254,6 +279,8 @@ namespace Aerospike.Client
 		{
 			if (Interlocked.CompareExchange(ref state, 1, 0) == 0)
 			{
+				authenticating = false;
+				node.CompleteConnectionMetrics(connectionMetrics, null);
 				conn.UpdateLastUsed();
 				node.PutAsyncConnection(conn);
 
@@ -287,6 +314,19 @@ namespace Aerospike.Client
 
 			if (Interlocked.CompareExchange(ref state, 1, 0) == 0)
 			{
+				if (authenticating)
+				{
+					connectionMetrics.Fail(ConnectionFailurePhase.Auth);
+				}
+				else if (IsTlsHandshake())
+				{
+					connectionMetrics.Fail(ConnectionFailurePhase.Tls);
+				}
+				else
+				{
+					connectionMetrics.Fail(ConnectionFailurePhase.Open);
+				}
+
 				// Close connection. This will result in a socket error.
 				if (conn != null)
 				{
@@ -298,18 +338,37 @@ namespace Aerospike.Client
 
 		public void OnSocketError(SocketError se)
 		{
-			Fail("Create connection socket failed: " + se);
+			Fail(
+				"Create connection socket failed: " + se,
+				authenticating,
+				!authenticating && IsTlsHandshake());
 		}
 
 		public void OnError(Exception e)
 		{
-			Fail("Create connection failed: " + e.Message);
+			Fail(
+				"Create connection failed: " + e.Message,
+				authenticating,
+				!authenticating && IsTlsHandshake());
 		}
 
-		private void Fail(string msg)
+		private void Fail(string msg, bool auth = false, bool tls = false)
 		{
 			if (Interlocked.CompareExchange(ref state, 1, 0) == 0)
 			{
+				if (auth)
+				{
+					connectionMetrics.Fail(ConnectionFailurePhase.Auth);
+				}
+				else if (tls)
+				{
+					connectionMetrics.Fail(ConnectionFailurePhase.Tls);
+				}
+				else
+				{
+					connectionMetrics.Fail(ConnectionFailurePhase.Open);
+				}
+
 				if (conn != null)
 				{
 					node.CloseAsyncConnOnError(conn);
@@ -328,6 +387,11 @@ namespace Aerospike.Client
 					}
 				}
 			}
+		}
+
+		private bool IsTlsHandshake()
+		{
+			return conn is AsyncConnectionTls tls && tls.HandshakeStarted;
 		}
 	}
 

@@ -480,6 +480,11 @@ namespace Aerospike.Client
 			return Latency.LatencyType.BATCH;
 		}
 
+		private protected override void RecordResultMetrics(Node node)
+		{
+			RecordBatchRecordFailure(node, key.ns, resultCode);
+		}
+
 		protected internal override bool PrepareRetry(bool timeout)
 		{
 			if (hasWrite)

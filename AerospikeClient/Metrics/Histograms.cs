@@ -21,20 +21,36 @@ namespace Aerospike.Client
 	/// A Histograms object is a container for a map of namespaces to histograms (as defined by their associated
 	/// LatencyBuckets) and their histogram properties
 	/// </summary>
-	/// <remarks>
-	/// Create Histograms object
-	/// </remarks>
-	/// <param name="columnCount">number of histogram columns or "buckets"</param>
-	/// <param name="shift"> power of 2 multiple between each range bucket in histogram starting at bucket 3.
-	/// The first 2 buckets are "&lt;=1ms" and "&gt;1ms".</param>
-	public class Histograms(int columnCount, int shift) : IDisposable
+	public class Histograms : IDisposable
 	{
 		internal readonly ConcurrentHashMap<string, LatencyBuckets[]> histoMap = new();
-		private readonly int histoShift = shift;
-		private readonly int columnCount = columnCount;
+		private readonly int histoShift;
+		private readonly int columnCount;
+		private readonly MetricsLatencyUnit latencyUnit;
 		private readonly static string noNsLabel = "";
 		private readonly int max = Latency.GetMax();
 		private bool disposedValue;
+
+		/// <summary>
+		/// Create Histograms object.
+		/// </summary>
+		/// <param name="columnCount">number of histogram columns or "buckets"</param>
+		/// <param name="shift"> power of 2 multiple between each range bucket in histogram starting at bucket 3.
+		/// The first 2 buckets are "&lt;=1ms" and "&gt;1ms".</param>
+		public Histograms(int columnCount, int shift)
+			: this(columnCount, shift, MetricsLatencyUnit.Milliseconds)
+		{
+		}
+
+		internal Histograms(
+			int columnCount,
+			int shift,
+			MetricsLatencyUnit latencyUnit)
+		{
+			this.columnCount = columnCount;
+			this.histoShift = shift;
+			this.latencyUnit = latencyUnit;
+		}
 
 		private LatencyBuckets[] CreateBuckets()
 		{
@@ -42,7 +58,10 @@ namespace Aerospike.Client
 
 			for (int i = 0; i < max; i++)
 			{
-				buckets[i] = new LatencyBuckets(columnCount, histoShift);
+				buckets[i] = new LatencyBuckets(
+					columnCount,
+					histoShift,
+					latencyUnit);
 			}
 
 			return buckets;
@@ -71,6 +90,55 @@ namespace Aerospike.Client
 			}
 
 			buckets[(int)type].Add(elapsed);
+		}
+
+		internal void AddLatencyNanoseconds(
+			string ns,
+			Latency.LatencyType type,
+			long elapsedNanoseconds)
+		{
+			ns ??= noNsLabel;
+
+			LatencyBuckets[] buckets;
+			if (!histoMap.ContainsKey(ns))
+			{
+				buckets = CreateBuckets();
+				histoMap.SetValueIfNotNull(ns, buckets);
+			}
+			else
+			{
+				buckets = histoMap[ns];
+			}
+
+			buckets[(int)type].AddNanoseconds(elapsedNanoseconds);
+		}
+
+		internal IReadOnlyList<string> GetNamespaces()
+		{
+			return Array.AsReadOnly(histoMap.Keys.ToArray());
+		}
+
+		internal bool Matches(MetricsPolicy policy)
+		{
+			return columnCount == policy.LatencyColumns &&
+				histoShift == policy.LatencyShift &&
+				latencyUnit == policy.LatencyUnit;
+		}
+
+		internal bool Matches(MetricsHistogramShape shape)
+		{
+			return columnCount == shape.Columns &&
+				histoShift == shape.Shift &&
+				latencyUnit == shape.Unit;
+		}
+
+		internal MetricsHistogramShape GetShape(long generation)
+		{
+			return new MetricsHistogramShape(
+				generation,
+				latencyUnit,
+				columnCount,
+				histoShift);
 		}
 
 		public LatencyBuckets[] GetBuckets(string ns)

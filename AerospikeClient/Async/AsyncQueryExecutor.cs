@@ -30,6 +30,9 @@ namespace Aerospike.Client
 		) : base(cluster)
 		{
 			this.listener = listener;
+			cluster.AddCommandCount();
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Deferred);
 
 			// Create commands.
 			ulong taskId = statement.PrepareTaskId();
@@ -54,11 +57,13 @@ namespace Aerospike.Client
 
 		protected internal override void OnSuccess()
 		{
+			CompleteApiSuccess();
 			listener.OnSuccess();
 		}
 
 		protected internal override void OnFailure(AerospikeException ae)
 		{
+			CompleteApiFailure();
 			listener.OnFailure(ae);
 		}
 	}

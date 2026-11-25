@@ -154,6 +154,9 @@ namespace Aerospike.Client
 			AsyncConnection conn;
 			while (asyncConnQueue.TryDequeue(out conn))
 			{
+				DecrAsyncConnTotal();
+				IncrAsyncConnClosed();
+				RecordConnectionClosedIfAdmitted();
 				conn.Close();
 			}
 		}
@@ -168,6 +171,7 @@ namespace Aerospike.Client
 		{
 			DecrAsyncConnTotal();
 			IncrAsyncConnClosed();
+			RecordConnectionClosedIfAdmitted();
 			conn.Close();
 		}
 
@@ -176,6 +180,7 @@ namespace Aerospike.Client
 			if (asyncConnQueue.IncrTotal() > asyncConnQueue.Capacity)
 			{
 				asyncConnQueue.DecrTotal();
+				cluster.RecordPoolExhausted(this);
 				throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
 					"Async max connections " + cluster.asyncMaxConnsPerNode + " would be exceeded.");
 			}

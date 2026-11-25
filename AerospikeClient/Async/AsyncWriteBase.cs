@@ -23,17 +23,31 @@ namespace Aerospike.Client
 		public Key Key { get; private set; }
 		protected readonly Partition partition;
 
-		public AsyncWriteBase
+		public AsyncWriteBase(
+			AsyncCluster cluster,
+			WritePolicy writePolicy,
+			Key key)
+			: this(cluster, writePolicy, key, true)
+		{
+		}
+
+		private protected AsyncWriteBase
 		(
 			AsyncCluster cluster,
 			WritePolicy writePolicy,
-			Key key
-		) : base(cluster, writePolicy, key.ns)
+			Key key,
+			bool recordUserCall
+		) : base(cluster, writePolicy, key.ns, recordUserCall)
 		{
+			StartCommandMetrics();
 			this.writePolicy = writePolicy;
 			this.Key = key;
 			this.partition = Partition.Write(cluster, policy, key);
 			cluster.AddCommandCount();
+			if (recordUserCall)
+			{
+				cluster.RecordApiUsage(ApiExecutionMode.Deferred);
+			}
 		}
 
 		public AsyncWriteBase(AsyncWriteBase other)

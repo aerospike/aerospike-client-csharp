@@ -25,6 +25,7 @@ namespace Aerospike.Client
 	{
 		private volatile int[] buckets;
 		private readonly int latencyShift;
+		private readonly MetricsLatencyUnit latencyUnit;
 
 		/// <summary>
 		/// Initialize latency buckets.
@@ -33,8 +34,20 @@ namespace Aerospike.Client
 		/// <param name="latencyShift">power of 2 multiple between each range bucket in latency histograms starting at bucket 3.
 		/// 							The first 2 buckets are &lt;=1ms and &gt;1ms.</param>
 		public LatencyBuckets(int latencyColumns, int latencyShift)
+			: this(
+				latencyColumns,
+				latencyShift,
+				MetricsLatencyUnit.Milliseconds)
+		{
+		}
+
+		internal LatencyBuckets(
+			int latencyColumns,
+			int latencyShift,
+			MetricsLatencyUnit latencyUnit)
 		{
 			this.latencyShift = latencyShift;
+			this.latencyUnit = latencyUnit;
 			buckets = new int[latencyColumns];
 		}
 
@@ -59,7 +72,19 @@ namespace Aerospike.Client
 		/// </summary>
 		public void Add(double elapsed)
 		{
-			int index = GetIndex(elapsed);
+			double value = latencyUnit == MetricsLatencyUnit.Microseconds
+				? elapsed * 1_000
+				: elapsed;
+			int index = GetIndex(value);
+			Interlocked.Increment(ref buckets[index]);
+		}
+
+		internal void AddNanoseconds(long elapsedNanoseconds)
+		{
+			double divisor = latencyUnit == MetricsLatencyUnit.Microseconds
+				? 1_000.0
+				: 1_000_000.0;
+			int index = GetIndex(elapsedNanoseconds / divisor);
 			Interlocked.Increment(ref buckets[index]);
 		}
 

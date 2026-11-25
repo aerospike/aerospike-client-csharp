@@ -148,6 +148,15 @@ namespace Aerospike.Client
 		void DisableMetrics();
 
 		/// <summary>
+		/// Return an immutable client metrics snapshot. The snapshot is available before metrics
+		/// are enabled, while collection is active, and after collection is disabled.
+		/// </summary>
+		MetricsSnapshot GetMetricsSnapshot()
+		{
+			return Cluster.GetMetricsSnapshot();
+		}
+
+		/// <summary>
 		/// Return operating cluster statistics snapshot.
 		/// </summary>
 		ClusterStats GetClusterStats();

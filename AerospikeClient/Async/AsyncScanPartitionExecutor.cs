@@ -45,6 +45,8 @@ namespace Aerospike.Client
 			this.tracker = tracker;
 
 			cluster.AddCommandCount();
+			cluster.AddMetricsCommandCount();
+			cluster.RecordApiUsage(ApiExecutionMode.Deferred);
 			tracker.SleepBetweenRetries = 0;
 			ScanPartitions();
 		}
@@ -70,6 +72,7 @@ namespace Aerospike.Client
 			{
 				if (tracker.IsClusterComplete(cluster, policy))
 				{
+					CompleteApiSuccess();
 					listener.OnSuccess();
 					return;
 				}
@@ -90,6 +93,7 @@ namespace Aerospike.Client
 
 		protected internal override void OnFailure(AerospikeException ae)
 		{
+			CompleteApiFailure();
 			tracker.PartitionError();
 			ae.Iteration = tracker.iteration;
 			listener.OnFailure(ae);

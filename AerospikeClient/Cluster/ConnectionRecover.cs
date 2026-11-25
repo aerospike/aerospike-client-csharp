@@ -33,13 +33,46 @@ namespace Aerospike.Client
 		private readonly bool checkReturnCode;
 		private bool lastGroup;
 		private byte state;
+		private readonly RecoverMetricsHandle metrics;
+		private readonly ConnectionMetricsHandle openingMetrics;
+		private readonly string openingNamespace;
+		private readonly ConnectionFailurePhase? openingFailurePhase;
 
-		public ConnectionRecover(Connection conn, Node node, int timeoutDelay, Connection.ReadTimeout crt, bool isSingle)
+		public ConnectionRecover(
+			Connection conn,
+			Node node,
+			int timeoutDelay,
+			Connection.ReadTimeout crt,
+			bool isSingle)
+			: this(
+				conn,
+				node,
+				timeoutDelay,
+				crt,
+				isSingle,
+				node.cluster.BeginRecoverMetrics())
+		{
+		}
+
+		internal ConnectionRecover(
+			Connection conn,
+			Node node,
+			int timeoutDelay,
+			Connection.ReadTimeout crt,
+			bool isSingle,
+			RecoverMetricsHandle metrics,
+			ConnectionMetricsHandle openingMetrics = default,
+			string openingNamespace = null,
+			ConnectionFailurePhase? openingFailurePhase = null)
 		{
 			this.conn = conn;
 			this.node = node;
 			this.timeoutDelay = timeoutDelay;
 			this.isSingle = isSingle;
+			this.metrics = metrics;
+			this.openingMetrics = openingMetrics;
+			this.openingNamespace = openingNamespace;
+			this.openingFailurePhase = openingFailurePhase;
 			this.offset = crt.offset;
 			lastGroup = false;
 
@@ -122,7 +155,10 @@ namespace Aerospike.Client
 				{
 					if (state == Command.STATE_READ_HEADER)
 					{
-						DrainHeader(buf);
+						if (!DrainHeader(buf))
+						{
+							return true;
+						}
 					}
 					DrainDetail(buf);
 					Recover();
@@ -134,7 +170,10 @@ namespace Aerospike.Client
 					{
 						if (state == Command.STATE_READ_HEADER)
 						{
-							DrainHeader(buf);
+							if (!DrainHeader(buf))
+							{
+								return true;
+							}
 						}
 						DrainDetail(buf);
 
@@ -178,32 +217,67 @@ namespace Aerospike.Client
 			return state == Command.STATE_COMPLETE;
 		}
 
+		internal void MarkEnqueued()
+		{
+			metrics.Enqueue();
+		}
+
 		/// <summary>
 		/// Close connection.
 		/// </summary>
 		public void Abort()
 		{
+			if (state == Command.STATE_COMPLETE)
+			{
+				return;
+			}
+
+			metrics.Abort();
+
+			if (openingFailurePhase.HasValue)
+			{
+				openingMetrics.Fail(openingFailurePhase.Value);
+			}
+			else
+			{
+				openingMetrics.Cancel();
+			}
 			node.CloseConnection(conn);
 			state = Command.STATE_COMPLETE;
 		}
 
 		private void Recover()
 		{
+			if (state == Command.STATE_COMPLETE)
+			{
+				return;
+			}
+
 			//Log.Debug(node.cluster.context, "Sync connection recovered");
 			conn.UpdateLastUsed();
-			node.PutConnection(conn);
+
+			if (node.PutConnectionInternal(conn))
+			{
+				openingMetrics.Complete(node, openingNamespace);
+				metrics.Complete();
+			}
+			else
+			{
+				openingMetrics.Cancel();
+				metrics.Abort();
+			}
 			state = Command.STATE_COMPLETE;
 		}
 
-		private void DrainHeader(byte[] buf)
+		private bool DrainHeader(byte[] buf)
 		{
 			byte[] b = (offset == 0) ? buf : headerBuf;
 
 			while (true)
 			{
-				int count = conn.Read(b, offset, length - offset);
+				int count = conn.Read(b, offset, length);
 
-				if (count < 0)
+				if (count <= 0)
 				{
 					// Connection closed by server.
 					throw new EndOfStreamException();
@@ -231,10 +305,11 @@ namespace Aerospike.Client
 					// Authentication failed.
 					Log.Debug(node.cluster.context, "Invalid user/password");
 					Abort();
-					return;
+					return false;
 				}
 			}
 			ParseProto(b, length);
+			return true;
 		}
 
 		private void DrainDetail(byte[] buf)
@@ -245,7 +320,7 @@ namespace Aerospike.Client
 				int len = (rem <= buf.Length) ? rem : buf.Length;
 				int count = conn.Read(buf, 0, len);
 
-				if (count < 0)
+				if (count <= 0)
 				{
 					// Connection closed by server.
 					throw new EndOfStreamException();

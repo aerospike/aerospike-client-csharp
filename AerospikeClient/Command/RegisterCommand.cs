@@ -37,11 +37,15 @@ namespace Aerospike.Client
 			// Send UDF to one node. That node will distribute the UDF to other nodes.
 			string command = sb.ToString();
 			Node node = cluster.GetRandomNode();
-			Connection conn = node.GetConnection(policy.socketTimeout);
+			MetricsCallContext context = cluster.CaptureApiMetricsContext();
+			MetricsRpcAttempt attempt =
+				cluster.BeginCompatibilityAttempt(context);
+			Connection conn = null;
 
 			try
 			{
-				Info info = new(node, conn, command);
+				conn = node.GetConnection(policy.socketTimeout);
+				Info info = new(node, conn, command, attempt);
 				Info.NameValueParser parser = info.GetNameValueParser();
 				string error = null;
 				string file = null;
@@ -100,11 +104,24 @@ namespace Aerospike.Client
 						);
 				}
 				node.PutConnection(conn);
+				conn = null;
+				attempt?.TrySucceed(node);
+				context.MarkSuccessfulWork();
 				return new RegisterTask(cluster, policy, serverPath);
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
-				node.CloseConnectionOnError(conn);
+				if (conn != null)
+				{
+					node.CloseConnectionOnError(conn);
+				}
+				AerospikeException exception =
+					e as AerospikeException ?? new AerospikeException(e);
+				attempt?.TryFail(
+					node,
+					exception,
+					exception is AerospikeException.Timeout timeoutException &&
+						timeoutException.client);
 				throw;
 			}
 		}

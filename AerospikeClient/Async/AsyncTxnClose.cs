@@ -29,7 +29,7 @@ namespace Aerospike.Client
 			DeleteListener listener,
 			WritePolicy writePolicy,
 			Key key
-		) : base(cluster, writePolicy, key)
+		) : base(cluster, writePolicy, key, false)
 		{
 			this.txn = txn;
 			this.listener = listener;

@@ -1,4 +1,4 @@
-version: 1.0.0
+version: 1.2.0
 static:
   client: 
     config_interval: 5000
@@ -25,10 +25,23 @@ dynamic:
   write:
     durable_delete: true
   metrics:
-    enable: true
-    latency_shift: 2
-    latency_columns: 7
+    enabled: true
+    export_interval: 30s
+    exporter: file
+    report_dir: .
+    report_size_limit: 0
     labels:
       region: us-west
       zone: usw1-az3
       rack-id: kjsdfj2k3k
+    extended:
+      operational:
+        enabled: true
+        latency_unit: milliseconds
+        latency_shift: 2
+        latency_columns: 7
+        sampler:
+          range: 1
+          threshold: 1
+      usage:
+        enabled: false

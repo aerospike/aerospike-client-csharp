@@ -15,7 +15,6 @@
  * the License.
  */
 
-using System.Diagnostics;
 using System.Text;
 using static Aerospike.Client.Latency;
 
@@ -24,32 +23,53 @@ namespace Aerospike.Client
 	/// <summary>
 	/// Client metrics listener.
 	/// </summary>
-	public sealed class MetricsWriter : IMetricsListener
+	public sealed class MetricsWriter : IMetricsListener, IMetricsExporter, IDisposable
 	{
 		private static readonly string filenameFormat = "yyyyMMddHHmmss";
 		private static readonly string timestampFormat = "yyyy-MM-dd HH:mm:ss";
 		private static readonly int minFileSize = 1000000;
 
+		private readonly object sync = new();
 		private readonly string dir;
 		private readonly StringBuilder sb;
 		private StreamWriter writer;
 		private long size;
 		private long maxSize;
+		private MetricsLatencyUnit latencyUnit;
 		private int latencyColumns;
 		private int latencyShift;
 		private bool enabled;
-		private DateTime prevTime;
-		private TimeSpan prevCpuUsage;
+		private bool disposed;
+		private Cluster listenerCluster;
 
 		/// <summary>
 		/// Initialize metrics writer.
 		/// </summary>
 		public MetricsWriter(string dir)
+			: this(dir, 0, 7, 1)
+		{
+		}
+
+		/// <summary>
+		/// Initialize an application-owned metrics file exporter.
+		/// </summary>
+		/// <param name="dir">Directory in which metrics files are created.</param>
+		/// <param name="reportSizeLimit">Soft file size limit, or zero for unlimited.</param>
+		/// <param name="latencyColumns">Latency histogram column count.</param>
+		/// <param name="latencyShift">Latency histogram power-of-two shift.</param>
+		public MetricsWriter(
+			string dir,
+			long reportSizeLimit,
+			int latencyColumns = 7,
+			int latencyShift = 1)
 		{
 			this.dir = dir;
 			this.sb = new StringBuilder(8192);
-			this.prevTime = DateTime.UtcNow;
-			this.prevCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
+			this.maxSize = reportSizeLimit;
+			this.latencyUnit = MetricsLatencyUnit.Milliseconds;
+			this.latencyColumns = latencyColumns;
+			this.latencyShift = latencyShift;
+			ValidateSize(reportSizeLimit);
 		}
 
 		/// <summary>
@@ -59,27 +79,45 @@ namespace Aerospike.Client
 
 		public void OnEnable(Cluster cluster, MetricsPolicy policy)
 		{
-			if (policy.ReportSizeLimit != 0 && policy.ReportSizeLimit < minFileSize)
+			lock (sync)
 			{
-				throw new AerospikeException("MetricsPolicy.reportSizeLimit " + policy.ReportSizeLimit +
-					" must be at least " + minFileSize);
-			}
+				ThrowIfDisposed();
+				ValidateSize(policy.ReportSizeLimit);
 
-			this.maxSize = policy.ReportSizeLimit;
-			this.latencyColumns = policy.LatencyColumns;
-			this.latencyShift = policy.LatencyShift;
+				this.maxSize = policy.ReportSizeLimit;
+				this.latencyUnit = policy.LatencyUnit;
+				this.latencyColumns = policy.LatencyColumns;
+				this.latencyShift = policy.LatencyShift;
+				this.listenerCluster = cluster;
 
-			try
-			{
-				Directory.CreateDirectory(dir);
-				Open();
-			}
-			catch (IOException ioe)
-			{
-				throw new AerospikeException(ioe);
-			}
+				try
+				{
+					Directory.CreateDirectory(dir);
+					Open();
+				}
+				catch (Exception e)
+				{
+					enabled = false;
+					listenerCluster = null;
 
-			enabled = true;
+					try
+					{
+						writer?.Dispose();
+					}
+					catch
+					{
+					}
+					writer = null;
+
+					if (e is AerospikeException)
+					{
+						throw;
+					}
+					throw new AerospikeException(e);
+				}
+
+				enabled = true;
+			}
 		}
 
 		/// <summary>
@@ -87,9 +125,13 @@ namespace Aerospike.Client
 		/// </summary>
 		public void OnSnapshot(Cluster cluster)
 		{
-			if (enabled)
+			lock (sync)
 			{
-				WriteCluster(cluster);
+				ThrowIfDisposed();
+				if (enabled)
+				{
+					WriteCluster(cluster.GetMetricsSnapshot());
+				}
 			}
 		}
 
@@ -98,12 +140,37 @@ namespace Aerospike.Client
 		/// </summary>
 		public void OnNodeClose(Node node)
 		{
-			if (enabled)
+			lock (sync)
 			{
-				sb.Append(DateTime.Now.ToString(timestampFormat));
-				sb.Append(" node");
-				WriteNode(node);
-				WriteLine();
+				ThrowIfDisposed();
+				if (enabled)
+				{
+					MetricsSnapshot snapshot =
+						listenerCluster?.GetMetricsSnapshot();
+					NodeMetricsSnapshot nodeSnapshot = snapshot?.Nodes
+						.FirstOrDefault(current => current.Name == node.Name);
+					MetricsNodeCompatibilitySnapshot compatibility =
+						snapshot?.Compatibility.Nodes.FirstOrDefault(
+							current => current.Name == node.Name);
+					nodeSnapshot ??= compatibility == null
+						? null
+						: new NodeMetricsSnapshot(
+							compatibility.Name,
+							compatibility.Address,
+							compatibility.Port,
+							0,
+							ConnectionMetricsSnapshot.Empty,
+							NodeLatencyMetricsSnapshot.Empty,
+							Array.Empty<NamespaceMetricsSnapshot>());
+
+					if (nodeSnapshot != null)
+					{
+						sb.Append(DateTime.Now.ToString(timestampFormat));
+						sb.Append(" node");
+						WriteNode(nodeSnapshot, compatibility);
+						WriteLine();
+					}
+				}
 			}
 		}
 
@@ -112,26 +179,124 @@ namespace Aerospike.Client
 		/// </summary>
 		public void OnDisable(Cluster cluster)
 		{
-			if (enabled)
+			lock (sync)
 			{
+				if (writer != null)
+				{
+					try
+					{
+						enabled = false;
+						if (writer.BaseStream.CanWrite)
+						{
+							WriteCluster(cluster.GetMetricsSnapshot());
+						}
+					}
+					catch (Exception e)
+					{
+						Log.Error("Failed to close metrics writer: " + Util.GetErrorMessage(e));
+					}
+					finally
+					{
+						CloseWriter();
+						listenerCluster = null;
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Export an immutable snapshot to the learn-metrics file format.
+		/// The file is opened lazily on the first export.
+		/// </summary>
+		public void Export(MetricsSnapshot snapshot)
+		{
+			if (snapshot == null)
+			{
+				throw new AerospikeException(
+					ResultCode.PARAMETER_ERROR,
+					"Metrics snapshot is required.");
+			}
+			lock (sync)
+			{
+				ThrowIfDisposed();
+
 				try
 				{
-					enabled = false;
-					WriteCluster(cluster);
-					writer.Close();
+					if (writer != null &&
+						(latencyUnit != snapshot.LatencyUnit ||
+							latencyColumns != snapshot.LatencyColumns ||
+							latencyShift != snapshot.LatencyShift))
+					{
+						CloseWriter();
+					}
+
+					if (writer == null)
+					{
+						Directory.CreateDirectory(dir);
+						latencyUnit = snapshot.LatencyUnit;
+						latencyColumns = snapshot.LatencyColumns;
+						latencyShift = snapshot.LatencyShift;
+						Open();
+						enabled = true;
+					}
+					WriteCluster(snapshot);
 				}
-				catch (Exception e)
+				catch
 				{
-					Log.Error("Failed to close metrics writer: " + Util.GetErrorMessage(e));
+					enabled = false;
+					sb.Clear();
+					CloseWriter();
+					throw;
 				}
+			}
+		}
+
+		/// <summary>
+		/// Flush and close this application-owned writer.
+		/// </summary>
+		public void Dispose()
+		{
+			lock (sync)
+			{
+				if (disposed)
+				{
+					return;
+				}
+				disposed = true;
+				enabled = false;
+				listenerCluster = null;
+				CloseWriter();
 			}
 		}
 
 		private void Open()
 		{
 			DateTime now = DateTime.Now;
-			string path = dir + Path.DirectorySeparatorChar + "metrics-" + now.ToString(filenameFormat) + ".log";
-			writer = new StreamWriter(path, false);
+			string stem = dir + Path.DirectorySeparatorChar + "metrics-" +
+				now.ToString(filenameFormat);
+			int collision = 0;
+
+			while (true)
+			{
+				string path = collision == 0
+					? stem + ".log"
+					: stem + "-" + collision + ".log";
+
+				try
+				{
+					writer = new StreamWriter(
+						new FileStream(
+							path,
+							FileMode.CreateNew,
+							FileAccess.Write,
+							FileShare.Read));
+					break;
+				}
+				catch (IOException) when (File.Exists(path))
+				{
+					collision++;
+				}
+			}
 			size = 0;
 
 			sb.Append(now.ToString(timestampFormat));
@@ -150,160 +315,184 @@ namespace Aerospike.Client
 			WriteLine();
 		}
 
-		private void WriteCluster(Cluster cluster)
+		private void WriteCluster(MetricsSnapshot snapshot)
 		{
-			MetricsPolicy policy = cluster.MetricsPolicy;
-			string clusterName = cluster.clusterName;
-			clusterName ??= "";
-
-			GetCpuMemoryUsage(out double cpu, out long mem);
+			MetricsCompatibilitySnapshot compatibility =
+				snapshot.Compatibility;
 
 			sb.Append(DateTime.Now.ToString(timestampFormat));
 			sb.Append(" cluster[");
-			sb.Append(clusterName);
+			sb.Append(snapshot.ClusterName);
+			sb.Append(",c#,");
+			sb.Append(snapshot.ClientVersion);
 			sb.Append(',');
-			sb.Append("c#");
+			sb.Append(compatibility.AppId);
 			sb.Append(',');
-			sb.Append(cluster.client.clientVersion);
+			WriteLabels(snapshot.Labels);
 			sb.Append(',');
-			if (cluster.appId != null)
-			{
-				sb.Append(cluster.appId);
-			}
-			else
-			{
-				byte[] userBytes = cluster.user;
-				if (userBytes != null && userBytes.Length > 0)
-				{
-					string user = ByteUtil.Utf8ToString(userBytes, 0, userBytes.Length);
-					sb.Append(user);
-				}
-			}
+			sb.Append((int)compatibility.CpuPercent);
 			sb.Append(',');
-			if (policy.labels != null)
-			{
-				sb.Append('[');
-				foreach (string key in policy.labels.Keys)
-				{
-					sb.Append('[').Append(key).Append(',').Append(policy.labels[key]).Append("],");
-				}
-				sb.Remove(sb.Length - 1, 1); // Remove last comma
-				sb.Append(']');
-			}
+			sb.Append(compatibility.MemoryBytes);
 			sb.Append(',');
-			sb.Append((int)cpu);
+			sb.Append(compatibility.RecoverQueueSize);
 			sb.Append(',');
-			sb.Append(mem);
+			sb.Append(compatibility.InvalidNodeCount);
 			sb.Append(',');
-			sb.Append(cluster.GetRecoverQueueSize());
+			sb.Append(compatibility.CommandCount);
 			sb.Append(',');
-			sb.Append(cluster.InvalidNodeCount); // Cumulative. Not reset on each interval.
+			sb.Append(compatibility.RetryCount);
 			sb.Append(',');
-			sb.Append(cluster.GetCommandCount());  // Cumulative. Not reset on each interval.
+			sb.Append(compatibility.DelayQueueTimeoutCount);
 			sb.Append(',');
-			sb.Append(cluster.GetRetryCount()); // Cumulative. Not reset on each interval.
+			sb.Append(compatibility.AsyncThreadsInUse);
 			sb.Append(',');
-			sb.Append(cluster.GetDelayQueueTimeoutCount()); // Cumulative. Not reset on each interval.
-			sb.Append(',');
-
-			ThreadPool.GetMaxThreads(out int workerThreadsMax, out int completionPortThreadsMax);
-			ThreadPool.GetAvailableThreads(out int workerThreads, out int completionPortThreads);
-
-			var threadsInUse = workerThreadsMax - workerThreads;
-			var completionPortsInUse = completionPortThreadsMax - completionPortThreads;
-
-			sb.Append(threadsInUse);
-			sb.Append(',');
-			sb.Append(completionPortsInUse);
+			sb.Append(compatibility.AsyncCompletionPortsInUse);
 			sb.Append(",[");
 
-			Node[] nodes = cluster.Nodes;
+			Dictionary<string, NodeMetricsSnapshot> activeNodes =
+				snapshot.Nodes.ToDictionary(
+					node => node.Name,
+					StringComparer.Ordinal);
 
-			for (int i = 0; i < nodes.Length; i++)
+			for (int i = 0; i < compatibility.Nodes.Count; i++)
 			{
-				Node node = nodes[i];
-
 				if (i > 0)
 				{
 					sb.Append(',');
 				}
-				WriteNode(node);
+				MetricsNodeCompatibilitySnapshot nodeCompatibility =
+					compatibility.Nodes[i];
+				activeNodes.TryGetValue(
+					nodeCompatibility.Name,
+					out NodeMetricsSnapshot node);
+				node ??= CompatibilityNode(nodeCompatibility);
+				WriteNode(node, nodeCompatibility);
 			}
 			sb.Append(']');
 			WriteLine();
+
+			Dictionary<string, NodeMetricsSnapshot> departedNodes =
+				snapshot.NodesDeparted.ToDictionary(
+					node => node.Name,
+					StringComparer.Ordinal);
+
+			foreach (MetricsNodeCompatibilitySnapshot nodeCompatibility in
+				compatibility.NodesDeparted)
+			{
+				sb.Append(DateTime.Now.ToString(timestampFormat));
+				sb.Append(" node");
+				departedNodes.TryGetValue(
+					nodeCompatibility.Name,
+					out NodeMetricsSnapshot departed);
+				departed ??= CompatibilityNode(nodeCompatibility);
+				WriteNode(departed, nodeCompatibility);
+				WriteLine();
+			}
 		}
 
-		private void WriteNode(Node node)
+		private static NodeMetricsSnapshot CompatibilityNode(
+			MetricsNodeCompatibilitySnapshot compatibility)
+		{
+			return new NodeMetricsSnapshot(
+				compatibility.Name,
+				compatibility.Address,
+				compatibility.Port,
+				0,
+				ConnectionMetricsSnapshot.Empty,
+				NodeLatencyMetricsSnapshot.Empty,
+				Array.Empty<NamespaceMetricsSnapshot>());
+		}
+
+		private void WriteLabels(IReadOnlyDictionary<string, string> labels)
+		{
+			if (labels == null || labels.Count == 0)
+			{
+				return;
+			}
+
+			sb.Append('[');
+			int index = 0;
+
+			foreach (KeyValuePair<string, string> label in labels)
+			{
+				if (index++ > 0)
+				{
+					sb.Append(',');
+				}
+				sb.Append('[').Append(label.Key).Append(',').Append(label.Value).Append(']');
+			}
+			sb.Append(']');
+		}
+
+		private void WriteNode(
+			NodeMetricsSnapshot node,
+			MetricsNodeCompatibilitySnapshot compatibility)
 		{
 			sb.Append('[');
 			sb.Append(node.Name);
 			sb.Append(',');
-
-			Host host = node.Host;
-
-			sb.Append(host.name);
+			sb.Append(node.Address);
 			sb.Append(',');
-			sb.Append(host.port);
+			sb.Append(node.Port);
 			sb.Append(',');
-
-			WriteConn(node.GetConnectionStats());
+			WriteConn(
+				compatibility?.SyncConnections ??
+					new ConnectionStats(0, 0, 0, 0));
 			sb.Append(',');
-			var asyncStats = new ConnectionStats(0, 0, 0, 0);
-			if (node is AsyncNode async)
-			{
-				asyncStats = async.GetAsyncConnectionStats();
-			}
-			WriteConn(asyncStats);
+			WriteConn(
+				compatibility?.AsyncConnections ??
+					new ConnectionStats(0, 0, 0, 0));
 			sb.Append(",[");
 
-			Histograms hGrams = node.GetMetrics()?.Histograms;
-			ConcurrentHashMap<string, LatencyBuckets[]> hMap = hGrams?.histoMap;
-			int max = Latency.GetMax();
-
-			if (hMap != null)
+			if (compatibility?.Namespaces.Count > 0)
 			{
-				foreach (string ns in hMap.Keys)
+				foreach (MetricsNamespaceCompatibilitySnapshot ns in
+					compatibility.Namespaces)
 				{
-					sb.Append(ns).Append(',');
-					sb.Append(node.GetErrorCountByNS(ns));
-					sb.Append(',');
-					sb.Append(node.GetTimeoutCountbyNS(ns));
-					sb.Append(',');
-					sb.Append(node.GetKeyBusyCountByNS(ns));
-					sb.Append(',');
-					sb.Append(node.GetBytesInByNS(ns));
-					sb.Append(',');
-					sb.Append(node.GetBytesOutByNS(ns));
-					sb.Append(",[");
-					LatencyBuckets[] latencyBuckets = hGrams.GetBuckets(ns);
-					for (int i = 0; i < max; i++)
-					{
-						if (i > 0)
-						{
-							sb.Append(',');
-						}
-
-						sb.Append(LatencyTypeToString((LatencyType)i));
-						sb.Append('[');
-
-						LatencyBuckets buckets = latencyBuckets[i];
-						int bucketMax = buckets.GetMax();
-						for (int j = 0; j < bucketMax; j++)
-						{
-							if (j > 0)
-							{
-								sb.Append(',');
-							}
-							sb.Append(buckets.GetBucket(j)); // Cumulative. Not reset on each interval.
-						}
-						sb.Append(']');
-					}
-					sb.Append("]],[");
+					WriteNamespace(ns);
 				}
-				sb.Remove(sb.Length - 2, 2); // Remove ,[
+				sb.Remove(sb.Length - 2, 2);
 			}
 			sb.Append("]]");
 			sb.Append("]]");
+		}
+
+		private void WriteNamespace(MetricsNamespaceCompatibilitySnapshot ns)
+		{
+			sb.Append(ns.Name);
+			sb.Append(',');
+			sb.Append(ns.Errors);
+			sb.Append(',');
+			sb.Append(ns.Timeouts);
+			sb.Append(',');
+			sb.Append(ns.KeyBusy);
+			sb.Append(',');
+			sb.Append(ns.BytesIn);
+			sb.Append(',');
+			sb.Append(ns.BytesOut);
+			sb.Append(",[");
+
+			for (int i = 0; i < ns.Latency.Count; i++)
+			{
+				if (i > 0)
+				{
+					sb.Append(',');
+				}
+				sb.Append(LatencyTypeToString((LatencyType)i));
+				sb.Append('[');
+				IReadOnlyList<long> buckets = ns.Latency[i];
+
+				for (int j = 0; j < buckets.Count; j++)
+				{
+					if (j > 0)
+					{
+						sb.Append(',');
+					}
+					sb.Append(buckets[j]);
+				}
+				sb.Append(']');
+			}
+			sb.Append("]],[");
 		}
 
 		private void WriteConn(ConnectionStats cs)
@@ -351,21 +540,36 @@ namespace Aerospike.Client
 			}
 		}
 
-		private void GetCpuMemoryUsage(out double cpu, out long memory)
+		private static void ValidateSize(long reportSizeLimit)
 		{
-			Process currentProcess = System.Diagnostics.Process.GetCurrentProcess();
-			memory = currentProcess.WorkingSet64 + currentProcess.VirtualMemorySize64 + currentProcess.PagedMemorySize64;
+			if (reportSizeLimit != 0 && reportSizeLimit < minFileSize)
+			{
+				throw new AerospikeException(
+					"MetricsPolicy.reportSizeLimit " + reportSizeLimit +
+					" must be at least " + minFileSize);
+			}
+		}
 
-			var currentTime = DateTime.UtcNow;
-			var currentCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
+		private void CloseWriter()
+		{
+			try
+			{
+				writer?.Dispose();
+			}
+			catch (Exception e)
+			{
+				Log.Error("Failed to dispose metrics writer: " +
+					Util.GetErrorMessage(e));
+			}
+			writer = null;
+		}
 
-			var cpuUsedMs = (currentCpuUsage - prevCpuUsage).TotalMilliseconds;
-			var totalMsPassed = (currentTime - prevTime).TotalMilliseconds;
-
-			cpu = cpuUsedMs / (Environment.ProcessorCount * totalMsPassed) * 100;
-
-			prevTime = currentTime;
-			prevCpuUsage = currentCpuUsage;
+		private void ThrowIfDisposed()
+		{
+			if (disposed)
+			{
+				throw new ObjectDisposedException(nameof(MetricsWriter));
+			}
 		}
 	}
 }
