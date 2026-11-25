@@ -31,15 +31,18 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return the current seed candidates. Returned hosts are used as seeds, so they must carry the
 		/// TLS name when TLS is enabled; a null TLS name is defaulted the same way as for configured seeds.
+		/// A null host, a host with a null or empty name or a port outside 1 to 65535 fails the call the same
+		/// way as an exception, unless its name and port are identical to a configured seed.
 		/// <para>
-		/// Called once at client initialization on the application thread that constructs the client,
-		/// with <see cref="SeedCandidateContext.tendIteration"/> 0, and on each periodic refresh
-		/// (background thread when <see cref="DiscoveryExecutionMode.THREAD"/>, or tend thread when
-		/// <see cref="DiscoveryExecutionMode.TEND"/>). An exception at initialization is logged at warning
-		/// level and the client continues with the seeds left by
-		/// <see cref="ClientPolicy.seedMergePolicy"/>; when none are left, client construction fails with
-		/// <see cref="ResultCode.SEED_DISCOVERY_FAILED"/>. An exception on a periodic refresh is logged
-		/// at warning level and the previous seed list is kept.
+		/// Called once at client initialization, with <see cref="SeedCandidateContext.tendIteration"/> 0,
+		/// then on each periodic refresh. With <see cref="ClientPolicy.discoveryExecutionMode"/>
+		/// <see cref="DiscoveryExecutionMode.THREAD"/> and a provider that needs periodic refresh, every
+		/// call runs on the client's discovery thread; otherwise the first call runs on the application
+		/// thread that constructs the client and periodic refreshes on the cluster tend thread. Calls are
+		/// never made concurrently. An exception at initialization is logged at warning level and the
+		/// client continues with the seeds left by <see cref="ClientPolicy.seedMergePolicy"/>; when none
+		/// are left, client construction fails with <see cref="ResultCode.SEED_DISCOVERY_FAILED"/>. An
+		/// exception on a periodic refresh is logged at warning level and the previous seed list is kept.
 		/// </para>
 		/// </summary>
 		/// <param name="ctx">cluster name, configured seeds and tend count for this call</param>

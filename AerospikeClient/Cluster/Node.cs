@@ -75,6 +75,11 @@ namespace Aerospike.Client
 		private List<Host> advertisedHosts;
 		protected internal int referenceCount;
 		protected internal int failures;
+		/// <summary>Consecutive tend <see cref="Refresh"/> failures; used by FR-48 hostname move.</summary>
+		private int failedTends;
+		private const int MoveFailedTends = 3;
+		/// <summary>Last alternate address tried by <see cref="RefreshAddress"/>.</summary>
+		private IPAddress moveAddress;
 		protected internal readonly uint features;
 		private volatile int performLogin;
 		protected internal bool partitionChanged = true;
@@ -215,10 +220,13 @@ namespace Aerospike.Client
 					rebalanceChanged = cluster.rackAware;
 				}
 				failures = 0;
+				failedTends = 0;
+				moveAddress = null;
 			}
 			catch (Exception e)
 			{
 				peers.genChanged = true;
+				failedTends++;
 				RefreshFailed(e);
 			}
 		}
@@ -832,7 +840,9 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Replace a node whose refresh failed with the same node on another address of its hostname.
+		/// Replace a node whose refresh failed in consecutive tends with the same node on another
+		/// address of its hostname (FR-48). One address is tried per tend, within half the tend interval.
+		/// A hostname that now resolves to a single different address supplies a candidate.
 		/// </summary>
 		protected internal void RefreshAddress(Peers peers)
 		{
@@ -843,7 +853,7 @@ namespace Aerospike.Client
 				return;
 			}
 
-			if (failures <= 0 || !active || hostname == null)
+			if (failedTends < MoveFailedTends || !active || hostname == null)
 			{
 				return;
 			}
@@ -859,53 +869,106 @@ namespace Aerospike.Client
 				return;
 			}
 
-			if (addresses.Length <= 1)
+			IPAddress ia = NextAddress(addresses);
+
+			if (ia == null)
 			{
 				return;
 			}
 
+			moveAddress = ia;
+
+			int timeout = cluster.tendInterval / 2;
+
+			if (cluster.connectionTimeout > 0 && cluster.connectionTimeout < timeout)
+			{
+				timeout = cluster.connectionTimeout;
+			}
+
 			Host alias = new Host(hostname, host.tlsName, host.port);
 
-			foreach (IPAddress ia in addresses)
+			try
 			{
-				if (ia.Equals(address.Address))
-				{
-					continue;
-				}
+				NodeValidator nv = new NodeValidator();
+				nv.ValidateAlias(cluster, alias, ia, timeout);
 
-				try
-				{
-					NodeValidator nv = new NodeValidator();
-					nv.ValidateAlias(cluster, alias, ia);
-
-					if (!name.Equals(nv.name) || FindValidatedNode(cluster.nodesMap, name, nv) != null ||
-						FindValidatedNode(peers.nodes, name, nv) != null)
-					{
-						if (Log.DebugEnabled())
-						{
-							Log.Debug(cluster.context, "Address " + nv.primaryHost + " of " + hostname +
-								" is node " + nv.name + ", not node " + name);
-						}
-						nv.primaryConn.Close();
-						continue;
-					}
-
-					Node node = cluster.CreateNode(nv, true);
-					node.advertisedHosts = advertisedHosts;
-					peers.nodes[name] = node;
-					peers.RemoveNode(this);
-					LogMove(node);
-					return;
-				}
-				catch (Exception e)
+				if (!name.Equals(nv.name))
 				{
 					if (Log.DebugEnabled())
 					{
-						Log.Debug(cluster.context, "Address " + ia + ' ' + host.port + " failed: " +
-							Util.GetErrorMessage(e));
+						Log.Debug(cluster.context, "Address " + nv.primaryHost + " of " + hostname +
+							" is node " + nv.name + ", not node " + name);
+					}
+					nv.primaryConn.Close();
+					return;
+				}
+
+				Node colliding = FindValidatedNode(cluster.nodesMap, name, nv) ??
+					FindValidatedNode(peers.nodes, name, nv);
+
+				if (colliding != null)
+				{
+					if (Log.WarnEnabled())
+					{
+						Log.Warn(cluster.context, new AerospikeException.TranslationCollision(
+							name, colliding.name, nv.primaryHost, cluster.TranslatorName()).Message);
+					}
+					nv.primaryConn.Close();
+					return;
+				}
+
+				Node node = cluster.CreateNode(nv, true);
+				node.advertisedHosts = advertisedHosts;
+				peers.nodes[name] = node;
+				peers.RemoveNode(this);
+				LogMove(node);
+			}
+			catch (Exception e)
+			{
+				if (Log.DebugEnabled())
+				{
+					Log.Debug(cluster.context, "Address " + ia + ' ' + host.port + " failed: " +
+						Util.GetErrorMessage(e));
+				}
+			}
+		}
+
+		/// <summary>
+		/// Return the address after the one tried last, skipping the node's current address.
+		/// A single different address is eligible (FR-48).
+		/// </summary>
+		private IPAddress NextAddress(IPAddress[] addresses)
+		{
+			if (addresses == null || addresses.Length == 0)
+			{
+				return null;
+			}
+
+			int start = 0;
+
+			if (moveAddress != null)
+			{
+				for (int i = 0; i < addresses.Length; i++)
+				{
+					if (addresses[i].Equals(moveAddress))
+					{
+						start = i + 1;
+						break;
 					}
 				}
 			}
+
+			for (int i = 0; i < addresses.Length; i++)
+			{
+				IPAddress ia = addresses[(start + i) % addresses.Length];
+
+				if (!ia.Equals(address.Address))
+				{
+					return ia;
+				}
+			}
+
+			return null;
 		}
 
 		private void LogMove(Node node)

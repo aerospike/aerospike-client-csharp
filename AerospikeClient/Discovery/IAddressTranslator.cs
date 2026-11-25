@@ -29,8 +29,8 @@ namespace Aerospike.Client
 		/// <summary>
 		/// Return the host the client should connect to for the advertised endpoint, or null when
 		/// the translator has no mapping for it (a miss). A non-null value is a hit, even when it
-		/// equals the advertised host and port. The client applies
-		/// <see cref="ClientPolicy.translationOnMiss"/> to a miss.
+		/// equals the advertised host and port, unless its port is outside 1 to 65535, which is a
+		/// miss. The client applies <see cref="ClientPolicy.translationOnMiss"/> to a miss.
 		/// <para>
 		/// This method is called on the cluster tend thread and must be in-memory only. It must not
 		/// perform I/O of any kind, including DNS resolution.
@@ -58,6 +58,21 @@ namespace Aerospike.Client
 		/// </summary>
 		/// <param name="viewChange">counter value: 1 for the first change, then 2, 3, ...</param>
 		void OnClusterViewChanged(int viewChange)
+		{
+		}
+
+		/// <summary>
+		/// Release resources held by the translator. The default does nothing.
+		/// <para>
+		/// Called once after <see cref="AerospikeClient.Close()"/>, when the cluster tend has stopped
+		/// and no other call to the translator is in progress: on the cluster tend thread as it exits,
+		/// or on the thread that closes the client when no tend thread runs. Also called once when
+		/// client construction fails. <see cref="AerospikeClient.Close()"/> does not wait for it. An
+		/// exception is logged at warning level and not thrown. A translator instance shared by several
+		/// clients is closed by each of them.
+		/// </para>
+		/// </summary>
+		void Close()
 		{
 		}
 	}

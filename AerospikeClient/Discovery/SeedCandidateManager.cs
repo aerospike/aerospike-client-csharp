@@ -303,10 +303,24 @@ namespace Aerospike.Client
 			}
 		}
 
+		private int closeOnce;
+
 		internal void Close()
 		{
+			if (Interlocked.CompareExchange(ref closeOnce, 1, 0) != 0)
+			{
+				return;
+			}
+
 			closed = true;
-			wakeEvent.Set();
+
+			try
+			{
+				wakeEvent.Set();
+			}
+			catch (ObjectDisposedException)
+			{
+			}
 
 			Thread thread = refreshThread;
 			bool joined = true;
@@ -462,9 +476,7 @@ namespace Aerospike.Client
 
 			try
 			{
-				SeedCandidateContext ctx = new SeedCandidateContext(clusterName, staticSeeds, tendIteration);
-				List<Host> list = provider.RefreshSeedCandidates(ctx);
-				return list?.ToArray();
+				return Candidates(tendIteration);
 			}
 			catch (Exception e)
 			{
@@ -478,6 +490,61 @@ namespace Aerospike.Client
 
 				return null;
 			}
+		}
+
+		private Host[] Candidates(long tendIteration)
+		{
+			SeedCandidateContext ctx = new SeedCandidateContext(clusterName, staticSeeds, tendIteration);
+			List<Host> hosts = provider.RefreshSeedCandidates(ctx);
+
+			// Null means the provider failed the call the same way as throwing; keep last-good.
+			if (hosts == null)
+			{
+				return null;
+			}
+
+			Host[] list = hosts.ToArray();
+
+			for (int i = 0; i < list.Length; i++)
+			{
+				string reason = InvalidReason(list[i]);
+
+				if (reason != null)
+				{
+					throw new AerospikeException("Seed candidate provider " + ProviderName(provider) +
+						" returned invalid host at index " + i + ": " + reason);
+				}
+			}
+
+			return list;
+		}
+
+		private string InvalidReason(Host host)
+		{
+			if (host == null)
+			{
+				return "host is null";
+			}
+
+			foreach (Host seed in staticSeeds)
+			{
+				if (seed.Equals(host))
+				{
+					return null;
+				}
+			}
+
+			if (string.IsNullOrEmpty(host.name))
+			{
+				return "host " + host + " has a null or empty name";
+			}
+
+			if (!Cluster.IsValidPort(host.port))
+			{
+				return "host " + host + " has port " + host.port + " outside 1-65535";
+			}
+
+			return null;
 		}
 
 		private void PublishSnapshot(Host[] hosts)

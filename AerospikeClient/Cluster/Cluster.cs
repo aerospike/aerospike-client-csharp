@@ -69,7 +69,7 @@ namespace Aerospike.Client
 		private readonly ConcurrentDictionary<string, string> translationMisses;
 
 		/// <summary>
-		/// Last validated address per host:port, preferred on the next multi-address connect race.
+		/// Last validated address per host:port, preferred on the next multi-address connect.
 		/// </summary>
 		internal readonly ConcurrentDictionary<string, IPAddress> validAddresses =
 			new ConcurrentDictionary<string, IPAddress>();
@@ -82,6 +82,9 @@ namespace Aerospike.Client
 
 		// True when the address translator overrides OnClusterViewChanged.
 		internal readonly bool notifyViewChange;
+
+		// Address translator close runs once (tend exit, client close, or construction failure).
+		private int translatorClosed;
 
 		// TLS connection policy.
 		protected internal readonly TlsPolicy tlsPolicy;
@@ -230,8 +233,16 @@ namespace Aerospike.Client
 			// The default translator is the legacy ipMap, which misses unmapped hosts by design.
 			this.translationMisses = policy.addressTranslator != null ?
 				new ConcurrentDictionary<string, string>() : null;
-			this.seedCandidateManager = new SeedCandidateManager(
-				seedCandidateProvider, policy, hosts, SetSeeds, context);
+			try
+			{
+				this.seedCandidateManager = new SeedCandidateManager(
+					seedCandidateProvider, policy, hosts, SetSeeds, context);
+			}
+			catch
+			{
+				CloseTranslator();
+				throw;
+			}
 
 			try
 			{
@@ -302,6 +313,7 @@ namespace Aerospike.Client
 			catch
 			{
 				seedCandidateManager.Close();
+				CloseTranslator();
 				throw;
 			}
 		}
@@ -324,7 +336,15 @@ namespace Aerospike.Client
 			}
 			else
 			{
-				InitTendThread();
+				try
+				{
+					InitTendThread();
+				}
+				catch (Exception)
+				{
+					Close();
+					throw;
+				}
 			}
 		}
 
@@ -484,7 +504,7 @@ namespace Aerospike.Client
 		{
 			Host result = translator.Translate(advertised);
 
-			if (result == null)
+			if (result == null || !IsValidPort(result.port))
 			{
 				if (onMiss == TranslationMissMode.STRICT)
 				{
@@ -529,6 +549,35 @@ namespace Aerospike.Client
 			}
 
 			return result;
+		}
+
+		/// <summary>
+		/// Return true when <paramref name="port"/> is in the TCP range 1–65535.
+		/// </summary>
+		internal static bool IsValidPort(int port)
+		{
+			return port >= 1 && port <= 65535;
+		}
+
+		private void CloseTranslator()
+		{
+			if (Interlocked.CompareExchange(ref translatorClosed, 1, 0) != 0)
+			{
+				return;
+			}
+
+			try
+			{
+				addressTranslator.Close();
+			}
+			catch (Exception e)
+			{
+				if (Log.WarnEnabled())
+				{
+					Log.Warn(context, "Address translator " + TranslatorName() +
+						" close failed: " + Util.GetErrorMessage(e));
+				}
+			}
 		}
 
 		internal string TranslatorName()
@@ -665,6 +714,9 @@ namespace Aerospike.Client
 					}
 				}
 			}
+
+			seedCandidateManager.Close();
+			CloseTranslator();
 		}
 
 		/// <summary>
@@ -1827,9 +1879,24 @@ namespace Aerospike.Client
 				Log.Debug(context, "Close cluster " + clusterName);
 			}
 
+			// The tend thread closes the seed provider and address translator on exit, so close them
+			// here only if it never ran. A discovery thread is stopped here, so close waits for its
+			// refresh in flight.
+			bool tendRunning = tendThread != null && tendThread.IsAlive;
+
 			tendValid = false;
 			cancel.Cancel();
-			seedCandidateManager.Close();
+
+			if (!tendRunning || seedCandidateManager.HasRefreshThread)
+			{
+				seedCandidateManager.Close();
+			}
+
+			if (!tendRunning)
+			{
+				CloseTranslator();
+			}
+
 			validAddresses.Clear();
 
 			lock (metricsLock)

@@ -22,16 +22,17 @@ using Aerospike.Client;
 namespace Aerospike.Test
 {
 	/// <summary>
-	/// Multi-address connect races the TCP handshakes and returns completed addresses within
+	/// Multi-address connect staggers TCP handshakes (FR-49) and returns completed addresses within
 	/// min(connectTimeout, tendInterval), so one hung address does not cost a full connect timeout.
 	/// </summary>
 	[TestClass]
 	public class TestParallelConnect
 	{
 		private const long MarginMs = 250;
+		private const long Stagger = NodeValidator.StaggerDelayMs;
 
 		[TestMethod]
-		public void HungAddressDoesNotDelayServingAddress()
+		public void HungAddressDelaysNextByStagger()
 		{
 			IPAddress serving = IPAddress.Loopback;
 			IPAddress hung = IPAddress.Parse("192.0.2.1");
@@ -41,8 +42,12 @@ namespace Aerospike.Test
 
 			try
 			{
+				Stopwatch acceptWatch = Stopwatch.StartNew();
+				long acceptedAt = -1;
 				Task accept = listener.AcceptTcpClientAsync().ContinueWith(t =>
 				{
+					acceptedAt = acceptWatch.ElapsedMilliseconds;
+
 					try
 					{
 						t.Result.Close();
@@ -56,10 +61,12 @@ namespace Aerospike.Test
 				IPAddress[] connected = NodeValidator.ConnectAll(3000, port, null, new[] { hung, serving });
 				long elapsed = sw.ElapsedMilliseconds;
 
-				Assert.IsTrue(elapsed < 250 + MarginMs, "ConnectAll took " + elapsed + "ms");
+				Assert.IsTrue(accept.Wait(2000));
+				Assert.IsTrue(acceptedAt >= Stagger && acceptedAt < Stagger + MarginMs,
+					"second address accepted at " + acceptedAt + "ms");
+				Assert.IsTrue(elapsed < Stagger + 250 + MarginMs, "ConnectAll took " + elapsed + "ms");
 				CollectionAssert.Contains(connected, serving);
 				Assert.IsFalse(connected.Contains(hung));
-				Assert.IsTrue(accept.Wait(2000));
 			}
 			finally
 			{

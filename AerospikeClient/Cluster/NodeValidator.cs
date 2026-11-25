@@ -17,12 +17,18 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Aerospike.Client
 {
 	public sealed class NodeValidator
 	{
+		/// <summary>
+		/// Delay between starting connects to successive addresses of one host (FR-49 / RFC 8305).
+		/// </summary>
+		internal const int StaggerDelayMs = 250;
+
 		internal Node fallback;
 		internal string name;
 		internal string hostname;
@@ -141,98 +147,25 @@ namespace Aerospike.Client
 		}
 
 		/// <summary>
-		/// Verify that a host alias references a valid node.
+		/// Verify that a host alias references a valid node. When the host resolves to several
+		/// addresses, connects are started one at a time, the last validated address first, then in
+		/// DNS order, the next one when the stagger delay passes or an earlier connect fails
+		/// (FR-49). All connects end by min(connectTimeout, tendInterval).
 		/// </summary>
 		public void ValidateNode(Cluster cluster, Host host)
 		{
 			IPAddress[] addresses = Connection.GetHostAddresses(host.name, cluster.connectionTimeout);
 
-			if (addresses.Length > 1)
+			if (addresses.Length == 1)
 			{
-				addresses = ConnectAll(cluster, host, addresses);
+				ValidateAddress(cluster, addresses[0], host.tlsName, host.port, false, 0);
+				SetHostname(host, addresses[0]);
+				cluster.validAddresses[host.name + ':' + host.port] = addresses[0];
+				return;
 			}
 
-			Exception exception = null;
-
-			foreach (IPAddress address in addresses)
-			{
-				try
-				{
-					ValidateAddress(cluster, address, host.tlsName, host.port, false);
-					SetHostname(host, address);
-					cluster.validAddresses[host.name + ':' + host.port] = address;
-					return;
-				}
-				catch (Exception e)
-				{
-					// Log exception and continue to next alias.
-					if (Log.DebugEnabled())
-					{
-						Log.Debug(cluster.context, "Address " + address + ' ' + host.port + " failed: " + Util.GetErrorMessage(e));
-					}
-
-					if (exception == null)
-					{
-						exception = e;
-					}
-				}
-			}
-
-			// Exception can't be null here because Connection.GetHostAddresses()
-			// will throw exception if aliases length is zero.
-			throw exception;
-		}
-
-		/// <summary>
-		/// Start a connect to every address at once and wait until one completes or
-		/// min(connectTimeout, tendInterval) passes. Return the addresses that completed by then,
-		/// the last validated address first, then in DNS order.
-		/// </summary>
-		internal static IPAddress[] ConnectAll(Cluster cluster, Host host, IPAddress[] addresses)
-		{
 			cluster.validAddresses.TryGetValue(host.name + ':' + host.port, out IPAddress preferred);
-			int bound = cluster.connectionTimeout > 0
-				? Math.Min(cluster.connectionTimeout, cluster.tendInterval)
-				: cluster.tendInterval;
-			return ConnectAll(bound, host.port, preferred, addresses);
-		}
-
-		/// <summary>
-		/// Race TCP connects across <paramref name="addresses"/> and return those that completed
-		/// within <paramref name="boundMs"/>, preferred first then DNS order.
-		/// </summary>
-		internal static IPAddress[] ConnectAll(int boundMs, int port, IPAddress preferred, IPAddress[] addresses)
-		{
-			List<IPAddress> connected = new List<IPAddress>(addresses.Length);
-			List<(IPAddress Address, Socket Socket, Task Task)> pending = new List<(IPAddress, Socket, Task)>();
-			object gate = new object();
-
-			void Start(IPAddress address)
-			{
-				Socket socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
-				try
-				{
-					socket.NoDelay = true;
-					Task task = ConnectSocketAsync(socket, new IPEndPoint(address, port));
-					pending.Add((address, socket, task));
-				}
-				catch (Exception e)
-				{
-					try
-					{
-						socket.Dispose();
-					}
-					catch
-					{
-					}
-
-					if (Log.DebugEnabled())
-					{
-						Log.Debug("Address " + address + ' ' + port + " failed: " + Util.GetErrorMessage(e));
-					}
-				}
-			}
+			List<IPAddress> remaining = new List<IPAddress>(addresses.Length);
 
 			if (preferred != null)
 			{
@@ -240,7 +173,7 @@ namespace Aerospike.Client
 				{
 					if (address.Equals(preferred))
 					{
-						Start(preferred);
+						remaining.Add(address);
 						break;
 					}
 				}
@@ -250,133 +183,328 @@ namespace Aerospike.Client
 			{
 				if (!address.Equals(preferred))
 				{
-					Start(address);
+					remaining.Add(address);
 				}
 			}
 
-			if (pending.Count == 0)
+			int bound = cluster.connectionTimeout > 0
+				? Math.Min(cluster.connectionTimeout, cluster.tendInterval)
+				: cluster.tendInterval;
+			int delayMs = Math.Min(StaggerDelayMs, Math.Max(1, bound / addresses.Length));
+			long deadline = Stopwatch.GetTimestamp() +
+				(long)(bound * (Stopwatch.Frequency / 1000.0));
+			Exception exception = null;
+
+			while (true)
 			{
-				throw new AerospikeException.Connection("No connection to port " + port + " started for " +
-					addresses.Length + " addresses");
-			}
+				IPAddress address = ConnectFirst(host, remaining, delayMs, deadline);
 
-			Stopwatch sw = Stopwatch.StartNew();
-
-			while (connected.Count == 0)
-			{
-				int remaining = boundMs - (int)sw.ElapsedMilliseconds;
-
-				if (remaining <= 0)
+				if (address == null)
 				{
 					break;
 				}
 
-				List<Task> running = new List<Task>();
-
-				foreach ((IPAddress Address, Socket Socket, Task Task) item in pending)
+				try
 				{
-					if (!item.Task.IsCompleted)
+					ValidateAddress(cluster, address, host.tlsName, host.port, false, 0);
+					SetHostname(host, address);
+					cluster.validAddresses[host.name + ':' + host.port] = address;
+					return;
+				}
+				catch (Exception e)
+				{
+					if (Log.DebugEnabled())
 					{
-						running.Add(item.Task);
+						Log.Debug(cluster.context, "Address " + address + ' ' + host.port + " failed: " +
+							Util.GetErrorMessage(e));
+					}
+
+					if (exception == null)
+					{
+						exception = e;
 					}
 				}
-
-				if (running.Count == 0)
-				{
-					break;
-				}
-
-				try
-				{
-					Task.WhenAny(running).Wait(remaining);
-				}
-				catch
-				{
-				}
-
-				Harvest(pending, connected, gate, port);
-
-				if (connected.Count > 0)
-				{
-					// Collect any other connects that finished in the same window.
-					Harvest(pending, connected, gate, port);
-					break;
-				}
 			}
 
-			Harvest(pending, connected, gate, port);
-
-			foreach ((IPAddress Address, Socket Socket, Task Task) item in pending)
+			if (exception != null)
 			{
-				if (!item.Task.IsCompleted && Log.DebugEnabled())
-				{
-					Log.Debug("Address " + item.Address + ' ' + port +
-						" failed: connect did not complete within " + boundMs + "ms");
-				}
+				throw exception;
+			}
 
-				try
+			throw new AerospikeException.Connection("No connection to " + host + " completed for " +
+				addresses.Length + " addresses within " + bound + "ms");
+		}
+
+		/// <summary>
+		/// Stagger TCP connects across <paramref name="addresses"/> (FR-49) and return those that
+		/// completed within <paramref name="boundMs"/>, preferred first then DNS order. Used by
+		/// unit tests; production multi-address validation uses
+		/// <see cref="ValidateNode(Cluster, Host)"/>.
+		/// </summary>
+		internal static IPAddress[] ConnectAll(int boundMs, int port, IPAddress preferred, IPAddress[] addresses)
+		{
+			List<IPAddress> remaining = new List<IPAddress>(addresses.Length);
+
+			if (preferred != null)
+			{
+				foreach (IPAddress address in addresses)
 				{
-					item.Socket.Dispose();
-				}
-				catch
-				{
+					if (address.Equals(preferred))
+					{
+						remaining.Add(address);
+						break;
+					}
 				}
 			}
 
-			if (connected.Count == 0)
+			foreach (IPAddress address in addresses)
+			{
+				if (!address.Equals(preferred))
+				{
+					remaining.Add(address);
+				}
+			}
+
+			int delayMs = Math.Min(StaggerDelayMs, Math.Max(1, boundMs / Math.Max(1, addresses.Length)));
+			long deadline = Stopwatch.GetTimestamp() +
+				(long)(boundMs * (Stopwatch.Frequency / 1000.0));
+			Host host = new Host("connect-all", port);
+
+			// One staggered race: return the first address that connects. Remaining in-flight
+			// connects are closed by ConnectFirst (same as Java validateAny's first win).
+			IPAddress winner = ConnectFirst(host, remaining, delayMs, deadline);
+
+			if (winner == null)
 			{
 				throw new AerospikeException.Connection("No connection to port " + port + " completed for " +
 					addresses.Length + " addresses within " + boundMs + "ms");
 			}
 
-			connected.Sort((a, b) => Rank(addresses, preferred, a).CompareTo(Rank(addresses, preferred, b)));
-			return connected.ToArray();
+			return new[] { winner };
 		}
 
-		private static void Harvest(
+		/// <summary>
+		/// Return the first address whose connect completes, or null when none completes by the
+		/// deadline. The returned address and addresses whose connect failed are removed from
+		/// <paramref name="addresses"/>.
+		/// </summary>
+		internal static IPAddress ConnectFirst(Host host, List<IPAddress> addresses, int delayMs, long deadlineTicks)
+		{
+			IPAddress connected = null;
+			int next = 0;
+			List<(IPAddress Address, Socket Socket, Task Task)> pending = new List<(IPAddress, Socket, Task)>();
+			long nextStart = Stopwatch.GetTimestamp();
+
+			try
+			{
+				while (connected == null)
+				{
+					long now = Stopwatch.GetTimestamp();
+
+					if (now - deadlineTicks >= 0)
+					{
+						break;
+					}
+
+					if (next < addresses.Count && now - nextStart >= 0)
+					{
+						IPAddress address = addresses[next];
+						int state = StartConnect(pending, address, host.port);
+
+						if (state == 0) // CONNECTED immediately
+						{
+							connected = address;
+							break;
+						}
+
+						if (state == 1) // PENDING
+						{
+							next++;
+							nextStart = now + (long)(delayMs * (Stopwatch.Frequency / 1000.0));
+						}
+						else // FAILED
+						{
+							addresses.RemoveAt(next);
+							nextStart = now;
+						}
+						continue;
+					}
+
+					if (pending.Count == 0)
+					{
+						break;
+					}
+
+					int waitMs;
+
+					if (next < addresses.Count && nextStart - deadlineTicks < 0)
+					{
+						waitMs = (int)Math.Max(1,
+							(nextStart - now) / (Stopwatch.Frequency / 1000.0));
+					}
+					else
+					{
+						waitMs = (int)Math.Max(1,
+							(deadlineTicks - now) / (Stopwatch.Frequency / 1000.0));
+					}
+
+					List<Task> running = new List<Task>(pending.Count);
+
+					foreach ((IPAddress Address, Socket Socket, Task Task) item in pending)
+					{
+						if (!item.Task.IsCompleted)
+						{
+							running.Add(item.Task);
+						}
+					}
+
+					if (running.Count > 0)
+					{
+						try
+						{
+							Task.WhenAny(running).Wait(waitMs);
+						}
+						catch
+						{
+						}
+					}
+					else
+					{
+						Thread.Sleep(Math.Min(waitMs, 5));
+					}
+
+					for (int i = pending.Count - 1; i >= 0; i--)
+					{
+						(IPAddress Address, Socket Socket, Task Task) item = pending[i];
+
+						if (!item.Task.IsCompleted)
+						{
+							continue;
+						}
+
+						pending.RemoveAt(i);
+
+						try
+						{
+							item.Socket.Dispose();
+						}
+						catch
+						{
+						}
+
+						if (item.Task.Status == TaskStatus.RanToCompletion)
+						{
+							if (connected == null)
+							{
+								connected = item.Address;
+							}
+						}
+						else
+						{
+							if (Log.DebugEnabled() && item.Task.IsFaulted)
+							{
+								Log.Debug("Address " + item.Address + ' ' + host.port + " failed: " +
+									Util.GetErrorMessage(item.Task.Exception.GetBaseException()));
+							}
+
+							int index = addresses.IndexOf(item.Address);
+
+							if (index >= 0)
+							{
+								addresses.RemoveAt(index);
+
+								if (index < next)
+								{
+									next--;
+								}
+							}
+
+							nextStart = Stopwatch.GetTimestamp();
+						}
+					}
+				}
+			}
+			finally
+			{
+				foreach ((IPAddress Address, Socket Socket, Task Task) item in pending)
+				{
+					try
+					{
+						item.Socket.Dispose();
+					}
+					catch
+					{
+					}
+				}
+			}
+
+			if (connected != null)
+			{
+				addresses.Remove(connected);
+			}
+
+			return connected;
+		}
+
+		/// <summary>
+		/// 0 = connected immediately, 1 = pending, 2 = failed.
+		/// </summary>
+		private static int StartConnect(
 			List<(IPAddress Address, Socket Socket, Task Task)> pending,
-			List<IPAddress> connected,
-			object gate,
+			IPAddress address,
 			int port)
 		{
-			foreach ((IPAddress Address, Socket Socket, Task Task) item in pending)
+			Socket socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+			try
 			{
-				if (item.Task.Status != TaskStatus.RanToCompletion)
+				socket.NoDelay = true;
+				Task task = ConnectSocketAsync(socket, new IPEndPoint(address, port));
+
+				if (task.IsCompleted)
 				{
-					if (item.Task.IsFaulted && Log.DebugEnabled())
+					try
 					{
-						Log.Debug("Address " + item.Address + ' ' + port + " failed: " +
-							Util.GetErrorMessage(item.Task.Exception.GetBaseException()));
+						socket.Dispose();
 					}
-					continue;
-				}
-
-				lock (gate)
-				{
-					if (!connected.Contains(item.Address))
+					catch
 					{
-						connected.Add(item.Address);
 					}
+
+					if (task.Status == TaskStatus.RanToCompletion)
+					{
+						return 0;
+					}
+
+					if (Log.DebugEnabled() && task.IsFaulted)
+					{
+						Log.Debug("Address " + address + ' ' + port + " failed: " +
+							Util.GetErrorMessage(task.Exception.GetBaseException()));
+					}
+
+					return 2;
 				}
-			}
-		}
 
-		private static int Rank(IPAddress[] addresses, IPAddress preferred, IPAddress address)
-		{
-			if (preferred != null && address.Equals(preferred))
-			{
-				return -1;
+				pending.Add((address, socket, task));
+				return 1;
 			}
-
-			for (int i = 0; i < addresses.Length; i++)
+			catch (Exception e)
 			{
-				if (addresses[i].Equals(address))
+				try
 				{
-					return i;
+					socket.Dispose();
 				}
-			}
+				catch
+				{
+				}
 
-			return addresses.Length;
+				if (Log.DebugEnabled())
+				{
+					Log.Debug("Address " + address + ' ' + port + " failed: " + Util.GetErrorMessage(e));
+				}
+
+				return 2;
+			}
 		}
 
 		private static async Task ConnectSocketAsync(Socket socket, IPEndPoint endpoint)
@@ -389,7 +517,17 @@ namespace Aerospike.Client
 		/// </summary>
 		internal void ValidateAlias(Cluster cluster, Host host, IPAddress address)
 		{
-			ValidateAddress(cluster, address, host.tlsName, host.port, false);
+			ValidateAlias(cluster, host, address, 0);
+		}
+
+		/// <summary>
+		/// Verify that one address of a host references a valid node. Connect, login and info
+		/// end within <paramref name="timeoutMs"/> when greater than 0; otherwise the cluster
+		/// connect timeout is used (FR-48).
+		/// </summary>
+		internal void ValidateAlias(Cluster cluster, Host host, IPAddress address, int timeoutMs)
+		{
+			ValidateAddress(cluster, address, host.tlsName, host.port, false, timeoutMs);
 			SetHostname(host, address);
 		}
 
@@ -440,10 +578,22 @@ namespace Aerospike.Client
 
 		private void ValidateAddress(Cluster cluster, IPAddress address, string tlsName, int port, bool detectLoadBalancer)
 		{
+			ValidateAddress(cluster, address, tlsName, port, detectLoadBalancer, 0);
+		}
+
+		private void ValidateAddress(
+			Cluster cluster,
+			IPAddress address,
+			string tlsName,
+			int port,
+			bool detectLoadBalancer,
+			int timeoutMs)
+		{
+			int timeout = timeoutMs > 0 ? timeoutMs : cluster.connectionTimeout;
 			IPEndPoint socketAddress = new IPEndPoint(address, port);
 			Connection conn = (cluster.tlsPolicy != null) ?
-				new TlsConnection(cluster, tlsName, socketAddress, cluster.connectionTimeout, null) :
-				new Connection(socketAddress, cluster.connectionTimeout, null);
+				new TlsConnection(cluster, tlsName, socketAddress, timeout, null) :
+				new Connection(socketAddress, timeout, null);
 
 			try
 			{
